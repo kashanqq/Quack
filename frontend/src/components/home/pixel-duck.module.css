@@ -1,0 +1,60 @@
+/* Sprite-style animation: whole-unit steps only, so the duck never goes blurry
+   between pixels. Every duration is a multiple of --beat, set per tempo. */
+
+.duck {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+/* Body + wing rise and fall together by one pixel. */
+.bob {
+  animation: duck-bob calc(var(--beat) * 2) steps(1, end) infinite;
+}
+
+/* The wing lags a beat behind the body, which reads as a flap. */
+.wing {
+  animation: duck-wing var(--beat) steps(1, end) infinite alternate;
+}
+
+.feet {
+  animation: duck-feet calc(var(--beat) * 4) steps(1, end) infinite;
+}
+
+@keyframes duck-bob {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes duck-wing {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(1px);
+  }
+}
+
+@keyframes duck-feet {
+  0%,
+  50% {
+    transform: translateX(0);
+  }
+  51%,
+  100% {
+    transform: translateX(1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bob,
+  .wing,
+  .feet {
+    animation: none;
+  }
+}

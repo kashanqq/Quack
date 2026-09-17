@@ -6,6 +6,7 @@
   --duck-body: #ffd84d;
   --duck-wing: #f2b23a;
   --duck-beak: #ff7a00;
+  --duck-outline: #2b2826;
 
   --font-mono: var(--font-intel-one-mono), ui-monospace, monospace;
   --font-text: var(--font-raleway), system-ui, sans-serif;
