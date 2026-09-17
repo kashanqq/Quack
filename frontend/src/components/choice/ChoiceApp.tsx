@@ -18,12 +18,13 @@ import {
   type FieldKey,
   type Profile,
 } from "./assistant";
+import { Dashboard } from "../dashboard/Dashboard";
 import { PrepView } from "../prep/PrepView";
 import type { PrepTab } from "../prep/prepModel";
 import { ChatMessage, type ChatMsg } from "./ChatMessage";
 import { CompareView } from "./CompareView";
 import { CustomScrollbar } from "./CustomScrollbar";
-import { ProfilePanel, ProfileToggle } from "./ProfilePanel";
+import { ProfilePanel } from "./ProfilePanel";
 import { ProgramCards, ProgramDrawer, type ProgramActions } from "./ProgramUi";
 import { recommend } from "./programs";
 import { ResizeHandle } from "./ResizeHandle";
@@ -65,7 +66,7 @@ const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
 
 export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const [stage, setStage] = useState<"intro" | "chat">("intro");
-  const [mode, setMode] = useState<Mode>("choice");
+  const [mode, setMode] = useState<Mode>("dashboard");
   const [prepTab, setPrepTab] = useState<PrepTab>("overview");
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
   const [confirmed, setConfirmed] = useState(false);
@@ -108,8 +109,10 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const busyRef = useRef(false);
   const idRef = useRef(0);
   const mounted = useRef(true);
-  const layoutLoaded = useRef(false);
-  const workspaceLoaded = useRef(false);
+  // Effects, not refs: writing must wait until the loaded state has actually been applied,
+  // otherwise React's double mount in development saves the empty state over the stored one
+  const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
+  const [layoutLoaded, setLayoutLoaded] = useState(false);
 
   const messagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -145,18 +148,18 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
         idRef.current = Math.max(0, ...(stored.sessions ?? []).flatMap((c: Session) => c.messages.map((m) => m.id)));
       }
     } catch {}
-    workspaceLoaded.current = true;
+    setWorkspaceLoaded(true);
   }, []);
 
   useEffect(() => {
-    if (!workspaceLoaded.current) return;
+    if (!workspaceLoaded) return;
     try {
       localStorage.setItem(
         WORKSPACE_KEY,
         JSON.stringify({ profile, confirmed, picks, saved, compare, sessions })
       );
     } catch {}
-  }, [profile, confirmed, picks, saved, compare, sessions]);
+  }, [workspaceLoaded, profile, confirmed, picks, saved, compare, sessions]);
 
   // Keep the active chat's stored copy in sync with what is on screen
   useEffect(() => {
@@ -180,15 +183,15 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
       if (stored?.left) setLeft({ ...stored.left, collapsed: false });
       if (stored?.right) setRight(stored.right);
     } catch {}
-    layoutLoaded.current = true;
+    setLayoutLoaded(true);
   }, []);
 
   useEffect(() => {
-    if (!layoutLoaded.current || resizing) return;
+    if (!layoutLoaded || resizing) return;
     try {
       localStorage.setItem(LAYOUT_KEY, JSON.stringify({ left, right }));
     } catch {}
-  }, [left, right, resizing]);
+  }, [layoutLoaded, left, right, resizing]);
 
   useEffect(() => {
     if (!profileOverlayOpen) return;
@@ -451,10 +454,6 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     requestAnimationFrame(() => inputRef.current?.focus());
   }
 
-  const newChat = () => {
-    if (!busyRef.current) showChat(null, []);
-  };
-
   const selectChat = (id: string) => {
     const chat = sessions.find((c) => c.id === id);
     if (chat && !busyRef.current) showChat(id, chat.messages);
@@ -539,11 +538,6 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   return (
     <div className={styles.page}>
-      <Topbar
-        onOpenMenu={openMobilePrograms}
-        profilePanel={rightAvailable ? { open: profileVisible, readiness: readinessValue, onToggle: toggleProfile } : undefined}
-      />
-
       <main
         className={`${styles.app} ${resizing ? styles.isResizing : ""}`}
         data-stage={stage}
@@ -551,6 +545,13 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
         data-view={view}
         style={gridStyle}
       >
+        <Topbar
+          mode={mode}
+          onMode={changeMode}
+          onOpenMenu={openMobilePrograms}
+          profilePanel={rightAvailable ? { open: profileVisible, readiness: readinessValue, onToggle: toggleProfile } : undefined}
+        />
+
         <aside
           className={`${layout.sidebar} ${mobileProgramsOpen ? layout.sidebarMobileOpen : ""}`}
           aria-label="Навигация"
@@ -558,14 +559,12 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
           <Sidebar
             collapsed={sidebarCollapsed}
             mode={mode}
-            onMode={changeMode}
             tab={sidebarTab}
             picks={picks}
             profile={profile}
             actions={programActions}
             chats={[...sessions].sort((a, b) => b.updatedAt - a.updatedAt)}
             activeChatId={activeChatId}
-            onNewChat={newChat}
             onSelectChat={selectChat}
             onDeleteChat={deleteChat}
             onTab={setSidebarTab}
@@ -605,9 +604,6 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
         {phone && profileVisible && <div className={styles.profileBackdrop} onClick={() => setProfileOverlayOpen(false)} />}
 
         <section className={styles.chat}>
-          {rightAvailable && !phone && !profileVisible && (
-            <ProfileToggle className={styles.chatProfileToggle} open={false} readiness={readinessValue} onClick={toggleProfile} />
-          )}
           <div className={styles.chatBody}>
             <div className={`${styles.view} ${styles.viewChoice}`}>
               <div className={styles.greeting} aria-live="polite">
@@ -663,6 +659,21 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
               )}
 
               <ProgramDrawer id={detailId} profile={profile} actions={programActions} onClose={() => setDetailId(null)} />
+            </div>
+
+            <div className={`${styles.view} ${styles.viewDashboard}`} aria-hidden={mode !== "dashboard"}>
+              {mode === "dashboard" && (
+                <Dashboard
+                  saved={saved}
+                  profile={profile}
+                  onUnsave={(id) => setSaved((list) => list.filter((x) => x !== id))}
+                  onOpenChoice={() => changeMode("choice")}
+                  onOpenPrep={(tab) => {
+                    setPrepTab(tab);
+                    changeMode("prep");
+                  }}
+                />
+              )}
             </div>
 
             <div className={`${styles.view} ${styles.viewPrep}`} aria-hidden={mode !== "prep"}>

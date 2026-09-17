@@ -85,6 +85,7 @@
 
 .sidebar {
   position: relative;
+  grid-area: 1 / 1 / 3 / 2;
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -106,39 +107,17 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 14px 12px 6px 20px;
+  /* Clear of the floating header */
+  padding: 20px 12px 8px 20px;
 }
 
-.logo,
-.logoRail {
-  font-family: var(--font-mono);
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.logo {
-  font-size: 26px;
-}
-
-.logoRail {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  font-size: 22px;
-}
-
-.logo span,
-.logoRail span {
-  color: var(--accent);
-}
-
-.sidebarMode {
-  padding: 6px 12px 10px 16px;
-}
-
-.sidebarMode .modeButton {
-  flex: 1;
+.sidebarSection {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .sidebarFoot {
@@ -150,51 +129,6 @@
 .railFoot {
   margin-top: auto;
   padding: 8px 0 12px;
-}
-
-/* Выбор / Подготовка — top of the left column */
-.modeSwitch {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 14px;
-}
-
-.modeSwitchRail {
-  flex-direction: column;
-}
-
-.modeButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-width: 36px;
-  height: 34px;
-  padding: 0 12px;
-  background: none;
-  border: 0;
-  border-radius: 10px;
-  color: var(--text-dim);
-  font-size: 14px;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background 0.25s ease, color 0.25s ease;
-}
-
-.modeSwitchRail .modeButton {
-  padding: 0;
-}
-
-.modeButton:hover {
-  color: var(--text);
-}
-
-.modeButton[aria-selected="true"] {
-  background: var(--accent-tint);
-  color: var(--text);
-  box-shadow: inset 0 0 0 1px rgba(255, 166, 77, 0.35);
 }
 
 .sidebarScroll {
@@ -427,7 +361,7 @@
   align-items: center;
   gap: 8px;
   min-height: 0;
-  padding-top: 14px;
+  padding-top: 18px;
   /* Visible so the account menu can open beside the rail */
   overflow: visible;
   animation: fade-in 0.3s ease both;

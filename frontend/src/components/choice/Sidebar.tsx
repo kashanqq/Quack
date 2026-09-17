@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef } from "react";
-import { TransitionLink } from "@/components/transition/TransitionLink";
 import type { Profile } from "./assistant";
 import { Icon, type IconName } from "./Icon";
 import { LevelDot, type ProgramActions } from "./ProgramUi";
@@ -10,15 +9,10 @@ import { PREP_TABS, type PrepTab } from "../prep/prepModel";
 import { UserMenu } from "./UserMenu";
 import styles from "./layout.module.css";
 
-export type Mode = "choice" | "prep";
+export type Mode = "dashboard" | "choice" | "prep";
 export type SidebarTab = "picks" | "saved" | "compare";
 
 export type ChatSummary = { id: string; title: string; updatedAt: number };
-
-const MODES: { mode: Mode; label: string; icon: IconName }[] = [
-  { mode: "choice", label: "Выбор", icon: "graduation-cap" },
-  { mode: "prep", label: "Подготовка", icon: "book-open-check" },
-];
 
 const TABS: { tab: SidebarTab; label: string; icon: IconName }[] = [
   { tab: "picks", label: "Подборка", icon: "sparkles" },
@@ -29,7 +23,6 @@ const TABS: { tab: SidebarTab; label: string; icon: IconName }[] = [
 type SidebarProps = {
   collapsed: boolean;
   mode: Mode;
-  onMode: (mode: Mode) => void;
   tab: SidebarTab;
   onTab: (tab: SidebarTab) => void;
   picks: string[];
@@ -37,7 +30,6 @@ type SidebarProps = {
   actions: ProgramActions;
   chats: ChatSummary[];
   activeChatId: string | null;
-  onNewChat: () => void;
   onSelectChat: (id: string) => void;
   onDeleteChat: (id: string) => void;
   onToggle: () => void;
@@ -56,12 +48,11 @@ const timeLabel = (ts: number) => {
 };
 
 /**
- * Left column: logo, section switch (Выбор / Подготовка) at the top, like Claude's Chat / Code,
- * then programs (picks, favourites, comparison), chat history and the account at the bottom.
+ * Left column: programs (picks, favourites, comparison), chat history and the account at the bottom.
  * Collapses to an icon rail.
  */
 export function Sidebar(props: SidebarProps) {
-  const { collapsed, mode, onMode, tab, onTab, picks, profile, actions, chats, activeChatId } = props;
+  const { collapsed, mode, tab, onTab, picks, profile, actions, chats, activeChatId } = props;
   const historyRef = useRef<HTMLElement>(null);
 
   const counts: Record<SidebarTab, number> = {
@@ -70,35 +61,13 @@ export function Sidebar(props: SidebarProps) {
     compare: actions.compare.length,
   };
 
-  const modeSwitch = (
-    <div className={`${styles.modeSwitch} ${collapsed ? styles.modeSwitchRail : ""}`} role="tablist" aria-label="Раздел">
-      {MODES.map((m) => (
-        <button
-          key={m.mode}
-          type="button"
-          role="tab"
-          aria-selected={mode === m.mode}
-          className={styles.modeButton}
-          title={m.label}
-          onClick={() => onMode(m.mode)}
-        >
-          <Icon name={m.icon} size={18} />
-          {!collapsed && <span>{m.label}</span>}
-        </button>
-      ))}
-    </div>
-  );
-
   if (collapsed) {
     return (
       <div className={styles.rail}>
-        <TransitionLink className={styles.logoRail} href="/" aria-label="Quack! — на главную">
-          Q<span>!</span>
-        </TransitionLink>
         <button type="button" className={styles.iconButton} aria-label="Развернуть левую панель" onClick={props.onToggle}>
           <Icon name="panel-left-open" />
         </button>
-        {modeSwitch}
+        <span className={styles.railDivider} />
         {mode === "prep" && (
           <>
             <span className={styles.railDivider} />
@@ -117,12 +86,9 @@ export function Sidebar(props: SidebarProps) {
             ))}
           </>
         )}
-        {mode === "choice" && (
+        {mode !== "prep" && (
           <>
             <span className={styles.railDivider} />
-            <button type="button" className={styles.iconButton} aria-label="Новый чат" title="Новый чат" onClick={props.onNewChat}>
-              <Icon name="plus" />
-            </button>
             {TABS.map(({ tab: t, label, icon }) => (
               <button
                 key={t}
@@ -170,18 +136,14 @@ export function Sidebar(props: SidebarProps) {
   return (
     <div className={styles.sidebarInner}>
       <div className={styles.sidebarHead}>
-        <TransitionLink className={styles.logo} href="/">
-          Quack<span>!</span>
-        </TransitionLink>
+        <p className={styles.sidebarSection}>{mode === "prep" ? "Подготовка" : mode === "dashboard" ? "Дашборд" : "Выбор"}</p>
         <button type="button" className={styles.iconButton} aria-label="Свернуть левую панель" onClick={props.onToggle}>
           <Icon name="panel-left-close" />
         </button>
       </div>
-      <div className={styles.sidebarMode}>{modeSwitch}</div>
 
       {mode === "prep" ? (
         <div className={styles.sidebarScroll} key="prep">
-          <p className={styles.sectionLabel}>Подготовка</p>
           <ul className={styles.list}>
             {PREP_TABS.map((t, i) => (
               <li
@@ -206,11 +168,6 @@ export function Sidebar(props: SidebarProps) {
         </div>
       ) : (
         <div className={styles.sidebarScroll} key="choice">
-          <button type="button" className={styles.newChat} onClick={props.onNewChat}>
-            <Icon name="plus" size={18} />
-            Новый чат
-          </button>
-
           <section className={styles.section} aria-label="Программы">
             <p className={styles.sectionLabel}>Программы</p>
             <div className={styles.tabs} role="tablist">

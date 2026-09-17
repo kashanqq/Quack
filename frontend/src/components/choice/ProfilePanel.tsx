@@ -70,7 +70,7 @@ export function ProfileToggle({
   return (
     <button
       type="button"
-      className={[styles.profileToggle, className].filter(Boolean).join(" ")}
+      className={[styles.profileToggle, styles.glass, className].filter(Boolean).join(" ")}
       aria-expanded={open}
       aria-label={`${open ? "Скрыть" : "Показать"} профиль студента, готовность ${readiness}%`}
       onClick={onClick}
