@@ -1,0 +1,952 @@
+/* Side panels (resizable / collapsible) and the programs UI: cards, sidebar lists,
+   detail drawer and comparison. Colour tokens come from .page in choice.module.css. */
+
+.icon {
+  display: inline-block;
+  flex: none;
+  background: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 10px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.iconButton:hover,
+.iconButton:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  outline: none;
+}
+
+.iconButton:active {
+  transform: scale(0.94);
+}
+
+.iconButton[aria-pressed="true"] {
+  color: var(--accent);
+}
+
+/* ---------- Resize handles ---------- */
+
+.handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 12px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 5px;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.handle:hover::after,
+.handle:focus-visible::after,
+.handle:active::after {
+  opacity: 0.8;
+}
+
+.handle:focus-visible {
+  outline: none;
+}
+
+.handleLeft {
+  right: -6px;
+}
+
+.handleRight {
+  left: 0;
+}
+
+/* ---------- Sidebar ---------- */
+
+.sidebar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--sidebar-bg);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebarInner {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sidebarHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 12px 10px 16px;
+}
+
+/* Выбор / Подготовка — top of the left column */
+.modeSwitch {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 14px;
+}
+
+.modeSwitchRail {
+  flex-direction: column;
+}
+
+.modeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 36px;
+  height: 34px;
+  padding: 0 12px;
+  background: none;
+  border: 0;
+  border-radius: 10px;
+  color: var(--text-dim);
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+.modeSwitchRail .modeButton {
+  padding: 0;
+}
+
+.modeButton:hover {
+  color: var(--text);
+}
+
+.modeButton[aria-selected="true"] {
+  background: var(--accent-tint);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(255, 166, 77, 0.35);
+}
+
+.sidebarScroll {
+  flex: 1;
+  min-height: 0;
+  padding: 4px 8px 20px 12px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #4a4643 transparent;
+  animation: fade-in 0.3s ease both;
+}
+
+.newChat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 4px 0 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.newChat:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 166, 77, 0.35);
+}
+
+.section {
+  padding-top: 10px;
+}
+
+.sectionLabel {
+  margin: 8px 4px 8px;
+  color: var(--text-faint);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+}
+
+.tab {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding: 7px 4px;
+  background: none;
+  border: 0;
+  border-radius: 9px;
+  color: var(--text-dim);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+.tab[aria-selected="true"] {
+  background: var(--accent-tint);
+  color: var(--text);
+}
+
+.tabBody {
+  animation: fade-in 0.3s ease both;
+}
+
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0 5px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  font-size: 11px;
+}
+
+.empty {
+  margin: 8px 12px;
+  color: var(--text-faint);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 12px;
+  animation: row-in 0.35s var(--ease-out) both;
+  transition: background 0.2s ease;
+}
+
+.row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rowActive {
+  background: rgba(255, 145, 0, 0.12);
+}
+
+.rowActive:hover {
+  background: rgba(255, 145, 0, 0.16);
+}
+
+.rowDisabled {
+  opacity: 0.5;
+}
+
+.rowDisabled .rowMain {
+  cursor: default;
+}
+
+.soon {
+  margin-right: 10px;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.rowIcon {
+  color: var(--text-faint);
+}
+
+.rowDelete {
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.row:hover .rowDelete,
+.rowDelete:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .rowDelete {
+    opacity: 1;
+  }
+}
+
+.rowMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 9px 8px 9px 10px;
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rowText {
+  min-width: 0;
+}
+
+.rowTitle,
+.rowSub {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowTitle {
+  font-size: 15px;
+}
+
+.rowSub {
+  margin-top: 2px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+.sidebarAction {
+  width: calc(100% - 16px);
+  margin: 14px 8px 0;
+  padding: 11px 14px;
+  background: var(--accent);
+  border: 0;
+  border-radius: 14px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: filter 0.2s ease, opacity 0.2s ease;
+}
+
+.sidebarAction:hover {
+  filter: brightness(1.08);
+}
+
+.sidebarAction:disabled {
+  opacity: 0.4;
+  cursor: default;
+  filter: none;
+}
+
+.hint {
+  margin: 10px 12px 0;
+  color: var(--text-faint);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Collapsed rail */
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 14px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  animation: fade-in 0.3s ease both;
+}
+
+.railDivider {
+  width: 28px;
+  height: 1px;
+  margin: 2px 0;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.railButton {
+  position: relative;
+}
+
+.badge {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  display: grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--accent);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 10px;
+  line-height: 1;
+  animation: pop 0.3s var(--ease-out);
+}
+
+/* ---------- Level marks ---------- */
+
+.levelDot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.level {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 999px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.realistic {
+  --level: #59b054;
+}
+
+.try {
+  --level: #cece51;
+}
+
+.unlikely {
+  --level: #d9d9d9;
+}
+
+.levelDot,
+.level::before {
+  background: var(--level);
+}
+
+.level::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.demo {
+  padding: 3px 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+/* ---------- Program cards in chat ---------- */
+
+.programsBlock {
+  align-self: stretch;
+  max-width: none;
+}
+
+.cards {
+  display: flex;
+  gap: 16px;
+  margin: 4px -8px 0;
+  padding: 6px 8px 14px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: #4a4643 transparent;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 300px;
+  padding: 16px 16px 12px;
+  background: var(--bubble-bg);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
+  scroll-snap-align: start;
+  animation: card-in 0.5s var(--ease-out) both;
+  transition: transform 0.25s var(--ease-out), border-color 0.25s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 166, 77, 0.35);
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cardUni {
+  margin: 14px 0 2px;
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.cardProgram {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.cardMeta {
+  margin: 10px 0 0;
+  color: var(--text-faint);
+  font-size: 14px;
+}
+
+.cardFit {
+  flex: 1;
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.fitLabel {
+  color: var(--accent-label);
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pillButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 0;
+  border-radius: 999px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.pillButton:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.pillButton[aria-pressed="true"] {
+  background: var(--accent-tint);
+  color: var(--accent-label);
+}
+
+.cardMore {
+  margin-left: auto;
+}
+
+.saveButton[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--text);
+}
+
+/* ---------- Detail drawer ---------- */
+
+.drawerLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  /* The closed drawer waits off to the left; without clipping it covers the left column */
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+  transition: visibility 0s linear 0.45s;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.drawer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  height: 100%;
+  background: var(--sidebar-bg);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 24px 0 60px rgba(0, 0, 0, 0.35);
+  transform: translateX(-100%);
+  transition: transform 0.45s var(--ease);
+}
+
+.drawerOpen {
+  visibility: visible;
+  pointer-events: auto;
+  transition: none;
+}
+
+.drawerOpen .backdrop {
+  opacity: 1;
+}
+
+.drawerOpen .drawer {
+  transform: none;
+}
+
+.drawerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 18px 18px 0 28px;
+}
+
+.drawerBody {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 28px 28px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #4a4643 transparent;
+}
+
+.drawerUni {
+  margin: 14px 0 4px;
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.drawerProgram {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 20px;
+}
+
+.drawerMeta {
+  margin: 10px 0 0;
+  color: var(--text-faint);
+  font-size: 16px;
+}
+
+.sectionTitle {
+  margin: 26px 0 10px;
+  color: var(--accent-label);
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.factors {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.factor {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  padding: 10px 14px;
+  background: var(--bubble-bg);
+  border-radius: 14px;
+  animation: row-in 0.35s var(--ease-out) both;
+}
+
+.factorMark {
+  grid-row: span 2;
+  align-self: center;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.factorOk {
+  background: #59b054;
+}
+
+.factorBelow {
+  background: var(--accent);
+}
+
+.factorUnknown {
+  background: #8a8580;
+}
+
+.factorLabel {
+  font-size: 16px;
+}
+
+.factorNote {
+  color: var(--text-faint);
+  font-size: 14px;
+}
+
+.fitList {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.drawerActions {
+  display: flex;
+  gap: 10px;
+  padding: 16px 28px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- Compare view ---------- */
+
+.compare {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 32px 16px;
+  background: var(--bg);
+  animation: compare-in 0.45s var(--ease-out) both;
+}
+
+.compareHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.compareTitle {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 400;
+}
+
+.tableWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #4a4643 transparent;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 16px;
+}
+
+.table th,
+.table td {
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg);
+  font-weight: 400;
+}
+
+.table tbody th {
+  width: 170px;
+  color: var(--text-dim);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.table tbody tr {
+  animation: fade-in 0.4s ease both;
+}
+
+.differs th {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.colHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 190px;
+}
+
+.colName {
+  display: block;
+  font-size: 17px;
+}
+
+.colSub {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-faint);
+  font-size: 14px;
+}
+
+.compareSummary {
+  margin: 14px 0 0;
+  color: var(--text-dim);
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+/* ---------- Toast ---------- */
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  z-index: 12;
+  padding: 10px 18px;
+  background: #3a3532;
+  border: 1px solid rgba(255, 166, 77, 0.35);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  font-size: 15px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: toast-in 0.35s var(--ease-out) both;
+}
+
+.mobileBackdrop {
+  display: none;
+}
+
+/* ---------- Keyframes ---------- */
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+}
+
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+}
+
+@keyframes compare-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.4);
+  }
+}
+
+@media (max-width: 1100px) {
+  .compare {
+    padding: 16px;
+  }
+
+  .drawerUni {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 760px) {
+  .handle {
+    display: none;
+  }
+
+  /* On phones the left column is a drawer opened from the top bar */
+  .sidebar {
+    display: none;
+  }
+
+  .sidebarMobileOpen {
+    position: fixed;
+    top: var(--topbar-h);
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+    display: flex;
+    width: min(340px, 88vw);
+    animation: drawer-in 0.35s var(--ease-out) both;
+  }
+
+  .mobileBackdrop {
+    position: fixed;
+    inset: var(--topbar-h) 0 0;
+    z-index: 29;
+    display: block;
+    background: rgba(0, 0, 0, 0.5);
+    animation: fade-in 0.3s ease both;
+  }
+
+  .toast {
+    white-space: normal;
+    width: max-content;
+    max-width: calc(100% - 32px);
+  }
+}

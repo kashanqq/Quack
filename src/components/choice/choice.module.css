@@ -1,9 +1,10 @@
 .page {
-  --bg: #322f2d;
-  --header-bg: #4c4743;
-  --bubble-bg: #262422;
-  --panel-head-bg: #3f3b38;
-  --panel-body-bg: #262422;
+  --bg: #2a2725;
+  --header-bg: #433f3c;
+  --sidebar-bg: #242120;
+  --bubble-bg: #1f1d1b;
+  --panel-head-bg: #36322f;
+  --panel-body-bg: #1f1d1b;
   --text: #ffffff;
   --text-dim: rgba(255, 255, 255, 0.6);
   --text-faint: rgba(255, 255, 255, 0.5);
@@ -14,13 +15,12 @@
   --control: #d9d9d9;
   --thumb: #777777;
 
-  --topbar-h: 85px;
-  --sidebar-w: 302px;
-  --panel-col: 620px;
+  --topbar-h: 60px;
   display: flex;
   flex-direction: column;
   height: 100dvh;
   overflow: hidden;
+  background: var(--bg);
   font-family: var(--font-text);
 }
 
@@ -36,21 +36,32 @@
   display: flex;
   align-items: center;
   height: var(--topbar-h);
-  padding-left: 33px;
+  padding: 0 16px 0 24px;
   background: var(--header-bg);
   box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
 }
 
 .topbarLogo {
-  width: 156px;
   font-family: var(--font-mono);
-  font-size: 36px;
-  text-align: center;
+  font-size: 26px;
+  white-space: nowrap;
 }
 
 .user {
   position: relative;
-  margin-left: 49px;
+  margin-left: 40px;
+}
+
+.topbarActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* Doubled class beats the icon-button display rule from layout.module.css */
+.mobileOnly.mobileOnly {
+  display: none;
 }
 
 .userButton {
@@ -63,21 +74,21 @@
 }
 
 .userAvatar {
-  width: 64px;
-  height: 59px;
+  width: 42px;
+  height: 39px;
 }
 
 .userName {
-  margin-left: 26px;
+  margin-left: 16px;
   font-family: var(--font-mono);
-  font-size: 26px;
+  font-size: 18px;
   line-height: 1;
 }
 
 .userChevron {
-  width: 26px;
-  height: 14px;
-  margin-left: 8px;
+  width: 18px;
+  height: 10px;
+  margin-left: 6px;
   transition: transform 0.3s var(--ease);
 }
 
@@ -87,8 +98,8 @@
 
 .userMenu {
   position: absolute;
-  top: calc(100% + 12px);
-  left: 64px;
+  top: calc(100% + 10px);
+  left: 42px;
   display: grid;
   min-width: 200px;
   padding: 8px;
@@ -114,7 +125,7 @@
   background: none;
   border: 0;
   border-radius: 10px;
-  font-size: 18px;
+  font-size: 16px;
   text-align: left;
   cursor: pointer;
 }
@@ -128,50 +139,22 @@
 /* ---------- Layout ---------- */
 
 .app {
+  position: relative;
   display: grid;
-  grid-template-columns: var(--sidebar-w) minmax(0, 1fr) 0px;
+  grid-template-columns: var(--left) minmax(0, 1fr) var(--right);
   flex: 1;
   min-height: 0;
-  transition: grid-template-columns 0.8s var(--ease);
+  transition: grid-template-columns 0.6s var(--ease);
 }
 
-.app[data-stage="chat"] {
-  grid-template-columns: 0px minmax(0, 1fr) var(--panel-col);
+.app.isResizing {
+  transition: none;
+  cursor: col-resize;
+  user-select: none;
 }
 
-/* ---------- Sidebar ---------- */
-
-.sidebar {
-  overflow: hidden;
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
-  transition: opacity 0.5s ease;
-}
-
-.sidebar > * {
-  width: var(--sidebar-w);
-  padding: 0 44px;
-}
-
-.sidebarTitle {
-  margin: 44px 0 16px;
-  font-size: 24px;
-  font-weight: 400;
-}
-
-.sidebarList {
-  margin: 0;
-  list-style: none;
-}
-
-.sidebarEmpty {
-  margin: 0;
-  color: var(--text-faint);
-  font-size: 16px;
-  line-height: 1.4;
-}
-
-.app[data-stage="chat"] .sidebar {
-  opacity: 0;
+.app.isResizing .chat {
+  transition: none;
 }
 
 /* ---------- Chat column ---------- */
@@ -180,19 +163,27 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 0 0 33px;
-  transition: padding 0.8s var(--ease);
+  padding: 0;
+  transition: padding 0.6s var(--ease);
 }
 
 /* Keeps the intro content centred on the page, as in the design */
 .app[data-stage="intro"] .chat {
-  padding-right: var(--sidebar-w);
+  padding-right: var(--left);
+}
+
+.app[data-view="compare"] .composer {
+  opacity: 0;
+  transform: translateY(16px);
+  pointer-events: none;
 }
 
 .chatBody {
   position: relative;
   flex: 1;
   min-height: 0;
+  /* Keep sliding views and drawers from spilling over the side panels */
+  overflow: hidden;
 }
 
 .view {
@@ -510,16 +501,19 @@
 /* ---------- Profile panel ---------- */
 
 .profile {
+  position: relative;
   min-width: 0;
   overflow: hidden;
+  container-type: inline-size;
 }
 
 .profileCard {
   display: flex;
   flex-direction: column;
-  width: 572px;
-  height: calc(100% - 94px);
-  margin: 28px 23px 66px 25px;
+  width: calc(100% - 44px);
+  min-width: 300px;
+  height: calc(100% - 44px);
+  margin: 20px 20px 24px 24px;
   opacity: 0;
   transform: translateX(60px);
   transition: opacity 0.6s ease 0.25s, transform 0.8s var(--ease) 0.1s;
@@ -530,18 +524,32 @@
   transform: none;
 }
 
-.profileTitle {
+.profileHead {
+  position: relative;
   flex: none;
-  height: 84px;
-  margin: 0;
   background: var(--panel-head-bg);
   border-bottom: 1px solid rgba(255, 255, 255, 0.85);
   border-radius: 28px 28px 0 0;
-  font-size: 40px;
+}
+
+.profileTitle {
+  height: 72px;
+  margin: 0;
+  padding: 0 52px;
+  overflow: hidden;
+  font-size: clamp(22px, 6.5cqi, 36px);
   font-weight: 400;
-  line-height: 84px;
+  line-height: 72px;
   text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-dim);
+}
+
+.profileHide {
+  position: absolute;
+  top: 18px;
+  right: 12px;
 }
 
 .profileBody {
@@ -572,9 +580,9 @@
 }
 
 .profileRow {
-  margin: 0 0 28px;
-  font-size: 24px;
-  line-height: 28px;
+  margin: 0 0 24px;
+  font-size: clamp(16px, 4cqi, 22px);
+  line-height: 1.25;
   animation: row-in 0.5s var(--ease-out) both;
 }
 
@@ -622,8 +630,8 @@
 .profileReadinessLabel {
   display: block;
   color: var(--text-faint);
-  font-size: 24px;
-  line-height: 28px;
+  font-size: clamp(16px, 4cqi, 22px);
+  line-height: 1.3;
 }
 
 .progress {
@@ -667,7 +675,7 @@
   flex: none;
   width: min(1095px, calc(100% - 48px));
   height: 68px;
-  margin: 0 auto 52px;
+  margin: 0 auto 32px;
   padding: 0 8px 0 22px;
   background: rgba(217, 217, 217, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -750,46 +758,6 @@
   animation: send-pulse 0.4s var(--ease-out);
 }
 
-/* ---------- Choice / Preparation switch ---------- */
-
-.modeSwitch {
-  position: relative;
-  display: flex;
-  gap: 113px;
-  flex: none;
-  height: 61px;
-  margin: 0 auto;
-}
-
-.modePill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 169px;
-  height: 61px;
-  background: var(--accent-tint);
-  border: 1px solid rgba(255, 166, 77, 0.35);
-  border-radius: 26px;
-  transition: transform 0.45s var(--ease), width 0.45s var(--ease);
-}
-
-.modeTab {
-  position: relative;
-  padding: 0 18px;
-  background: none;
-  border: 0;
-  font-family: var(--font-mono);
-  font-size: 36px;
-  cursor: pointer;
-  opacity: 0.85;
-  transition: opacity 0.2s ease;
-}
-
-.modeTab.isActive,
-.modeTab:hover {
-  opacity: 1;
-}
-
 /* ---------- Keyframes ---------- */
 
 @keyframes msg-in {
@@ -850,7 +818,45 @@
 
 /* ---------- Narrow screens ---------- */
 
+/* Laptops with display scaling land here (~1000–1100 CSS px): same layout, smaller type */
 @media (max-width: 1100px) {
+  .greetingText {
+    font-size: 44px;
+  }
+
+  .messages {
+    padding: 24px 48px 24px 32px;
+  }
+
+  .scrollbarChat {
+    right: 16px;
+  }
+
+  .msgBubble {
+    font-size: 19px;
+    line-height: 24px;
+  }
+
+  .composerInput {
+    font-size: 19px;
+  }
+
+  .composer {
+    height: 58px;
+  }
+
+  .composerSend {
+    width: 44px;
+    height: 44px;
+  }
+
+  .prepTitle {
+    font-size: 48px;
+  }
+}
+
+/* Phones: single column, programs in a drawer, profile under the chat */
+@media (max-width: 760px) {
   .page {
     height: auto;
     min-height: 100dvh;
@@ -865,8 +871,8 @@
     height: auto;
   }
 
-  .sidebar {
-    display: none;
+  .mobileOnly.mobileOnly {
+    display: grid;
   }
 
   .chat,
@@ -874,10 +880,6 @@
     height: calc(100dvh - var(--topbar-h));
     flex: none;
     padding-right: 0;
-  }
-
-  .greetingText {
-    font-size: 40px;
   }
 
   .messages {
@@ -897,20 +899,12 @@
     line-height: 22px;
   }
 
-  .composerInput {
-    font-size: 18px;
-  }
-
   .composer {
-    margin-bottom: 24px;
+    margin-bottom: 20px;
   }
 
-  .modeSwitch {
-    gap: 40px;
-  }
-
-  .modeTab {
-    font-size: 26px;
+  .greetingText {
+    font-size: 30px;
   }
 
   .profile {
@@ -923,34 +917,25 @@
 
   .profileCard {
     width: auto;
+    min-width: 0;
     height: 560px;
     margin: 16px;
   }
 
-  .profileTitle {
-    font-size: 30px;
+  .app[data-stage="chat"] .profile[aria-hidden="true"] {
+    display: none;
   }
 
-  .profileRow,
-  .profileReadinessLabel {
-    font-size: 18px;
-    line-height: 22px;
-  }
-}
-
-@media (max-width: 600px) {
   .topbar {
-    padding-left: 12px;
+    padding: 0 8px 0 12px;
   }
 
   .topbarLogo {
-    width: auto;
-    font-size: 28px;
+    font-size: 22px;
   }
 
   .user {
-    margin-left: auto;
-    margin-right: 16px;
+    margin-left: 16px;
   }
 
   .userName {
@@ -962,24 +947,37 @@
     right: 0;
   }
 
-  .greetingText {
-    font-size: 30px;
-  }
-
-  .modeSwitch {
-    gap: 16px;
-  }
-
-  .modeTab {
-    font-size: 22px;
-  }
-
   .prepTitle {
     font-size: 40px;
   }
 
   .prepText {
     font-size: 18px;
+  }
+}
+
+/* Profile panel as an overlay when the window is too narrow to fit it beside the chat */
+.profileOverlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  width: min(420px, 100%);
+  background: var(--bg);
+  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.4);
+  animation: overlay-in 0.4s var(--ease-out) both;
+}
+
+.profileOverlay .profileCard {
+  opacity: 1;
+  transform: none;
+  min-width: 0;
+}
+
+@keyframes overlay-in {
+  from {
+    transform: translateX(100%);
   }
 }
 

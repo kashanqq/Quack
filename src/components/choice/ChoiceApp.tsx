@@ -1,10 +1,11 @@
 "use client";
 
-// "Choice" page (front-end only). Flow per the Figma screens: rotating greeting -> first message
-// opens the chat and the "Как я тебя вижу" panel -> the assistant asks for what's missing ->
-// summary with confirm / edit buttons -> an edit is sent as a correction and refreshes the profile.
+// "Choice" page (front-end only). The chat is the main surface; programs arrive in it as cards
+// after the summary is confirmed. The left column holds the Выбор / Подготовка switch, the
+// programs (picks, favourites, comparison) and chat history. Both side panels can be dragged
+// to resize or collapsed; the workspace is kept in localStorage.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   CONFIRM_REPLY,
   EMPTY_PROFILE,
@@ -17,19 +18,47 @@ import {
   type Profile,
 } from "./assistant";
 import { ChatMessage, type ChatMsg } from "./ChatMessage";
+import { CompareView } from "./CompareView";
 import { CustomScrollbar } from "./CustomScrollbar";
-import { ModeSwitch, type Mode } from "./ModeSwitch";
 import { ProfilePanel } from "./ProfilePanel";
+import { ProgramCards, ProgramDrawer, type ProgramActions } from "./ProgramUi";
+import { recommend } from "./programs";
+import { ResizeHandle } from "./ResizeHandle";
+import { Sidebar, type ChatSummary, type Mode, type SidebarTab } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import styles from "./choice.module.css";
+import layout from "./layout.module.css";
 
 const GREETINGS = [
   ["Привет!", "Куда целишься после школы?"],
   ["IT, Бизнес, Медицина,", "Еще не определился?"],
 ];
 
+// Side panel geometry, px
+const RAIL_W = 72;
+const LEFT_DEFAULT = 302;
+const LEFT_MIN = 240;
+const LEFT_MAX = 440;
+const LEFT_SNAP = 160; // released narrower than this -> collapse to the icon rail
+const RIGHT_DEFAULT = 620;
+const RIGHT_MIN = 380;
+const RIGHT_MAX = 760;
+const RIGHT_SNAP = 300; // released narrower than this -> hide
+const MAX_COMPARE = 4;
+const CHAT_MIN = 460; // below this the profile panel turns into an overlay
+const PHONE_MAX = 760;
+const LAYOUT_KEY = "quack-choice-layout";
+const WORKSPACE_KEY = "quack-choice-workspace";
+const INTRO_PLACEHOLDER = "Люблю бананы и хочу в IT...";
+
+type LeftPanel = { width: number; collapsed: boolean; lastWidth: number; userSet: boolean };
+type RightPanel = { width: number; hidden: boolean; lastWidth: number };
+type ChatItem = ChatMsg & { programs?: string[] };
+type Session = ChatSummary & { messages: ChatItem[] };
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
 export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const [stage, setStage] = useState<"intro" | "chat">("intro");
@@ -37,12 +66,36 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
   const [confirmed, setConfirmed] = useState(false);
   const [versions, setVersions] = useState<Partial<Record<FieldKey, number>>>({});
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [messages, setMessages] = useState<ChatItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [input, setInput] = useState("");
-  const [placeholder, setPlaceholder] = useState("Люблю бананы и хочу в IT...");
+  const [placeholder, setPlaceholder] = useState(INTRO_PLACEHOLDER);
   const [sentTick, setSentTick] = useState(0);
   const [greeting, setGreeting] = useState({ current: 0, leaving: -1 });
+
+  // Programs
+  const [picks, setPicks] = useState<string[]>([]);
+  const [saved, setSaved] = useState<string[]>([]);
+  const [compare, setCompare] = useState<string[]>([]);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [view, setView] = useState<"chat" | "compare">("chat");
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("picks");
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Chat history
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const activeChatRef = useRef<string | null>(null);
+
+  // Layout
+  const [left, setLeft] = useState<LeftPanel>({ width: LEFT_DEFAULT, collapsed: false, lastWidth: LEFT_DEFAULT, userSet: false });
+  const [right, setRight] = useState<RightPanel>({ width: RIGHT_DEFAULT, hidden: false, lastWidth: RIGHT_DEFAULT });
+  const [resizing, setResizing] = useState(false);
+  const [mobileProgramsOpen, setMobileProgramsOpen] = useState(false);
+  const [profileOverlayOpen, setProfileOverlayOpen] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState(1920);
+  const dragStart = useRef(0);
+  const dragWidth = useRef(0);
 
   // Mirrors of state that the async assistant flow reads without waiting for a render
   const profileRef = useRef(profile);
@@ -50,6 +103,8 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const busyRef = useRef(false);
   const idRef = useRef(0);
   const mounted = useRef(true);
+  const layoutLoaded = useRef(false);
+  const workspaceLoaded = useRef(false);
 
   const messagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -61,6 +116,75 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
       mounted.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    const update = () => setViewportWidth(window.innerWidth);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  /* ---------- Workspace persistence (profile, programs, chats) ---------- */
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(WORKSPACE_KEY) ?? "null");
+      if (stored) {
+        profileRef.current = stored.profile ?? EMPTY_PROFILE;
+        summarySentRef.current = Boolean(stored.summarySent);
+        setProfile(profileRef.current);
+        setConfirmed(Boolean(stored.confirmed));
+        setPicks(stored.picks ?? []);
+        setSaved(stored.saved ?? []);
+        setCompare(stored.compare ?? []);
+        setSessions(stored.sessions ?? []);
+        idRef.current = Math.max(0, ...(stored.sessions ?? []).flatMap((c: Session) => c.messages.map((m) => m.id)));
+      }
+    } catch {}
+    workspaceLoaded.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!workspaceLoaded.current) return;
+    try {
+      localStorage.setItem(
+        WORKSPACE_KEY,
+        JSON.stringify({ profile, confirmed, summarySent: summarySentRef.current, picks, saved, compare, sessions })
+      );
+    } catch {}
+  }, [profile, confirmed, picks, saved, compare, sessions]);
+
+  // Keep the active chat's stored copy in sync with what is on screen
+  useEffect(() => {
+    const id = activeChatRef.current;
+    if (!id) return;
+    const settled = messages.filter((m) => !m.typing);
+    setSessions((list) =>
+      list.map((c) =>
+        c.id === id
+          ? { ...c, messages: settled, updatedAt: settled.length !== c.messages.length ? Date.now() : c.updatedAt }
+          : c
+      )
+    );
+  }, [messages]);
+
+  /* ---------- Layout persistence ---------- */
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? "null");
+      if (stored?.left) setLeft({ ...stored.left, collapsed: false });
+      if (stored?.right) setRight(stored.right);
+    } catch {}
+    layoutLoaded.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!layoutLoaded.current || resizing) return;
+    try {
+      localStorage.setItem(LAYOUT_KEY, JSON.stringify({ left, right }));
+    } catch {}
+  }, [left, right, resizing]);
 
   /* ---------- Greeting rotation ---------- */
 
@@ -80,12 +204,23 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     el?.scrollTo({ top: el.scrollHeight, behavior: prefersReducedMotion() ? "auto" : "smooth" });
   }, [messages]);
 
+  // Leaving the comparison once fewer than two programs remain in it
+  useEffect(() => {
+    if (compare.length < 2) setView("chat");
+  }, [compare.length]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 2600);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   const setBusyState = (value: boolean) => {
     busyRef.current = value;
     setBusy(value);
   };
 
-  const updateMsg = useCallback((id: number, patch: Partial<ChatMsg> | ((m: ChatMsg) => Partial<ChatMsg>)) => {
+  const updateMsg = useCallback((id: number, patch: Partial<ChatItem> | ((m: ChatItem) => Partial<ChatItem>)) => {
     setMessages((list) => list.map((m) => (m.id === id ? { ...m, ...(typeof patch === "function" ? patch(m) : patch) } : m)));
   }, []);
 
@@ -150,6 +285,62 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     await assistantSay(reply.text, reply.summary);
   }
 
+  /* ---------- Programs ---------- */
+
+  const openSidebarTab = (tab: SidebarTab) => {
+    setSidebarTab(tab);
+    setLeft((l) => (l.collapsed ? { ...l, collapsed: false, width: l.lastWidth, userSet: true } : l));
+    setMobileProgramsOpen(true);
+  };
+
+  const programActions: ProgramActions = {
+    saved,
+    compare,
+    onToggleSave: (id) => setSaved((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id])),
+    onToggleCompare: (id) =>
+      setCompare((list) => {
+        if (list.includes(id)) return list.filter((x) => x !== id);
+        if (list.length >= MAX_COMPARE) {
+          setToast(`Можно сравнить до ${MAX_COMPARE} программ — убери одну из сравнения`);
+          return list;
+        }
+        return [...list, id];
+      }),
+    onOpen: (id) => {
+      setMobileProgramsOpen(false);
+      setDetailId(id);
+    },
+  };
+
+  const openCompare = () => {
+    if (compare.length < 2) return;
+    setDetailId(null);
+    setMobileProgramsOpen(false);
+    setMode("choice");
+    setView("compare");
+  };
+
+  // Chat shortcuts once programs exist: "сравни…", "избранное…"
+  async function handleIntent(text: string) {
+    if (!picks.length) return false;
+    const t = text.toLowerCase();
+    if (/сравн/.test(t)) {
+      if (compare.length >= 2) {
+        openCompare();
+        await assistantSay("Открыл сравнение — вернуться в чат можно стрелкой слева сверху.");
+      } else {
+        await assistantSay("Отметь «Сравнить» на двух–четырёх карточках, и я поставлю их рядом.");
+      }
+      return true;
+    }
+    if (/избранн|сохран/.test(t)) {
+      openSidebarTab("saved");
+      await assistantSay(saved.length ? "Открыл избранное в панели слева." : "Пока в избранном пусто — нажми ☆ на карточке.");
+      return true;
+    }
+    return false;
+  }
+
   /* ---------- Composer ---------- */
 
   async function onSubmit(e: React.FormEvent) {
@@ -161,13 +352,23 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     setSentTick((t) => t + 1);
     setBusyState(true);
 
+    if (!activeChatRef.current) {
+      const id = `chat-${Date.now()}`;
+      const title = text.length > 42 ? `${text.slice(0, 40)}…` : text;
+      activeChatRef.current = id;
+      setActiveChatId(id);
+      setSessions((list) => [{ id, title, updatedAt: Date.now(), messages: [] }, ...list]);
+    }
+
     if (stage === "intro") {
       setStage("chat");
+      // The programs panel shrinks to its icon rail while chatting, unless the user arranged it
+      setLeft((l) => (l.userSet ? l : { ...l, collapsed: true }));
       await sleep(prefersReducedMotion() ? 0 : 450);
     }
 
     addUserMessage(text);
-    await respond(text);
+    if (!(await handleIntent(text))) await respond(text);
     if (!mounted.current) return;
     setBusyState(false);
     inputRef.current?.focus();
@@ -183,7 +384,15 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     setBusyState(true);
     await assistantSay(CONFIRM_REPLY);
     if (!mounted.current) return;
-    setPlaceholder("Спроси что угодно о поступлении...");
+
+    const ids = recommend(profileRef.current);
+    setPicks(ids);
+    setSidebarTab("picks");
+    setMessages((list) => [
+      ...list,
+      { id: ++idRef.current, role: "assistant", text: "", confirm: "none", editable: false, programs: ids },
+    ]);
+    setPlaceholder("Сравни программы или спроси что угодно...");
     setBusyState(false);
   }
 
@@ -212,16 +421,145 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     setBusyState(false);
   }
 
+  /* ---------- Chat history ---------- */
+
+  function showChat(id: string | null, list: ChatItem[]) {
+    activeChatRef.current = id;
+    setActiveChatId(id);
+    setMessages(list);
+    setStage(list.length ? "chat" : "intro");
+    setGreeting({ current: 0, leaving: -1 });
+    setView("chat");
+    setDetailId(null);
+    setMode("choice");
+    setMobileProgramsOpen(false);
+    setInput("");
+    const p = profileRef.current;
+    setPlaceholder(p.direction ? placeholderFor(p) : INTRO_PLACEHOLDER);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
+  const newChat = () => {
+    if (!busyRef.current) showChat(null, []);
+  };
+
+  const selectChat = (id: string) => {
+    const chat = sessions.find((c) => c.id === id);
+    if (chat && !busyRef.current) showChat(id, chat.messages);
+  };
+
+  const deleteChat = (id: string) => {
+    if (busyRef.current) return;
+    setSessions((list) => list.filter((c) => c.id !== id));
+    if (id === activeChatRef.current) showChat(null, []);
+  };
+
+  const changeMode = (next: Mode) => {
+    setMode(next);
+    setView("chat");
+    setDetailId(null);
+  };
+
+  const restart = () => {
+    try {
+      localStorage.removeItem(WORKSPACE_KEY);
+    } catch {}
+    onRestart();
+  };
+
+  /* ---------- Panel resizing ---------- */
+
+  const phone = viewportWidth <= PHONE_MAX;
+  const leftWidth = left.collapsed ? RAIL_W : left.width;
+  const rightAvailable = stage === "chat" && mode === "choice";
+  // On laptop-sized windows the panel may not fit beside the chat: then it opens over it
+  const roomForRight = viewportWidth - leftWidth - CHAT_MIN;
+  const rightOverlay = rightAvailable && !phone && roomForRight < RIGHT_MIN;
+  const rightWidth =
+    !rightAvailable || right.hidden || rightOverlay ? 0 : phone ? right.width : Math.min(right.width, roomForRight);
+  const profileVisible = rightOverlay ? profileOverlayOpen : rightWidth > 0;
+
+  const settleLeft = (width: number) =>
+    setLeft((l) =>
+      width < LEFT_SNAP
+        ? { ...l, collapsed: true, width: l.lastWidth, userSet: true }
+        : { width: Math.max(width, LEFT_MIN), lastWidth: Math.max(width, LEFT_MIN), collapsed: false, userSet: true }
+    );
+
+  const settleRight = (width: number) =>
+    setRight((r) => (width < RIGHT_SNAP ? { ...r, hidden: true, width: r.lastWidth } : { width: Math.max(width, RIGHT_MIN), lastWidth: Math.max(width, RIGHT_MIN), hidden: false }));
+
+  const toggleLeft = () =>
+    setLeft((l) => (l.collapsed ? { ...l, collapsed: false, width: l.lastWidth, userSet: true } : { ...l, collapsed: true, userSet: true }));
+
+  const toggleRight = () => setRight((r) => ({ ...r, hidden: !r.hidden, width: r.lastWidth }));
+
+  const gridStyle = { "--left": `${leftWidth}px`, "--right": `${rightWidth}px` } as CSSProperties;
+  const sidebarCollapsed = leftWidth < LEFT_SNAP && !mobileProgramsOpen;
+
   return (
     <div className={styles.page}>
-      <Topbar onRestart={onRestart} />
+      <Topbar
+        onRestart={restart}
+        onOpenPrograms={() => setMobileProgramsOpen(true)}
+        profilePanel={
+          rightAvailable
+            ? { open: profileVisible, onToggle: rightOverlay ? () => setProfileOverlayOpen((v) => !v) : toggleRight }
+            : undefined
+        }
+      />
 
-      <main className={styles.app} data-stage={stage} data-mode={mode}>
-        <aside className={styles.sidebar} aria-label="Программы">
-          <h2 className={styles.sidebarTitle}>Программы</h2>
-          <ul className={styles.sidebarList} />
-          <p className={styles.sidebarEmpty}>Расскажи о себе — и здесь появятся программы под тебя.</p>
+      <main
+        className={`${styles.app} ${resizing ? styles.isResizing : ""}`}
+        data-stage={stage}
+        data-mode={mode}
+        data-view={view}
+        style={gridStyle}
+      >
+        <aside
+          className={`${layout.sidebar} ${mobileProgramsOpen ? layout.sidebarMobileOpen : ""}`}
+          aria-label="Навигация"
+        >
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            mode={mode}
+            onMode={changeMode}
+            tab={sidebarTab}
+            picks={picks}
+            profile={profile}
+            actions={programActions}
+            chats={[...sessions].sort((a, b) => b.updatedAt - a.updatedAt)}
+            activeChatId={activeChatId}
+            onNewChat={newChat}
+            onSelectChat={selectChat}
+            onDeleteChat={deleteChat}
+            onTab={setSidebarTab}
+            onToggle={mobileProgramsOpen ? () => setMobileProgramsOpen(false) : toggleLeft}
+            onOpenCompare={openCompare}
+          />
+          <ResizeHandle
+            side="left"
+            label="Ширина левой панели"
+            value={leftWidth}
+            min={RAIL_W}
+            max={LEFT_MAX}
+            onDragStart={() => {
+              dragStart.current = dragWidth.current = leftWidth;
+              setResizing(true);
+              setLeft((l) => ({ ...l, collapsed: false, width: leftWidth }));
+            }}
+            onDrag={(dx) => {
+              dragWidth.current = clamp(dragStart.current + dx, RAIL_W, LEFT_MAX);
+              setLeft((l) => ({ ...l, width: dragWidth.current }));
+            }}
+            onDragEnd={() => {
+              setResizing(false);
+              settleLeft(dragWidth.current);
+            }}
+            onNudge={(dx) => settleLeft(clamp(leftWidth + dx, RAIL_W, LEFT_MAX))}
+          />
         </aside>
+        {mobileProgramsOpen && <div className={layout.mobileBackdrop} onClick={() => setMobileProgramsOpen(false)} />}
 
         <section className={styles.chat}>
           <div className={styles.chatBody}>
@@ -248,27 +586,53 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
               <div className={styles.messagesWrap}>
                 <div className={styles.messages} ref={messagesRef} aria-live="polite">
-                  {messages.map((msg) => (
-                    <ChatMessage
-                      key={msg.id}
-                      msg={msg}
-                      onConfirm={onConfirm}
-                      onEditStart={onEditStart}
-                      onEditCancel={onEditCancel}
-                      onEditSave={onEditSave}
-                    />
-                  ))}
+                  {messages.map((msg) =>
+                    msg.programs ? (
+                      <div key={msg.id} className={`${styles.msg} ${layout.programsBlock}`} style={{ maxWidth: "none" }}>
+                        <ProgramCards ids={msg.programs} profile={profile} actions={programActions} />
+                      </div>
+                    ) : (
+                      <ChatMessage
+                        key={msg.id}
+                        msg={msg}
+                        onConfirm={onConfirm}
+                        onEditStart={onEditStart}
+                        onEditCancel={onEditCancel}
+                        onEditSave={onEditSave}
+                      />
+                    )
+                  )}
                 </div>
                 <CustomScrollbar target={messagesRef} className={styles.scrollbarChat} />
               </div>
+
+              {view === "compare" && (
+                <CompareView
+                  ids={compare}
+                  profile={profile}
+                  onBack={() => setView("chat")}
+                  onRemove={programActions.onToggleCompare}
+                  onOpen={programActions.onOpen}
+                />
+              )}
+
+              <ProgramDrawer id={detailId} profile={profile} actions={programActions} onClose={() => setDetailId(null)} />
             </div>
 
             <div className={`${styles.view} ${styles.viewPrep}`} aria-hidden={mode !== "prep"}>
               <h2 className={styles.prepTitle}>Подготовка</h2>
               <p className={styles.prepText}>
-                Откроется, когда ты сохранишь первую программу: здесь появятся требования, вехи и первый сет.
+                {saved.length
+                  ? "Скоро здесь появятся требования, вехи и первый сет — по программам из избранного."
+                  : "Откроется, когда ты сохранишь первую программу: здесь появятся требования, вехи и первый сет."}
               </p>
             </div>
+
+            {toast && (
+              <div className={layout.toast} role="status">
+                {toast}
+              </div>
+            )}
           </div>
 
           <form className={styles.composer} autoComplete="off" onSubmit={onSubmit}>
@@ -292,11 +656,45 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
               <img src="/assets/send-arrow.svg" alt="" />
             </button>
           </form>
-
-          <ModeSwitch mode={mode} onChange={setMode} />
         </section>
 
-        <ProfilePanel profile={profile} readiness={readiness(profile, confirmed)} versions={versions} />
+        <aside
+          className={`${styles.profile} ${rightOverlay && profileOverlayOpen ? styles.profileOverlay : ""}`}
+          aria-label="Как я тебя вижу"
+          aria-hidden={!profileVisible}
+        >
+          {rightAvailable && !rightOverlay && (
+            <ResizeHandle
+              side="right"
+              label="Ширина панели «Как я тебя вижу»"
+              value={rightWidth}
+              min={0}
+              max={RIGHT_MAX}
+              onDragStart={() => {
+                dragStart.current = dragWidth.current = rightWidth;
+                setResizing(true);
+                setRight((r) => ({ ...r, hidden: false, width: rightWidth }));
+              }}
+              onDrag={(dx) => {
+                dragWidth.current = clamp(dragStart.current - dx, 0, RIGHT_MAX);
+                setRight((r) => ({ ...r, width: dragWidth.current }));
+              }}
+              onDragEnd={() => {
+                setResizing(false);
+                settleRight(dragWidth.current);
+              }}
+              onNudge={(dx) => settleRight(clamp(rightWidth - dx, 0, RIGHT_MAX))}
+            />
+          )}
+          <ProfilePanel
+            profile={profile}
+            readiness={readiness(profile, confirmed)}
+            versions={versions}
+            onHide={() =>
+              rightOverlay ? setProfileOverlayOpen(false) : setRight((r) => ({ ...r, hidden: true, width: r.lastWidth }))
+            }
+          />
+        </aside>
       </main>
     </div>
   );
