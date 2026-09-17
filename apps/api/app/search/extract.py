@@ -1,0 +1,1 @@
+"""app.search.extract skeleton."""
