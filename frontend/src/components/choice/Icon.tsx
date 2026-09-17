@@ -8,6 +8,7 @@ export type IconName =
   | "git-compare"
   | "graduation-cap"
   | "history"
+  | "menu"
   | "message-square"
   | "panel-left-close"
   | "panel-left-open"
@@ -18,6 +19,7 @@ export type IconName =
   | "sparkles"
   | "star"
   | "trash-2"
+  | "user-round"
   | "x";
 
 /** Lucide icon from /public/assets, painted with the current text colour through a mask. */

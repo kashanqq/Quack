@@ -1,10 +1,12 @@
 "use client";
 
 import { useRef } from "react";
+import { TransitionLink } from "@/components/transition/TransitionLink";
 import type { Profile } from "./assistant";
 import { Icon, type IconName } from "./Icon";
 import { LevelDot, type ProgramActions } from "./ProgramUi";
 import { evaluate, programById } from "./programs";
+import { UserMenu } from "./UserMenu";
 import styles from "./layout.module.css";
 
 export type Mode = "choice" | "prep";
@@ -39,6 +41,7 @@ type SidebarProps = {
   onDeleteChat: (id: string) => void;
   onToggle: () => void;
   onOpenCompare: () => void;
+  onRestart: () => void;
 };
 
 const timeLabel = (ts: number) => {
@@ -50,8 +53,9 @@ const timeLabel = (ts: number) => {
 };
 
 /**
- * Left column: section switch (Выбор / Подготовка) at the top, like Claude's Chat / Code,
- * then programs (picks, favourites, comparison) and chat history. Collapses to an icon rail.
+ * Left column: logo, section switch (Выбор / Подготовка) at the top, like Claude's Chat / Code,
+ * then programs (picks, favourites, comparison), chat history and the account at the bottom.
+ * Collapses to an icon rail.
  */
 export function Sidebar(props: SidebarProps) {
   const { collapsed, mode, onMode, tab, onTab, picks, profile, actions, chats, activeChatId } = props;
@@ -85,6 +89,9 @@ export function Sidebar(props: SidebarProps) {
   if (collapsed) {
     return (
       <div className={styles.rail}>
+        <TransitionLink className={styles.logoRail} href="/" aria-label="Quack! — на главную">
+          Q<span>!</span>
+        </TransitionLink>
         <button type="button" className={styles.iconButton} aria-label="Развернуть левую панель" onClick={props.onToggle}>
           <Icon name="panel-left-open" />
         </button>
@@ -130,6 +137,9 @@ export function Sidebar(props: SidebarProps) {
             </button>
           </>
         )}
+        <div className={styles.railFoot}>
+          <UserMenu onRestart={props.onRestart} compact />
+        </div>
       </div>
     );
   }
@@ -139,11 +149,14 @@ export function Sidebar(props: SidebarProps) {
   return (
     <div className={styles.sidebarInner}>
       <div className={styles.sidebarHead}>
-        {modeSwitch}
+        <TransitionLink className={styles.logo} href="/">
+          Quack<span>!</span>
+        </TransitionLink>
         <button type="button" className={styles.iconButton} aria-label="Свернуть левую панель" onClick={props.onToggle}>
           <Icon name="panel-left-close" />
         </button>
       </div>
+      <div className={styles.sidebarMode}>{modeSwitch}</div>
 
       {mode === "prep" ? (
         <div className={styles.sidebarScroll} key="prep">
@@ -276,6 +289,9 @@ export function Sidebar(props: SidebarProps) {
           </section>
         </div>
       )}
+      <div className={styles.sidebarFoot}>
+        <UserMenu onRestart={props.onRestart} />
+      </div>
     </div>
   );
 }

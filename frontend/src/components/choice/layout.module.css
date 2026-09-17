@@ -85,6 +85,7 @@
 
 .sidebar {
   position: relative;
+  z-index: 10;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -105,7 +106,50 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 14px 12px 10px 16px;
+  padding: 14px 12px 6px 20px;
+}
+
+.logo,
+.logoRail {
+  font-family: var(--font-mono);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.logo {
+  font-size: 26px;
+}
+
+.logoRail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  font-size: 22px;
+}
+
+.logo span,
+.logoRail span {
+  color: var(--accent);
+}
+
+.sidebarMode {
+  padding: 6px 12px 10px 16px;
+}
+
+.sidebarMode .modeButton {
+  flex: 1;
+}
+
+.sidebarFoot {
+  flex: none;
+  padding: 8px 12px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.railFoot {
+  margin-top: auto;
+  padding: 8px 0 12px;
 }
 
 /* Выбор / Подготовка — top of the left column */
@@ -378,12 +422,14 @@
 
 .rail {
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  min-height: 0;
   padding-top: 14px;
-  overflow-y: auto;
-  scrollbar-width: none;
+  /* Visible so the account menu can open beside the rail */
+  overflow: visible;
   animation: fade-in 0.3s ease both;
 }
 

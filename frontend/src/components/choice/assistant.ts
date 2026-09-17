@@ -2,11 +2,15 @@
 // profile, pick the next question and phrase the summary. Pure functions, no React.
 
 export type Profile = {
+  grade?: string;
   direction?: string;
   location?: string;
+  language?: string;
   budget?: string;
+  grant?: string;
   sat?: string;
   ielts?: string;
+  ent?: string;
   strong?: string;
   soft: string[];
 };
@@ -14,13 +18,17 @@ export type Profile = {
 export type FieldKey = Exclude<keyof Profile, "soft"> | "soft";
 
 export const FIELDS: [FieldKey, string][] = [
+  ["grade", "Класс"],
   ["direction", "Направление"],
-  ["location", "Локация"],
+  ["location", "Где учиться"],
+  ["language", "Язык обучения"],
   ["budget", "Бюджет"],
+  ["grant", "Грант"],
   ["sat", "SAT"],
   ["ielts", "IELTS"],
-  ["strong", "Сильные черты"],
-  ["soft", "Мягкие черты"],
+  ["ent", "ЕНТ"],
+  ["strong", "Сильные стороны"],
+  ["soft", "Черты и предпочтения"],
 ];
 
 export const EMPTY_PROFILE: Profile = { soft: [] };
@@ -84,9 +92,18 @@ export function extract(current: Profile, raw: string): { profile: Profile; chan
   else if (/казахстан|алмат|астан/.test(text)) set("location", "Казахстан");
   else if (/ази|коре|япон|китай|сингапур/.test(text)) set("location", "Азия");
 
-  const money = text.match(/(\d[\d\s]{2,})\s*(\$|долл|usd)/);
-  if (money) set("budget", `до ${money[1].replace(/\s/g, "")}$ в год`);
-  else if (/грант|бесплатн/.test(text)) set("budget", "нужен грант");
+  // The question being answered: a bare number in reply to the budget question is a budget
+  const pending = nextMissing(current);
+
+  // A sum of money: with a currency, or a plain number in a message about money
+  // (exam scores are cut out first so "SAT 1300" is not read as a budget)
+  const withoutScores = text.replace(/(sat|ielts|ент|унт)\D{0,12}\d+(?:[.,]\d)?/g, " ");
+  const moneyContext = /бюджет|грант|стоим|плат|в год|денег|деньги|\$|долл|usd|евро|€|тенге/.test(withoutScores) || pending === "budget";
+  const money =
+    withoutScores.match(/(\d[\d\s]{2,})\s*(?:\$|долл|usd|€|евро)/) ??
+    (moneyContext ? withoutScores.match(/(?:^|\D)(\d{3,}(?:\s\d{3})*)(?!\d)/) : null);
+  if (money && Number(money[1].replace(/\s/g, "")) >= 300) set("budget", `до ${money[1].replace(/\s/g, "")}$ в год`);
+  else if (/только (на )?грант|без гранта не|бесплатн/.test(text)) set("budget", "нужен грант");
   else if (/недорог|дешев|бюджетн|небольш(ой|ие) (бюджет|деньги)|мало денег/.test(text)) set("budget", "небольшой, до 3000$");
   else if (/бюджет не важ|деньги не важ|не ограничен/.test(text)) set("budget", "не ограничен");
 
@@ -98,6 +115,30 @@ export function extract(current: Profile, raw: string): { profile: Profile; chan
   const ielts = text.match(/ielts\D{0,12}(\d(?:[.,]\d)?)/);
   if (ielts) set("ielts", ielts[1].replace(",", "."));
   else if (/ielts[^.]*(не сдавал|нет)|не сдавал[^.]*ielts/.test(text)) set("ielts", "не сдавал, считаем как 6.0");
+
+  const grade = text.match(/(?:^|\D)(9|10|11)\s*(?:-?й\s*)?класс/);
+  if (grade) set("grade", `${grade[1]} класс`);
+
+  if (/(на|по)[- ]?английск|english/.test(text)) set("language", "английский");
+  else if (/(на|по)[- ]?русск/.test(text)) set("language", "русский");
+  else if (/(на|по)[- ]?казахск/.test(text)) set("language", "казахский");
+
+  if (/только (на )?грант|без гранта не/.test(text)) set("grant", "только грант");
+  else if (/грант[^.]*не нуж|без гранта/.test(text)) set("grant", "не нужен");
+  else if (/грант[^.]*желательн|желательн[^.]*грант/.test(text)) set("grant", "желательно");
+  else if (/грант/.test(text)) set("grant", "нужен");
+
+  const ent = text.match(/(ент|унт)\D{0,12}(\d{2,3})/);
+  if (ent) set("ent", ent[2]);
+
+  // Short answers to the question that is currently open ("нет", "не знаю")
+  const shortNo = /^\s*(нет|неа|не сдавал\w*|пока нет|еще нет|ничего)\s*[.!]?\s*$/.test(text);
+  const shortUnknown = /^\s*(не знаю|хз|пока не знаю|не решил\w*|без разницы)\s*[.!]?\s*$/.test(text);
+  if (pending === "exams" && (shortNo || shortUnknown)) {
+    set("ielts", "не сдавал, считаем как 6.0");
+    set("sat", "не сдавал");
+  }
+  if (pending === "budget" && (shortNo || shortUnknown)) set("budget", "пока не знаю");
 
   if (/олимпиад/.test(text)) set("strong", /междунар/.test(text) ? "Участник международных олимпиад" : "Участник олимпиад");
 
@@ -117,8 +158,8 @@ export function readiness(profile: Profile, confirmed: boolean): number {
   let score = 0;
   if (profile.direction) score += 20;
   if (profile.location) score += 15;
-  if (profile.budget) score += 15;
-  if (profile.sat || profile.ielts) score += 15;
+  if (profile.budget || profile.grant) score += 15;
+  if (profile.sat || profile.ielts || profile.ent) score += 15;
   if (profile.soft.length || profile.strong) score += 10;
   return score;
 }
@@ -126,8 +167,9 @@ export function readiness(profile: Profile, confirmed: boolean): number {
 export function nextMissing(profile: Profile): MissingKey | null {
   if (!profile.direction) return "direction";
   if (!profile.location) return "location";
-  if (!profile.sat && !profile.ielts) return "exams";
-  if (!profile.budget) return "budget";
+  if (!profile.sat && !profile.ielts && !profile.ent) return "exams";
+  // An answer about the grant also counts as an answer about money
+  if (!profile.budget && !profile.grant) return "budget";
   return null;
 }
 
@@ -155,10 +197,72 @@ export function summaryText(profile: Profile): string {
   return parts.join(", ");
 }
 
+/* ---------- Student profile view ---------- */
+
+/** said — the student told us (or edited it); assumed — our default until they say otherwise. */
+export type FieldStatus = "said" | "assumed";
+export type ProfileItem = { key: FieldKey; label: string; value: string; status: FieldStatus; chips?: string[] };
+
+const labelOf = (key: FieldKey) => FIELDS.find(([k]) => k === key)![1];
+
+/**
+ * What the profile panel shows: only fields we know or assume, nothing that is still missing.
+ * Later the backend decides this; for now a few defaults stand in for its assumptions.
+ */
+export function profileItems(profile: Profile): ProfileItem[] {
+  const items: ProfileItem[] = [];
+  const add = (key: FieldKey, assumed?: string) => {
+    const value = fieldValue(profile, key);
+    if (value) items.push({ key, label: labelOf(key), value, status: "said" });
+    else if (assumed) items.push({ key, label: labelOf(key), value: assumed, status: "assumed" });
+  };
+
+  add("grade", "11 класс");
+  add("direction");
+  add("location");
+  add("language", profile.location === "Казахстан" ? "Русский или казахский" : "Английский");
+  if (profile.ielts?.startsWith("не сдавал")) {
+    items.push({ key: "ielts", label: "IELTS", value: "6.0 — пока не сдавал", status: "assumed" });
+  } else {
+    add("ielts", "6.0");
+  }
+  add("sat");
+  add("ent");
+  add("budget");
+  add("grant", "Желательно");
+  add("strong");
+  if (profile.soft.length) {
+    items.push({
+      key: "soft",
+      label: labelOf("soft"),
+      value: profile.soft.join(", "),
+      status: "said",
+      chips: profile.soft.map((t) => t.charAt(0).toUpperCase() + t.slice(1)),
+    });
+  }
+  return items;
+}
+
+/** Apply a manual edit from the profile panel; an empty value clears the field. */
+export function editField(profile: Profile, key: FieldKey, raw: string): Profile {
+  const value = raw.trim();
+  const next: Profile = { ...profile, soft: [...profile.soft] };
+  if (key === "soft") {
+    next.soft = value.split(",").map((t) => t.trim()).filter(Boolean);
+  } else {
+    next[key] = value || undefined;
+  }
+  return next;
+}
+
 function acknowledge(profile: Profile, changed: FieldKey[]): string {
   if (changed.includes("location") && profile.location?.startsWith("Южная")) return "Хорошо, смотрим на Южную Европу.";
   if (!changed.length) return "Понял.";
-  const labels = changed.map((key) => FIELDS.find(([k]) => k === key)![1].toLowerCase());
+  // Keep acronyms (IELTS, SAT, ЕНТ) as they are
+  const labels = changed.map((key) => {
+    const label = labelOf(key);
+    return label === label.toUpperCase() ? label : label.toLowerCase();
+  });
   return `Записал: ${labels.join(", ")}.`;
 }
 

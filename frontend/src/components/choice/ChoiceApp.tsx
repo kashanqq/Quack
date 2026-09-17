@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import {
   CONFIRM_REPLY,
   EMPTY_PROFILE,
+  editField,
   extract,
   fieldValue,
   placeholderFor,
@@ -20,7 +21,7 @@ import {
 import { ChatMessage, type ChatMsg } from "./ChatMessage";
 import { CompareView } from "./CompareView";
 import { CustomScrollbar } from "./CustomScrollbar";
-import { ProfilePanel } from "./ProfilePanel";
+import { ProfilePanel, ProfileToggle } from "./ProfilePanel";
 import { ProgramCards, ProgramDrawer, type ProgramActions } from "./ProgramUi";
 import { recommend } from "./programs";
 import { ResizeHandle } from "./ResizeHandle";
@@ -99,6 +100,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   // Mirrors of state that the async assistant flow reads without waiting for a render
   const profileRef = useRef(profile);
+  // Whether the current chat already has a summary; each chat gets its own
   const summarySentRef = useRef(false);
   const busyRef = useRef(false);
   const idRef = useRef(0);
@@ -131,7 +133,6 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
       const stored = JSON.parse(localStorage.getItem(WORKSPACE_KEY) ?? "null");
       if (stored) {
         profileRef.current = stored.profile ?? EMPTY_PROFILE;
-        summarySentRef.current = Boolean(stored.summarySent);
         setProfile(profileRef.current);
         setConfirmed(Boolean(stored.confirmed));
         setPicks(stored.picks ?? []);
@@ -149,7 +150,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     try {
       localStorage.setItem(
         WORKSPACE_KEY,
-        JSON.stringify({ profile, confirmed, summarySent: summarySentRef.current, picks, saved, compare, sessions })
+        JSON.stringify({ profile, confirmed, picks, saved, compare, sessions })
       );
     } catch {}
   }, [profile, confirmed, picks, saved, compare, sessions]);
@@ -185,6 +186,13 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
       localStorage.setItem(LAYOUT_KEY, JSON.stringify({ left, right }));
     } catch {}
   }, [left, right, resizing]);
+
+  useEffect(() => {
+    if (!profileOverlayOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setProfileOverlayOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [profileOverlayOpen]);
 
   /* ---------- Greeting rotation ---------- */
 
@@ -290,7 +298,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const openSidebarTab = (tab: SidebarTab) => {
     setSidebarTab(tab);
     setLeft((l) => (l.collapsed ? { ...l, collapsed: false, width: l.lastWidth, userSet: true } : l));
-    setMobileProgramsOpen(true);
+    openMobilePrograms();
   };
 
   const programActions: ProgramActions = {
@@ -426,6 +434,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   function showChat(id: string | null, list: ChatItem[]) {
     activeChatRef.current = id;
     setActiveChatId(id);
+    summarySentRef.current = list.some((m) => m.role === "assistant" && m.editable);
     setMessages(list);
     setStage(list.length ? "chat" : "intro");
     setGreeting({ current: 0, leaving: -1 });
@@ -467,6 +476,28 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     onRestart();
   };
 
+  /* ---------- Student profile ---------- */
+
+  // On phones and cramped windows the profile and the left column open over the chat: never both at once
+  const openMobilePrograms = () => {
+    setProfileOverlayOpen(false);
+    setMobileProgramsOpen(true);
+  };
+
+  const toggleProfileOverlay = () =>
+    setProfileOverlayOpen((open) => {
+      if (!open) setMobileProgramsOpen(false);
+      return !open;
+    });
+
+  function onEditField(key: FieldKey, value: string) {
+    const next = editField(profileRef.current, key, value);
+    profileRef.current = next;
+    setProfile(next);
+    setVersions((v) => ({ ...v, [key]: (v[key] ?? 0) + 1 }));
+    setPlaceholder(placeholderFor(next));
+  }
+
   /* ---------- Panel resizing ---------- */
 
   const phone = viewportWidth <= PHONE_MAX;
@@ -474,10 +505,13 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const rightAvailable = stage === "chat" && mode === "choice";
   // On laptop-sized windows the panel may not fit beside the chat: then it opens over it
   const roomForRight = viewportWidth - leftWidth - CHAT_MIN;
-  const rightOverlay = rightAvailable && !phone && roomForRight < RIGHT_MIN;
-  const rightWidth =
-    !rightAvailable || right.hidden || rightOverlay ? 0 : phone ? right.width : Math.min(right.width, roomForRight);
+  const rightOverlay = rightAvailable && (phone || roomForRight < RIGHT_MIN);
+  const rightWidth = !rightAvailable || right.hidden || rightOverlay ? 0 : Math.min(right.width, roomForRight);
   const profileVisible = rightOverlay ? profileOverlayOpen : rightWidth > 0;
+
+  useEffect(() => {
+    if (!rightOverlay) setProfileOverlayOpen(false);
+  }, [rightOverlay]);
 
   const settleLeft = (width: number) =>
     setLeft((l) =>
@@ -494,19 +528,17 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   const toggleRight = () => setRight((r) => ({ ...r, hidden: !r.hidden, width: r.lastWidth }));
 
+  const readinessValue = readiness(profile, confirmed);
+  const toggleProfile = rightOverlay ? toggleProfileOverlay : toggleRight;
+
   const gridStyle = { "--left": `${leftWidth}px`, "--right": `${rightWidth}px` } as CSSProperties;
   const sidebarCollapsed = leftWidth < LEFT_SNAP && !mobileProgramsOpen;
 
   return (
     <div className={styles.page}>
       <Topbar
-        onRestart={restart}
-        onOpenPrograms={() => setMobileProgramsOpen(true)}
-        profilePanel={
-          rightAvailable
-            ? { open: profileVisible, onToggle: rightOverlay ? () => setProfileOverlayOpen((v) => !v) : toggleRight }
-            : undefined
-        }
+        onOpenMenu={openMobilePrograms}
+        profilePanel={rightAvailable ? { open: profileVisible, readiness: readinessValue, onToggle: toggleProfile } : undefined}
       />
 
       <main
@@ -536,6 +568,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
             onTab={setSidebarTab}
             onToggle={mobileProgramsOpen ? () => setMobileProgramsOpen(false) : toggleLeft}
             onOpenCompare={openCompare}
+            onRestart={restart}
           />
           <ResizeHandle
             side="left"
@@ -560,8 +593,12 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
           />
         </aside>
         {mobileProgramsOpen && <div className={layout.mobileBackdrop} onClick={() => setMobileProgramsOpen(false)} />}
+        {phone && profileVisible && <div className={styles.profileBackdrop} onClick={() => setProfileOverlayOpen(false)} />}
 
         <section className={styles.chat}>
+          {rightAvailable && !phone && !profileVisible && (
+            <ProfileToggle className={styles.chatProfileToggle} open={false} readiness={readinessValue} onClick={toggleProfile} />
+          )}
           <div className={styles.chatBody}>
             <div className={`${styles.view} ${styles.viewChoice}`}>
               <div className={styles.greeting} aria-live="polite">
@@ -660,13 +697,13 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
         <aside
           className={`${styles.profile} ${rightOverlay && profileOverlayOpen ? styles.profileOverlay : ""}`}
-          aria-label="Как я тебя вижу"
+          aria-label="Профиль студента"
           aria-hidden={!profileVisible}
         >
           {rightAvailable && !rightOverlay && (
             <ResizeHandle
               side="right"
-              label="Ширина панели «Как я тебя вижу»"
+              label="Ширина профиля студента"
               value={rightWidth}
               min={0}
               max={RIGHT_MAX}
@@ -688,8 +725,9 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
           )}
           <ProfilePanel
             profile={profile}
-            readiness={readiness(profile, confirmed)}
+            readiness={readinessValue}
             versions={versions}
+            onEdit={onEditField}
             onHide={() =>
               rightOverlay ? setProfileOverlayOpen(false) : setRight((r) => ({ ...r, hidden: true, width: r.lastWidth }))
             }
