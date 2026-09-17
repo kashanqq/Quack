@@ -1,0 +1,97 @@
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  background: var(--bg);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0s linear 0.35s;
+}
+
+.visible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.35s ease;
+}
+
+.duck {
+  width: 96px;
+  height: 72px;
+  animation: bob 0.9s ease-in-out infinite;
+}
+
+.shadow {
+  width: 64px;
+  height: 8px;
+  margin-top: -10px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 50%;
+  animation: shadow 0.9s ease-in-out infinite;
+}
+
+.text {
+  font-family: var(--font-mono);
+  font-size: 20px;
+}
+
+.accent {
+  color: var(--accent);
+}
+
+.dots span {
+  display: inline-block;
+  animation: dot 1.2s ease-in-out infinite;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(4deg);
+  }
+}
+
+@keyframes shadow {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleX(0.7);
+    opacity: 0.5;
+  }
+}
+
+@keyframes dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.2;
+  }
+  30% {
+    opacity: 1;
+  }
+}

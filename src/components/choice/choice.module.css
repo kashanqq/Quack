@@ -1,0 +1,1004 @@
+.page {
+  --bg: #322f2d;
+  --header-bg: #4c4743;
+  --bubble-bg: #262422;
+  --panel-head-bg: #3f3b38;
+  --panel-body-bg: #262422;
+  --text: #ffffff;
+  --text-dim: rgba(255, 255, 255, 0.6);
+  --text-faint: rgba(255, 255, 255, 0.5);
+  --accent: #ff7a00;
+  --accent-label: #ffac4a;
+  --accent-tint: rgba(255, 145, 0, 0.2);
+  --edit-bg: #5a4838;
+  --control: #d9d9d9;
+  --thumb: #777777;
+
+  --topbar-h: 85px;
+  --sidebar-w: 302px;
+  --panel-col: 620px;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  font-family: var(--font-text);
+}
+
+.accent {
+  color: var(--accent);
+}
+
+/* ---------- Top bar ---------- */
+
+.topbar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  height: var(--topbar-h);
+  padding-left: 33px;
+  background: var(--header-bg);
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+}
+
+.topbarLogo {
+  width: 156px;
+  font-family: var(--font-mono);
+  font-size: 36px;
+  text-align: center;
+}
+
+.user {
+  position: relative;
+  margin-left: 49px;
+}
+
+.userButton {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.userAvatar {
+  width: 64px;
+  height: 59px;
+}
+
+.userName {
+  margin-left: 26px;
+  font-family: var(--font-mono);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.userChevron {
+  width: 26px;
+  height: 14px;
+  margin-left: 8px;
+  transition: transform 0.3s var(--ease);
+}
+
+.userButton[aria-expanded="true"] .userChevron {
+  transform: rotate(180deg);
+}
+
+.userMenu {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 64px;
+  display: grid;
+  min-width: 200px;
+  padding: 8px;
+  background: var(--panel-head-bg);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scale(0.97);
+  transform-origin: top left;
+  transition: opacity 0.2s ease, transform 0.25s var(--ease-out), visibility 0s linear 0.25s;
+}
+
+.userMenu.isOpen {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.2s ease, transform 0.25s var(--ease-out);
+}
+
+.userMenu > * {
+  padding: 10px 14px;
+  background: none;
+  border: 0;
+  border-radius: 10px;
+  font-size: 18px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.userMenu > *:hover,
+.userMenu > *:focus-visible {
+  background: var(--accent-tint);
+  outline: none;
+}
+
+/* ---------- Layout ---------- */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr) 0px;
+  flex: 1;
+  min-height: 0;
+  transition: grid-template-columns 0.8s var(--ease);
+}
+
+.app[data-stage="chat"] {
+  grid-template-columns: 0px minmax(0, 1fr) var(--panel-col);
+}
+
+/* ---------- Sidebar ---------- */
+
+.sidebar {
+  overflow: hidden;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  transition: opacity 0.5s ease;
+}
+
+.sidebar > * {
+  width: var(--sidebar-w);
+  padding: 0 44px;
+}
+
+.sidebarTitle {
+  margin: 44px 0 16px;
+  font-size: 24px;
+  font-weight: 400;
+}
+
+.sidebarList {
+  margin: 0;
+  list-style: none;
+}
+
+.sidebarEmpty {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.app[data-stage="chat"] .sidebar {
+  opacity: 0;
+}
+
+/* ---------- Chat column ---------- */
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0 0 33px;
+  transition: padding 0.8s var(--ease);
+}
+
+/* Keeps the intro content centred on the page, as in the design */
+.app[data-stage="intro"] .chat {
+  padding-right: var(--sidebar-w);
+}
+
+.chatBody {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.view {
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.45s ease, transform 0.45s var(--ease);
+}
+
+.viewPrep {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  padding: 24px;
+  text-align: center;
+  opacity: 0;
+  transform: translateX(32px);
+  pointer-events: none;
+}
+
+.app[data-mode="prep"] .viewChoice {
+  opacity: 0;
+  transform: translateX(-32px);
+  pointer-events: none;
+}
+
+.app[data-mode="prep"] .viewPrep {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.prepTitle {
+  margin: 0 0 16px;
+  font-size: 64px;
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+.prepText {
+  max-width: 640px;
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 24px;
+  line-height: 1.4;
+}
+
+/* Greeting with rotating text */
+
+.greeting {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  padding: 0 24px;
+  transition: opacity 0.5s ease, transform 0.7s var(--ease);
+}
+
+.greetingText {
+  grid-area: 1 / 1;
+  margin: 0;
+  font-size: 64px;
+  line-height: 1.18;
+  text-align: center;
+  text-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(18px);
+  transition: opacity 0.8s ease, filter 0.8s ease, transform 0.8s var(--ease-out);
+}
+
+.greetingText.isVisible {
+  opacity: 0.6;
+  filter: none;
+  transform: none;
+}
+
+.greetingText.isLeaving {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(-18px);
+}
+
+.app[data-stage="chat"] .greeting {
+  opacity: 0;
+  transform: translateY(-48px) scale(0.96);
+  pointer-events: none;
+}
+
+/* Messages */
+
+.messagesWrap {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease 0.35s;
+}
+
+.app[data-stage="chat"] .messagesWrap {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  height: 100%;
+  padding: 32px 73px 32px 103px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.messages::-webkit-scrollbar {
+  display: none;
+}
+
+.msg {
+  display: flex;
+  flex-direction: column;
+  align-self: flex-start;
+  max-width: 451px;
+  animation: msg-in 0.45s var(--ease-out) both;
+  transform-origin: left bottom;
+}
+
+.msgUser {
+  align-self: flex-end;
+  transform-origin: right bottom;
+}
+
+.msgBubble {
+  padding: 13px 16px;
+  background: var(--bubble-bg);
+  border-radius: 28px;
+  font-size: 24px;
+  line-height: 28px;
+  transition: padding 0.3s var(--ease), box-shadow 0.3s ease;
+}
+
+.msgUser .msgBubble {
+  padding-left: 27px;
+  text-align: right;
+}
+
+.msgText {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  caret-color: var(--accent);
+}
+
+.msgText:focus {
+  outline: none;
+}
+
+.msg.isEditing .msgBubble {
+  padding-bottom: 44px;
+  box-shadow: 0 0 0 2px rgba(255, 122, 0, 0.45);
+}
+
+.msgActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 23px;
+  margin-top: 8px;
+  padding-right: 20px;
+}
+
+.iconBtn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 33px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  animation: pop-in 0.35s var(--ease-out) both;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.iconBtn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+.iconBtn:active {
+  transform: scale(0.92);
+}
+
+.iconBtnConfirm {
+  background: var(--accent);
+}
+
+.iconBtnEdit {
+  background: var(--edit-bg);
+}
+
+.iconBtn.isLeaving {
+  animation: pop-out 0.3s var(--ease) forwards;
+  pointer-events: none;
+}
+
+/* Icons come from the Lucide set, coloured through a mask */
+.icon {
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.iconCheck {
+  --icon: url("/assets/icon-check.svg");
+}
+
+.iconPencil {
+  --icon: url("/assets/icon-pencil.svg");
+  width: 17px;
+  height: 17px;
+}
+
+/* Typing indicator */
+
+.typing {
+  display: flex;
+  gap: 6px;
+  padding: 8px 4px;
+}
+
+.typing span {
+  width: 9px;
+  height: 9px;
+  background: var(--text-dim);
+  border-radius: 50%;
+  animation: typing 1s ease-in-out infinite;
+}
+
+.typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+/* ---------- Custom scrollbars ---------- */
+
+.scrollbar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.scrollbarArrow {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 10px;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.scrollbarArrow:hover {
+  transform: scale(1.3);
+}
+
+.scrollbarArrow img {
+  width: 11px;
+  height: 8px;
+}
+
+.scrollbarRail {
+  position: relative;
+  flex: 1;
+  width: 100%;
+}
+
+.scrollbarThumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--thumb);
+  border-radius: 6px;
+  cursor: grab;
+  transition: opacity 0.3s ease, background 0.2s ease;
+}
+
+.scrollbarThumb:hover,
+.scrollbarThumb.isDragging {
+  background: #8f8f8f;
+}
+
+.scrollbarThumb.isDragging {
+  cursor: grabbing;
+}
+
+.scrollbar.isIdle .scrollbarThumb {
+  opacity: 0.35;
+}
+
+.scrollbarChat {
+  position: absolute;
+  top: 28px;
+  right: 30px;
+  bottom: 8px;
+  width: 12px;
+}
+
+/* ---------- Profile panel ---------- */
+
+.profile {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.profileCard {
+  display: flex;
+  flex-direction: column;
+  width: 572px;
+  height: calc(100% - 94px);
+  margin: 28px 23px 66px 25px;
+  opacity: 0;
+  transform: translateX(60px);
+  transition: opacity 0.6s ease 0.25s, transform 0.8s var(--ease) 0.1s;
+}
+
+.app[data-stage="chat"] .profileCard {
+  opacity: 1;
+  transform: none;
+}
+
+.profileTitle {
+  flex: none;
+  height: 84px;
+  margin: 0;
+  background: var(--panel-head-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 28px 28px 0 0;
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 84px;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.profileBody {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding-right: 15px;
+  background: var(--panel-body-bg);
+  border-radius: 0 0 0 45px;
+}
+
+.profileScroll {
+  flex: 1;
+  min-height: 0;
+  padding: 36px 20px 24px 39px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.profileScroll::-webkit-scrollbar {
+  display: none;
+}
+
+.profileList {
+  margin: 0;
+}
+
+.profileRow {
+  margin: 0 0 28px;
+  font-size: 24px;
+  line-height: 28px;
+  animation: row-in 0.5s var(--ease-out) both;
+}
+
+.profileRow dt,
+.profileRow dd {
+  display: inline;
+  margin: 0;
+}
+
+.profileRow dt {
+  color: var(--accent-label);
+}
+
+.profileRow dt::after {
+  content: " - ";
+  color: var(--text);
+}
+
+.profileRow dd {
+  border-radius: 6px;
+}
+
+.profileRow.isUpdated dd {
+  animation: value-flash 1.4s ease;
+}
+
+.profileEmpty {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 20px;
+  line-height: 1.4;
+  transition: opacity 0.3s ease;
+}
+
+.profileList:not(:empty) + .profileEmpty {
+  display: none;
+}
+
+.profileFooter {
+  flex: none;
+  padding: 12px 24px 24px 39px;
+  text-align: center;
+}
+
+.profileReadinessLabel {
+  display: block;
+  color: var(--text-faint);
+  font-size: 24px;
+  line-height: 28px;
+}
+
+.progress {
+  width: min(415px, 100%);
+  height: 14px;
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--control);
+  border-radius: 7px;
+}
+
+.progressFill {
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 7px;
+  transition: width 0.9s var(--ease);
+}
+
+.scrollbarPanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 15px;
+  padding: 6px 0;
+  background: #3a3633;
+}
+
+.scrollbarPanel .scrollbarThumb {
+  left: 2px;
+  right: 2px;
+  background: #57524e;
+}
+
+/* ---------- Composer ---------- */
+
+.composer {
+  display: flex;
+  align-items: center;
+  flex: none;
+  width: min(1095px, calc(100% - 48px));
+  height: 68px;
+  margin: 0 auto 52px;
+  padding: 0 8px 0 22px;
+  background: rgba(217, 217, 217, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 22px;
+  transition: width 0.8s var(--ease), opacity 0.35s ease, transform 0.45s var(--ease), border-color 0.2s ease;
+}
+
+.composer:focus-within {
+  border-color: rgba(255, 166, 77, 0.6);
+}
+
+.app[data-stage="chat"] .composer {
+  width: min(727px, calc(100% - 48px));
+}
+
+.app[data-mode="prep"] .composer {
+  opacity: 0;
+  transform: translateY(16px);
+  pointer-events: none;
+}
+
+.composerInput {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--text);
+  font-family: var(--font-text);
+  font-size: 24px;
+}
+
+.composerInput::placeholder {
+  color: var(--text-faint);
+  transition: color 0.3s ease;
+}
+
+.composerInput:focus {
+  outline: none;
+}
+
+.composerSend {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  background: var(--control);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.25s ease, transform 0.2s var(--ease-out);
+}
+
+.composerSend img {
+  width: 24px;
+  height: 29px;
+  transition: filter 0.25s ease, transform 0.3s var(--ease-out);
+}
+
+.composerSend:not(:disabled) {
+  background: var(--accent);
+}
+
+.composerSend:not(:disabled) img {
+  filter: invert(1);
+}
+
+.composerSend:not(:disabled):hover img {
+  transform: translateY(-3px);
+}
+
+.composerSend:disabled {
+  cursor: default;
+}
+
+.composerSend.isSent {
+  animation: send-pulse 0.4s var(--ease-out);
+}
+
+/* ---------- Choice / Preparation switch ---------- */
+
+.modeSwitch {
+  position: relative;
+  display: flex;
+  gap: 113px;
+  flex: none;
+  height: 61px;
+  margin: 0 auto;
+}
+
+.modePill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 169px;
+  height: 61px;
+  background: var(--accent-tint);
+  border: 1px solid rgba(255, 166, 77, 0.35);
+  border-radius: 26px;
+  transition: transform 0.45s var(--ease), width 0.45s var(--ease);
+}
+
+.modeTab {
+  position: relative;
+  padding: 0 18px;
+  background: none;
+  border: 0;
+  font-family: var(--font-mono);
+  font-size: 36px;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+}
+
+.modeTab.isActive,
+.modeTab:hover {
+  opacity: 1;
+}
+
+/* ---------- Keyframes ---------- */
+
+@keyframes msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+@keyframes pop-out {
+  to {
+    opacity: 0;
+    transform: scale(0.4) rotate(-12deg);
+  }
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+}
+
+@keyframes value-flash {
+  0% {
+    background: rgba(255, 122, 0, 0.35);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes send-pulse {
+  50% {
+    transform: scale(0.85);
+  }
+}
+
+/* ---------- Narrow screens ---------- */
+
+@media (max-width: 1100px) {
+  .page {
+    height: auto;
+    min-height: 100dvh;
+    /* Off-screen slide-in transforms must not widen the page */
+    overflow: visible;
+    overflow-x: clip;
+  }
+
+  .app,
+  .app[data-stage="chat"] {
+    display: block;
+    height: auto;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .chat,
+  .app[data-stage="intro"] .chat {
+    height: calc(100dvh - var(--topbar-h));
+    flex: none;
+    padding-right: 0;
+  }
+
+  .greetingText {
+    font-size: 40px;
+  }
+
+  .messages {
+    padding: 20px 40px 20px 16px;
+  }
+
+  .scrollbarChat {
+    right: 12px;
+  }
+
+  .msg {
+    max-width: 85%;
+  }
+
+  .msgBubble {
+    font-size: 18px;
+    line-height: 22px;
+  }
+
+  .composerInput {
+    font-size: 18px;
+  }
+
+  .composer {
+    margin-bottom: 24px;
+  }
+
+  .modeSwitch {
+    gap: 40px;
+  }
+
+  .modeTab {
+    font-size: 26px;
+  }
+
+  .profile {
+    height: 0;
+  }
+
+  .app[data-stage="chat"] .profile {
+    height: auto;
+  }
+
+  .profileCard {
+    width: auto;
+    height: 560px;
+    margin: 16px;
+  }
+
+  .profileTitle {
+    font-size: 30px;
+  }
+
+  .profileRow,
+  .profileReadinessLabel {
+    font-size: 18px;
+    line-height: 22px;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar {
+    padding-left: 12px;
+  }
+
+  .topbarLogo {
+    width: auto;
+    font-size: 28px;
+  }
+
+  .user {
+    margin-left: auto;
+    margin-right: 16px;
+  }
+
+  .userName {
+    display: none;
+  }
+
+  .userMenu {
+    left: auto;
+    right: 0;
+  }
+
+  .greetingText {
+    font-size: 30px;
+  }
+
+  .modeSwitch {
+    gap: 16px;
+  }
+
+  .modeTab {
+    font-size: 22px;
+  }
+
+  .prepTitle {
+    font-size: 40px;
+  }
+
+  .prepText {
+    font-size: 18px;
+  }
+}
+
+/* Inline editing of the summary bubble */
+.editInput {
+  display: block;
+  width: 100%;
+  min-width: 260px;
+  padding: 0;
+  overflow: hidden;
+  background: none;
+  border: 0;
+  resize: none;
+  font-family: var(--font-text);
+  font-size: inherit;
+  line-height: inherit;
+  caret-color: var(--accent);
+}
+
+.editInput:focus {
+  outline: none;
+}

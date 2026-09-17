@@ -1,0 +1,69 @@
+.duck {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.wing {
+  transform-box: fill-box;
+  transform-origin: 85% 45%;
+}
+
+.flap {
+  animation: wing-flap 0.3s ease-in-out infinite alternate;
+}
+
+.flapFast {
+  animation: wing-flap 0.22s ease-in-out infinite alternate;
+}
+
+@keyframes wing-flap {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-38deg);
+  }
+}
+
+/* Flying duck */
+
+.flying {
+  position: fixed;
+  left: 0;
+  z-index: 9000;
+  width: 56px;
+  height: 42px;
+  pointer-events: none;
+  animation: fly var(--duration) linear forwards;
+}
+
+.bob {
+  width: 100%;
+  height: 100%;
+  animation: bob 1.6s ease-in-out infinite;
+}
+
+.reversed .duck {
+  transform: scaleX(-1);
+}
+
+@keyframes fly {
+  from {
+    transform: translate(var(--from), 0) scale(var(--size));
+  }
+  to {
+    transform: translate(var(--to), var(--drift)) scale(var(--size));
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-18px);
+  }
+}

@@ -1,0 +1,258 @@
+.page {
+  --header-bg: #4c4743;
+  --dropdown-bg: #2c2927;
+  --text-muted: #877d73;
+  --accent-soft: #ff8f28;
+  min-height: 100dvh;
+  font-family: var(--font-mono);
+}
+
+.accent {
+  color: var(--accent);
+}
+
+.accentSoft {
+  color: var(--accent-soft);
+}
+
+/* Header (scaled to 70% of the Figma size) */
+
+.header {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  width: min(1028px, calc(100% - 32px));
+  height: 45px;
+  margin: 32px auto 0;
+  padding: 0 9px 0 13px;
+  background: var(--header-bg);
+  border-radius: 34px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.logo,
+.navItem > a,
+.login,
+.signinText {
+  display: block;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.nav {
+  display: flex;
+  gap: 67px;
+  height: 100%;
+  margin-left: 176px;
+}
+
+.navItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  display: none;
+  gap: 20px;
+  height: 99px;
+  padding: 8px 18px;
+  background: var(--dropdown-bg);
+  border-radius: 20px;
+  font-size: 14px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.dropdown a:hover {
+  color: var(--accent);
+}
+
+.dropdownStacked {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropdownRow {
+  width: 224px;
+  justify-content: space-between;
+}
+
+.navItem:hover .dropdown,
+.navItem:focus-within .dropdown {
+  display: flex;
+}
+
+.auth {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  height: 100%;
+  margin-left: auto;
+}
+
+.login {
+  font-size: 14px;
+}
+
+/* Sign In: the orange circle flows under the label, the arrow fades out */
+
+.signin {
+  --icon-w: 29px;
+  --gap: 6px;
+  --pad: 10px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 27px;
+  padding: 0 calc(var(--icon-w) + var(--gap)) 0 var(--pad);
+  color: var(--accent);
+  isolation: isolate;
+}
+
+.signinBg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: -1;
+  width: var(--icon-w);
+  height: 100%;
+  background: var(--accent);
+  border-radius: 14px;
+  transition: width 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.signinText {
+  transition: color 0.3s ease, transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.signinArrow {
+  position: absolute;
+  top: 50%;
+  right: calc((var(--icon-w) - 11px) / 2);
+  width: 11px;
+  height: 13px;
+  transform: translateY(-50%) rotate(180deg);
+  transition: opacity 0.2s ease, transform 0.3s ease;
+}
+
+.signin:hover .signinBg,
+.signin:focus-visible .signinBg {
+  width: 100%;
+}
+
+.signin:hover .signinText,
+.signin:focus-visible .signinText {
+  color: var(--text);
+  /* re-centre the label inside the expanded pill */
+  transform: translateX(calc((var(--icon-w) + var(--gap) - var(--pad)) / 2));
+}
+
+.signin:hover .signinArrow,
+.signin:focus-visible .signinArrow {
+  opacity: 0;
+  transform: translate(6px, -50%) rotate(180deg) scale(0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signinBg,
+  .signinText,
+  .signinArrow {
+    transition: none;
+  }
+}
+
+/* Hero */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 67px 16px 64px;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  /* 70% of the Figma size */
+  font-size: 90px;
+  font-weight: 400;
+  line-height: 103px;
+}
+
+.subtitle {
+  max-width: 936px;
+  margin: 14px 0 0;
+  color: var(--text-muted);
+  font-size: 22px;
+}
+
+.cta {
+  display: grid;
+  place-items: center;
+  /* 65% of the Figma size */
+  width: 227px;
+  height: 66px;
+  margin-top: 60px;
+  padding-top: 5px;
+  background: var(--accent);
+  border-radius: 44px;
+  font-family: var(--font-khula), sans-serif;
+  font-size: 31px;
+  transition: filter 0.15s;
+}
+
+.cta:hover {
+  filter: brightness(1.08);
+}
+
+.ctaNote {
+  margin: 6px 0 0;
+  font-family: var(--font-montserrat-alternates), sans-serif;
+  font-size: 24px;
+  opacity: 0.47;
+}
+
+/* Narrow screens */
+
+@media (max-width: 1080px) {
+  .nav {
+    gap: 40px;
+    margin: 0 auto;
+  }
+  .auth {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 960px) {
+  .nav {
+    display: none;
+  }
+  .auth {
+    margin-left: auto;
+  }
+  .title {
+    font-size: 56px;
+    line-height: 1.15;
+  }
+  .subtitle {
+    font-size: 14px;
+  }
+  .cta {
+    width: 169px;
+    height: 49px;
+    margin-top: 56px;
+    padding-top: 4px;
+    font-size: 23px;
+  }
+  .ctaNote {
+    font-size: 18px;
+  }
+}

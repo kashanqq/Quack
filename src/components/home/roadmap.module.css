@@ -1,0 +1,131 @@
+/* Roadmap: nodes appear one by one, the group re-centres, lines grow between them */
+
+.roadmap {
+  --step: 216px;
+  --node: 80px;
+  /* px per unit of --y; nodes sit between -36 and +36 units off the axis */
+  --amp: 1px;
+  --ease: cubic-bezier(0.65, 0, 0.35, 1);
+  position: relative;
+  width: 100%;
+  height: calc(var(--node) + 72 * var(--amp));
+  margin-top: 93px;
+}
+
+.step {
+  position: absolute;
+  top: calc(36 * var(--amp));
+  left: 50%;
+  width: var(--node);
+  height: var(--node);
+  margin-left: calc(var(--node) / -2);
+  translate: calc(var(--pos, 0) * var(--step)) calc(var(--y, 0) * var(--amp));
+  opacity: 0;
+  scale: 0.6;
+  transition:
+    translate 0.9s var(--ease),
+    opacity 0.6s ease 0.55s,
+    scale 0.7s var(--ease) 0.55s;
+}
+
+.step.visible {
+  opacity: 1;
+  scale: 1;
+}
+
+/* Each line runs from this node's centre to the next one, which sits higher or lower */
+.stepLine {
+  --rise: calc((var(--y-next, 0) - var(--y, 0)) * var(--amp));
+  position: absolute;
+  top: calc(var(--node) / 2);
+  left: calc(var(--node) / 2);
+  width: hypot(var(--step), var(--rise));
+  height: 1px;
+  transform: rotate(atan2(var(--rise), var(--step))) scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.8s var(--ease) 0.3s;
+}
+
+.step.hasLine .stepLine {
+  transform: rotate(atan2(var(--rise), var(--step))) scaleX(1);
+}
+
+.stepNode {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.stepLabel {
+  position: absolute;
+  top: 4px;
+  left: -28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 9px 0 7px;
+  background: #131415;
+  border-radius: 16px;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.stepDot {
+  position: relative;
+  width: 11px;
+  height: 10px;
+}
+
+.dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.dotActive {
+  width: 11px;
+}
+
+.step[data-state="pending"] .dotPending,
+.step[data-state="active"] .dotActive,
+.step[data-state="done"] .dotDone {
+  opacity: 1;
+}
+
+.roadmap.noAnim .step,
+.roadmap.noAnim .stepLine,
+.roadmap.noAnim .dot {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step,
+  .stepLine,
+  .dot {
+    transition: none;
+  }
+}
+
+
+@media (max-width: 960px) {
+  .roadmap {
+    --step: 66px;
+    --node: 44px;
+    margin-top: 40px;
+  }
+  .stepLabel {
+    top: 0;
+    left: -20px;
+    gap: 4px;
+    height: 22px;
+    padding: 0 6px;
+    font-size: 11px;
+  }
+}
