@@ -1,0 +1,32 @@
+{
+  "README.md": {
+    "mtime": 1789652944.07608,
+    "seen": 1789657243.142158,
+    "ast_hash": "06f9c9e20f468841eedf125ec3b399a5",
+    "semantic_hash": "06f9c9e20f468841eedf125ec3b399a5"
+  },
+  "ssot/arch-logic.md": {
+    "mtime": 1789652944.0750806,
+    "seen": 1789657243.1421623,
+    "ast_hash": "29e8c2afaa1c7efeb324d86dc9df2dd5",
+    "semantic_hash": "29e8c2afaa1c7efeb324d86dc9df2dd5"
+  },
+  "ssot/memory-architecture-quack.md": {
+    "mtime": 1789645256.3487103,
+    "seen": 1789657243.1421642,
+    "ast_hash": "af7c2df1c66bc9e766b6ad02f61f5a73",
+    "semantic_hash": "af7c2df1c66bc9e766b6ad02f61f5a73"
+  },
+  "ssot/product-logic.md": {
+    "mtime": 1789652944.1000803,
+    "seen": 1789657243.1421652,
+    "ast_hash": "8a2e6bff896db266036aca7166cd6878",
+    "semantic_hash": "8a2e6bff896db266036aca7166cd6878"
+  },
+  "ssot/tech-stack.md": {
+    "mtime": 1789652444.679165,
+    "seen": 1789657243.142166,
+    "ast_hash": "c314560b44f84d3d52a1bbaaf9d5675c",
+    "semantic_hash": "c314560b44f84d3d52a1bbaaf9d5675c"
+  }
+}
