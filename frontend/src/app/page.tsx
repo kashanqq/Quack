@@ -1,5 +1,5 @@
 import { copy } from "@/components/home/copy";
-import { GridBackground } from "@/components/home/GridBackground";
+import { CursorAura } from "@/components/home/CursorAura";
 import { QuackSection } from "@/components/home/QuackSection";
 import { Roadmap } from "@/components/home/Roadmap";
 import { SiteHeader } from "@/components/home/SiteHeader";
@@ -11,8 +11,8 @@ export default function HomePage() {
 
   return (
     <div className={styles.page}>
-      {/* Fixed behind everything: the grid stays put while the sections scroll over it. */}
-      <GridBackground />
+      {/* Fixed behind everything: the aura trails the cursor under the content. */}
+      <CursorAura />
 
       <div className={styles.content}>
         <SiteHeader />
@@ -24,7 +24,7 @@ export default function HomePage() {
 
           <Roadmap />
 
-          <TransitionLink className={styles.cta} href="/choice">
+          <TransitionLink className={styles.cta} href="/choice" data-aura>
             {t.cta}
           </TransitionLink>
 

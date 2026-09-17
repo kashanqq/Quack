@@ -1,15 +1,15 @@
-/* "Quack?" section: a list of three things on the left, a live demo on the right.
-   Both surfaces are light, so the block reads as a card lifted off the dark page. */
+/* "Quack?" section: the globe on the left, the list and its demo panel in the
+   middle, a lane of ducks down the right. Surfaces use the same dark palette as
+   the "Выбор" section, so the landing shows the product in its own colours. */
 
 .section {
-  --panel-light: #d8d3cd;
-  --panel-soft: #ece8e3;
-  --panel-ink: #2a2725;
-  --panel-ink-dim: rgba(42, 39, 37, 0.62);
-  --panel-line: rgba(42, 39, 37, 0.1);
+  --panel-bg: #242120;
+  --panel-soft: #1f1d1b;
+  --panel-ink: #ffffff;
+  --panel-ink-dim: rgba(255, 255, 255, 0.6);
+  --panel-line: rgba(255, 255, 255, 0.09);
   --pill: #4c4743;
-  /* Orange that stays readable on the light panels, unlike --accent */
-  --accent-ink: #b4560c;
+  --accent-ink: var(--accent);
 
   position: relative;
   z-index: 1;
@@ -29,17 +29,42 @@
   line-height: 1;
 }
 
-.body {
+/* Stage: globe | list + panel | duck lane.
+   The duck lane is absolutely placed inside the section, so it costs no layout
+   width; the stage just reserves a gutter for it on wide screens. */
+
+.stage {
+  position: relative;
   display: flex;
-  gap: 24px;
-  width: min(1028px, 100%);
+  align-items: center;
+  gap: 30px;
+  width: min(1460px, 100%);
+  padding-right: 140px;
 }
 
-/* Left: the three items, with a highlight that slides between them.
+.globeWrap {
+  flex: 0 0 300px;
+}
+
+/* The wrapper keeps its layout box while the block inside is scaled, so the
+   scroll measurement never feeds back on itself. */
+.mainWrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.main {
+  display: flex;
+  gap: 24px;
+  scale: var(--grow, 1);
+  transform-origin: center center;
+}
+
+/* Left of the panel: the three items, with a highlight that slides between them.
    The Wrap elements are the scroll-reveal wrappers, so they carry the flex sizing. */
 
 .tabsWrap {
-  flex: 0 0 348px;
+  flex: 0 0 320px;
 }
 
 .panelWrap {
@@ -56,7 +81,8 @@
   flex-direction: column;
   gap: var(--gap);
   padding: var(--pad);
-  background: var(--panel-light);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-line);
   border-radius: 26px;
 }
 
@@ -82,7 +108,7 @@
   padding: 0 18px;
   border: 0;
   background: none;
-  color: var(--panel-ink);
+  color: var(--panel-ink-dim);
   font-family: var(--font-mono);
   font-size: 16px;
   text-align: left;
@@ -105,7 +131,8 @@
   min-height: 440px;
   padding: 26px 30px;
   overflow: hidden;
-  background: var(--panel-light);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-line);
   border-radius: 26px;
 }
 
@@ -247,7 +274,7 @@
 
 .uniTag {
   padding: 5px 12px;
-  background: rgba(42, 39, 37, 0.08);
+  background: rgba(255, 255, 255, 0.07);
   border-radius: 999px;
   color: var(--panel-ink);
   font-family: var(--font-text);
@@ -267,14 +294,14 @@
   padding: 0;
   overflow: hidden;
   border: 0;
-  background: rgba(42, 39, 37, 0.16);
+  background: rgba(255, 255, 255, 0.14);
   border-radius: 999px;
   cursor: pointer;
   transition: background 0.3s ease;
 }
 
 .dot:hover {
-  background: rgba(42, 39, 37, 0.3);
+  background: rgba(255, 255, 255, 0.28);
 }
 
 /* Fills over the life of the visible card, so the dots double as a timer. */
@@ -327,7 +354,7 @@
   width: 34px;
   height: 34px;
   overflow: hidden;
-  background: rgba(42, 39, 37, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 50%;
 }
 
@@ -474,6 +501,34 @@
   font-size: 13px;
 }
 
+/* No room for the duck lane: drop its gutter as well (the lane hides itself). */
+
+@media (max-width: 1240px) {
+  .stage {
+    padding-right: 0;
+  }
+}
+
+/* The globe moves above the block instead of beside it. */
+
+@media (max-width: 1080px) {
+  .stage {
+    flex-direction: column;
+    gap: 26px;
+  }
+  .globeWrap {
+    flex: none;
+    width: min(300px, 100%);
+  }
+  .mainWrap {
+    width: 100%;
+  }
+  /* Growing on scroll needs horizontal slack; there is none left here. */
+  .main {
+    scale: 1;
+  }
+}
+
 /* Narrow screens: the list sits above the panel, the highlight still slides down it */
 
 @media (max-width: 900px) {
@@ -481,7 +536,7 @@
     margin-bottom: 30px;
     font-size: 44px;
   }
-  .body {
+  .main {
     flex-direction: column;
   }
   .tabsWrap {
@@ -550,6 +605,9 @@
   .uniCard,
   .tempoItem {
     transition: none;
+  }
+  .main {
+    scale: 1;
   }
   .turn,
   .dotFill,

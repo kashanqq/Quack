@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { PROGRAMS, type Program } from "@/components/choice/programs";
 import { copy } from "./copy";
 import styles from "./quack.module.css";
@@ -25,18 +26,35 @@ function admissionOf(p: Program): string {
   return parts.join(" · ");
 }
 
+/** How long the carousel holds still after the globe sends it a program. */
+const PIN_MS = 12000;
+
 type UniCarouselProps = {
   /** True while this is the open tab — the carousel only runs when it is visible. */
   active: boolean;
+  /** Program id picked on the globe; jumps to that card and holds it for a while. */
+  focusId?: string | null;
 };
 
 /**
  * Cycles through demo programs, one every five seconds. Every card stays mounted
  * and cross-fades, so a card leaves while the next one is already arriving.
  */
-export function UniCarousel({ active }: UniCarouselProps) {
-  const [index, setIndex] = useRotator(PROGRAMS.length, CARD_S * 1000, !active);
+export function UniCarousel({ active, focusId }: UniCarouselProps) {
+  const [pinned, setPinned] = useState(false);
+  const [index, setIndex] = useRotator(PROGRAMS.length, CARD_S * 1000, !active || pinned);
   const t = copy.quack.uni;
+
+  // A pick on the globe wins over the timer, but only for long enough to read it.
+  useEffect(() => {
+    if (!focusId) return;
+    const i = PROGRAMS.findIndex((p) => p.id === focusId);
+    if (i < 0) return;
+    setIndex(i);
+    setPinned(true);
+    const timer = setTimeout(() => setPinned(false), PIN_MS);
+    return () => clearTimeout(timer);
+  }, [focusId, setIndex]);
 
   return (
     <div className={styles.uni}>
@@ -98,9 +116,9 @@ export function UniCarousel({ active }: UniCarouselProps) {
             {/* Restarts on every change, so the fill always tracks the live card. */}
             {i === index && (
               <span
-                key={`${index}-${active}`}
+                key={`${index}-${active}-${pinned}`}
                 className={styles.dotFill}
-                style={{ animationDuration: active ? `${CARD_S}s` : "0s" }}
+                style={{ animationDuration: active && !pinned ? `${CARD_S}s` : "0s" }}
               />
             )}
           </button>
