@@ -25,6 +25,8 @@ export type Program = {
   ieltsMin: number;
   satMin?: number;
   deadline: string;
+  /** Application round, where the university runs one (demo data) */
+  round?: "single-choice-early" | "early-decision" | "regular";
   warm: boolean;
   megacity: boolean;
   research: "сильная" | "средняя";
@@ -82,7 +84,8 @@ export const PROGRAMS: Program[] = [
     costEur: 2800,
     ieltsMin: 6.5,
     satMin: 1250,
-    deadline: "1 апреля",
+    deadline: "16 декабря",
+    round: "early-decision",
     warm: true,
     megacity: false,
     research: "сильная",
@@ -138,6 +141,7 @@ export const PROGRAMS: Program[] = [
     ieltsMin: 7.0,
     satMin: 1450,
     deadline: "15 декабря",
+    round: "single-choice-early",
     warm: false,
     megacity: false,
     research: "сильная",

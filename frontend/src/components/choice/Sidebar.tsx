@@ -5,17 +5,14 @@ import type { Profile } from "./assistant";
 import { Icon, type IconName } from "./Icon";
 import { LevelDot, type ProgramActions } from "./ProgramUi";
 import { evaluate, programById } from "./programs";
+import { PREP_TABS, type PrepTab } from "../prep/prepModel";
+import { UserMenu } from "./UserMenu";
 import styles from "./layout.module.css";
 
-export type Mode = "choice" | "prep";
+export type Mode = "dashboard" | "choice" | "prep";
 export type SidebarTab = "picks" | "saved" | "compare";
 
 export type ChatSummary = { id: string; title: string; updatedAt: number };
-
-const MODES: { mode: Mode; label: string; icon: IconName }[] = [
-  { mode: "choice", label: "Выбор", icon: "graduation-cap" },
-  { mode: "prep", label: "Подготовка", icon: "book-open-check" },
-];
 
 const TABS: { tab: SidebarTab; label: string; icon: IconName }[] = [
   { tab: "picks", label: "Подборка", icon: "sparkles" },
@@ -26,7 +23,6 @@ const TABS: { tab: SidebarTab; label: string; icon: IconName }[] = [
 type SidebarProps = {
   collapsed: boolean;
   mode: Mode;
-  onMode: (mode: Mode) => void;
   tab: SidebarTab;
   onTab: (tab: SidebarTab) => void;
   picks: string[];
@@ -34,11 +30,13 @@ type SidebarProps = {
   actions: ProgramActions;
   chats: ChatSummary[];
   activeChatId: string | null;
-  onNewChat: () => void;
   onSelectChat: (id: string) => void;
   onDeleteChat: (id: string) => void;
   onToggle: () => void;
   onOpenCompare: () => void;
+  onRestart: () => void;
+  prepTab: PrepTab;
+  onPrepTab: (tab: PrepTab) => void;
 };
 
 const timeLabel = (ts: number) => {
@@ -50,11 +48,11 @@ const timeLabel = (ts: number) => {
 };
 
 /**
- * Left column: section switch (Выбор / Подготовка) at the top, like Claude's Chat / Code,
- * then programs (picks, favourites, comparison) and chat history. Collapses to an icon rail.
+ * Left column: programs (picks, favourites, comparison), chat history and the account at the bottom.
+ * Collapses to an icon rail.
  */
 export function Sidebar(props: SidebarProps) {
-  const { collapsed, mode, onMode, tab, onTab, picks, profile, actions, chats, activeChatId } = props;
+  const { collapsed, mode, tab, onTab, picks, profile, actions, chats, activeChatId } = props;
   const historyRef = useRef<HTMLElement>(null);
 
   const counts: Record<SidebarTab, number> = {
@@ -63,38 +61,34 @@ export function Sidebar(props: SidebarProps) {
     compare: actions.compare.length,
   };
 
-  const modeSwitch = (
-    <div className={`${styles.modeSwitch} ${collapsed ? styles.modeSwitchRail : ""}`} role="tablist" aria-label="Раздел">
-      {MODES.map((m) => (
-        <button
-          key={m.mode}
-          type="button"
-          role="tab"
-          aria-selected={mode === m.mode}
-          className={styles.modeButton}
-          title={m.label}
-          onClick={() => onMode(m.mode)}
-        >
-          <Icon name={m.icon} size={18} />
-          {!collapsed && <span>{m.label}</span>}
-        </button>
-      ))}
-    </div>
-  );
-
   if (collapsed) {
     return (
       <div className={styles.rail}>
         <button type="button" className={styles.iconButton} aria-label="Развернуть левую панель" onClick={props.onToggle}>
           <Icon name="panel-left-open" />
         </button>
-        {modeSwitch}
-        {mode === "choice" && (
+        <span className={styles.railDivider} />
+        {mode === "prep" && (
           <>
             <span className={styles.railDivider} />
-            <button type="button" className={styles.iconButton} aria-label="Новый чат" title="Новый чат" onClick={props.onNewChat}>
-              <Icon name="plus" />
-            </button>
+            {PREP_TABS.map((t) => (
+              <button
+                key={t.tab}
+                type="button"
+                className={styles.iconButton}
+                aria-label={t.label}
+                title={t.label}
+                aria-pressed={props.prepTab === t.tab}
+                onClick={() => props.onPrepTab(t.tab)}
+              >
+                <Icon name={t.icon} />
+              </button>
+            ))}
+          </>
+        )}
+        {mode !== "prep" && (
+          <>
+            <span className={styles.railDivider} />
             {TABS.map(({ tab: t, label, icon }) => (
               <button
                 key={t}
@@ -130,6 +124,9 @@ export function Sidebar(props: SidebarProps) {
             </button>
           </>
         )}
+        <div className={styles.railFoot}>
+          <UserMenu onRestart={props.onRestart} compact />
+        </div>
       </div>
     );
   }
@@ -139,7 +136,7 @@ export function Sidebar(props: SidebarProps) {
   return (
     <div className={styles.sidebarInner}>
       <div className={styles.sidebarHead}>
-        {modeSwitch}
+        <p className={styles.sidebarSection}>{mode === "prep" ? "Подготовка" : mode === "dashboard" ? "Дашборд" : "Выбор"}</p>
         <button type="button" className={styles.iconButton} aria-label="Свернуть левую панель" onClick={props.onToggle}>
           <Icon name="panel-left-close" />
         </button>
@@ -147,25 +144,30 @@ export function Sidebar(props: SidebarProps) {
 
       {mode === "prep" ? (
         <div className={styles.sidebarScroll} key="prep">
-          <p className={styles.sectionLabel}>Подготовка</p>
           <ul className={styles.list}>
-            {["Обзор", "Сеты", "Текущий сет"].map((item) => (
-              <li key={item} className={`${styles.row} ${styles.rowDisabled}`}>
-                <span className={styles.rowMain}>
-                  <span className={styles.rowTitle}>{item}</span>
-                </span>
-                <span className={styles.soon}>скоро</span>
+            {PREP_TABS.map((t, i) => (
+              <li
+                key={t.tab}
+                className={`${styles.row} ${props.prepTab === t.tab ? styles.rowActive : ""}`}
+                style={{ animationDelay: `${i * 30}ms` }}
+              >
+                <button
+                  type="button"
+                  className={styles.rowMain}
+                  aria-current={props.prepTab === t.tab}
+                  onClick={() => props.onPrepTab(t.tab)}
+                >
+                  <Icon name={t.icon} size={16} className={styles.rowIcon} />
+                  <span className={styles.rowText}>
+                    <span className={styles.rowTitle}>{t.label}</span>
+                  </span>
+                </button>
               </li>
             ))}
           </ul>
         </div>
       ) : (
         <div className={styles.sidebarScroll} key="choice">
-          <button type="button" className={styles.newChat} onClick={props.onNewChat}>
-            <Icon name="plus" size={18} />
-            Новый чат
-          </button>
-
           <section className={styles.section} aria-label="Программы">
             <p className={styles.sectionLabel}>Программы</p>
             <div className={styles.tabs} role="tablist">
@@ -276,6 +278,9 @@ export function Sidebar(props: SidebarProps) {
           </section>
         </div>
       )}
+      <div className={styles.sidebarFoot}>
+        <UserMenu onRestart={props.onRestart} />
+      </div>
     </div>
   );
 }

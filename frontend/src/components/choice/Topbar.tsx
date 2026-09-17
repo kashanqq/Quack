@@ -1,94 +1,90 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { usePageTransition } from "@/components/transition/TransitionProvider";
-import { TransitionLink } from "@/components/transition/TransitionLink";
-import { Icon } from "./Icon";
+import { Duck } from "@/components/duck/Duck";
+import { Icon, type IconName } from "./Icon";
+import { ProfileToggle } from "./ProfilePanel";
+import type { Mode } from "./Sidebar";
 import styles from "./choice.module.css";
 import layout from "./layout.module.css";
 
 type TopbarProps = {
-  onRestart: () => void;
-  /** Toggle for the "Как я тебя вижу" panel; omitted while it isn't available */
-  profilePanel?: { open: boolean; onToggle: () => void };
-  /** Opens the left column (programs, chats) on phones */
-  onOpenPrograms: () => void;
+  mode: Mode;
+  onMode: (mode: Mode) => void;
+  /** Opens the left column (programs, chats, account) on phones */
+  onOpenMenu: () => void;
+  /** Toggle for the student profile; omitted while it isn't available */
+  profilePanel?: { open: boolean; readiness: number; onToggle: () => void };
 };
 
-export function Topbar({ onRestart, profilePanel, onOpenPrograms }: TopbarProps) {
-  const { runWithLoader } = usePageTransition();
-  const [open, setOpen] = useState(false);
-  const userRef = useRef<HTMLDivElement>(null);
+const MODES: { mode: Mode; label: string; icon: IconName }[] = [
+  { mode: "choice", label: "Выбор", icon: "graduation-cap" },
+  { mode: "prep", label: "Подготовка", icon: "book-open-check" },
+];
 
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (!userRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("click", onClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("click", onClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
+/** Выбор · Quack! · Подготовка — the logo in the middle opens the dashboard. */
+export function Topbar({ mode, onMode, onOpenMenu, profilePanel }: TopbarProps) {
   return (
     <header className={styles.topbar}>
-      <TransitionLink className={styles.topbarLogo} href="/">
-        Quack<span className={styles.accent}>!</span>
-      </TransitionLink>
-
-      <div className={styles.user} ref={userRef}>
-        <button
-          className={styles.userButton}
-          type="button"
-          aria-haspopup="menu"
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-        >
-          <img className={styles.userAvatar} src="/assets/avatar.svg" alt="" />
-          <span className={styles.userName}>user_name</span>
-          <img className={styles.userChevron} src="/assets/chevron-down.svg" alt="" />
+      <div className={styles.topbarSide}>
+        <button type="button" className={`${layout.iconButton} ${styles.menuButton} ${styles.glass}`} aria-label="Меню: программы и чаты" onClick={onOpenMenu}>
+          <Icon name="menu" />
         </button>
-        <div className={`${styles.userMenu} ${open ? styles.isOpen : ""}`} role="menu">
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              runWithLoader(onRestart);
-            }}
-          >
-            Начать заново
-          </button>
-          <TransitionLink role="menuitem" href="/">
-            Выйти
-          </TransitionLink>
-        </div>
       </div>
 
-      <div className={styles.topbarActions}>
+      <div className={styles.modeSwitch} role="tablist" aria-label="Раздел">
         <button
           type="button"
-          className={`${layout.iconButton} ${styles.mobileOnly}`}
-          aria-label="Меню: программы и чаты"
-          onClick={onOpenPrograms}
+          role="tab"
+          aria-selected={mode === "choice"}
+          className={`${styles.modeButton} ${styles.glass}`}
+          title={MODES[0].label}
+          onClick={() => onMode("choice")}
         >
-          <Icon name="graduation-cap" />
+          <Icon name={MODES[0].icon} size={18} />
+          <span className={styles.modeLabel}>{MODES[0].label}</span>
         </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "dashboard"}
+          className={styles.topbarLogo}
+          title="Дашборд"
+          onClick={() => onMode("dashboard")}
+        >
+          Quack<span className={styles.accent}>!</span>
+          {/* The duck walks along the wordmark while the dashboard is open */}
+          {mode === "dashboard" && (
+            <span className={styles.logoTrack} aria-hidden="true">
+              <span className={styles.logoDuck}>
+                <span>
+                  <Duck />
+                </span>
+              </span>
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "prep"}
+          className={`${styles.modeButton} ${styles.glass}`}
+          title={MODES[1].label}
+          onClick={() => onMode("prep")}
+        >
+          <Icon name={MODES[1].icon} size={18} />
+          <span className={styles.modeLabel}>{MODES[1].label}</span>
+        </button>
+      </div>
+
+      <div className={`${styles.topbarSide} ${styles.topbarRight}`}>
         {profilePanel && (
-          <button
-            type="button"
-            className={layout.iconButton}
-            aria-label={profilePanel.open ? "Скрыть «Как я тебя вижу»" : "Показать «Как я тебя вижу»"}
-            title="Как я тебя вижу"
-            aria-pressed={profilePanel.open}
+          <ProfileToggle
+            open={profilePanel.open}
+            readiness={profilePanel.readiness}
             onClick={profilePanel.onToggle}
-          >
-            <Icon name={profilePanel.open ? "panel-right-close" : "panel-right-open"} />
-          </button>
+          />
         )}
       </div>
     </header>
