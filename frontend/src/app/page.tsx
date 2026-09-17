@@ -1,29 +1,47 @@
+import { copy } from "@/components/home/copy";
+import { CursorAura } from "@/components/home/CursorAura";
+import { QuackSection } from "@/components/home/QuackSection";
 import { Roadmap } from "@/components/home/Roadmap";
 import { SiteHeader } from "@/components/home/SiteHeader";
 import styles from "@/components/home/home.module.css";
 import { TransitionLink } from "@/components/transition/TransitionLink";
 
 export default function HomePage() {
+  const t = copy.hero;
+
   return (
-    <div className={styles.page} lang="en">
-      <SiteHeader />
+    <div className={styles.page}>
+      {/* Fixed behind everything: the aura trails the cursor under the content. */}
+      <CursorAura />
 
-      <main className={styles.hero}>
-        <h1 className={styles.title}>
-          Quack<span className={styles.accent}>!</span>
-        </h1>
-        <p className={styles.subtitle}>
-          Your companion for finding the <span className={styles.accentSoft}>right university</span> and building a
-          study plan to get in.
-        </p>
+      <div className={styles.content}>
+        <SiteHeader />
 
-        <Roadmap />
+        <main className={styles.hero}>
+          <h1 className={styles.title}>
+            Quack<span className={styles.accent}>!</span>
+          </h1>
 
-        <TransitionLink className={styles.cta} href="/choice">
-          Let’s go
-        </TransitionLink>
-        <p className={styles.ctaNote}>Free to start</p>
-      </main>
+          <Roadmap />
+
+          <TransitionLink className={styles.cta} href="/choice" data-aura>
+            {t.cta}
+          </TransitionLink>
+
+          <p className={styles.subtitle}>
+            {t.subtitleBefore}
+            <span className={styles.accentSoft}>{t.subtitleAccent}</span>
+            {t.subtitleAfter}
+          </p>
+
+          <span className={styles.scrollHint} aria-hidden="true">
+            {t.scrollHint}
+            <i className={styles.scrollArrow} />
+          </span>
+        </main>
+
+        <QuackSection />
+      </div>
     </div>
   );
 }
