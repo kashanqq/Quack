@@ -6,6 +6,7 @@ import type { Profile } from "./assistant";
 import { Icon, type IconName } from "./Icon";
 import { LevelDot, type ProgramActions } from "./ProgramUi";
 import { evaluate, programById } from "./programs";
+import { PREP_TABS, type PrepTab } from "../prep/prepModel";
 import { UserMenu } from "./UserMenu";
 import styles from "./layout.module.css";
 
@@ -42,6 +43,8 @@ type SidebarProps = {
   onToggle: () => void;
   onOpenCompare: () => void;
   onRestart: () => void;
+  prepTab: PrepTab;
+  onPrepTab: (tab: PrepTab) => void;
 };
 
 const timeLabel = (ts: number) => {
@@ -96,6 +99,24 @@ export function Sidebar(props: SidebarProps) {
           <Icon name="panel-left-open" />
         </button>
         {modeSwitch}
+        {mode === "prep" && (
+          <>
+            <span className={styles.railDivider} />
+            {PREP_TABS.map((t) => (
+              <button
+                key={t.tab}
+                type="button"
+                className={styles.iconButton}
+                aria-label={t.label}
+                title={t.label}
+                aria-pressed={props.prepTab === t.tab}
+                onClick={() => props.onPrepTab(t.tab)}
+              >
+                <Icon name={t.icon} />
+              </button>
+            ))}
+          </>
+        )}
         {mode === "choice" && (
           <>
             <span className={styles.railDivider} />
@@ -162,12 +183,23 @@ export function Sidebar(props: SidebarProps) {
         <div className={styles.sidebarScroll} key="prep">
           <p className={styles.sectionLabel}>Подготовка</p>
           <ul className={styles.list}>
-            {["Обзор", "Сеты", "Текущий сет"].map((item) => (
-              <li key={item} className={`${styles.row} ${styles.rowDisabled}`}>
-                <span className={styles.rowMain}>
-                  <span className={styles.rowTitle}>{item}</span>
-                </span>
-                <span className={styles.soon}>скоро</span>
+            {PREP_TABS.map((t, i) => (
+              <li
+                key={t.tab}
+                className={`${styles.row} ${props.prepTab === t.tab ? styles.rowActive : ""}`}
+                style={{ animationDelay: `${i * 30}ms` }}
+              >
+                <button
+                  type="button"
+                  className={styles.rowMain}
+                  aria-current={props.prepTab === t.tab}
+                  onClick={() => props.onPrepTab(t.tab)}
+                >
+                  <Icon name={t.icon} size={16} className={styles.rowIcon} />
+                  <span className={styles.rowText}>
+                    <span className={styles.rowTitle}>{t.label}</span>
+                  </span>
+                </button>
               </li>
             ))}
           </ul>

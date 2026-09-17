@@ -18,6 +18,8 @@ import {
   type FieldKey,
   type Profile,
 } from "./assistant";
+import { PrepView } from "../prep/PrepView";
+import type { PrepTab } from "../prep/prepModel";
 import { ChatMessage, type ChatMsg } from "./ChatMessage";
 import { CompareView } from "./CompareView";
 import { CustomScrollbar } from "./CustomScrollbar";
@@ -64,6 +66,7 @@ const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
 export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const [stage, setStage] = useState<"intro" | "chat">("intro");
   const [mode, setMode] = useState<Mode>("choice");
+  const [prepTab, setPrepTab] = useState<PrepTab>("overview");
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
   const [confirmed, setConfirmed] = useState(false);
   const [versions, setVersions] = useState<Partial<Record<FieldKey, number>>>({});
@@ -569,6 +572,12 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
             onToggle={mobileProgramsOpen ? () => setMobileProgramsOpen(false) : toggleLeft}
             onOpenCompare={openCompare}
             onRestart={restart}
+            prepTab={prepTab}
+            onPrepTab={(tab) => {
+              setMode("prep");
+              setPrepTab(tab);
+              setMobileProgramsOpen(false);
+            }}
           />
           <ResizeHandle
             side="left"
@@ -657,12 +666,9 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
             </div>
 
             <div className={`${styles.view} ${styles.viewPrep}`} aria-hidden={mode !== "prep"}>
-              <h2 className={styles.prepTitle}>Подготовка</h2>
-              <p className={styles.prepText}>
-                {saved.length
-                  ? "Скоро здесь появятся требования, вехи и первый сет — по программам из избранного."
-                  : "Откроется, когда ты сохранишь первую программу: здесь появятся требования, вехи и первый сет."}
-              </p>
+              {mode === "prep" && (
+                <PrepView tab={prepTab} onTab={setPrepTab} saved={saved} onGoToChoice={() => changeMode("choice")} />
+              )}
             </div>
 
             {toast && (

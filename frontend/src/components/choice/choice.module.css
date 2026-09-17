@@ -271,6 +271,11 @@
   padding-right: var(--left);
 }
 
+/* Preparation uses the whole width */
+.app[data-mode="prep"] .chat {
+  padding-right: 0;
+}
+
 .app[data-view="compare"] .composer {
   opacity: 0;
   transform: translateY(16px);
@@ -292,11 +297,6 @@
 }
 
 .viewPrep {
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  padding: 24px;
-  text-align: center;
   opacity: 0;
   transform: translateX(32px);
   pointer-events: none;
@@ -859,9 +859,7 @@
 }
 
 .app[data-mode="prep"] .composer {
-  opacity: 0;
-  transform: translateY(16px);
-  pointer-events: none;
+  display: none;
 }
 
 .composerInput {
