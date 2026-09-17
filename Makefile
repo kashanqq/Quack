@@ -7,25 +7,25 @@ down:
 	docker compose -f deploy/docker-compose.yml down
 
 api:
-	cd apps/api && uv run uvicorn app.main:create_app --factory --reload
+	cd backend && uv run uvicorn app.main:create_app --factory --reload
 
 worker-interactive:
-	cd apps/api && uv run arq app.workers.main.WorkerInteractive
+	cd backend && uv run arq app.workers.main.WorkerInteractive
 
 worker-bulk:
-	cd apps/api && uv run arq app.workers.main.WorkerBulk
+	cd backend && uv run arq app.workers.main.WorkerBulk
 
 seed:
-	cd apps/api && uv run python ../../scripts/seed.py
+	cd backend && uv run python ../scripts/seed.py
 
 test:
-	cd apps/api && uv run pytest -m "not integration"
+	cd backend && uv run pytest -m "not integration"
 
 test-int:
-	cd apps/api && uv run pytest
+	cd backend && uv run pytest
 
 types:
 	bash scripts/gen_types.sh
 
 lint:
-	cd apps/api && uv run ruff check . && uv run ruff format --check .
+	cd backend && uv run ruff check . && uv run ruff format --check .
