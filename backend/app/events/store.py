@@ -78,6 +78,8 @@ async def append(
     redis: Redis,
     ev: EventIn,
     deps: dispatcher.RuleDeps | None = None,
+    *,
+    dispatch_event: bool = True,
 ) -> Event:
     session_id = ev.session_id
     if session_id is None:
@@ -113,14 +115,15 @@ async def append(
         id=event_id,
         ingested_at=ingested_at,
     )
-    if deps is None:
-        deps = dispatcher.RuleDeps(
-            graph=None,
-            redis=redis,
-            params=settings.KNOWLEDGE,
-            now=lambda: datetime.now(UTC),
-        )
-    await dispatcher.dispatch(session, event, deps)
+    if dispatch_event:
+        if deps is None:
+            deps = dispatcher.RuleDeps(
+                graph=None,
+                redis=redis,
+                params=settings.KNOWLEDGE,
+                now=lambda: datetime.now(UTC),
+            )
+        await dispatcher.dispatch(session, event, deps)
     return event
 
 
