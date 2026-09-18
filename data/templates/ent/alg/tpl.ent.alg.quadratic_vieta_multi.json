@@ -1,0 +1,73 @@
+{
+  "id": "tpl.ent.alg.quadratic_vieta_multi",
+  "exam_id": "ENT_MATH",
+  "type": "multi_select",
+  "difficulty": 3,
+  "skill_id": "math.alg.quadratic_roots",
+  "tags": [
+    "vieta",
+    "roots",
+    "sign"
+  ],
+  "time_reference_sec": 120,
+  "kind": "template",
+  "params": {
+    "p": {
+      "range": [
+        -8,
+        8
+      ],
+      "choices": null
+    },
+    "q": {
+      "range": [
+        -12,
+        12
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "p*p - 4*q > 0",
+    "p != 0",
+    "q != 0"
+  ],
+  "stem": "Дано уравнение x² + {p}x + {q} = 0. Выберите все верные утверждения о его корнях x₁ и x₂.",
+  "correct": [
+    "x₁ + x₂ = −{p}",
+    "x₁ · x₂ = {q}"
+  ],
+  "distractors": [
+    {
+      "expr": "x₁ + x₂ = {p}",
+      "misconception_id": "lib.vieta_sign_confusion"
+    },
+    {
+      "expr": "x₁ · x₂ = −{q}",
+      "misconception_id": "lib.vieta_sign_confusion"
+    },
+    {
+      "expr": "дискриминант уравнения отрицательный",
+      "misconception_id": "lib.quadratic_no_check"
+    }
+  ],
+  "omission_traps": [
+    {
+      "omit": "x₁ + x₂ = −{p}",
+      "misconception_id": "lib.vieta_sign_confusion"
+    },
+    {
+      "omit": "x₁ · x₂ = {q}",
+      "misconception_id": "lib.vieta_sign_confusion"
+    }
+  ],
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "По теореме Виета для уравнения x² + {p}x + {q} = 0 сумма корней равна −{p}, а произведение равно {q}.",
+    "Дискриминант D = {p}² − 4·{q} = {p*p - 4*q} > 0, поэтому корни действительные и различные.",
+    "Следовательно, верными являются утверждения: x₁ + x₂ = −{p} и x₁ · x₂ = {q}."
+  ],
+  "generator": null,
+  "figure": null
+}

@@ -1,0 +1,64 @@
+{
+  "id": "tpl.ent.alg.ineq_quadratic_int_count",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 2,
+  "skill_id": "ent.alg.inequalities",
+  "tags": [
+    "quadratic_inequality",
+    "integer_solutions",
+    "interval_method"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "p": {
+      "range": [
+        -6,
+        -2
+      ],
+      "choices": null
+    },
+    "q": {
+      "range": [
+        2,
+        6
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "q - p >= 4"
+  ],
+  "stem": "Найдите количество целых решений неравенства (x − {p})(x − {q}) < 0.",
+  "correct": "q - p - 1",
+  "distractors": [
+    {
+      "expr": "q - p + 1",
+      "misconception_id": "lib.inequality_endpoint"
+    },
+    {
+      "expr": "q - p",
+      "misconception_id": "lib.inequality_endpoint"
+    },
+    {
+      "expr": "q - p - 2",
+      "misconception_id": null
+    },
+    {
+      "expr": "p - q + 1",
+      "misconception_id": "lib.inequality_sign_flip"
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Корни квадратного трёхчлена: x = {p} и x = {q}.",
+    "Так как старший коэффициент положителен, выражение отрицательно между корнями: {p} < x < {q}.",
+    "Целые числа в этом интервале: {p+1}, {p+2}, ..., {q-1}.",
+    "Их количество равно {q} − {p} − 1 = {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

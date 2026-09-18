@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from redis.exceptions import RedisError
 
 from app.llm.fake import FakeLLMClient
 from app.schemas.tasks import TaskTemplateSpec
@@ -108,6 +109,9 @@ class _FakeRedis:
     def from_url(cls, url):
         return cls()
 
+    async def ping(self):
+        return True
+
     async def aclose(self):
         return None
 
@@ -148,3 +152,44 @@ async def test_generation_drops_invalid_template_and_writes_only_the_valid_one(
     out = capsys.readouterr().out
     assert "1 отброшено" in out
     assert "distractors collapse" in out
+
+
+class _DownRedis:
+    @classmethod
+    def from_url(cls, url):
+        return cls()
+
+    async def ping(self):
+        raise RedisError("connection refused")
+
+    async def aclose(self):
+        return None
+
+
+async def test_run_stops_cleanly_when_redis_is_unreachable(monkeypatch, tmp_path):
+    gen_templates = _load_module()
+
+    def _fail_if_called(settings, redis):
+        raise AssertionError("LLMClient must not be constructed when redis is down")
+
+    monkeypatch.setattr(gen_templates, "LLMClient", _fail_if_called)
+    monkeypatch.setattr(gen_templates, "Redis", _DownRedis)
+
+    exit_code = await gen_templates.run(
+        [
+            "--exam",
+            "SAT_MATH",
+            "--area",
+            "alg",
+            "--skill",
+            "sat.alg.slope_lines",
+            "--n",
+            "1",
+            "--out",
+            str(tmp_path),
+            "--no-seed-validate",
+        ]
+    )
+
+    assert exit_code == 1
+    assert list(tmp_path.iterdir()) == []

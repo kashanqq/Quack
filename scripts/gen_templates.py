@@ -40,6 +40,7 @@ if hasattr(sys.stderr, "reconfigure"):
 
 from pydantic import BaseModel  # noqa: E402
 from redis.asyncio import Redis  # noqa: E402
+from redis.exceptions import RedisError  # noqa: E402
 
 from app.config import Settings  # noqa: E402
 from app.errors import LLMUnavailable  # noqa: E402
@@ -72,23 +73,51 @@ def _load_skills_doc(data_dir: Path, exam: str) -> dict:
     return _load_json(data_dir / "skills" / _SKILLS_FILE[exam])
 
 
-def _skills_for_area(skills_doc: dict, area3: str) -> list[dict]:
-    return [s for s in skills_doc["skills"] if s["id"].split(".")[1] == area3]
+def _load_all_skill_docs(data_dir: Path) -> list[dict]:
+    return [_load_json(path) for path in sorted((data_dir / "skills").glob("*.json"))]
+
+
+def _skill_descriptor_index(skill_docs: list[dict]) -> dict[str, dict]:
+    """Full skill descriptors (name, description, effort_h, ...), pooled
+    across every ``data/skills/*.json``. A skill shared by two exams
+    (00-contracts.md §4.1: ``math.<area3>.<name>``) is described once, in
+    whichever exam file owns it — ``ent_math.json``'s own ``areas[].skills``
+    only carries ``{id, weight}`` refs to it, so the description has to be
+    looked up here rather than assumed to live in the requested exam's file."""
+    index: dict[str, dict] = {}
+    for doc in skill_docs:
+        for skill in doc["skills"]:
+            index.setdefault(skill["id"], skill)
+    return index
+
+
+def _area_skill_ids(skills_doc: dict, area3: str) -> list[str]:
+    """The area's full skill membership (own and shared) from ``areas[]``,
+    not the exam file's flat ``skills`` list — that list is incomplete for
+    shared ``math.*`` skills described only in the other exam's file."""
+    for area in skills_doc.get("areas", []):
+        ids = [ref["id"] for ref in area["skills"]]
+        if any(skill_id.split(".")[1] == area3 for skill_id in ids):
+            return ids
+    return []
 
 
 def _select_skills(
-    skills_doc: dict, area3: str, explicit_ids: list[str] | None
+    skill_index: dict[str, dict],
+    skills_doc: dict,
+    area3: str,
+    explicit_ids: list[str] | None,
 ) -> list[dict]:
-    if explicit_ids:
-        by_id = {s["id"]: s for s in skills_doc["skills"]}
-        missing = [sid for sid in explicit_ids if sid not in by_id]
-        if missing:
-            raise SystemExit(f"unknown skill id(s): {', '.join(missing)}")
-        return [by_id[sid] for sid in explicit_ids]
-    found = _skills_for_area(skills_doc, area3)
-    if not found:
+    ids = explicit_ids if explicit_ids else _area_skill_ids(skills_doc, area3)
+    if not ids:
         raise SystemExit(f"no skills found for area {area3!r}")
-    return found
+    missing = [sid for sid in ids if sid not in skill_index]
+    if missing:
+        raise SystemExit(
+            "no description found in any data/skills/*.json for skill id(s): "
+            + ", ".join(missing)
+        )
+    return [skill_index[sid] for sid in ids]
 
 
 def _load_misconceptions(data_dir: Path) -> list[dict]:
@@ -222,10 +251,11 @@ async def run(argv: list[str] | None = None) -> int:
     out_dir = args.out if args.out is not None else area_dir
 
     skills_doc = _load_skills_doc(data_dir, args.exam)
-    skills = _select_skills(skills_doc, args.area, args.skill)
+    skill_index = _skill_descriptor_index(_load_all_skill_docs(data_dir))
+    skills = _select_skills(skill_index, skills_doc, args.area, args.skill)
     exam_format_doc = _load_exam_format(data_dir, args.exam)
     all_misconceptions = _load_misconceptions(data_dir)
-    area_skill_ids = [s["id"] for s in _skills_for_area(skills_doc, args.area)]
+    area_skill_ids = _area_skill_ids(skills_doc, args.area)
     area_misconceptions = _misconceptions_for_area(
         all_misconceptions, area_skill_ids, args.exam
     )
@@ -250,10 +280,21 @@ async def run(argv: list[str] | None = None) -> int:
 
     settings = Settings()
     redis = Redis.from_url(settings.REDIS_URL)
+    try:
+        await redis.ping()
+    except RedisError as exc:
+        print(
+            f"Redis недоступен ({settings.REDIS_URL}): {exc}. "
+            "Скрипт делит общий rate-limit бакет 'bulk' с рантаймом (delta §3.1) "
+            "и не может безопасно работать без него — подними Redis (make up) и повтори."
+        )
+        await redis.aclose()
+        return 1
     client = LLMClient(settings, redis)
 
     generated = 0
     passed = 0
+    skipped_existing: list[str] = []
     dropped: list[tuple[str, str]] = []
 
     try:
@@ -266,11 +307,22 @@ async def run(argv: list[str] | None = None) -> int:
                 continue
             for spec in result.templates:
                 generated += 1
-                errors = validate_template(spec, n_seeds=50)
+                out_path = out_dir / f"{spec.id}.json"
+                if out_path.exists():
+                    skipped_existing.append(spec.id)
+                    print(f"пропущен (уже существует): {spec.id}")
+                    continue
+                try:
+                    errors = validate_template(spec, n_seeds=50)
+                except Exception as exc:
+                    # a crash on one adversarial spec must not abort the
+                    # whole batch (and the templates already written for
+                    # other skills)
+                    dropped.append((spec.id, f"validation crashed: {exc!r}"))
+                    continue
                 if errors:
                     dropped.append((spec.id, "; ".join(errors)))
                     continue
-                out_path = out_dir / f"{spec.id}.json"
                 out_path.write_text(
                     json.dumps(
                         spec.model_dump(mode="json"), ensure_ascii=False, indent=2
@@ -284,6 +336,7 @@ async def run(argv: list[str] | None = None) -> int:
 
     print(f"сгенерировано: {generated}")
     print(f"прошло инварианты: {passed}")
+    print(f"{len(skipped_existing)} пропущено (template_id уже существует)")
     print(f"{len(dropped)} отброшено")
     for template_id, reason in dropped:
         print(f"  - {template_id}: {reason}")
