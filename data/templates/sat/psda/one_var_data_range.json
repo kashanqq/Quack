@@ -1,0 +1,40 @@
+{
+  "id": "tpl.sat.psda.one_var_data.range",
+  "exam_id": "SAT_MATH",
+  "type": "numeric",
+  "difficulty": 4,
+  "skill_id": "sat.psda.one_var_data",
+  "tags": [
+    "psda",
+    "one_var_data",
+    "range"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "What is the range of 4, 7, 13, and 19?",
+  "correct": "15",
+  "distractors": [],
+  "solution": [
+    "Use the one var data rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null,
+  "answer_forms": [
+    "integer",
+    "fraction",
+    "decimal:2"
+  ],
+  "trap_answers": [
+    {
+      "expr": "19",
+      "misconception_id": "lib.psda.range_min"
+    },
+    {
+      "expr": "23",
+      "misconception_id": null
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "id": "tpl.sat.psda.ratios_rates.unit_price",
+  "exam_id": "SAT_MATH",
+  "type": "numeric",
+  "difficulty": 4,
+  "skill_id": "sat.psda.ratios_rates",
+  "tags": [
+    "psda",
+    "ratios_rates",
+    "unit_price"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "Eight apples cost 12 units. What is the price of one apple?",
+  "correct": "3/2",
+  "distractors": [],
+  "solution": [
+    "Use the ratios rates rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null,
+  "answer_forms": [
+    "integer",
+    "fraction",
+    "decimal:2"
+  ],
+  "trap_answers": [
+    {
+      "expr": "2/3",
+      "misconception_id": "lib.psda.ratio_invert"
+    },
+    {
+      "expr": "4",
+      "misconception_id": null
+    }
+  ]
+}

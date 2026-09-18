@@ -1,0 +1,38 @@
+{
+  "id": "tpl.sat.psda.two_var_data.unit_rate",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 3,
+  "skill_id": "sat.psda.two_var_data",
+  "tags": [
+    "psda",
+    "two_var_data",
+    "unit_rate"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "Five hours of work earn 40 units. At the same rate, how much is earned in one hour?",
+  "correct": "8",
+  "distractors": [
+    {
+      "expr": "35",
+      "misconception_id": "lib.psda.slope_swap"
+    },
+    {
+      "expr": "200",
+      "misconception_id": null
+    },
+    {
+      "expr": "5",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the two var data rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

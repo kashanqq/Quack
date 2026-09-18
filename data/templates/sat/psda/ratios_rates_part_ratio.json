@@ -1,0 +1,59 @@
+{
+  "id": "tpl.sat.psda.ratios_rates.part_ratio",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 2,
+  "skill_id": "sat.psda.ratios_rates",
+  "tags": [
+    "psda",
+    "ratios_rates",
+    "part_ratio"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {
+    "a": {
+      "choices": [
+        2,
+        3
+      ]
+    },
+    "b": {
+      "choices": [
+        3,
+        4
+      ]
+    },
+    "k": {
+      "choices": [
+        5,
+        6
+      ]
+    }
+  },
+  "constraints": [
+    "a < b"
+  ],
+  "stem": "A class has boys:girls = {a}:{b}. Each ratio part represents {k} students. How many boys?",
+  "correct": "a*k",
+  "distractors": [
+    {
+      "expr": "b*k",
+      "misconception_id": "lib.psda.ratio_parts"
+    },
+    {
+      "expr": "k",
+      "misconception_id": null
+    },
+    {
+      "expr": "(a+b)*k",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the ratios rates rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

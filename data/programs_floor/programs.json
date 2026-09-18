@@ -1,32 +1,1083 @@
 [
   {
-    "id": "demo-kz-1", "university": "Demo KZ Campus One", "country": "KZ", "city": "Demo City", "direction": "Mathematics", "language": "English", "duration_months": 48, "tuition_per_year": null, "living_per_year": null, "currency": "KZT",
-    "requirements": [{"type": "exam_score", "exam_id": "ENT_MATH", "threshold": null, "comparator": "present", "description": "Demo exam record", "source": null}, {"type": "document", "exam_id": null, "threshold": null, "comparator": "present", "description": "Demo application document", "source": null}],
-    "deadlines": [{"kind": "application", "date": "2027-06-01", "round": null, "source": "https://example.invalid/demo-kz-1", "checked_at": "2026-09-18", "is_demo": true}],
-    "scholarships_note": "Demo grant example; no real award is represented.", "environment_text": "This is a fictional campus for interface testing. It does not describe a real university.", "source_url": "https://example.invalid/demo-kz-1", "checked_at": "2026-09-18", "is_demo": true, "extracted_auto": false, "flagged": false
+    "id": "demo-kz-01",
+    "university": "Demo KZ Institute 1",
+    "country": "KZ",
+    "city": "Almaty",
+    "direction": "Mathematics",
+    "language": "Kazakh",
+    "duration_months": 48,
+    "tuition_per_year": 800000,
+    "living_per_year": 1500000,
+    "currency": "KZT",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "ENT_MATH",
+        "threshold": 12,
+        "comparator": ">=",
+        "description": "Demo ENT_MATH threshold 12",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-04-10",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-kz-01",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": "Demo grant opportunity; eligibility and amount are fictional.",
+    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-kz-01",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
   },
   {
-    "id": "demo-kz-2", "university": "Demo KZ Campus Two", "country": "KZ", "city": "Demo City", "direction": "Engineering", "language": "English", "duration_months": 48, "tuition_per_year": null, "living_per_year": null, "currency": "KZT",
-    "requirements": [{"type": "exam_score", "exam_id": "ENT_MATH", "threshold": null, "comparator": "present", "description": "Demo exam record", "source": null}, {"type": "document", "exam_id": null, "threshold": null, "comparator": "present", "description": "Demo application document", "source": null}],
-    "deadlines": [{"kind": "application", "date": "2027-06-01", "round": null, "source": "https://example.invalid/demo-kz-2", "checked_at": "2026-09-18", "is_demo": true}],
-    "scholarships_note": null, "environment_text": "This is a fictional campus for interface testing. It does not describe a real university.", "source_url": "https://example.invalid/demo-kz-2", "checked_at": "2026-09-18", "is_demo": true, "extracted_auto": false, "flagged": false
+    "id": "demo-kz-02",
+    "university": "Demo KZ Institute 2",
+    "country": "KZ",
+    "city": "Astana",
+    "direction": "Computer Science",
+    "language": "English",
+    "duration_months": 48,
+    "tuition_per_year": 1220000,
+    "living_per_year": 1700000,
+    "currency": "KZT",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "ENT_MATH",
+        "threshold": 15,
+        "comparator": ">=",
+        "description": "Demo ENT_MATH threshold 15",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-05-15",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-kz-02",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": "Demo grant opportunity; eligibility and amount are fictional.",
+    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-kz-02",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
   },
   {
-    "id": "demo-eu-1", "university": "Demo Europe Campus One", "country": "DE", "city": "Demo City", "direction": "Computer Science", "language": "English", "duration_months": 36, "tuition_per_year": null, "living_per_year": null, "currency": "EUR",
-    "requirements": [{"type": "language", "exam_id": null, "threshold": null, "comparator": "present", "description": "Demo language record", "source": null}, {"type": "document", "exam_id": null, "threshold": null, "comparator": "present", "description": "Demo application document", "source": null}],
-    "deadlines": [{"kind": "application", "date": "2027-06-01", "round": null, "source": "https://example.invalid/demo-eu-1", "checked_at": "2026-09-18", "is_demo": true}],
-    "scholarships_note": null, "environment_text": "This is a fictional campus for interface testing. It does not describe a real university.", "source_url": "https://example.invalid/demo-eu-1", "checked_at": "2026-09-18", "is_demo": true, "extracted_auto": false, "flagged": false
+    "id": "demo-kz-03",
+    "university": "Demo KZ Institute 3",
+    "country": "KZ",
+    "city": "Shymkent",
+    "direction": "Engineering",
+    "language": "Kazakh",
+    "duration_months": 48,
+    "tuition_per_year": 1640000,
+    "living_per_year": 1900000,
+    "currency": "KZT",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "ENT_MATH",
+        "threshold": 18,
+        "comparator": ">=",
+        "description": "Demo ENT_MATH threshold 18",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-06-20",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-kz-03",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": "Demo grant opportunity; eligibility and amount are fictional.",
+    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-kz-03",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
   },
   {
-    "id": "demo-eu-2", "university": "Demo Europe Campus Two", "country": "NL", "city": "Demo City", "direction": "Data Science", "language": "English", "duration_months": 36, "tuition_per_year": null, "living_per_year": null, "currency": "EUR",
-    "requirements": [{"type": "language", "exam_id": null, "threshold": null, "comparator": "present", "description": "Demo language record", "source": null}, {"type": "document", "exam_id": null, "threshold": null, "comparator": "present", "description": "Demo application document", "source": null}],
-    "deadlines": [{"kind": "application", "date": "2027-06-01", "round": null, "source": "https://example.invalid/demo-eu-2", "checked_at": "2026-09-18", "is_demo": true}],
-    "scholarships_note": null, "environment_text": "This is a fictional campus for interface testing. It does not describe a real university.", "source_url": "https://example.invalid/demo-eu-2", "checked_at": "2026-09-18", "is_demo": true, "extracted_auto": false, "flagged": false
+    "id": "demo-kz-04",
+    "university": "Demo KZ Institute 4",
+    "country": "KZ",
+    "city": "Karaganda",
+    "direction": "Data Science",
+    "language": "English",
+    "duration_months": 48,
+    "tuition_per_year": 2060000,
+    "living_per_year": 2100000,
+    "currency": "KZT",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "ENT_MATH",
+        "threshold": 21,
+        "comparator": ">=",
+        "description": "Demo ENT_MATH threshold 21",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-07-10",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-kz-04",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": "Demo grant opportunity; eligibility and amount are fictional.",
+    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-kz-04",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
   },
   {
-    "id": "demo-us-1", "university": "Demo US Campus One", "country": "US", "city": "Demo City", "direction": "Mathematics", "language": "English", "duration_months": 48, "tuition_per_year": null, "living_per_year": null, "currency": "USD",
-    "requirements": [{"type": "exam_score", "exam_id": "SAT_MATH", "threshold": null, "comparator": "present", "description": "Demo exam record", "source": null}, {"type": "document", "exam_id": null, "threshold": null, "comparator": "present", "description": "Demo application document", "source": null}],
-    "deadlines": [{"kind": "application", "date": "2027-06-01", "round": null, "source": "https://example.invalid/demo-us-1", "checked_at": "2026-09-18", "is_demo": true}],
-    "scholarships_note": null, "environment_text": "This is a fictional campus for interface testing. It does not describe a real university.", "source_url": "https://example.invalid/demo-us-1", "checked_at": "2026-09-18", "is_demo": true, "extracted_auto": false, "flagged": false
+    "id": "demo-kz-05",
+    "university": "Demo KZ Institute 5",
+    "country": "KZ",
+    "city": "Almaty",
+    "direction": "Economics",
+    "language": "Kazakh",
+    "duration_months": 48,
+    "tuition_per_year": 2480000,
+    "living_per_year": 2300000,
+    "currency": "KZT",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "ENT_MATH",
+        "threshold": 24,
+        "comparator": ">=",
+        "description": "Demo ENT_MATH threshold 24",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-04-15",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-kz-05",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": "Demo grant opportunity; eligibility and amount are fictional.",
+    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-kz-05",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-kz-06",
+    "university": "Demo KZ Institute 6",
+    "country": "KZ",
+    "city": "Astana",
+    "direction": "Mathematics",
+    "language": "English",
+    "duration_months": 48,
+    "tuition_per_year": 2900000,
+    "living_per_year": 2500000,
+    "currency": "KZT",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "ENT_MATH",
+        "threshold": 27,
+        "comparator": ">=",
+        "description": "Demo ENT_MATH threshold 27",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-05-20",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-kz-06",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-kz-06",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-kz-07",
+    "university": "Demo KZ Institute 7",
+    "country": "KZ",
+    "city": "Shymkent",
+    "direction": "Computer Science",
+    "language": "Kazakh",
+    "duration_months": 48,
+    "tuition_per_year": 3320000,
+    "living_per_year": 2700000,
+    "currency": "KZT",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "ENT_MATH",
+        "threshold": 30,
+        "comparator": ">=",
+        "description": "Demo ENT_MATH threshold 30",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-06-10",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-kz-07",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-kz-07",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-kz-08",
+    "university": "Demo KZ Institute 8",
+    "country": "KZ",
+    "city": "Karaganda",
+    "direction": "Engineering",
+    "language": "English",
+    "duration_months": 48,
+    "tuition_per_year": 3740000,
+    "living_per_year": 2900000,
+    "currency": "KZT",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "ENT_MATH",
+        "threshold": 33,
+        "comparator": ">=",
+        "description": "Demo ENT_MATH threshold 33",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-07-15",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-kz-08",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-kz-08",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-kz-09",
+    "university": "Demo KZ Institute 9",
+    "country": "KZ",
+    "city": "Almaty",
+    "direction": "Data Science",
+    "language": "Kazakh",
+    "duration_months": 48,
+    "tuition_per_year": 4160000,
+    "living_per_year": 3100000,
+    "currency": "KZT",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "ENT_MATH",
+        "threshold": 36,
+        "comparator": ">=",
+        "description": "Demo ENT_MATH threshold 36",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-04-20",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-kz-09",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-kz-09",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-kz-10",
+    "university": "Demo KZ Institute 10",
+    "country": "KZ",
+    "city": "Astana",
+    "direction": "Economics",
+    "language": "English",
+    "duration_months": 48,
+    "tuition_per_year": 4580000,
+    "living_per_year": 3300000,
+    "currency": "KZT",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "ENT_MATH",
+        "threshold": 39,
+        "comparator": ">=",
+        "description": "Demo ENT_MATH threshold 39",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-05-10",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-kz-10",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-kz-10",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-de-01",
+    "university": "Demo DE Institute 1",
+    "country": "DE",
+    "city": "Berlin",
+    "direction": "Mathematics",
+    "language": "English",
+    "duration_months": 36,
+    "tuition_per_year": 5000,
+    "living_per_year": 9000,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 530,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 530",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-04-10",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-de-01",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "DE campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-de-01",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-de-02",
+    "university": "Demo DE Institute 2",
+    "country": "DE",
+    "city": "Munich",
+    "direction": "Computer Science",
+    "language": "English",
+    "duration_months": 36,
+    "tuition_per_year": 8500,
+    "living_per_year": 10800,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 575,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 575",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-05-15",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-de-02",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "DE campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-de-02",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-de-03",
+    "university": "Demo DE Institute 3",
+    "country": "DE",
+    "city": "Hamburg",
+    "direction": "Engineering",
+    "language": "English",
+    "duration_months": 36,
+    "tuition_per_year": 12000,
+    "living_per_year": 12600,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 620,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 620",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-06-20",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-de-03",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "DE campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-de-03",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-nl-01",
+    "university": "Demo NL Institute 1",
+    "country": "NL",
+    "city": "Amsterdam",
+    "direction": "Data Science",
+    "language": "English",
+    "duration_months": 36,
+    "tuition_per_year": 5000,
+    "living_per_year": 9000,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 530,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 530",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-04-10",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-nl-01",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "NL campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-nl-01",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-nl-02",
+    "university": "Demo NL Institute 2",
+    "country": "NL",
+    "city": "Delft",
+    "direction": "Economics",
+    "language": "English",
+    "duration_months": 36,
+    "tuition_per_year": 8500,
+    "living_per_year": 10800,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 575,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 575",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-05-15",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-nl-02",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "NL campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-nl-02",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-pl-01",
+    "university": "Demo PL Institute 1",
+    "country": "PL",
+    "city": "Warsaw",
+    "direction": "Mathematics",
+    "language": "English",
+    "duration_months": 36,
+    "tuition_per_year": 5000,
+    "living_per_year": 9000,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 530,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 530",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-04-10",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-pl-01",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "PL campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-pl-01",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-pl-02",
+    "university": "Demo PL Institute 2",
+    "country": "PL",
+    "city": "Krakow",
+    "direction": "Computer Science",
+    "language": "English",
+    "duration_months": 36,
+    "tuition_per_year": 8500,
+    "living_per_year": 10800,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 575,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 575",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-05-15",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-pl-02",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "PL campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-pl-02",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-fr-01",
+    "university": "Demo FR Institute 1",
+    "country": "FR",
+    "city": "Paris",
+    "direction": "Engineering",
+    "language": "English",
+    "duration_months": 36,
+    "tuition_per_year": 5000,
+    "living_per_year": 9000,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 530,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 530",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-04-10",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-fr-01",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "FR campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-fr-01",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-fr-02",
+    "university": "Demo FR Institute 2",
+    "country": "FR",
+    "city": "Lyon",
+    "direction": "Data Science",
+    "language": "English",
+    "duration_months": 36,
+    "tuition_per_year": 8500,
+    "living_per_year": 10800,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 575,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 575",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-05-15",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-fr-02",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "FR campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-fr-02",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-us-01",
+    "university": "Demo US Institute 1",
+    "country": "US",
+    "city": "Boston",
+    "direction": "Economics",
+    "language": "English",
+    "duration_months": 48,
+    "tuition_per_year": 5000,
+    "living_per_year": 9000,
+    "currency": "USD",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 530,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 530",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-04-10",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-us-01",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "US campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-us-01",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-us-02",
+    "university": "Demo US Institute 2",
+    "country": "US",
+    "city": "Seattle",
+    "direction": "Mathematics",
+    "language": "English",
+    "duration_months": 48,
+    "tuition_per_year": 8500,
+    "living_per_year": 10800,
+    "currency": "USD",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 575,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 575",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-05-15",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-us-02",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "US campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-us-02",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-sg-01",
+    "university": "Demo SG Institute 1",
+    "country": "SG",
+    "city": "Singapore",
+    "direction": "Computer Science",
+    "language": "English",
+    "duration_months": 48,
+    "tuition_per_year": 5000,
+    "living_per_year": 9000,
+    "currency": "SGD",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 530,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 530",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-04-10",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-sg-01",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "SG campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-sg-01",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "demo-jp-01",
+    "university": "Demo JP Institute 1",
+    "country": "JP",
+    "city": "Tokyo",
+    "direction": "Engineering",
+    "language": "English",
+    "duration_months": 48,
+    "tuition_per_year": 5000,
+    "living_per_year": 9000,
+    "currency": "JPY",
+    "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 530,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 530",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Demo application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-04-10",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/demo-jp-01",
+        "checked_at": "2026-09-18",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "JP campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "source_url": "https://example.invalid/quack-demo/demo-jp-01",
+    "checked_at": "2026-09-18",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
   }
 ]
