@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { Profile } from "./assistant";
 import { Icon } from "./Icon";
 import { LEVEL_LABEL, evaluate, formatEur, programById, type Level } from "./programs";
@@ -22,9 +23,40 @@ export function LevelDot({ level }: { level: Level }) {
 }
 
 /** Horizontal row of program cards posted by the assistant into the chat. */
+/**
+ * A mouse wheel only goes up and down, so over the cards it turns them sideways instead. Once the row
+ * reaches its first or last card the wheel is let through, and the chat scrolls on as usual.
+ */
+function useSidewaysWheel() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const row = ref.current;
+    if (!row) return;
+    const onWheel = (e: WheelEvent) => {
+      // A trackpad already swipes sideways, and Ctrl + wheel is the browser's zoom
+      if (e.ctrlKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+      const max = row.scrollWidth - row.clientWidth;
+      if (max <= 0) return;
+      const atEnd = e.deltaY > 0 ? row.scrollLeft >= max - 1 : row.scrollLeft <= 0;
+      if (atEnd) return;
+      e.preventDefault();
+      // Lines (Firefox) and pages come in other units than pixels
+      const step = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? row.clientWidth : 1;
+      row.scrollBy({ left: e.deltaY * step });
+    };
+    row.addEventListener("wheel", onWheel, { passive: false });
+    return () => row.removeEventListener("wheel", onWheel);
+  }, []);
+
+  return ref;
+}
+
 export function ProgramCards({ ids, profile, actions }: { ids: string[]; profile: Profile; actions: ProgramActions }) {
+  const rowRef = useSidewaysWheel();
+
   return (
-    <div className={styles.cards}>
+    <div className={styles.cards} ref={rowRef}>
       {ids.map((id, i) => {
         const program = programById(id);
         const evaluation = evaluate(program, profile);

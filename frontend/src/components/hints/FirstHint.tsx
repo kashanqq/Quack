@@ -3,23 +3,13 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { PixelDuck } from "@/components/duck/PixelDuck";
 import styles from "./hints.module.css";
+import { store } from "@/components/account/store";
 
 const KEY = "quack-hints-seen";
 
 function readSeen(): string[] {
-  try {
-    const list = JSON.parse(localStorage.getItem(KEY) ?? "[]");
-    return Array.isArray(list) ? list : [];
-  } catch {
-    return [];
-  }
-}
-
-/** Forget every dismissed hint, so a fresh start explains the sections again. */
-export function resetHints() {
-  try {
-    localStorage.removeItem(KEY);
-  } catch {}
+  const list = store.get<string[]>(KEY);
+  return Array.isArray(list) ? list : [];
 }
 
 type Props = {
@@ -35,7 +25,7 @@ type Props = {
  * No tour, no steps, no arrows over buttons — a single card that goes away for good.
  */
 export function FirstHint({ id, title, children, action }: Props) {
-  // Hidden until mounted: the server does not know what this browser has already seen
+  // Hidden until mounted: the server render does not know what this student has already seen
   const [show, setShow] = useState(false);
 
   useEffect(() => setShow(!readSeen().includes(id)), [id]);
@@ -44,9 +34,7 @@ export function FirstHint({ id, title, children, action }: Props) {
 
   const dismiss = () => {
     setShow(false);
-    try {
-      localStorage.setItem(KEY, JSON.stringify([...new Set([...readSeen(), id])]));
-    } catch {}
+    store.set(KEY, [...new Set([...readSeen(), id])]);
   };
 
   return (

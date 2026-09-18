@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { GraphCanvas, readStore, useNodeDrag, useVertical, writeStore } from "./GraphCanvas";
+import { store } from "../account/store";
+import { GraphCanvas, useNodeDrag, useVertical } from "./GraphCanvas";
 import { AREAS, SKILLS, STATE_LABEL, type Misconception, type Skill, type SkillState } from "./prepData";
 import styles from "./prep.module.css";
 
@@ -259,27 +260,34 @@ export function SkillGraph({ states, recall, misconceptions, highlight, selected
 
   // Only the nodes the student dragged, per orientation; everything else keeps its automatic place
   const [moved, setMoved] = useState<Record<Orientation, Record<string, Point>>>({ horizontal: {}, vertical: {} });
-  const [loaded, setLoaded] = useState(false);
+  // Saved when a node is let go (or the layout is reset), never while it is being dragged
+  const [commits, setCommits] = useState(0);
+  const movedRef = useRef(moved);
+  movedRef.current = moved;
 
   useEffect(() => {
     const load = (o: Orientation) =>
-      Object.fromEntries(Object.entries(readStore<Record<string, Point>>(NODES_KEY[o]) ?? {}).filter(([id]) => id in BASE[o].pos));
+      Object.fromEntries(Object.entries(store.get<Record<string, Point>>(NODES_KEY[o]) ?? {}).filter(([id]) => id in BASE[o].pos));
     setMoved({ horizontal: load("horizontal"), vertical: load("vertical") });
-    setLoaded(true);
   }, []);
 
   useEffect(() => {
-    if (!loaded) return;
-    (["horizontal", "vertical"] as const).forEach((o) =>
-      writeStore(NODES_KEY[o], Object.keys(moved[o]).length ? moved[o] : null)
-    );
-  }, [loaded, moved]);
+    if (!commits) return;
+    const o = movedRef.current[orientation];
+    store.set(NODES_KEY[orientation], Object.keys(o).length ? o : null);
+  }, [commits, orientation]);
 
   const pos = { ...base.pos, ...moved[orientation] };
   const hasMoved = Object.keys(moved[orientation]).length > 0;
 
-  const drag = useNodeDrag((id, x, y) => setMoved((m) => ({ ...m, [orientation]: { ...m[orientation], [id]: { x, y } } })));
-  const resetLayout = () => setMoved((m) => ({ ...m, [orientation]: {} }));
+  const drag = useNodeDrag(
+    (id, x, y) => setMoved((m) => ({ ...m, [orientation]: { ...m[orientation], [id]: { x, y } } })),
+    () => setCommits((c) => c + 1)
+  );
+  const resetLayout = () => {
+    setMoved((m) => ({ ...m, [orientation]: {} }));
+    setCommits((c) => c + 1);
+  };
 
   // On the phone map links start under each node, so how far down a node reaches is measured, not guessed
   const nodeRefs = useRef<Record<string, HTMLButtonElement | null>>({});

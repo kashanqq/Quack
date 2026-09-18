@@ -641,6 +641,8 @@
   height: 100%;
   margin: 0 auto;
   padding: 24px 20px;
+  /* The chat only ever moves up and down; sideways belongs to the program cards inside it */
+  overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: none;
 }

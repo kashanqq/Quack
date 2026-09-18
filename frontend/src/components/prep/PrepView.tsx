@@ -1,7 +1,7 @@
 "use client";
 
 // "Подготовка" (product-logic §4). Input of the section is the saved programs; with none saved the
-// student can look at it on demo programs. Its state lives in localStorage until there is a backend.
+// student can look at it on demo programs. Its state is kept in the student's store (account/store.ts).
 
 import { FirstHint } from "@/components/hints/FirstHint";
 import { useEffect, useRef, useState } from "react";
@@ -22,6 +22,7 @@ import {
 import { quackSource } from "../quack/source";
 import { SetsView } from "./SetsView";
 import styles from "./prep.module.css";
+import { store } from "../account/store";
 
 const STORAGE_KEY = "quack-prep";
 
@@ -36,13 +37,7 @@ type Props = {
 
 export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props) {
   // Rendered only after the student switches to the section, so storage can be read right away
-  const [model, setModel] = useState<PrepModel>(() => {
-    try {
-      return reviveModel(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null")) ?? initialModel();
-    } catch {
-      return initialModel();
-    }
-  });
+  const [model, setModel] = useState<PrepModel>(() => reviveModel(store.get(STORAGE_KEY)) ?? initialModel());
   const [toast, setToast] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -50,9 +45,7 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
   const current = subFor(tab, sub);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(model));
-    } catch {}
+    store.set(STORAGE_KEY, model);
     // Preparation is a source of truth for Quack: an answer, a passed set or a ticked date is recomputed at once
     quackSource().report({ prep: model });
   }, [model]);

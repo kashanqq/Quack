@@ -97,7 +97,7 @@ export function initialModel(): PrepModel {
   };
 }
 
-/** localStorage keeps dates as strings; bring them back. */
+/** Stored state keeps dates as strings (JSON); bring them back. */
 export function reviveModel(raw: unknown): PrepModel | null {
   if (!raw || typeof raw !== "object") return null;
   const model = { ...initialModel(), ...(raw as Partial<PrepModel>) };
