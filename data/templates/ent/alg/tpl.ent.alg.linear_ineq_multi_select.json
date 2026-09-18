@@ -1,0 +1,72 @@
+{
+  "id": "tpl.ent.alg.linear_ineq_multi_select",
+  "exam_id": "ENT_MATH",
+  "type": "multi_select",
+  "difficulty": 3,
+  "skill_id": "math.alg.linear_ineq",
+  "tags": [
+    "linear_ineq",
+    "interval",
+    "endpoint"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        9
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        1,
+        20
+      ],
+      "choices": null
+    },
+    "c": {
+      "range": [
+        5,
+        40
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "(c - b) % a == 0",
+    "c > b"
+  ],
+  "stem": "Дано неравенство {a}x + {b} ≤ {c}. Выберите все верные утверждения о его решении.",
+  "correct": [
+    "решение — это луч, направленный в сторону меньших значений x",
+    "граничная точка входит в множество решений"
+  ],
+  "distractors": [
+    {
+      "expr": "решение — это луч, направленный в сторону больших значений x",
+      "misconception_id": "lib.inequality_sign_flip"
+    },
+    {
+      "expr": "граничная точка не входит в множество решений",
+      "misconception_id": "lib.inequality_endpoint"
+    }
+  ],
+  "omission_traps": [
+    {
+      "omit": "граничная точка входит в множество решений",
+      "misconception_id": "lib.inequality_endpoint"
+    }
+  ],
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "{a}x ≤ {c} − {b}",
+    "Делим обе части на {a}. Так как {a} > 0, знак неравенства не меняется:",
+    "x ≤ ({c} − {b})/{a} = {answer}",
+    "Неравенство нестрогое, поэтому граничная точка {answer} входит в множество решений."
+  ],
+  "generator": null,
+  "figure": null
+}

@@ -1,0 +1,75 @@
+{
+  "id": "tpl.ent.alg.linear_eq_multi_select",
+  "exam_id": "ENT_MATH",
+  "type": "multi_select",
+  "difficulty": 2,
+  "skill_id": "math.alg.linear_eq",
+  "tags": [
+    "linear_eq",
+    "multi_select",
+    "properties"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        9
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        1,
+        20
+      ],
+      "choices": null
+    },
+    "c": {
+      "range": [
+        5,
+        40
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "(c - b) % a == 0",
+    "c > b"
+  ],
+  "stem": "Уравнение {a}x + {b} = {c}. Выберите все верные утверждения.",
+  "correct": [
+    "уравнение имеет единственный корень",
+    "чтобы найти корень, обе части уравнения нужно разделить на коэффициент при x"
+  ],
+  "distractors": [
+    {
+      "expr": "уравнение имеет два различных корня",
+      "misconception_id": null
+    },
+    {
+      "expr": "уравнение не имеет решений",
+      "misconception_id": null
+    },
+    {
+      "expr": "корень можно найти, не деля обе части на коэффициент при x",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": [
+    {
+      "omit": "уравнение имеет единственный корень",
+      "misconception_id": null
+    }
+  ],
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Перенесём {b} в правую часть: {a}x = {c} − {b}",
+    "Разделим обе части на {a}: x = ({c} − {b})/{a} = {answer}",
+    "Так как {a} ≠ 0, уравнение имеет единственный корень"
+  ],
+  "generator": null,
+  "figure": null
+}

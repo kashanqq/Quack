@@ -1,0 +1,82 @@
+{
+  "id": "tpl.ent.alg.abs_value_eq_multi_select",
+  "exam_id": "ENT_MATH",
+  "type": "multi_select",
+  "difficulty": 3,
+  "skill_id": "math.alg.abs_value_eq",
+  "tags": [
+    "abs_value_eq",
+    "multi_select",
+    "roots"
+  ],
+  "time_reference_sec": 100,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        6
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        2,
+        10
+      ],
+      "choices": null
+    },
+    "c": {
+      "range": [
+        4,
+        18
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "(c + b) % a == 0",
+    "(c - b) % a == 0",
+    "c > b",
+    "c + b != c - b"
+  ],
+  "stem": "Уравнение |{a}x − {b}| = {c}. Выберите все корни этого уравнения.",
+  "correct": [
+    "(c + b)/a",
+    "(b - c)/a"
+  ],
+  "distractors": [
+    {
+      "expr": "(c - b)/a",
+      "misconception_id": "lib.abs_single_branch"
+    },
+    {
+      "expr": "-(c + b)/a",
+      "misconception_id": "lib.abs_sign_drop"
+    },
+    {
+      "expr": "(c + b)/a + 1",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": [
+    {
+      "omit": "(b - c)/a",
+      "misconception_id": "lib.abs_single_branch"
+    },
+    {
+      "omit": "(c + b)/a",
+      "misconception_id": "lib.abs_sign_drop"
+    }
+  ],
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Модуль равен {c}, поэтому выражение под модулем равно либо {c}, либо −{c}.",
+    "Первая ветвь: {a}x − {b} = {c}, откуда x = ({c} + {b})/{a}.",
+    "Вторая ветвь: {a}x − {b} = −{c}, откуда x = ({b} − {c})/{a}.",
+    "Проверка подстановкой подтверждает, что оба значения являются корнями исходного уравнения."
+  ],
+  "generator": null,
+  "figure": null
+}

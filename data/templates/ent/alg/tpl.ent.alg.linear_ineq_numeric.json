@@ -1,0 +1,64 @@
+{
+  "id": "tpl.ent.alg.linear_ineq_numeric",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 1,
+  "skill_id": "math.alg.linear_ineq",
+  "tags": [
+    "linear_ineq",
+    "boundary"
+  ],
+  "time_reference_sec": 45,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        9
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        1,
+        20
+      ],
+      "choices": null
+    },
+    "c": {
+      "range": [
+        5,
+        40
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "(c - b) % a == 0",
+    "c > b"
+  ],
+  "stem": "Найдите наибольшее целое число, удовлетворяющее неравенству {a}x + {b} < {c}.",
+  "correct": "(c - b)/a - 1",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "(c - b)/a",
+      "misconception_id": "lib.inequality_endpoint"
+    },
+    {
+      "expr": "(c + b)/a - 1",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "{a}x < {c} − {b}",
+    "Делим обе части на {a}. Так как {a} > 0, знак неравенства не меняется:",
+    "x < ({c} − {b})/{a}",
+    "Неравенство строгое, поэтому граничное значение ({c} − {b})/{a} не входит в решение.",
+    "Наибольшее целое число, меньшее этой границы, равно {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}
