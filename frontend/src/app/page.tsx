@@ -1,7 +1,9 @@
 import { copy } from "@/components/home/copy";
 import { CursorAura } from "@/components/home/CursorAura";
+import { LayerStack } from "@/components/home/LayerStack";
 import { QuackSection } from "@/components/home/QuackSection";
 import { Roadmap } from "@/components/home/Roadmap";
+import { SiteFooter } from "@/components/home/SiteFooter";
 import { SiteHeader } from "@/components/home/SiteHeader";
 import styles from "@/components/home/home.module.css";
 import { TransitionLink } from "@/components/transition/TransitionLink";
@@ -10,7 +12,7 @@ export default function HomePage() {
   const t = copy.hero;
 
   return (
-    <div className={styles.page}>
+    <div id="top" className={styles.page}>
       {/* Fixed behind everything: the aura trails the cursor under the content. */}
       <CursorAura />
 
@@ -41,6 +43,10 @@ export default function HomePage() {
         </main>
 
         <QuackSection />
+
+        <LayerStack />
+
+        <SiteFooter />
       </div>
     </div>
   );

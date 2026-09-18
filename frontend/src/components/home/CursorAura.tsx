@@ -3,27 +3,37 @@
 import { useEffect, useRef } from "react";
 import styles from "./aura.module.css";
 
-/* Aura size in CSS pixels, at rest and while the pointer is on something interactive. */
-const RADIUS_IDLE = 190;
-const RADIUS_HOT = 310;
-/* Peak opacity of the warm glow at its centre. */
-const ALPHA_IDLE = 0.1;
-const ALPHA_HOT = 0.17;
-/* Pointer easing per frame — the aura trails the cursor instead of snapping to it. */
-const EASE = 0.14;
+/* Grid cell in CSS pixels, and how finely each line is sampled so it can bend. */
+const CELL = 44;
+const SAMPLES_PER_CELL = 4;
+/* Radius of the visible patch around the pointer, at rest and over something interactive. */
+const RADIUS = [240, 300];
+/* How deep the dent is: the share of the way a point is pulled toward the pointer. */
+const DEPTH = 0.42;
+/* Peak line opacity in the middle of the patch. */
+const LINE_ALPHA = 0.3;
+/* Pointer easing per frame — the dent trails the cursor instead of snapping to it. */
+const EASE = 0.2;
+/* How fast the grid shows up while moving and fades once the pointer rests (per second). */
+const RISE = 5;
+const FALL = 1.4;
+/* Speed (px per frame) at which the grid is fully shown. */
+const FULL_SPEED = 6;
 
-const GLOW = "255, 122, 0";
-const NOISE_TILE = 128;
+const LINE = "255, 236, 218";
+const WARM = "255, 122, 0";
 
 /**
- * A warm, grainy aura that follows the cursor.
+ * An invisible grid that shows itself only around a moving cursor.
  *
- * It lives behind every section, so when the pointer reaches something
- * interactive the grain shows up *behind* that element and lights it from below.
- * Elements opt into the stronger version with `data-aura`.
+ * The page carries a grid nobody sees. Where the pointer moves, a round patch
+ * of it lights up and sags into the page — lines near the pointer are pulled
+ * toward it, as if the surface were pressed in from the viewer's side. When the
+ * pointer rests the patch fades away again. The grid is fixed to the page, not
+ * to the screen, so it scrolls with the content.
  *
- * Nothing is drawn until the pointer moves, and the loop shuts itself off once
- * the aura has faded, so an idle page costs no frames.
+ * Nothing is drawn while nothing moves; the loop stops itself once the patch
+ * has faded.
  */
 export function CursorAura() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -38,37 +48,19 @@ export function CursorAura() {
     let width = 0;
     let height = 0;
 
-    let targetX = -9999;
-    let targetY = -9999;
-    let currentX = -9999;
-    let currentY = -9999;
-    // 0 while the pointer is away, 1 while it is over the page.
-    let presence = 0;
-    let targetPresence = 0;
+    const pointer = { x: -9999, y: -9999 };
+    const at = { x: -9999, y: -9999 };
+    // How visible the patch is: rises with movement, falls while the pointer rests.
+    let shown = 0;
+    let moving = 0;
     // 0 over plain background, 1 over an element marked data-aura.
     let heat = 0;
     let targetHeat = 0;
+    let inside = false;
 
     let frame = 0;
     let running = false;
-
-    // One tile of static grain, reused every frame and offset to make it shimmer.
-    const tile = document.createElement("canvas");
-    tile.width = NOISE_TILE;
-    tile.height = NOISE_TILE;
-    const tileCtx = tile.getContext("2d");
-    if (!tileCtx) return;
-    const grain = tileCtx.createImageData(NOISE_TILE, NOISE_TILE);
-    for (let i = 0; i < grain.data.length; i += 4) {
-      const v = Math.random();
-      grain.data[i] = 255;
-      grain.data[i + 1] = 235;
-      grain.data[i + 2] = 215;
-      // Sparse: only the brightest samples show, so it reads as grain, not fog.
-      grain.data[i + 3] = v > 0.72 ? Math.round((v - 0.72) * 620) : 0;
-    }
-    tileCtx.putImageData(grain, 0, 0);
-    const noise = ctx.createPattern(tile, "repeat");
+    let last = performance.now();
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -81,51 +73,89 @@ export function CursorAura() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
-    const draw = () => {
-      ctx.clearRect(0, 0, width, height);
-      if (presence < 0.004) return;
-
-      const radius = RADIUS_IDLE + (RADIUS_HOT - RADIUS_IDLE) * heat;
-      const alpha = (ALPHA_IDLE + (ALPHA_HOT - ALPHA_IDLE) * heat) * presence;
-
-      const glow = ctx.createRadialGradient(currentX, currentY, 0, currentX, currentY, radius);
-      glow.addColorStop(0, `rgba(${GLOW}, ${alpha})`);
-      glow.addColorStop(0.45, `rgba(${GLOW}, ${alpha * 0.35})`);
-      glow.addColorStop(1, `rgba(${GLOW}, 0)`);
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(currentX, currentY, radius, 0, Math.PI * 2);
-      ctx.fill();
-
-      if (!noise) return;
-      // `source-atop` keeps the grain inside what the glow already painted, so the
-      // noise fades out exactly where the aura does.
-      ctx.save();
-      ctx.globalCompositeOperation = "source-atop";
-      ctx.globalAlpha = (0.32 + 0.38 * heat) * presence;
-      ctx.translate(Math.random() * NOISE_TILE, Math.random() * NOISE_TILE);
-      ctx.fillStyle = noise;
-      ctx.fillRect(-NOISE_TILE, -NOISE_TILE, width + NOISE_TILE * 2, height + NOISE_TILE * 2);
-      ctx.restore();
+    /**
+     * Where a grid point ends up, and how strongly its line shows there. Points
+     * inside the patch are pulled toward the centre, most at mid-radius, none at
+     * the centre or the rim, so the grid stays continuous.
+     */
+    const bend = (x: number, y: number, radius: number) => {
+      const dx = x - at.x;
+      const dy = y - at.y;
+      const r = Math.hypot(dx, dy);
+      if (r >= radius) return { x, y, a: 0 };
+      const t = 1 - r / radius;
+      const pull = DEPTH * t * t;
+      const fade = t * t * (3 - 2 * t);
+      return { x: x - dx * pull, y: y - dy * pull, a: fade };
     };
 
-    const tick = () => {
-      currentX += (targetX - currentX) * EASE;
-      currentY += (targetY - currentY) * EASE;
-      presence += (targetPresence - presence) * EASE;
-      heat += (targetHeat - heat) * EASE;
+    const draw = () => {
+      ctx.clearRect(0, 0, width, height);
+      if (shown < 0.004) return;
+
+      const radius = RADIUS[0] + (RADIUS[1] - RADIUS[0]) * heat;
+      const alpha = LINE_ALPHA * shown;
+      // The grid is anchored to the document, so it scrolls with the page.
+      const offY = -(window.scrollY % CELL);
+      const step = CELL / SAMPLES_PER_CELL;
+      const x0 = Math.floor((at.x - radius) / CELL) * CELL;
+      const x1 = at.x + radius;
+      const y0 = Math.floor((at.y - radius - offY) / CELL) * CELL + offY;
+      const y1 = at.y + radius;
+
+      ctx.lineWidth = 1;
+      ctx.lineCap = "round";
+
+      const stroke = (ax: number, ay: number, bx: number, by: number) => {
+        const a = bend(ax, ay, radius);
+        const b = bend(bx, by, radius);
+        const k = Math.min(a.a, b.a);
+        if (k <= 0.01) return;
+        ctx.strokeStyle = `rgba(${LINE}, ${(alpha * k).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      };
+
+      for (let x = x0; x <= x1; x += CELL) {
+        for (let y = y0; y < y1; y += step) stroke(x, y, x, y + step);
+      }
+      for (let y = y0; y <= y1; y += CELL) {
+        for (let x = x0; x < x1; x += step) stroke(x, y, x + step, y);
+      }
+
+      // A faint warm shadow in the bottom of the dent gives it depth.
+      const g = ctx.createRadialGradient(at.x, at.y, 0, at.x, at.y, radius * 0.6);
+      g.addColorStop(0, `rgba(${WARM}, ${0.07 * shown})`);
+      g.addColorStop(1, `rgba(${WARM}, 0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(at.x, at.y, radius * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    };
+
+    const tick = (now: number) => {
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+
+      const px = at.x;
+      const py = at.y;
+      at.x += (pointer.x - at.x) * EASE;
+      at.y += (pointer.y - at.y) * EASE;
+      const speed = Math.hypot(at.x - px, at.y - py);
+      moving = inside ? Math.min(1, speed / FULL_SPEED) : 0;
+
+      // Show quickly while the pointer moves, fade slowly once it rests.
+      if (moving > shown) shown += (moving - shown) * Math.min(1, RISE * dt);
+      else shown += (moving - shown) * Math.min(1, FALL * dt);
+      heat += (targetHeat - heat) * 0.1;
 
       draw();
 
-      const settled =
-        Math.abs(targetX - currentX) < 0.4 &&
-        Math.abs(targetY - currentY) < 0.4 &&
-        Math.abs(targetPresence - presence) < 0.004 &&
-        Math.abs(targetHeat - heat) < 0.004;
-
-      if (settled && targetPresence === 0) {
-        presence = 0;
-        draw();
+      if (shown < 0.004 && moving === 0) {
+        shown = 0;
+        ctx.clearRect(0, 0, width, height);
         running = false;
         return;
       }
@@ -135,38 +165,48 @@ export function CursorAura() {
     const start = () => {
       if (running) return;
       running = true;
+      last = performance.now();
       frame = requestAnimationFrame(tick);
     };
 
     const onPointerMove = (e: PointerEvent) => {
-      if (targetPresence === 0) {
-        // First move, or a return to the page: place the aura instead of flying it in.
-        currentX = e.clientX;
-        currentY = e.clientY;
+      if (!inside) {
+        // First move, or a return to the page: place the dent instead of flying it in.
+        at.x = e.clientX;
+        at.y = e.clientY;
       }
-      targetX = e.clientX;
-      targetY = e.clientY;
-      targetPresence = 1;
+      inside = true;
+      pointer.x = e.clientX;
+      pointer.y = e.clientY;
       const el = e.target instanceof Element ? e.target.closest("[data-aura]") : null;
       targetHeat = el ? 1 : 0;
       start();
     };
 
     const onPointerLeave = () => {
-      targetPresence = 0;
+      inside = false;
       targetHeat = 0;
+      start();
+    };
+
+    // Scrolling moves the grid under a resting pointer, so it counts as movement too.
+    const onScroll = () => {
+      if (!inside) return;
+      shown = Math.max(shown, 0.6);
       start();
     };
 
     resize();
     window.addEventListener("resize", resize);
     window.addEventListener("pointermove", onPointerMove, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
     document.addEventListener("pointerleave", onPointerLeave);
 
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("scroll", onScroll);
       document.removeEventListener("pointerleave", onPointerLeave);
     };
   }, []);

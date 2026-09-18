@@ -21,21 +21,25 @@ const GROW_FROM = 0.78;
 const TABS = [copy.quack.tabs.uni, copy.quack.tabs.chat, copy.quack.tabs.tempo];
 
 /**
- * "Quack?" — the three things the product does, with a globe on the left and a
+ * "Quack?" — the three things the product does, with a globe underneath and a
  * lane of ducks down the right.
  *
  * The first tab is open on arrival, so scrolling down already shows something
  * playing. Pointing at another item slides the rounded highlight onto it and
  * swaps the panel; leaving the list hands control back to the timer.
+ *
+ * A university picked on the globe locks the first tab: the panel shows that
+ * university until the pick is let go.
  */
 export function QuackSection() {
   const ref = useRef<HTMLElement>(null);
   const growRef = useScrollGrow(GROW_FROM, 1);
   const [onScreen, setOnScreen] = useState(false);
   const [hovering, setHovering] = useState(false);
-  const [tab, setTab] = useRotator(TABS.length, TAB_MS, hovering || !onScreen);
-  // Set when a pin on the globe is clicked, so the carousel jumps to that program.
+  // Set while a pin on the globe is picked, so the carousel shows that program.
   const [focusId, setFocusId] = useState<string | null>(null);
+  // A picked university holds the first tab until it is let go.
+  const [tab, setTab] = useRotator(TABS.length, TAB_MS, hovering || !onScreen || focusId !== null);
 
   // Nothing animates while the section is scrolled away.
   useEffect(() => {
@@ -48,9 +52,14 @@ export function QuackSection() {
     return () => observer.disconnect();
   }, []);
 
+  const locked = focusId !== null;
+  const pickTab = (i: number) => {
+    if (!locked) setTab(i);
+  };
+
   const handlePickProgram = useCallback(
-    (id: string) => {
-      setTab(0);
+    (id: string | null) => {
+      if (id) setTab(0);
       setFocusId(id);
     },
     [setTab]
@@ -65,10 +74,6 @@ export function QuackSection() {
       </Reveal>
 
       <div className={styles.stage}>
-        <Reveal className={styles.globeWrap} from="left" delay={0.05}>
-          <Globe onPickProgram={handlePickProgram} />
-        </Reveal>
-
         <div ref={growRef} className={styles.mainWrap}>
           <div className={styles.main}>
             <Reveal className={styles.tabsWrap} delay={0.1}>
@@ -77,6 +82,7 @@ export function QuackSection() {
                 role="tablist"
                 aria-orientation="vertical"
                 aria-label={copy.quack.heading}
+                data-locked={locked}
                 style={{ "--i": tab } as CSSProperties}
                 onMouseEnter={() => setHovering(true)}
                 onMouseLeave={() => setHovering(false)}
@@ -95,9 +101,10 @@ export function QuackSection() {
                     className={styles.tab}
                     data-active={i === tab}
                     data-aura
-                    onMouseEnter={() => setTab(i)}
-                    onFocus={() => setTab(i)}
-                    onClick={() => setTab(i)}
+                    aria-disabled={locked && i !== tab}
+                    onMouseEnter={() => pickTab(i)}
+                    onFocus={() => pickTab(i)}
+                    onClick={() => pickTab(i)}
                   >
                     <span className={styles.tabNum}>{i + 1}.</span>
                     {label}
@@ -129,6 +136,11 @@ export function QuackSection() {
             </Reveal>
           </div>
         </div>
+
+        {/* Under the block and large, so a picked country can be read in full. */}
+        <Reveal className={styles.globeWrap} delay={0.05}>
+          <Globe onPickProgram={handlePickProgram} />
+        </Reveal>
       </div>
 
       <DuckLane active={onScreen} />

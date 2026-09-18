@@ -25,9 +25,11 @@
 
 /* Header (scaled to 70% of the Figma size) */
 
+/* The header plate stays with the reader: it sticks to the top as the page scrolls. */
 .header {
-  position: relative;
-  z-index: 10;
+  position: sticky;
+  top: 16px;
+  z-index: 100;
   display: flex;
   align-items: center;
   width: min(1028px, calc(100% - 32px));
@@ -36,6 +38,7 @@
   padding: 0 9px 0 13px;
   background: var(--header-bg);
   border-radius: 34px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
   font-size: 18px;
   line-height: 1;
 }
@@ -62,39 +65,143 @@
   align-items: center;
 }
 
+/* Top-level item: a rounded plate fades and grows in behind it on hover. The
+   negative margin gives the plate its padding without moving the text. */
+.navItem > a {
+  position: relative;
+  margin: 0 -14px;
+  padding: 8px 14px;
+  border-radius: 14px;
+}
+
+.navItem > a::before,
+.dropdown a::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--dropdown-bg);
+  border-radius: inherit;
+  opacity: 0;
+  scale: 0.82;
+  transition:
+    opacity 0.25s ease,
+    scale 0.35s var(--ease-out);
+}
+
+.navItem:hover > a::before,
+.navItem:focus-within > a::before {
+  opacity: 1;
+  scale: 1;
+}
+
+/* The menu drops out of the plate: it fades, slides and unfolds from the top,
+   then its links follow one after another. */
 .dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 6px);
   left: 50%;
-  display: none;
-  gap: 20px;
-  height: 99px;
-  padding: 8px 18px;
+  display: flex;
+  gap: 4px;
+  padding: 8px;
   background: var(--dropdown-bg);
   border-radius: 20px;
   font-size: 14px;
   white-space: nowrap;
-  transform: translateX(-50%);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -8px) scale(0.94);
+  transform-origin: 50% 0;
+  transition:
+    opacity 0.2s ease,
+    transform 0.3s var(--ease-out),
+    visibility 0s linear 0.3s;
 }
 
-.dropdown a:hover {
-  color: var(--accent);
-}
-
-.dropdownStacked {
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.dropdownRow {
-  width: 224px;
-  justify-content: space-between;
+/* Bridges the gap under the header so the pointer can reach the menu. */
+.dropdown::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  height: 10px;
 }
 
 .navItem:hover .dropdown,
 .navItem:focus-within .dropdown {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0) scale(1);
+  transition:
+    opacity 0.25s ease,
+    transform 0.4s var(--ease-out),
+    visibility 0s;
+}
+
+.dropdown a {
+  position: relative;
+  z-index: 0;
+  padding: 10px 16px;
+  border-radius: 12px;
+  opacity: 0;
+  translate: 0 -6px;
+  transition:
+    color 0.25s ease,
+    opacity 0.2s ease,
+    translate 0.3s var(--ease-out);
+}
+
+/* Inside the dark menu the plate is the header's own colour. */
+.dropdown a::before {
+  background: var(--header-bg);
+}
+
+.navItem:hover .dropdown a,
+.navItem:focus-within .dropdown a {
+  opacity: 1;
+  translate: 0 0;
+  transition:
+    color 0.25s ease,
+    opacity 0.3s ease 0.08s,
+    translate 0.4s var(--ease-out) 0.08s;
+}
+
+.navItem:hover .dropdown a:nth-child(2),
+.navItem:focus-within .dropdown a:nth-child(2) {
+  transition-delay: 0s, 0.16s, 0.16s;
+}
+
+.dropdown a:hover,
+.dropdown a:focus-visible {
+  color: var(--accent);
+}
+
+.dropdown a:hover::before,
+.dropdown a:focus-visible::before {
+  opacity: 1;
+  scale: 1;
+}
+
+.dropdownStacked {
+  flex-direction: column;
+  align-items: stretch;
+  text-align: center;
+}
+
+/* Without motion the menu and its links only fade. */
+@media (prefers-reduced-motion: reduce) {
+  .dropdown,
+  .navItem:hover .dropdown,
+  .navItem:focus-within .dropdown {
+    transform: translate(-50%, 0);
+  }
+  .dropdown a,
+  .navItem > a::before,
+  .dropdown a::before {
+    translate: none;
+    scale: 1;
+  }
 }
 
 .auth {

@@ -26,6 +26,11 @@ body {
   margin: 0;
 }
 
+/* Anchor jumps stop below the sticky header instead of under it. */
+html {
+  scroll-padding-top: 80px;
+}
+
 body {
   min-height: 100dvh;
   background: var(--bg);

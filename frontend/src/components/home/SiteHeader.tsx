@@ -21,7 +21,7 @@ export function SiteHeader() {
         </div>
         <div className={styles.navItem}>
           <a href="#resources">{t.resources}</a>
-          <div className={`${styles.dropdown} ${styles.dropdownRow}`}>
+          <div className={`${styles.dropdown} ${styles.dropdownStacked}`}>
             <a href="#how-it-works">{t.howItWorks}</a>
             <a href="#about">{t.about}</a>
           </div>
