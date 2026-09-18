@@ -49,11 +49,14 @@ def render_value(
 ) -> str:
     """Format a sympy value.
 
-    - integer: Integer only
-    - fraction: 'a/b' for Rational, integer for Integer
-    - decimal: '2.5' for Rational, integer for Integer
-    - auto: rational → 'a/b', integer → '4', irrational → '%.3f'
+    Non-sympy values (str, tuple, list) are returned as their str() — they
+    cover textual answers from templates like "(3, 2)" or "Infinitely many".
     """
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (tuple, list)):
+        return str(value)
+
     value = simplify(nsimplify(value))
 
     if form == "integer":
