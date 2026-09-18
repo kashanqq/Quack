@@ -96,6 +96,103 @@
   color: var(--accent);
 }
 
+/* Ducks on the top edge of the plate (FooterDucks). */
+
+.ducks {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  pointer-events: none;
+}
+
+.waver {
+  position: absolute;
+  bottom: 0;
+  left: 64px;
+}
+
+.tuft {
+  position: absolute;
+  bottom: 0;
+  left: 6px;
+  opacity: 0.7;
+}
+
+.waverDuck {
+  position: relative;
+  width: 48px;
+  margin-bottom: 3px;
+}
+
+.pond {
+  position: absolute;
+  right: 72px;
+  bottom: -2px;
+}
+
+.pond > svg {
+  display: block;
+  opacity: 0.8;
+}
+
+/* The sleeper floats: only its top half shows above the water line. */
+.sleep {
+  position: absolute;
+  right: 12px;
+  bottom: 6px;
+  left: 12px;
+  height: 40px;
+  overflow: hidden;
+}
+
+.sleeper {
+  position: absolute;
+  bottom: -9px;
+  left: 12px;
+  width: 48px;
+}
+
+.zzz {
+  position: absolute;
+  bottom: 40px;
+  left: 58px;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.zzz i {
+  position: absolute;
+  font-style: normal;
+  opacity: 0;
+  animation: zzz 3s linear infinite;
+}
+
+.zzz i:nth-child(2) {
+  animation-delay: 1s;
+}
+
+.zzz i:nth-child(3) {
+  animation-delay: 2s;
+}
+
+@keyframes zzz {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+    scale: 0.7;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 14px -30px;
+    scale: 1.15;
+  }
+}
+
 @media (max-width: 760px) {
   .footer {
     padding: 32px 24px 20px;

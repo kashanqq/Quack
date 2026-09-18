@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { copy } from "./copy";
+import { FooterDucks } from "./FooterDucks";
 import styles from "./footer.module.css";
 
 /** The page footer: the logo, the same links as the header, and the small print. */
@@ -11,16 +12,16 @@ export function SiteFooter() {
     {
       title: t.product,
       links: [
-        { href: "#preparation", label: nav.preparation },
-        { href: "#choice", label: nav.choice },
-        { href: "#pricing", label: nav.pricing },
+        { href: "/#preparation", label: nav.preparation },
+        { href: "/#choice", label: nav.choice },
+        { href: "/pricing", label: nav.pricing },
       ],
     },
     {
       title: t.company,
       links: [
-        { href: "#how-it-works", label: nav.howItWorks },
-        { href: "#about", label: nav.about },
+        { href: "/#how-it-works", label: nav.howItWorks },
+        { href: "/#about", label: nav.about },
       ],
     },
     {
@@ -34,6 +35,8 @@ export function SiteFooter() {
 
   return (
     <footer className={styles.footer}>
+      <FooterDucks />
+
       <div className={styles.top}>
         <div className={styles.brand}>
           <Link className={styles.logo} href="/">

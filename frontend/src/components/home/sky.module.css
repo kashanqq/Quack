@@ -1,0 +1,80 @@
+/* The sky behind the whole page: fixed to the viewport, under the content,
+   never takes a click. */
+
+.sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* The outer box carries the scroll parallax (set by script), the inner one the drift. */
+.cloud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
+.drift {
+  animation: drift var(--seconds) linear var(--delay) infinite;
+}
+
+.drift > svg {
+  display: block;
+}
+
+/* A wedge of ducks crossing from left to right, bobbing a little as it goes. */
+.flock {
+  position: absolute;
+  left: 0;
+  width: 104px;
+  height: 104px;
+  opacity: 0.5;
+  animation: cross 28s linear forwards;
+}
+
+.flockDuck {
+  position: absolute;
+  width: 32px;
+  animation: flock-bob 2.6s ease-in-out infinite alternate;
+}
+
+.flockDuck:nth-child(2n) {
+  animation-delay: -1.3s;
+}
+
+@keyframes drift {
+  from {
+    transform: translateX(-240px);
+  }
+  to {
+    transform: translateX(100vw);
+  }
+}
+
+@keyframes cross {
+  from {
+    transform: translateX(-140px);
+  }
+  to {
+    transform: translateX(calc(100vw + 40px));
+  }
+}
+
+@keyframes flock-bob {
+  from {
+    transform: translateY(-4px);
+  }
+  to {
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drift {
+    animation: none;
+    transform: translateX(var(--rest));
+  }
+}

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { PixelDuck, type Tempo } from "./PixelDuck";
+import { pixelRects } from "./PixelSprite";
 import styles from "./duck-lane.module.css";
 
 /* Props are drawn on the same 16-wide pixel grid as the duck, so they line up. */
@@ -56,32 +57,10 @@ const FLAME = [
   ".......aa.......",
 ];
 
-/** One <rect> per horizontal run of colour, same trick the duck uses. */
-function pixels(map: string[], key: string) {
-  const w = 16;
-  const rects = [];
-  for (let y = 0; y < map.length; y++) {
-    const row = map[y];
-    let x = 0;
-    while (x < w) {
-      const ch = row[x];
-      if (!COLORS[ch]) {
-        x++;
-        continue;
-      }
-      let run = 1;
-      while (x + run < w && row[x + run] === ch) run++;
-      rects.push(<rect key={`${key}-${x}-${y}`} x={x} y={y} width={run} height={1} fill={COLORS[ch]} />);
-      x += run;
-    }
-  }
-  return rects;
-}
-
 function Prop({ map, name }: { map: string[]; name: string }) {
   return (
     <svg className={styles.prop} viewBox={`0 0 16 ${map.length}`} shapeRendering="crispEdges" aria-hidden="true">
-      {pixels(map, name)}
+      {pixelRects(map, COLORS, name)}
     </svg>
   );
 }
@@ -118,18 +97,24 @@ type Flight = Vignette & { key: number; lane: number };
 type DuckLaneProps = {
   /** Ducks only launch while the section is on screen. */
   active: boolean;
+  /** Which edge of the section the lane runs down. */
+  side?: "left" | "right";
+  /** Delay before the first duck, so two lanes do not launch in step. */
+  firstDelay?: number;
 };
 
-/** A narrow lane down the right edge where ducks drift past, up or down. */
-export function DuckLane({ active }: DuckLaneProps) {
+/** A narrow lane down one edge where ducks drift past, up or down. */
+export function DuckLane({ active, side = "right", firstDelay = 1200 }: DuckLaneProps) {
   const [flights, setFlights] = useState<Flight[]>([]);
+  // Outlives the effect: it re-runs each time the section comes back on screen, while
+  // ducks from the last run may still be in the air.
+  const nextKey = useRef(0);
 
   useEffect(() => {
     if (!active) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     let timer: ReturnType<typeof setTimeout>;
-    let key = 0;
     let previous = -1;
 
     const launch = () => {
@@ -137,7 +122,7 @@ export function DuckLane({ active }: DuckLaneProps) {
       let i = Math.floor(Math.random() * VIGNETTES.length);
       if (i === previous) i = (i + 1) % VIGNETTES.length;
       previous = i;
-      setFlights((list) => [...list, { ...VIGNETTES[i], key: key++, lane: Math.random() }]);
+      setFlights((list) => [...list, { ...VIGNETTES[i], key: nextKey.current++, lane: Math.random() }]);
     };
 
     const schedule = (delay: number) => {
@@ -147,12 +132,12 @@ export function DuckLane({ active }: DuckLaneProps) {
       }, delay);
     };
 
-    schedule(1200);
+    schedule(firstDelay);
     return () => clearTimeout(timer);
-  }, [active]);
+  }, [active, firstDelay]);
 
   return (
-    <div className={styles.lane} aria-hidden="true">
+    <div className={styles.lane} data-side={side} aria-hidden="true">
       {flights.map((flight) => (
         <div
           key={flight.key}

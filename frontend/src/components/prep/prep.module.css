@@ -849,6 +849,68 @@
   filter: drop-shadow(0 0 7px rgba(255, 122, 0, 0.45));
 }
 
+/* The set the student is on: rings go out from it and the mark itself breathes, so it reads as in progress */
+.routePulse {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: route-pulse 2.4s ease-out infinite;
+}
+
+.routePulseLate {
+  animation-delay: 1.2s;
+}
+
+.routeStop[data-status="current"] .routeMarkShape,
+.routeStop[data-status="proposed"] .routeMarkShape {
+  animation: route-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes route-pulse {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
+@keyframes route-breathe {
+  50% {
+    opacity: 0.72;
+  }
+}
+
+.routeNowTag {
+  margin-right: 5px;
+  padding: 0 5px;
+  color: #1f1d1b;
+  font-weight: 600;
+  background: var(--accent);
+  border-radius: 5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .routePulse,
+  .routeStop[data-status="current"] .routeMarkShape,
+  .routeStop[data-status="proposed"] .routeMarkShape {
+    animation: none;
+  }
+
+  .routePulse {
+    opacity: 0.35;
+    transform: scale(1.35);
+  }
+
+  .routePulseLate {
+    display: none;
+  }
+}
+
 .routeChip {
   position: absolute;
   bottom: 32px;
@@ -933,7 +995,7 @@
 
 /* Months, today and the forecast live in the margin left of the axis */
 .routeSideLabel {
-  left: calc(var(--axis-x) - 14px);
+  left: calc(var(--axis-x) - 28px);
   translate: -100% -50%;
 }
 
@@ -1246,6 +1308,115 @@
 
 .mapNodeInSet .mapShapeBox {
   box-shadow: 0 0 0 3px var(--canvas-bg), 0 0 0 5px rgba(255, 122, 0, 0.55);
+}
+
+/* A root: errors higher up trace back to it. It glows and sends out a ring, so it is never missed */
+.mapNodeRoot .mapShapeBox {
+  position: relative;
+}
+
+.mapNodeRoot .mapShape {
+  filter: drop-shadow(0 0 8px rgba(255, 172, 74, 0.6));
+}
+
+.mapNodeRoot .mapShapeBox::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--accent-label);
+  border-radius: 50%;
+  animation: root-ring 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+.mapNodeRoot .rootTag {
+  animation: root-tag 1.8s ease-in-out infinite;
+}
+
+@keyframes root-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}
+
+@keyframes root-tag {
+  50% {
+    box-shadow: 0 0 10px rgba(255, 172, 74, 0.8);
+    background: #ffd08a;
+  }
+}
+
+/* Arrow at the edge of the canvas towards an important node that is off screen */
+.beacon {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px 0 8px;
+  color: #1f1d1b;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--accent-label);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  translate: -50% -50%;
+  animation: beacon-in 0.3s var(--ease-out) both, root-tag 1.8s ease-in-out 0.3s infinite;
+}
+
+.beacon[data-tone="trap"] {
+  color: var(--text);
+  background: #5a2f26;
+  border: 1px solid rgba(255, 122, 92, 0.6);
+  animation: beacon-in 0.3s var(--ease-out) both;
+}
+
+.beacon:hover {
+  filter: brightness(1.08);
+}
+
+.beaconArrow {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@keyframes beacon-in {
+  from {
+    opacity: 0;
+    scale: 0.8;
+  }
+}
+
+.canvasGliding {
+  transition: transform 0.45s var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mapNodeRoot .mapShapeBox::after,
+  .mapNodeRoot .rootTag,
+  .beacon {
+    animation: none;
+  }
+
+  .canvasGliding {
+    transition: none;
+  }
 }
 
 .mapNodeSelected .mapChip {
@@ -1824,4 +1995,108 @@
   .evidence li > .muted {
     grid-column: 2;
   }
+}
+
+/* ---------- Сейчас: pace from Quack and the few things that matter ---------- */
+
+.prep [data-pace="0"] {
+  --pace: #ff6b5b;
+}
+
+.prep [data-pace="1"] {
+  --pace: var(--shaky);
+}
+
+.prep [data-pace="2"],
+.prep [data-pace="3"] {
+  --pace: var(--solid);
+}
+
+.paceBox {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  background: var(--inset-bg);
+  border-left: 3px solid var(--pace);
+  border-radius: 4px 12px 12px 4px;
+}
+
+.paceBox p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.paceHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.paceVerdict {
+  color: var(--pace);
+  font-family: var(--font-mono);
+  font-size: 19px;
+  line-height: 1.2;
+  font-weight: 400;
+}
+
+.paceMeter {
+  display: grid;
+  grid-template-columns: repeat(4, 22px);
+  gap: 3px;
+}
+
+.paceMeter span {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+
+.paceMeter span[data-on="true"] {
+  background: var(--pace);
+}
+
+.paceBox .paceHint {
+  color: var(--text-dim);
+}
+
+.important {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.important li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--inset-bg);
+  border-left: 3px solid var(--tone, rgba(255, 255, 255, 0.2));
+  border-radius: 4px 12px 12px 4px;
+}
+
+.important li > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.important li[data-tone="root"] {
+  --tone: var(--accent-label);
+}
+
+.important li[data-tone="trap"],
+.important li[data-tone="late"] {
+  --tone: var(--weak);
+}
+
+.important li .link {
+  flex: none;
 }

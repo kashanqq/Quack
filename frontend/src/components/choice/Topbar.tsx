@@ -2,7 +2,7 @@
 
 import { Duck } from "@/components/duck/Duck";
 import { Icon, type IconName } from "./Icon";
-import { ProfileToggle } from "./ProfilePanel";
+import type { SignalLevel } from "../quack/contract";
 import type { Mode } from "./Sidebar";
 import styles from "./choice.module.css";
 import layout from "./layout.module.css";
@@ -12,17 +12,15 @@ type TopbarProps = {
   onMode: (mode: Mode) => void;
   /** Opens the left column (programs, chats, account) on phones */
   onOpenMenu: () => void;
-  /** Toggle for the student profile; omitted while it isn't available */
-  profilePanel?: { open: boolean; readiness: number; onToggle: () => void };
-  /** Something changed or a date is close: a red dot sits on the Q */
-  alert?: { active: boolean; reasons: string[] };
+  /** Something the student has not seen yet: a gradient runs around the button until they open it */
+  alert?: { level: SignalLevel | null; reasons: string[] };
 };
 
 /** What the menu drawer holds in each section — on phones it is the only way to switch categories */
 const MENU_LABEL: Record<Mode, string> = {
   choice: "Меню: программы и чаты",
   prep: "Меню: разделы подготовки",
-  dashboard: "Меню: разделы дашборда",
+  dashboard: "Меню: разделы обзора",
 };
 
 const MODES: { mode: Mode; label: string; icon: IconName }[] = [
@@ -30,10 +28,10 @@ const MODES: { mode: Mode; label: string; icon: IconName }[] = [
   { mode: "prep", label: "Подготовка", icon: "book-open-check" },
 ];
 
-/** Выбор · Quack! · Подготовка — the logo in the middle opens the dashboard. */
+/** Выбор · Quack! · Подготовка — the logo in the middle opens the overview. */
 const LETTERS = [..."Quack"];
 
-export function Topbar({ mode, onMode, onOpenMenu, profilePanel, alert }: TopbarProps) {
+export function Topbar({ mode, onMode, onOpenMenu, alert }: TopbarProps) {
   return (
     <header className={styles.topbar}>
       <div className={styles.topbarSide}>
@@ -60,23 +58,22 @@ export function Topbar({ mode, onMode, onOpenMenu, profilePanel, alert }: Topbar
           role="tab"
           aria-selected={mode === "dashboard"}
           className={styles.topbarLogo}
-          title={alert?.active ? `Дашборд · ${alert.reasons[0]}` : "Дашборд"}
+          data-alert={alert?.level ?? undefined}
+          title={alert?.level ? `Обзор · ${alert.reasons[0]}` : "Обзор: экзамены, дедлайны, календарь"}
+          aria-label={alert?.level ? `Обзор. Есть важное: ${alert.reasons.join("; ")}` : "Обзор"}
           onClick={() => onMode("dashboard")}
         >
           <span className={styles.logoLetters}>
             {LETTERS.map((letter, i) => (
               <span key={i} className={styles.letter} style={{ animationDelay: `${i * 70}ms` }}>
                 {letter}
-                {i === 0 && alert?.active && (
-                  <span className={styles.logoDot} role="status" aria-label={`Есть важное: ${alert.reasons.join("; ")}`} />
-                )}
               </span>
             ))}
             <span className={`${styles.letter} ${styles.accent}`} style={{ animationDelay: `${LETTERS.length * 70}ms` }}>
               !
             </span>
           </span>
-          {/* The duck walks along the wordmark while the dashboard is open */}
+          {/* The duck walks along the top edge of the button while the overview is open */}
           {mode === "dashboard" && (
             <span className={styles.logoTrack} aria-hidden="true">
               <span className={styles.logoDuck}>
@@ -101,15 +98,8 @@ export function Topbar({ mode, onMode, onOpenMenu, profilePanel, alert }: Topbar
         </button>
       </div>
 
-      <div className={`${styles.topbarSide} ${styles.topbarRight}`}>
-        {profilePanel && (
-          <ProfileToggle
-            open={profilePanel.open}
-            readiness={profilePanel.readiness}
-            onClick={profilePanel.onToggle}
-          />
-        )}
-      </div>
+      {/* Keeps the section switch centred; the profile lives in the left column now */}
+      <div className={`${styles.topbarSide} ${styles.topbarRight}`} />
     </header>
   );
 }

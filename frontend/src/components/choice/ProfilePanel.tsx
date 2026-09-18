@@ -55,36 +55,6 @@ export function ProfilePanel({ profile, readiness, versions, onHide, onEdit }: P
   );
 }
 
-/** Clearly labelled button that shows the student profile, with its readiness. */
-export function ProfileToggle({
-  open,
-  readiness,
-  onClick,
-  className,
-}: {
-  open: boolean;
-  readiness: number;
-  onClick: () => void;
-  className?: string;
-}) {
-  return (
-    <button
-      type="button"
-      className={[styles.profileToggle, styles.glass, className].filter(Boolean).join(" ")}
-      aria-expanded={open}
-      aria-label={`${open ? "Скрыть" : "Показать"} профиль студента, готовность ${readiness}%`}
-      onClick={onClick}
-    >
-      <Icon name="user-round" size={18} />
-      <span className={styles.profileToggleLabel}>Профиль</span>
-      <span className={styles.profileToggleMeter} aria-hidden="true">
-        <span style={{ width: `${readiness}%` }} />
-      </span>
-      <span className={styles.profileToggleValue}>{readiness}%</span>
-    </button>
-  );
-}
-
 function ProfileRow({ item, version, onEdit }: { item: ProfileItem; version: number; onEdit: ProfilePanelProps["onEdit"] }) {
   const [draft, setDraft] = useState<string | null>(null);
   // Closing the input also blurs it: this keeps Enter/Escape from being followed by a second save

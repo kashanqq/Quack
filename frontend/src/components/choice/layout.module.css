@@ -128,9 +128,14 @@
 }
 
 .railFoot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   margin-top: auto;
   padding: 8px 0 12px;
 }
+
 
 .sidebarScroll {
   flex: 1;

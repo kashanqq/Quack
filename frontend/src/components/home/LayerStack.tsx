@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { copy } from "./copy";
+import { PixelDuck } from "./PixelDuck";
 import styles from "./layers.module.css";
 
 const LAYERS = copy.layers.items;
@@ -11,6 +12,11 @@ const N = LAYERS.length;
 const PER_LAYER_VH = 0.4;
 /** Once the scroll has been still this long, the nearest layer is brought fully into focus. */
 const SNAP_IDLE_MS = 140;
+/** A nudge smaller than this share of a step settles back on the same layer. */
+const SNAP_SLACK = 0.12;
+/** The wheel is held for at least this long after it turns a layer, and until it has been quiet for WHEEL_QUIET_MS. */
+const WHEEL_LOCK_MS = 550;
+const WHEEL_QUIET_MS = 200;
 /** How far apart neighbouring layers sit, as a share of the layer width. */
 const GAP = 0.36;
 /** Extra room the neighbours make for the one in focus, as a share of the width. */
@@ -35,6 +41,8 @@ export function LayerStack() {
   const sectionRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const ladderRef = useRef<HTMLDivElement>(null);
+  const builderRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const t = copy.layers;
 
@@ -68,12 +76,16 @@ export function LayerStack() {
         // Upper layers cover lower ones, as in a real stack, but the focused one always wins.
         el.style.zIndex = String(near > 0.5 ? 50 : N - i);
       }
+      // The ladder runs with the stack, so its rungs slide past the builder, who stays
+      // level with the layer in focus.
+      if (ladderRef.current) ladderRef.current.style.backgroundPositionY = `${(-pos * GAP * w).toFixed(1)}px`;
     };
 
     const tick = () => {
       pos += (target - pos) * (reduced ? 1 : 0.14);
       if (Math.abs(target - pos) < 0.001) pos = target;
       place();
+      if (builderRef.current) builderRef.current.dataset.climbing = String(pos !== target);
       const idx = Math.round(pos);
       if (idx !== last) {
         last = idx;
@@ -88,20 +100,28 @@ export function LayerStack() {
       return section.getBoundingClientRect().top + window.scrollY + (run * i) / (N - 1);
     };
 
-    // After the wheel stops, finish the move onto the nearest layer, so nobody has
-    // to nudge the page into place by hand.
+    // After the wheel stops, finish the move onto a layer, so nobody has to nudge the
+    // page into place by hand. The move always goes the way the reader was
+    // scrolling — never back against it — unless they barely left a layer.
     let idle = 0;
+    let lastY = window.scrollY;
+    let dir = 0;
     const snap = () => {
       const rect = section.getBoundingClientRect();
       const run = rect.height - window.innerHeight;
       const raw = run > 0 ? -rect.top / run : -1;
       // Only while the stage is pinned; entering and leaving the section scroll freely.
       if (raw <= 0 || raw >= 1) return;
-      const top = scrollFor(Math.round(raw * (N - 1)));
+      const at = raw * (N - 1);
+      const i = dir > 0 ? Math.ceil(at - SNAP_SLACK) : dir < 0 ? Math.floor(at + SNAP_SLACK) : Math.round(at);
+      const top = scrollFor(Math.max(0, Math.min(N - 1, i)));
       if (Math.abs(top - window.scrollY) > 2) window.scrollTo({ top, behavior: reduced ? "auto" : "smooth" });
     };
 
     const onScroll = () => {
+      const y = window.scrollY;
+      if (y !== lastY) dir = Math.sign(y - lastY);
+      lastY = y;
       const rect = section.getBoundingClientRect();
       const run = rect.height - window.innerHeight;
       const p = run > 0 ? Math.max(0, Math.min(1, -rect.top / run)) : 0;
@@ -114,12 +134,48 @@ export function LayerStack() {
     onScroll();
     pos = target;
     place();
+    // While the stage is pinned, the wheel turns exactly one layer per flick: the
+    // page is moved by script, and the rest of the flick (extra notches, trackpad
+    // inertia) is swallowed until the wheel has been quiet for a moment. At the
+    // first and last layer the wheel is let through, so the page can be left.
+    let wheelLocked = false;
+    let lockUntil = 0;
+    let quiet = 0;
+    const unlock = () => {
+      const wait = lockUntil - performance.now();
+      if (wait > 0) quiet = window.setTimeout(unlock, wait);
+      else wheelLocked = false;
+    };
+    const onWheel = (e: WheelEvent) => {
+      const rect = section.getBoundingClientRect();
+      const run = rect.height - window.innerHeight;
+      if (run <= 0) return;
+      const raw = -rect.top / run;
+      const d = Math.sign(e.deltaY);
+      if (!d || raw < -0.001 || raw > 1.001) return;
+      const at = raw * (N - 1);
+      const next = d > 0 ? Math.floor(at + 0.01) + 1 : Math.ceil(at - 0.01) - 1;
+      if (next < 0 || next > N - 1) return;
+
+      e.preventDefault();
+      clearTimeout(quiet);
+      quiet = window.setTimeout(unlock, WHEEL_QUIET_MS);
+      if (wheelLocked) return;
+      wheelLocked = true;
+      lockUntil = performance.now() + WHEEL_LOCK_MS;
+      dir = d;
+      window.scrollTo({ top: scrollFor(next), behavior: reduced ? "auto" : "smooth" });
+    };
+
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("resize", onScroll);
     return () => {
       cancelAnimationFrame(frame);
       clearTimeout(idle);
+      clearTimeout(quiet);
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("wheel", onWheel);
       window.removeEventListener("resize", onScroll);
     };
   }, []);
@@ -169,6 +225,14 @@ export function LayerStack() {
         </ol>
 
         <div className={styles.stack} aria-hidden="true">
+          {/* A builder duck on a ladder beside the stack, climbing as the focus moves. */}
+          <div ref={ladderRef} className={styles.ladder} />
+          <div ref={builderRef} className={styles.builder}>
+            <PixelDuck tempo="steady">
+              <rect x={8} y={0} width={4} height={1} fill="var(--accent)" />
+              <rect x={7} y={1} width={7} height={1} fill="var(--accent)" />
+            </PixelDuck>
+          </div>
           {LAYERS.map((layer, i) => (
             <div
               key={layer.name}

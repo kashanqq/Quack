@@ -58,3 +58,25 @@
     animation: none;
   }
 }
+
+/* Waving: the wing swings up from its front end, twice a beat. */
+.wave {
+  transform-box: fill-box;
+  transform-origin: 100% 50%;
+  animation: duck-wave calc(var(--beat) * 2) steps(2, end) infinite alternate;
+}
+
+@keyframes duck-wave {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(40deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave {
+    animation: none;
+  }
+}

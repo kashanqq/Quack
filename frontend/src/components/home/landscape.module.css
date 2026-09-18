@@ -1,0 +1,187 @@
+/* Pixel scene along the bottom of the first screen. It sits under the hero's
+   content, never takes a click, and never takes layout space. --unit is one
+   sprite pixel, --surface the height of the ground's top edge. */
+
+.scene {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* The scenery sits back in the page: dimmed, fading out towards both sides, and
+   its soil melting into the section below. The walking ducks stay in front. */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  opacity: 0.55;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 11%, #000 89%, transparent),
+    linear-gradient(to top, transparent, #000 14px);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 11%, #000 89%, transparent),
+    linear-gradient(to top, transparent, #000 14px);
+  mask-composite: intersect;
+}
+
+.ground {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: block;
+}
+
+/* Pond */
+
+.pond {
+  position: absolute;
+  bottom: calc(var(--surface) - 4 * var(--unit));
+  left: 6%;
+}
+
+.pond > svg {
+  display: block;
+}
+
+.ripple {
+  animation: ripple 2.4s steps(1, end) infinite;
+}
+
+.ripple + .ripple {
+  animation-delay: -1.2s;
+}
+
+/* The swimmer is clipped one sprite row under the water line, so it floats. */
+.swim {
+  position: absolute;
+  bottom: calc(3 * var(--unit));
+  left: calc(3 * var(--unit));
+  right: calc(3 * var(--unit));
+  height: calc(12 * var(--unit));
+  overflow: hidden;
+}
+
+.swimmer {
+  position: absolute;
+  bottom: calc(-3 * var(--unit));
+  width: calc(16 * var(--unit));
+  animation: swim 22s linear infinite;
+}
+
+.reedsLeft,
+.reedsRight {
+  position: absolute;
+  bottom: var(--surface);
+}
+
+.reedsLeft {
+  left: calc(6% - 8px);
+}
+
+.reedsRight {
+  left: calc(6% + 48 * var(--unit) - 10px);
+}
+
+.treeLeft,
+.treeRight {
+  position: absolute;
+  bottom: var(--surface);
+}
+
+/* One tree past the pond, one by the hall: the walk passes both. */
+.treeLeft {
+  left: calc(6% + 48 * var(--unit) + 28px);
+}
+
+.treeRight {
+  right: calc(7% + 29 * var(--unit) + 20px);
+}
+
+/* Hall */
+
+.hall {
+  position: absolute;
+  right: 7%;
+  bottom: var(--surface);
+}
+
+.hall > svg {
+  display: block;
+}
+
+.flagA,
+.flagB {
+  animation: flag 1.2s steps(1, end) infinite;
+}
+
+.flagB {
+  animation-delay: -0.6s;
+}
+
+/* Walking ducks: HeroLandscape plays each route with the Web Animations API. */
+
+.walker {
+  position: absolute;
+  bottom: var(--surface);
+  left: 0;
+  width: calc(16 * var(--unit));
+  opacity: 0;
+}
+
+.walker[data-facing="left"] svg {
+  transform: scaleX(-1);
+}
+
+@keyframes ripple {
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes swim {
+  0% {
+    left: 0;
+    transform: scaleX(1);
+  }
+  48% {
+    left: calc(100% - 16 * var(--unit));
+    transform: scaleX(1);
+  }
+  50% {
+    left: calc(100% - 16 * var(--unit));
+    transform: scaleX(-1);
+  }
+  98% {
+    left: 0;
+    transform: scaleX(-1);
+  }
+  100% {
+    left: 0;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes flag {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Too narrow for the hall and the walk to it: keep just the ground and the pond. */
+@media (max-width: 720px) {
+  .hall,
+  .walker,
+  .reedsRight,
+  .treeLeft,
+  .treeRight {
+    display: none;
+  }
+}

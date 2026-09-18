@@ -170,7 +170,8 @@ export type Evaluation = {
 
 const formatEur = (n: number) => `€${n.toLocaleString("ru-RU")}/год`;
 
-function budgetOf(profile: Profile): number | undefined {
+/** The yearly budget from the profile; Infinity when it is not limited. */
+export function budgetOf(profile: Profile): number | undefined {
   if (!profile.budget) return undefined;
   if (profile.budget.startsWith("не ограничен")) return Infinity;
   const n = profile.budget.match(/(\d[\d\s]*)/);
