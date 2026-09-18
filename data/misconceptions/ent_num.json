@@ -1,0 +1,10 @@
+[
+  {
+    "id": "lib.log_odz_skip",
+    "name": "Забывает ОДЗ в логарифмических уравнениях",
+    "description": "Ученик решает уравнение, но не проверяет, что аргумент логарифма положителен.",
+    "error_class": "procedural",
+    "skill_ids": ["ent.num.logarithm", "ent.func.logarithm"],
+    "exam_specific": null
+  }
+]

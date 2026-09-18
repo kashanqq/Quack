@@ -132,10 +132,13 @@ def test_exam_format_area_shares_sum_to_one():
 # --- misconceptions ---
 
 
+def _all_misconception_files() -> list[Path]:
+    return sorted((DATA / "misconceptions").glob("*.json"))
+
+
 def test_library_parses_and_skills_exist():
-    path = DATA / "misconceptions" / "library.json"
-    entries = _load(path)
-    assert entries, "library is empty"
+    files = _all_misconception_files()
+    assert files, "no misconception files found"
 
     all_defined: set[str] = set()
     for f in _all_skill_files():
@@ -143,10 +146,23 @@ def test_library_parses_and_skills_exist():
         for s in data.skills:
             all_defined.add(s.id)
 
-    for e in entries:
-        for sid in e["skill_ids"]:
-            assert sid in all_defined, f"{e['id']}: skill {sid} not defined anywhere"
+    seen_ids: dict[str, str] = {}
+    total = 0
+    for f in files:
+        for e in _load(f):
+            if e["id"] in seen_ids:
+                raise AssertionError(
+                    f"duplicate misconception id {e['id']!r} in {f.name} "
+                    f"(also in {seen_ids[e['id']]})"
+                )
+            seen_ids[e["id"]] = f.name
+            total += 1
+            for sid in e["skill_ids"]:
+                assert sid in all_defined, (
+                    f"{e['id']}: skill {sid} not defined anywhere"
+                )
 
+    assert total >= 10, f"only {total} misconceptions in catalog"
 
 # --- templates ---
 
@@ -161,9 +177,10 @@ def test_every_template_parses_and_validates():
         for s in data.skills:
             all_skills.add(s.id)
 
-    misc_ids: set[str] = {
-        e["id"] for e in _load(DATA / "misconceptions" / "library.json")
-    }
+    misc_ids: set[str] = set()
+    for mf in _all_misconception_files():
+        for e in _load(mf):
+            misc_ids.add(e["id"])
 
     for f in files:
         spec = TaskTemplateSpec.model_validate(_load(f))

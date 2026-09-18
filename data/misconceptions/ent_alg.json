@@ -1,0 +1,18 @@
+[
+  {
+    "id": "lib.inequality_sign_flip",
+    "name": "Не меняет знак при умножении на отрицательное",
+    "description": "Ученик не переворачивает неравенство при умножении или делении на отрицательное число.",
+    "error_class": "procedural",
+    "skill_ids": ["math.alg.linear_ineq", "ent.alg.inequalities"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.inequality_endpoint",
+    "name": "Включает или исключает концы интервала",
+    "description": "Ученик путает строгое и нестрогое неравенство и включает граничную точку, когда её нужно исключить.",
+    "error_class": "attention",
+    "skill_ids": ["math.alg.linear_ineq", "ent.alg.inequalities"],
+    "exam_specific": null
+  }
+]
