@@ -1,0 +1,38 @@
+{
+  "id": "tpl.sat.geo.lines_angles.vertical",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 3,
+  "skill_id": "sat.geo.lines_angles",
+  "tags": [
+    "geo",
+    "lines_angles",
+    "vertical"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "Two vertical angles meet at a crossing. One is 38 degrees. What is the other?",
+  "correct": "38",
+  "distractors": [
+    {
+      "expr": "142",
+      "misconception_id": "lib.geo.angle_vertical"
+    },
+    {
+      "expr": "52",
+      "misconception_id": null
+    },
+    {
+      "expr": "76",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the lines angles rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

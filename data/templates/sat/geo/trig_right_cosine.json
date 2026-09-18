@@ -1,0 +1,38 @@
+{
+  "id": "tpl.sat.geo.trig_right.cosine",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 3,
+  "skill_id": "sat.geo.trig_right",
+  "tags": [
+    "geo",
+    "trig_right",
+    "cosine"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "In a right triangle, adjacent = 4 and hypotenuse = 5. What is cos(theta)?",
+  "correct": "4/5",
+  "distractors": [
+    {
+      "expr": "5/4",
+      "misconception_id": "lib.geo.trig_ratio"
+    },
+    {
+      "expr": "3/5",
+      "misconception_id": null
+    },
+    {
+      "expr": "4/3",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the trig right rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

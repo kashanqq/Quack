@@ -1,0 +1,51 @@
+{
+  "id": "tpl.sat.psda.one_var_data.mean",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 2,
+  "skill_id": "sat.psda.one_var_data",
+  "tags": [
+    "psda",
+    "one_var_data",
+    "mean"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {
+    "a": {
+      "choices": [
+        2,
+        3
+      ]
+    },
+    "b": {
+      "choices": [
+        5,
+        6
+      ]
+    }
+  },
+  "constraints": [],
+  "stem": "What is the mean of {a}, {b}, {a}, and {b}?",
+  "correct": "(a+b)/2",
+  "distractors": [
+    {
+      "expr": "a+b",
+      "misconception_id": "lib.psda.mean_sum"
+    },
+    {
+      "expr": "b",
+      "misconception_id": null
+    },
+    {
+      "expr": "a",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the one var data rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

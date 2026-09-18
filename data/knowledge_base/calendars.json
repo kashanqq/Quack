@@ -1,1 +1,92 @@
-[]
+[
+  {
+    "exam_id": "SAT_MATH",
+    "date": "2026-10-10",
+    "registration_deadline": "2026-09-10",
+    "late_deadline": null,
+    "source": "https://example.invalid/quack-demo/calendar",
+    "checked_at": "2026-09-18",
+    "is_demo": true
+  },
+  {
+    "exam_id": "SAT_MATH",
+    "date": "2026-11-07",
+    "registration_deadline": "2026-10-08",
+    "late_deadline": null,
+    "source": "https://example.invalid/quack-demo/calendar",
+    "checked_at": "2026-09-18",
+    "is_demo": true
+  },
+  {
+    "exam_id": "SAT_MATH",
+    "date": "2026-12-05",
+    "registration_deadline": "2026-11-05",
+    "late_deadline": null,
+    "source": "https://example.invalid/quack-demo/calendar",
+    "checked_at": "2026-09-18",
+    "is_demo": true
+  },
+  {
+    "exam_id": "SAT_MATH",
+    "date": "2027-03-13",
+    "registration_deadline": "2027-02-12",
+    "late_deadline": null,
+    "source": "https://example.invalid/quack-demo/calendar",
+    "checked_at": "2026-09-18",
+    "is_demo": true
+  },
+  {
+    "exam_id": "SAT_MATH",
+    "date": "2027-05-08",
+    "registration_deadline": "2027-04-08",
+    "late_deadline": null,
+    "source": "https://example.invalid/quack-demo/calendar",
+    "checked_at": "2026-09-18",
+    "is_demo": true
+  },
+  {
+    "exam_id": "SAT_MATH",
+    "date": "2027-06-05",
+    "registration_deadline": "2027-05-05",
+    "late_deadline": null,
+    "source": "https://example.invalid/quack-demo/calendar",
+    "checked_at": "2026-09-18",
+    "is_demo": true
+  },
+  {
+    "exam_id": "ENT_MATH",
+    "date": "2027-05-20",
+    "registration_deadline": "2027-04-20",
+    "late_deadline": null,
+    "source": "https://example.invalid/quack-demo/calendar",
+    "checked_at": "2026-09-18",
+    "is_demo": true
+  },
+  {
+    "exam_id": "ENT_MATH",
+    "date": "2027-06-20",
+    "registration_deadline": "2027-05-20",
+    "late_deadline": null,
+    "source": "https://example.invalid/quack-demo/calendar",
+    "checked_at": "2026-09-18",
+    "is_demo": true
+  },
+  {
+    "exam_id": "ENT_MATH",
+    "date": "2027-07-10",
+    "registration_deadline": "2027-06-10",
+    "late_deadline": null,
+    "source": "https://example.invalid/quack-demo/calendar",
+    "checked_at": "2026-09-18",
+    "is_demo": true
+  },
+  {
+    "exam_id": "ENT_MATH",
+    "date": "2027-08-12",
+    "registration_deadline": "2027-07-12",
+    "late_deadline": null,
+    "source": "https://example.invalid/quack-demo/calendar",
+    "checked_at": "2026-09-18",
+    "is_demo": true
+  }
+]
