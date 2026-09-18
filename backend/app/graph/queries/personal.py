@@ -17,7 +17,13 @@ from neo4j import AsyncDriver
 
 from app.graph import labels as L
 from app.knowledge.hlr import recall_p
-from app.schemas.knowledge import EvidenceIn, KnowledgeStateOut
+from app.schemas.knowledge import (
+    EvidenceIn,
+    EvidenceOut,
+    KnowledgeStateOut,
+    MisconceptionStateOut,
+    RootCauseOut,
+)
 
 # --- real ---
 
@@ -170,12 +176,54 @@ async def merge_evidence(driver: AsyncDriver, student_id: UUID, ev: EvidenceIn) 
     return f"{rec['event_id']}:{rec['skill_id']}"
 
 
-# --- stubs (phase 2) ---
+# --- phase 2: misconceptions, roots, history ---
 
 
-async def get_misc_states(driver: AsyncDriver, student_id: UUID, skill_ids: list[str]):
-    """Phase 2: misconception states for a set of skills."""
-    raise NotImplementedError("phase 2")
+async def get_misc_states(
+    driver: AsyncDriver, student_id: UUID, skill_ids: list[str]
+) -> list[MisconceptionStateOut]:
+    """Misconception states for a set of skills — memory-architecture §5."""
+    if not skill_ids:
+        return []
+    query = f"""
+    MATCH (st:{L.STUDENT} {{id: $student_id}})
+          -[:{L.HAS_MISC_STATE}]->(ms:{L.MISCONCEPTION_STATE})
+          -[:{L.OF_MISCONCEPTION}]->(m:{L.MISCONCEPTION})
+    OPTIONAL MATCH (m)-[:{L.ABOUT}]->(s:{L.SKILL})
+    WITH st, ms, m, collect(DISTINCT s.id) AS skill_ids
+    WHERE any(sid IN skill_ids WHERE sid IN $skill_ids)
+    RETURN m.id AS misconception_id, m.name AS name,
+           ms.status AS status,
+           ms.occurrence_count AS occurrence_count,
+           ms.strong_count AS strong_count,
+           ms.consecutive_avoided AS consecutive_avoided,
+           ms.triggers AS triggers,
+           ms.first_seen_at AS first_seen_at,
+           ms.updated_at AS updated_at,
+           skill_ids
+    ORDER BY m.id
+    """
+    out: list[MisconceptionStateOut] = []
+    async with driver.session() as session:
+        result = await session.run(
+            query, student_id=str(student_id), skill_ids=skill_ids
+        )
+        async for rec in result:
+            out.append(
+                MisconceptionStateOut(
+                    misconception_id=rec["misconception_id"],
+                    name=rec["name"],
+                    status=rec["status"],
+                    occurrence_count=int(rec["occurrence_count"]),
+                    strong_count=int(rec["strong_count"]),
+                    consecutive_avoided=int(rec["consecutive_avoided"]),
+                    triggers=_parse_triggers(rec["triggers"]),
+                    first_seen_at=rec["first_seen_at"].to_native(),
+                    updated_at=rec["updated_at"].to_native(),
+                    skill_ids=list(rec["skill_ids"] or []),
+                )
+            )
+    return out
 
 
 async def upsert_misc_state(
@@ -184,9 +232,73 @@ async def upsert_misc_state(
     misconception_id: str,
     status: str,
     counters: dict,
-):
-    """Phase 2: update MisconceptionState (occurrence_count, strong_count, ...)."""
-    raise NotImplementedError("phase 2")
+    triggers: dict | None = None,
+) -> MisconceptionStateOut:
+    """Create or update MisconceptionState — memory-architecture §5.
+
+    MERGE по (student_id, misconception_id). counters: occurrence_count,
+    strong_count, consecutive_avoided. triggers сериализуется в JSON-строку.
+    """
+    import json as _json
+
+    triggers_json = _json.dumps(triggers or {}, ensure_ascii=False)
+    occurrence_count = int(counters.get("occurrence_count", 0))
+    strong_count = int(counters.get("strong_count", 0))
+    consecutive_avoided = int(counters.get("consecutive_avoided", 0))
+    now = datetime.now(UTC).isoformat()
+
+    query = f"""
+    MATCH (st:{L.STUDENT} {{id: $student_id}})
+    MATCH (m:{L.MISCONCEPTION} {{id: $misconception_id}})
+    MERGE (st)-[:{L.HAS_MISC_STATE}]->
+        (ms:{L.MISCONCEPTION_STATE} {{misconception_id: $misconception_id}})
+    ON CREATE SET ms.first_seen_at = datetime($now), ms.created_at = datetime($now)
+    SET ms.status = $status,
+        ms.occurrence_count = $occurrence_count,
+        ms.strong_count = $strong_count,
+        ms.consecutive_avoided = $consecutive_avoided,
+        ms.triggers = $triggers,
+        ms.updated_at = datetime($now),
+        ms.student_id = $student_id
+    MERGE (ms)-[:{L.OF_MISCONCEPTION}]->(m)
+    OPTIONAL MATCH (m)-[:{L.ABOUT}]->(s:{L.SKILL})
+    WITH ms, m, collect(DISTINCT s.id) AS skill_ids
+    RETURN m.id AS misconception_id, m.name AS name,
+           ms.status AS status,
+           ms.occurrence_count AS occurrence_count,
+           ms.strong_count AS strong_count,
+           ms.consecutive_avoided AS consecutive_avoided,
+           ms.triggers AS triggers,
+           ms.first_seen_at AS first_seen_at,
+           ms.updated_at AS updated_at,
+           skill_ids
+    """
+    async with driver.session() as session:
+        result = await session.run(
+            query,
+            student_id=str(student_id),
+            misconception_id=misconception_id,
+            status=status,
+            occurrence_count=occurrence_count,
+            strong_count=strong_count,
+            consecutive_avoided=consecutive_avoided,
+            triggers=triggers_json,
+            now=now,
+        )
+        rec = await result.single()
+    assert rec is not None
+    return MisconceptionStateOut(
+        misconception_id=rec["misconception_id"],
+        name=rec["name"],
+        status=rec["status"],
+        occurrence_count=int(rec["occurrence_count"]),
+        strong_count=int(rec["strong_count"]),
+        consecutive_avoided=int(rec["consecutive_avoided"]),
+        triggers=_parse_triggers(rec["triggers"]),
+        first_seen_at=rec["first_seen_at"].to_native(),
+        updated_at=rec["updated_at"].to_native(),
+        skill_ids=list(rec["skill_ids"] or []),
+    )
 
 
 async def add_root_cause(
@@ -195,19 +307,180 @@ async def add_root_cause(
     root_skill_id: str,
     confidence: float,
     source: str,
-):
-    """Phase 2: create ROOT_CAUSE edge from evidence to root skill."""
-    raise NotImplementedError("phase 2")
+) -> None:
+    """Create ROOT_CAUSE edge from Evidence to a Skill — memory-architecture §6.
+
+    evidence_id format: "{event_id}:{skill_id}" (как возвращает merge_evidence).
+    MERGE по (evidence_id, root_skill_id) — повторный вызов не создаёт дублей.
+    """
+    query = f"""
+    MATCH (e:{L.EVIDENCE})
+    WHERE e.event_id = $event_id AND e.skill_id = $from_skill
+    MATCH (r:{L.SKILL} {{id: $root_skill_id}})
+    MERGE (e)-[rc:{L.ROOT_CAUSE} {{root_skill_id: $root_skill_id}}]->(r)
+    SET rc.confidence = $confidence,
+        rc.source = $source,
+        rc.created_at = coalesce(rc.created_at, datetime())
+    """
+    event_id, _, from_skill = evidence_id.partition(":")
+    async with driver.session() as session:
+        await session.run(
+            query,
+            event_id=int(event_id),
+            from_skill=from_skill,
+            root_skill_id=root_skill_id,
+            confidence=confidence,
+            source=source,
+        )
 
 
 async def list_evidence(
     driver: AsyncDriver, student_id: UUID, skill_id: str, limit: int = 50
-):
-    """Phase 2: all Evidence for a skill, newest first (for 'why do you think so')."""
-    raise NotImplementedError("phase 2")
+) -> list[EvidenceOut]:
+    """All Evidence for a skill, newest first — memory-architecture §10.5."""
+    query = f"""
+    MATCH (st:{L.STUDENT} {{id: $student_id}})
+          -[:{L.HAS_EVIDENCE}]->(e:{L.EVIDENCE})
+    WHERE e.skill_id = $skill_id
+    RETURN e.event_id AS event_id, e.skill_id AS skill_id, e.kind AS kind,
+           e.tier AS tier, e.source AS source, e.weight AS weight,
+           e.direction AS direction, e.observed_at AS observed_at,
+           e.summary AS summary,
+           e.ctx_instance_id AS instance_id,
+           e.ctx_message_id AS message_id
+    ORDER BY e.observed_at DESC
+    LIMIT $limit
+    """
+    out: list[EvidenceOut] = []
+    async with driver.session() as session:
+        result = await session.run(
+            query,
+            student_id=str(student_id),
+            skill_id=skill_id,
+            limit=limit,
+        )
+        async for rec in result:
+            out.append(
+                EvidenceOut(
+                    evidence_id=f"{rec['event_id']}:{rec['skill_id']}",
+                    event_id=int(rec["event_id"]),
+                    skill_id=rec["skill_id"],
+                    kind=rec["kind"],
+                    tier=int(rec["tier"]),
+                    source=rec["source"],
+                    weight=float(rec["weight"]),
+                    direction=int(rec["direction"]),
+                    observed_at=rec["observed_at"].to_native(),
+                    summary=rec["summary"],
+                    instance_id=_to_uuid(rec["instance_id"]),
+                    message_id=_to_uuid(rec["message_id"]),
+                )
+            )
+    return out
 
 
-# --- helpers ---
+async def list_root_causes(
+    driver: AsyncDriver, student_id: UUID, window_days: int
+) -> list[RootCauseOut]:
+    """All ROOT_CAUSE edges from this student's Evidence in the last window_days."""
+    query = f"""
+    MATCH (st:{L.STUDENT} {{id: $student_id}})
+          -[:{L.HAS_EVIDENCE}]->(e:{L.EVIDENCE})-[rc:{L.ROOT_CAUSE}]->(r:{L.SKILL})
+    WHERE e.observed_at >= datetime() - duration({{days: $window_days}})
+    RETURN e.skill_id AS from_skill_id,
+           r.id AS root_skill_id,
+           rc.confidence AS confidence,
+           rc.source AS source,
+           rc.created_at AS created_at
+    ORDER BY rc.created_at DESC
+    """
+    out: list[RootCauseOut] = []
+    async with driver.session() as session:
+        result = await session.run(
+            query, student_id=str(student_id), window_days=window_days
+        )
+        async for rec in result:
+            out.append(
+                RootCauseOut(
+                    from_skill_id=rec["from_skill_id"],
+                    root_skill_id=rec["root_skill_id"],
+                    confidence=float(rec["confidence"]),
+                    source=rec["source"],
+                    created_at=rec["created_at"].to_native(),
+                )
+            )
+    return out
+
+
+async def get_state_history(
+    driver: AsyncDriver,
+    student_id: UUID,
+    skill_id: str,
+    exam_id: str,
+    n: int = 3,
+) -> list[KnowledgeStateOut]:
+    """Last n KnowledgeStates for (student, skill, exam), newest first.
+
+    Walks PREVIOUS from the current state.
+    """
+    query = f"""
+    MATCH (st:{L.STUDENT} {{id: $student_id}})-[:{L.HAS_STATE}]->(k:{L.KNOWLEDGE_STATE})
+    MATCH (k)-[:{L.FOR_SKILL}]->(s:{L.SKILL} {{id: $skill_id}})
+    WHERE k.exam_id = $exam_id
+    WITH k
+    MATCH path = (k)-[:{L.PREVIOUS}*0..{int(n) - 1}]->(prev:{L.KNOWLEDGE_STATE})
+    RETURN DISTINCT prev
+    LIMIT $n
+    """
+    out: list[KnowledgeStateOut] = []
+    now = datetime.now(UTC)
+    async with driver.session() as session:
+        result = await session.run(
+            query,
+            student_id=str(student_id),
+            skill_id=skill_id,
+            exam_id=exam_id,
+            n=n,
+        )
+        async for rec in result:
+            node = rec["prev"]
+            data = dict(node)
+            out.append(_row_to_state(_dict_to_row(data), now=now))
+    return out
+
+
+def _parse_triggers(value) -> dict:
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    import json as _json
+
+    try:
+        return _json.loads(value)
+    except (ValueError, TypeError):
+        return {}
+
+
+def _to_uuid(value) -> UUID | None:
+    if value is None:
+        return None
+    if isinstance(value, UUID):
+        return value
+    try:
+        return UUID(str(value))
+    except (ValueError, AttributeError):
+        return None
+
+
+def _dict_to_row(data: dict) -> dict:
+    """Wrap a plain dict into a simple attribute-accessor for _row_to_state."""
+
+    class _Row(dict):
+        def __getattr__(self, item):
+            return self[item]
+
+    return _Row(data)
 
 
 def _row_to_state(rec, *, now: datetime) -> KnowledgeStateOut:
