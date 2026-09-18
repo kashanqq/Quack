@@ -3,7 +3,7 @@
   "exam_id": "SAT_MATH",
   "type": "mcq4",
   "difficulty": 3,
-  "skill_id": "sat.alg.abs_value_eq",
+  "skill_id": "math.alg.abs_value_eq",
   "tags": ["negative_branch", "sum_of_roots"],
   "time_reference_sec": 75,
   "kind": "template",

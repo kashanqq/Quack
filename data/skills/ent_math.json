@@ -11,7 +11,7 @@
       "score_share": 1.0,
       "skills": [
         { "id": "math.alg.linear_eq", "weight": 10.0 },
-        { "id": "sat.alg.abs_value_eq", "weight": 12.0 },
+        { "id": "math.alg.abs_value_eq", "weight": 12.0 },
         { "id": "math.alg.quadratic_roots", "weight": 14.0 },
         { "id": "ent.alg.inequalities", "weight": 14.0 }
       ]

@@ -4,7 +4,7 @@
     "name": "Раскрытие модуля только в одной ветви",
     "description": "Ученик решает |ax − b| = c как ax − b = c и теряет вторую ветвь ax − b = −c.",
     "error_class": "conceptual",
-    "skill_ids": ["sat.alg.abs_value_eq"],
+    "skill_ids": ["math.alg.abs_value_eq"],
     "exam_specific": null
   },
   {
@@ -12,7 +12,7 @@
     "name": "Потеря знака при раскрытии модуля",
     "description": "Ученик выбирает ветвь без учёта знака: получает −2b/a вместо 2b/a.",
     "error_class": "conceptual",
-    "skill_ids": ["sat.alg.abs_value_eq"],
+    "skill_ids": ["math.alg.abs_value_eq"],
     "exam_specific": null
   },
   {
