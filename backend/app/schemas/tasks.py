@@ -68,3 +68,27 @@ class TaskInstance(BaseModel):
     time_reference_sec: int
     difficulty: int
     tags: list[str]
+
+
+
+class Grade(BaseModel):
+    correct: bool
+    matched_misconception_id: str | None = None
+    partial: float | None = None
+    omitted_misconception_ids: list[str] = []
+
+
+class AnswerIn(BaseModel):
+    instance_id: UUID
+    answer: Any
+    time_spent_sec: int
+    mode: str
+    after_guideline: bool = False
+    hint_level_before: int = 0
+
+
+class AnswerResult(BaseModel):
+    grade: Grade
+    solution: list[str]
+    state_after: Any = None
+    misconception_change: str | None = None
