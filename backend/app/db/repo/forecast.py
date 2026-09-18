@@ -28,7 +28,9 @@ async def put(
     values = {
         "student_id": student_id,
         "exam_id": exam_id,
-        "payload": forecast.model_dump(mode="json"),
+        "payload": forecast.model_copy(
+            update={"as_of_event_id": as_of_event_id}
+        ).model_dump(mode="json"),
         "as_of_event_id": as_of_event_id,
     }
     statement = insert(ForecastCache).values(**values)
