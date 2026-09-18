@@ -90,6 +90,16 @@ def test_dry_run_prints_prompt_with_skill_and_misconception_and_writes_nothing(
     assert result.returncode == 0, result.stderr
     assert "math.alg.abs_value_eq" in result.stdout
     assert "lib.abs_single_branch" in result.stdout
+
+    # Area-wide sharing (30-B2-phase2.md §3.1): a skill with no
+    # misconceptions of its own — math.alg.linear_eq — must still see
+    # lib.abs_single_branch, tagged as belonging to a neighbouring skill,
+    # not just the skill it's directly attached to (math.alg.abs_value_eq).
+    blocks = result.stdout.split("=== навык ")
+    linear_eq_block = next(b for b in blocks if b.startswith("math.alg.linear_eq "))
+    assert "lib.abs_single_branch" in linear_eq_block
+    assert "смежный навык" in linear_eq_block
+
     assert list(tmp_path.iterdir()) == []
 
 

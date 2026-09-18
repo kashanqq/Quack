@@ -108,13 +108,15 @@ def _load_misconceptions(data_dir: Path) -> list[dict]:
     return out
 
 
-def _misconceptions_for_skill(
-    all_misc: list[dict], skill_id: str, exam: str
+def _misconceptions_for_area(
+    all_misc: list[dict], area_skill_ids: list[str], exam: str
 ) -> list[dict]:
+    area_set = set(area_skill_ids)
     return [
         m
         for m in all_misc
-        if skill_id in m.get("skill_ids", []) and m.get("exam_specific") in (None, exam)
+        if area_set & set(m.get("skill_ids", []))
+        and m.get("exam_specific") in (None, exam)
     ]
 
 
@@ -140,10 +142,24 @@ def _format_exam_format(doc: dict) -> str:
     return "\n".join(lines) if lines else "нет данных о формате"
 
 
-def _format_misconceptions(entries: list[dict]) -> str:
+def _format_misconceptions(entries: list[dict], skill_id: str) -> str:
+    """Own-skill misconceptions first, then the rest of the area's, each
+    marked with the neighbouring skill they actually belong to — the model
+    still needs to know the area's misconceptions even when the target
+    skill has none of its own (30-B2-phase2.md §3.1)."""
     if not entries:
         return "нет заблуждений для этой области"
-    return "\n".join(f"- {m['id']}: {m['name']} — {m['description']}" for m in entries)
+    own = [m for m in entries if skill_id in m.get("skill_ids", [])]
+    other = [m for m in entries if skill_id not in m.get("skill_ids", [])]
+    lines = [f"- {m['id']}: {m['name']} — {m['description']}" for m in own]
+    for m in other:
+        related = next(
+            (sid for sid in m.get("skill_ids", []) if sid != skill_id), skill_id
+        )
+        lines.append(
+            f"- {m['id']}: {m['name']} — {m['description']} (смежный навык {related})"
+        )
+    return "\n".join(lines)
 
 
 def _format_examples(templates: list[dict]) -> str:
@@ -166,7 +182,7 @@ def _build_messages(
         skill_name=skill["name"],
         skill_description=skill["description"],
         exam_format=_format_exam_format(exam_format_doc),
-        misconceptions=_format_misconceptions(misconceptions),
+        misconceptions=_format_misconceptions(misconceptions, skill["id"]),
         examples=_format_examples(examples),
         n=str(n),
     )
@@ -209,17 +225,18 @@ async def run(argv: list[str] | None = None) -> int:
     skills = _select_skills(skills_doc, args.area, args.skill)
     exam_format_doc = _load_exam_format(data_dir, args.exam)
     all_misconceptions = _load_misconceptions(data_dir)
+    area_skill_ids = [s["id"] for s in _skills_for_area(skills_doc, args.area)]
+    area_misconceptions = _misconceptions_for_area(
+        all_misconceptions, area_skill_ids, args.exam
+    )
 
     print(f"Навыки для генерации: {[s['id'] for s in skills]}")
 
     per_skill_messages: list[tuple[dict, list[LLMMessage]]] = []
     for skill in skills:
-        misconceptions = _misconceptions_for_skill(
-            all_misconceptions, skill["id"], args.exam
-        )
         examples = _example_templates(area_dir, skill["id"])
         messages = _build_messages(
-            exam_format_doc, skill, misconceptions, examples, args.n
+            exam_format_doc, skill, area_misconceptions, examples, args.n
         )
         per_skill_messages.append((skill, messages))
 
