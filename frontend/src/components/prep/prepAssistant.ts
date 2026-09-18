@@ -156,18 +156,27 @@ export function assistantReply(text: string, model: PrepModel, fallback: ExamId)
 
 /* ---------- The assistant inside a topic ---------- */
 
-export const TOPIC_PROMPTS = ["Объясни проще", "Дай пример", "Где я ошибаюсь?", "Успею к дедлайну?"];
+export const TOPIC_PROMPTS = ["Где я ошибаюсь?", "Проверь моё решение", "Почему здесь так?", "Успею к дедлайну?"];
 
 /**
- * A reply inside one topic of one set. Answers about the material come from the topic's own short
- * explanation; about mistakes — from the knowledge model; about time — from the set's deadline.
- * Demo rules until the backend runs a model with this same context (product-logic §4.5).
+ * A reply inside one topic of one set: checking a solution, the student's own mistakes, the deadline, an
+ * explanation only when asked. It never opens with theory — that would make it a course (product-logic
+ * §1, §4.4). Demo rules until the backend runs a model with this same context (product-logic §4.5).
  */
 export function topicReply(text: string, model: PrepModel, skillId: string, set: StudySet, content: TopicContent | undefined): string {
   const t = text.toLowerCase();
   const skill = skillById(skillId);
 
-  if (/пример|покажи|разбер/.test(t)) {
+  if (/провер|решени/.test(t)) {
+    if (/\d/.test(t) && /=|→|->|x/.test(t)) {
+      return `Демо: здесь бэкенд проверит каждый шаг. Сверь сам с правилом: ${
+        content ? content.points[0].toLowerCase() : "каждый переход должен сохранять равенство"
+      }. Если ответ не сошёлся — пришли, на каком шаге сомневаешься.`;
+    }
+    return "Пришли решение одной строкой, например «|2x − 1| = 5 → x = 3 и x = −2». Проверю шаги и скажу, где ошибка.";
+  }
+
+  if (/пример|покажи/.test(t)) {
     return content ? `Пример: ${content.example.q}\nРешение: ${content.example.a}` : `Примеров по теме «${skill.name}» пока нет.`;
   }
 
@@ -177,7 +186,7 @@ export function topicReply(text: string, model: PrepModel, skillId: string, set:
       return [
         `По твоим ответам в теме «${skill.name}»:`,
         ...own.map((m) => `• ${m.text}${m.trigger ? ` — ${m.trigger}` : ""}`),
-        "Проверка во вкладке рядом покажет, ушла ли ошибка.",
+        "Мок-тест справа покажет, ушла ли ошибка.",
       ].join("\n");
     }
     return `Своих ловушек в этой теме у тебя пока не видно. Частая у всех: ${content?.trap.toLowerCase() ?? "невнимательность в знаках"}`;
@@ -196,13 +205,12 @@ export function topicReply(text: string, model: PrepModel, skillId: string, set:
     }`;
   }
 
-  if (/провер|тест|задач/.test(t)) return "Задачи — во вкладке «Проверка». Каждый верный ответ красит тему на графе.";
+  if (/тест|задач|мок/.test(t)) return "Мок-тест — справа. Тема станет «твёрдо», когда верных будет 5 или больше.";
 
   if (content && /объясн|проще|что такое|не понима|как|зачем|почему|теори/.test(t)) {
-    return [content.summary, "Нужно уметь:", ...content.points.map((p) => `• ${p}`)].join("\n");
+    // Asked for, so it is an answer, not a lesson; reading it does not count as progress
+    return `${content.summary}\nЕсли непонятно что-то конкретное — спроси про этот шаг.`;
   }
 
-  return content
-    ? `${content.summary}\nСпроси пример, свои ошибки в этой теме или успеешь ли к дедлайну.`
-    : `Спроси пример, свои ошибки в теме «${skill.name}» или успеешь ли к дедлайну.`;
+  return `Я отвечаю на вопросы по теме «${skill.name}»: проверю решение, найду ошибку, объясню шаг, который непонятен. Спроси конкретно.`;
 }

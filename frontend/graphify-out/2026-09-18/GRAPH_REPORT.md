@@ -1,16 +1,16 @@
 # Graph Report - frontend  (2026-09-18)
 
 ## Corpus Check
-- 86 files · ~87,643 words
+- 87 files · ~96,777 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 669 nodes · 1451 edges · 51 communities (26 shown, 25 thin omitted)
+- 691 nodes · 1502 edges · 54 communities (30 shown, 24 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 1 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `aa2f7a89`
+- Built from commit: `af9c646b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -46,7 +46,7 @@
 - [[_COMMUNITY_graphify reference commit hook and native CLAUDE.md integration|graphify reference: commit hook and native CLAUDE.md integration]]
 - [[_COMMUNITY_graphify reference incremental update and cluster-only|graphify reference: incremental update and cluster-only]]
 - [[_COMMUNITY_graphify reference GitHub clone and cross-repo merge|graphify reference: GitHub clone and cross-repo merge]]
-- [[_COMMUNITY_graphify reference transcribe video and audio|graphify reference: transcribe video and audio]]
+- [[_COMMUNITY_Community 31|Community 31]]
 - [[_COMMUNITY_CLAUDE|CLAUDE.md]]
 - [[_COMMUNITY_.claudeCLAUDE|.claude/CLAUDE.md]]
 - [[_COMMUNITY_extraction-spec|extraction-spec.md]]
@@ -66,39 +66,42 @@
 - [[_COMMUNITY_Community 48|Community 48]]
 - [[_COMMUNITY_Community 49|Community 49]]
 - [[_COMMUNITY_Community 50|Community 50]]
+- [[_COMMUNITY_Community 51|Community 51]]
+- [[_COMMUNITY_Community 52|Community 52]]
+- [[_COMMUNITY_Community 53|Community 53]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `formatDate()` - 22 edges
-2. `daysBetween()` - 22 edges
+1. `daysBetween()` - 24 edges
+2. `formatDate()` - 22 edges
 3. `Icon()` - 17 edges
-4. `PixelDuck()` - 16 edges
+4. `PixelDuck()` - 17 edges
 5. `formatShort()` - 16 edges
 6. `compilerOptions` - 16 edges
-7. `skillById()` - 14 edges
-8. `copy` - 13 edges
+7. `copy` - 14 edges
+8. `skillById()` - 13 edges
 9. `computeStanding()` - 12 edges
 10. `Profile` - 11 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `ForecastChart()` --calls--> `Line`  [INFERRED]
-  src/components/prep/ForecastChart.tsx → src/components/prep/TopicPanel.tsx
-- `KnowledgeMap()` --calls--> `skillById()`  [EXTRACTED]
-  src/components/prep/SetsView.tsx → src/components/prep/prepData.ts
-- `ChoiceApp()` --calls--> `useQuack()`  [EXTRACTED]
-  src/components/choice/ChoiceApp.tsx → src/components/quack/source.ts
+  src/components/prep/ForecastChart.tsx → src/components/prep/TopicWorkspace.tsx
 - `ProgramDrawer()` --calls--> `programById()`  [EXTRACTED]
   src/components/choice/ProgramUi.tsx → src/components/choice/programs.ts
 - `ActivityGrid()` --calls--> `formatShort()`  [EXTRACTED]
   src/components/dashboard/ActivityGrid.tsx → src/components/prep/prepData.ts
+- `CalendarTab()` --calls--> `formatDate()`  [EXTRACTED]
+  src/components/dashboard/CalendarTab.tsx → src/components/prep/prepData.ts
+- `Dashboard()` --calls--> `calendarEvents()`  [EXTRACTED]
+  src/components/dashboard/Dashboard.tsx → src/components/dashboard/dashboardRules.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (51 total, 25 thin omitted)
+## Communities (54 total, 24 thin omitted)
 
 ### Community 2 - "localSource.ts"
-Cohesion: 0.08
-Nodes (41): ActivityGrid(), downloadIcs(), escape(), googleCalendarUrl(), icsFile(), nextDay(), pad(), stamp() (+33 more)
+Cohesion: 0.22
+Nodes (14): downloadIcs(), escape(), googleCalendarUrl(), icsFile(), nextDay(), pad(), stamp(), CalendarTab() (+6 more)
 
 ### Community 3 - "ProgramUi.tsx"
 Cohesion: 0.06
@@ -110,115 +113,131 @@ Nodes (19): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModu
 
 ### Community 6 - "What You Must Do When Invoked"
 Cohesion: 0.06
-Nodes (50): fieldValue(), Level, programById(), ChancesCard(), examWord(), Props, ChangesFeed(), Props (+42 more)
+Nodes (70): fieldValue(), Level, programById(), calendar(), calendarEvents(), hardConflicts(), useVertical(), Important() (+62 more)
 
 ### Community 11 - "Quack! — frontend"
 Cohesion: 0.22
 Nodes (8): graphify, Quack! — frontend, Адаптивность, Запуск, Стек, Страницы, Структура, Что имитируется и где подключать бэкенд
 
 ### Community 13 - "standing.ts"
-Cohesion: 0.12
-Nodes (26): Now(), Evidence, ExamId, savedPrograms(), setById(), acceptSet(), answerTask(), closed() (+18 more)
+Cohesion: 0.14
+Nodes (21): Now(), Evidence, setById(), SetStatus, acceptSet(), AnswerResult, answerTask(), closed() (+13 more)
 
 ### Community 14 - "SkillGraph.tsx"
-Cohesion: 0.12
-Nodes (19): useNodeDrag(), useVertical(), SkillState, SetGraph(), along(), autoLayout(), BASE, edgePath() (+11 more)
+Cohesion: 0.11
+Nodes (20): useNodeDrag(), AREAS, Misconception, Skill, SkillState, along(), autoLayout(), BASE (+12 more)
 
 ### Community 15 - "CalendarTab.tsx"
-Cohesion: 0.13
-Nodes (12): FieldKey, FieldStatus, labelOf(), ProfileItem, profileItems(), CustomScrollbar(), CustomScrollbarProps, GROUPS (+4 more)
+Cohesion: 0.18
+Nodes (9): Beacon, clamp(), Drag, GraphCanvas(), Popover, PopoverCard(), Props, ScaleContext (+1 more)
 
 ### Community 16 - "SetsView.tsx"
-Cohesion: 0.08
-Nodes (33): ForecastChart(), PAD, Props, useWidth(), Overview(), Programs(), Props, AREAS (+25 more)
+Cohesion: 0.09
+Nodes (29): ForecastChart(), PAD, Props, useWidth(), Overview(), Props, conflicts(), day() (+21 more)
 
 ### Community 17 - "Icon.tsx"
-Cohesion: 0.14
-Nodes (11): FLAG_A, FLAG_B, GROUND, HALL, PACE, POND, REEDS, TEMPOS (+3 more)
+Cohesion: 0.09
+Nodes (23): Prop(), FLAG_A, FLAG_B, HALL, HeroLandscape(), PACE, POND, TEMPOS (+15 more)
 
 ### Community 18 - "prepAssistant.ts"
-Cohesion: 0.13
-Nodes (21): Profile, budgetOf(), CompareRow, evaluate(), Evaluation, Factor, FactorStatus, formatEur() (+13 more)
+Cohesion: 0.17
+Nodes (15): budgetOf(), evaluate(), formatEur(), LEVEL_LABEL, LevelBadge(), LevelDot(), ProgramActions, ProgramCards() (+7 more)
 
 ### Community 20 - "prepData.ts"
-Cohesion: 0.05
-Nodes (44): Program, PROGRAMS, ChatDemo(), ChatDemoProps, ChatThreadProps, ChatTurn, copy, DIALOGUES (+36 more)
+Cohesion: 0.12
+Nodes (16): Program, arcDeg(), frameCountry(), Globe(), GlobeProps, Land, OPEN_COUNTRIES, pinsFor() (+8 more)
 
 ### Community 21 - "graphify reference: extra exports and benchmark"
-Cohesion: 0.10
-Nodes (16): readiness(), ChatMessage(), ChatMessageProps, ChatMsg, ChatItem, ChoiceApp(), GREETINGS, LeftPanel (+8 more)
+Cohesion: 0.06
+Nodes (42): acknowledge(), editField(), EMPTY_PROFILE, extract(), FieldKey, FIELDS, FieldStatus, labelOf() (+34 more)
 
 ### Community 23 - "programs.ts"
 Cohesion: 0.12
 Nodes (16): useAccount(), intelOneMono, inter, metadata, raleway, Props, UserMenu(), ScrollToTopOnReload() (+8 more)
 
 ### Community 24 - "Sidebar.tsx"
-Cohesion: 0.15
-Nodes (12): BEAT, BODY, COLORS, FEET, PixelDuck(), PixelDuckProps, pixels(), SLEEPING (+4 more)
+Cohesion: 0.10
+Nodes (20): BEAT, BODY, COLORS, FEET, PixelDuck(), PixelDuckProps, pixels(), SLEEPING (+12 more)
 
 ### Community 25 - "graphify reference: query, path, explain"
-Cohesion: 0.22
-Nodes (12): acknowledge(), editField(), EMPTY_PROFILE, extract(), FIELDS, MissingKey, nextMissing(), placeholderFor() (+4 more)
+Cohesion: 0.14
+Nodes (12): ANGLER, FLOAT, GROUND_WIDE, LAKE, PALETTE, ROD_BENT, ROD_STRAIGHT, SPLASH (+4 more)
 
 ### Community 27 - "graphify reference: add a URL and watch a folder"
-Cohesion: 0.22
-Nodes (9): Prop(), POND, TUFT, HeroLandscape(), SCENE_PALETTE, Palette, pixelRects(), PixelSprite() (+1 more)
+Cohesion: 0.16
+Nodes (13): ChatDemo(), ChatDemoProps, ChatThreadProps, ChatTurn, copy, DIALOGUES, QuackSection(), TABS (+5 more)
 
 ### Community 28 - "graphify reference: commit hook and native CLAUDE.md integration"
-Cohesion: 0.14
-Nodes (15): Icon(), IconName, ChatSummary, Mode, Sidebar(), SidebarProps, SidebarTab, TABS (+7 more)
+Cohesion: 0.16
+Nodes (12): Icon(), IconName, Mode, LETTERS, MENU_LABEL, MODES, Topbar(), TopbarProps (+4 more)
 
 ### Community 29 - "graphify reference: incremental update and cluster-only"
-Cohesion: 0.15
-Nodes (13): EXAMS, SET_STATUS_LABEL, STATE_LABEL, Due, DUE_TEXT, plannedDates(), Props, SetDetail() (+5 more)
+Cohesion: 0.16
+Nodes (12): EXAMS, SET_STATUS_LABEL, STATE_LABEL, Due, DUE_TEXT, plannedDates(), Props, SetDetail() (+4 more)
 
 ### Community 30 - "graphify reference: GitHub clone and cross-repo merge"
 Cohesion: 0.12
 Nodes (16): dependencies, next, react, react-dom, devDependencies, @types/node, @types/react, @types/react-dom (+8 more)
 
-### Community 31 - "graphify reference: transcribe video and audio"
+### Community 31 - "Community 31"
 Cohesion: 0.18
-Nodes (17): forecastSeries(), formatShort(), monthStarts(), rankSets(), setStatus(), clampGap(), columnScale(), isNow() (+9 more)
+Nodes (9): ChatSummary, Sidebar(), SidebarProps, SidebarTab, TABS, DASH_TABS, DashTab, PREP_SUBS (+1 more)
 
 ### Community 32 - "CLAUDE.md"
-Cohesion: 0.11
-Nodes (33): calendar(), hardConflicts(), Important(), addDays(), ASSISTANT_PROMPTS, assistantReply(), examOf(), findDeadline() (+25 more)
+Cohesion: 0.27
+Nodes (8): Dashboard(), Props, removalEffects(), unionExams(), watchList(), FirstHint(), Props, forecastScore()
 
 ### Community 33 - ".claude/CLAUDE.md"
-Cohesion: 0.18
-Nodes (10): BALLOON, COLORS, DuckLane(), DuckLaneProps, FLAME, Flight, PARACHUTE, ROPE (+2 more)
+Cohesion: 0.33
+Nodes (5): FooterDucks(), POND, TUFT, SCENE_PALETTE, SiteFooter()
 
 ### Community 34 - "extraction-spec.md"
-Cohesion: 0.20
-Nodes (8): Cloud, CLOUD_A, CLOUD_B, CLOUDS, PageSky(), PALETTE, Pass, WEDGE
+Cohesion: 0.19
+Nodes (7): Closing(), HeroTitle(), Point, LayerStack(), Roadmap(), STEPS, StepState
 
 ### Community 35 - "copy.ts"
-Cohesion: 0.60
-Nodes (4): CompareView(), CompareViewProps, compareRows(), compareSummary()
+Cohesion: 0.22
+Nodes (11): Profile, CompareView(), CompareViewProps, CompareRow, compareRows(), compareSummary(), Evaluation, Factor (+3 more)
 
 ### Community 49 - "Community 49"
-Cohesion: 0.18
-Nodes (9): Beacon, clamp(), Drag, GraphCanvas(), Popover, PopoverCard(), Props, ScaleContext (+1 more)
+Cohesion: 0.13
+Nodes (21): ExamId, monthStarts(), savedPrograms(), initialModel(), PrepModel, PrepSub, rankSets(), reviveModel() (+13 more)
+
+### Community 50 - "Community 50"
+Cohesion: 0.21
+Nodes (6): CursorAura(), RADIUS, Billing, PricingPlans(), SiteHeader(), metadata
+
+### Community 51 - "Community 51"
+Cohesion: 0.11
+Nodes (20): TOPIC_PROMPTS, CHECKS, StudySet, Task, EMPTY_NOTES, MISCONCEPTION_LABEL(), pinNote(), unpinNote() (+12 more)
+
+### Community 52 - "Community 52"
+Cohesion: 0.14
+Nodes (15): ActivityGrid(), activityByDay(), ActivityDay, CalendarKind, Conflict, Demand, ExamId, examLabel() (+7 more)
+
+### Community 53 - "Community 53"
+Cohesion: 0.25
+Nodes (6): ChangesFeed(), Props, Target, TARGET_LABEL, TONE_ICON, Signal
 
 ## Knowledge Gaps
-- **208 isolated node(s):** `nextConfig`, `name`, `version`, `private`, `dev` (+203 more)
+- **217 isolated node(s):** `nextConfig`, `name`, `version`, `private`, `dev` (+212 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **25 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **24 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `PixelDuck()` connect `Sidebar.tsx` to `.claude/CLAUDE.md`, `extraction-spec.md`, `ProgramUi.tsx`, `CalendarTab.tsx`, `Icon.tsx`, `Community 50`, `prepData.ts`, `programs.ts`, `graphify reference: add a URL and watch a folder`, `graphify reference: commit hook and native CLAUDE.md integration`?**
-  _High betweenness centrality (0.073) - this node is a cross-community bridge._
-- **Why does `Icon()` connect `graphify reference: commit hook and native CLAUDE.md integration` to `CLAUDE.md`, `localSource.ts`, `copy.ts`, `What You Must Do When Invoked`, `CalendarTab.tsx`, `SetsView.tsx`, `prepAssistant.ts`, `graphify reference: extra exports and benchmark`, `programs.ts`, `graphify reference: incremental update and cluster-only`, `graphify reference: transcribe video and audio`?**
-  _High betweenness centrality (0.033) - this node is a cross-community bridge._
-- **Why does `store` connect `ProgramUi.tsx` to `localSource.ts`, `What You Must Do When Invoked`, `standing.ts`, `SkillGraph.tsx`, `Community 49`, `graphify reference: extra exports and benchmark`, `Sidebar.tsx`?**
+- **Why does `PixelDuck()` connect `Sidebar.tsx` to `CLAUDE.md`, `.claude/CLAUDE.md`, `extraction-spec.md`, `ProgramUi.tsx`, `Icon.tsx`, `graphify reference: extra exports and benchmark`, `programs.ts`, `graphify reference: query, path, explain`, `graphify reference: add a URL and watch a folder`, `graphify reference: commit hook and native CLAUDE.md integration`?**
+  _High betweenness centrality (0.080) - this node is a cross-community bridge._
+- **Why does `Icon()` connect `graphify reference: commit hook and native CLAUDE.md integration` to `CLAUDE.md`, `localSource.ts`, `copy.ts`, `SetsView.tsx`, `Community 49`, `prepAssistant.ts`, `Community 51`, `graphify reference: extra exports and benchmark`, `Community 53`, `programs.ts`, `graphify reference: incremental update and cluster-only`, `Community 31`?**
+  _High betweenness centrality (0.034) - this node is a cross-community bridge._
+- **Why does `store` connect `ProgramUi.tsx` to `CLAUDE.md`, `What You Must Do When Invoked`, `SkillGraph.tsx`, `CalendarTab.tsx`, `Community 49`, `graphify reference: extra exports and benchmark`?**
   _High betweenness centrality (0.027) - this node is a cross-community bridge._
 - **What connects `nextConfig`, `name`, `version` to the rest of the system?**
-  _208 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `localSource.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.07890070921985816 - nodes in this community are weakly interconnected._
+  _217 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `ProgramUi.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.0602322206095791 - nodes in this community are weakly interconnected._
 - **Should `compilerOptions` be split into smaller, more focused modules?**
   _Cohesion score 0.1 - nodes in this community are weakly interconnected._
+- **Should `What You Must Do When Invoked` be split into smaller, more focused modules?**
+  _Cohesion score 0.05864197530864197 - nodes in this community are weakly interconnected._
