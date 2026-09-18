@@ -1,0 +1,84 @@
+{
+  "exam": {
+    "id": "SAT_MATH",
+    "name": "SAT Math",
+    "max_raw_score": 44
+  },
+  "areas": [
+    {
+      "id": "area.sat.algebra",
+      "name": "Algebra",
+      "score_share": 0.5,
+      "skills": [
+        { "id": "math.alg.linear_eq", "weight": 8.0 },
+        { "id": "sat.alg.abs_value_eq", "weight": 6.0 },
+        { "id": "math.alg.quadratic_roots", "weight": 8.0 }
+      ]
+    },
+    {
+      "id": "area.sat.advanced",
+      "name": "Advanced Math",
+      "score_share": 0.5,
+      "skills": [
+        { "id": "sat.adv.functions", "weight": 8.0 },
+        { "id": "sat.adv.exponential", "weight": 8.0 }
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "id": "math.alg.linear_eq",
+      "name": "Линейные уравнения",
+      "description": "Решение уравнений вида ax + b = c с одной переменной: перенос членов, деление на коэффициент.",
+      "effort_h": 4,
+      "base_half_life_h": null,
+      "requires": []
+    },
+    {
+      "id": "sat.alg.abs_value_eq",
+      "name": "Уравнения с модулем",
+      "description": "Решение уравнений вида |ax + b| = c с раскрытием обеих ветвей и проверкой знака.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_eq", "strength": 0.9 }
+      ]
+    },
+    {
+      "id": "math.alg.quadratic_roots",
+      "name": "Квадратные уравнения",
+      "description": "Нахождение корней квадратного уравнения через дискриминант, теорема Виета, разложение на множители.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_eq", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "sat.adv.functions",
+      "name": "Функции и графики",
+      "description": "Чтение графиков функций, нахождение значений f(x), понимание области определения и области значений.",
+      "effort_h": 8,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_eq", "strength": 0.6 }
+      ]
+    },
+    {
+      "id": "sat.adv.exponential",
+      "name": "Показательные функции",
+      "description": "Работа с экспоненциальным ростом и убыванием, свойства степени, решение простых показательных уравнений.",
+      "effort_h": 5,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.adv.functions", "strength": 0.7 }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://satsuite.collegeboard.org/sat/whats-on-the-test/math",
+      "checked_at": "2026-09-17"
+    }
+  ]
+}

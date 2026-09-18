@@ -1,0 +1,35 @@
+{
+  "id": "tpl.sat.alg.abs_eq_sum_roots",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 3,
+  "skill_id": "sat.alg.abs_value_eq",
+  "tags": ["negative_branch", "sum_of_roots"],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {
+    "a": { "range": [2, 5] },
+    "b": { "range": [2, 12] },
+    "c": { "range": [1, 9] }
+  },
+  "constraints": [
+    "(b + c) % a == 0",
+    "(b - c) % a == 0",
+    "b > c"
+  ],
+  "stem": "|{a}x − {b}| = {c}. Чему равна сумма корней уравнения?",
+  "correct": "2*b/a",
+  "distractors": [
+    { "expr": "(b + c)/a", "misconception_id": "lib.abs_single_branch" },
+    { "expr": "(b - c)/a", "misconception_id": "lib.abs_single_branch" },
+    { "expr": "-2*b/a", "misconception_id": "lib.abs_sign_drop" },
+    { "expr": "2*c/a", "misconception_id": null }
+  ],
+  "solution": [
+    "Раскрыть модуль: {a}x − {b} = {c} или {a}x − {b} = −{c}",
+    "x1 = ({b}+{c})/{a}, x2 = ({b}−{c})/{a}",
+    "Сумма = 2·{b}/{a} = {answer}"
+  ],
+  "generator": null,
+  "figure": null
+}

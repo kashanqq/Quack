@@ -1,0 +1,74 @@
+[
+  {
+    "country_id": "KZ",
+    "routes": [
+      {
+        "id": "kz.grant",
+        "name": "Государственный грант по ЕНТ",
+        "description": "Грант по конкурсу баллов ЕНТ. Профильная пара предметов зависит от специальности.",
+        "requirements": [
+          {
+            "type": "exam_score",
+            "exam_id": "ENT_MATH",
+            "threshold": 35,
+            "comparator": ">=",
+            "description": "Проходной балл по профильной математике для IT-специальностей (оценочно).",
+            "source": "https://testcenter.kz"
+          }
+        ],
+        "source": "https://testcenter.kz",
+        "checked_at": "2026-09-17",
+        "is_demo": true
+      },
+      {
+        "id": "kz.paid",
+        "name": "Платное обучение",
+        "description": "Поступление на платной основе по баллам ЕНТ ниже грантового порога.",
+        "requirements": [
+          {
+            "type": "document",
+            "exam_id": null,
+            "threshold": null,
+            "comparator": "present",
+            "description": "Аттестат о среднем образовании.",
+            "source": null
+          }
+        ],
+        "source": null,
+        "checked_at": "2026-09-17",
+        "is_demo": true
+      }
+    ]
+  },
+  {
+    "country_id": "US",
+    "routes": [
+      {
+        "id": "us.commonapp",
+        "name": "Common App",
+        "description": "Основной маршрут для бакалавриата в США: единая заявка в несколько университетов.",
+        "requirements": [
+          {
+            "type": "exam_score",
+            "exam_id": "SAT_MATH",
+            "threshold": 1200,
+            "comparator": ">=",
+            "description": "Диапазон SAT у зачисленных в средние университеты (оценочно).",
+            "source": "https://www.commonapp.org"
+          },
+          {
+            "type": "language",
+            "exam_id": null,
+            "threshold": 6.5,
+            "comparator": ">=",
+            "description": "IELTS — типичный минимум для иностранных студентов.",
+            "source": null
+          }
+        ],
+        "source": "https://www.commonapp.org",
+        "checked_at": "2026-09-17",
+        "is_demo": true
+      }
+    ]
+  }
+]

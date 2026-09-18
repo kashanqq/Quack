@@ -1,0 +1,42 @@
+[
+  {
+    "id": "lib.abs_single_branch",
+    "name": "Раскрытие модуля только в одной ветви",
+    "description": "Ученик решает |ax − b| = c как ax − b = c и теряет вторую ветвь ax − b = −c.",
+    "error_class": "conceptual",
+    "skill_ids": ["sat.alg.abs_value_eq"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.abs_sign_drop",
+    "name": "Потеря знака при раскрытии модуля",
+    "description": "Ученик выбирает ветвь без учёта знака: получает −2b/a вместо 2b/a.",
+    "error_class": "conceptual",
+    "skill_ids": ["sat.alg.abs_value_eq"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.vieta_sign_confusion",
+    "name": "Путаница знаков в теореме Виета",
+    "description": "Ученик считает, что сумма корней равна +b/a, а произведение −c/a, забывая смену знака.",
+    "error_class": "conceptual",
+    "skill_ids": ["math.alg.quadratic_roots"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.percent_of_not_increase",
+    "name": "Процент от базы вместо прироста",
+    "description": "Ученик считает процент от исходного числа и прибавляет его один раз, теряя второй шаг при последовательных процентах.",
+    "error_class": "computational",
+    "skill_ids": ["sat.adv.exponential"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.inequality_sign_flip",
+    "name": "Не меняет знак при умножении на отрицательное",
+    "description": "Ученик не переворачивает неравенство при умножении или делении на отрицательное число.",
+    "error_class": "procedural",
+    "skill_ids": ["ent.alg.inequalities"],
+    "exam_specific": null
+  }
+]

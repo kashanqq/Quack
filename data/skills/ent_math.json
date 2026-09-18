@@ -1,0 +1,38 @@
+{
+  "exam": {
+    "id": "ENT_MATH",
+    "name": "ЕНТ, профильная математика",
+    "max_raw_score": 50
+  },
+  "areas": [
+    {
+      "id": "area.ent.algebra",
+      "name": "Алгебра",
+      "score_share": 1.0,
+      "skills": [
+        { "id": "math.alg.linear_eq", "weight": 10.0 },
+        { "id": "sat.alg.abs_value_eq", "weight": 12.0 },
+        { "id": "math.alg.quadratic_roots", "weight": 14.0 },
+        { "id": "ent.alg.inequalities", "weight": 14.0 }
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "id": "ent.alg.inequalities",
+      "name": "Неравенства",
+      "description": "Решение линейных и квадратных неравенств, метод интервалов, системы неравенств.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_eq", "strength": 0.8 }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://testcenter.kz",
+      "checked_at": "2026-09-17"
+    }
+  ]
+}
