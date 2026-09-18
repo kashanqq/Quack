@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
-import { PixelDuck, type Tempo } from "./PixelDuck";
+import { PixelDuck, type Tempo } from "@/components/duck/PixelDuck";
 import { PixelSprite, pixelRects, type Palette } from "./PixelSprite";
 import styles from "./landscape.module.css";
 

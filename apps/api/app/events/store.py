@@ -1,1 +1,0 @@
-"""app.events.store skeleton."""

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "fact.sat.math.overview",
+    "node_id": "SAT_MATH",
+    "text": "SAT Math — часть Digital SAT. Два модуля по 22 задания, 35 минут каждый. Второй модуль адаптивный: сложность зависит от результата первого. Калькулятор разрешён во всех модулях.",
+    "source": "https://satsuite.collegeboard.org/sat/whats-on-the-test/math",
+    "checked_at": "2026-09-17",
+    "is_demo": false
+  },
+  {
+    "id": "fact.sat.math.format",
+    "node_id": "SAT_MATH",
+    "text": "В SAT Math около 75% заданий — выбор из четырёх вариантов, около 25% — свободный числовой ответ. Области: Algebra, Advanced Math, Problem-Solving & Data Analysis, Geometry & Trigonometry.",
+    "source": "https://satsuite.collegeboard.org/sat/whats-on-the-test/math",
+    "checked_at": "2026-09-17",
+    "is_demo": true
+  },
+  {
+    "id": "fact.ent.math.overview",
+    "node_id": "ENT_MATH",
+    "text": "ЕНТ по профильной математике: 35 заданий. 25 с одним ответом из пяти (1 балл каждое) и 10 с несколькими верными (2 балла, частичный зачёт). Максимум 50 баллов, без калькулятора.",
+    "source": "https://testcenter.kz",
+    "checked_at": "2026-09-17",
+    "is_demo": true
+  }
+]

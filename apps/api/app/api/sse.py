@@ -1,1 +1,0 @@
-"""app.api.sse skeleton."""

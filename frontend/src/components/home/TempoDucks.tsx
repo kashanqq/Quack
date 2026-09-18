@@ -1,5 +1,5 @@
 import { copy } from "./copy";
-import { PixelDuck } from "./PixelDuck";
+import { PixelDuck } from "@/components/duck/PixelDuck";
 import styles from "./quack.module.css";
 
 /**

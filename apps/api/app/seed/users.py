@@ -1,1 +1,0 @@
-"""app.seed.users skeleton."""

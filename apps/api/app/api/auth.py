@@ -1,1 +1,0 @@
-"""app.api.auth skeleton."""

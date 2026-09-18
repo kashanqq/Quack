@@ -1,1 +1,0 @@
-"""app.api.saved skeleton."""

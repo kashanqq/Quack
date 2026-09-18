@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { PixelDuck } from "./PixelDuck";
+import { PixelDuck } from "@/components/duck/PixelDuck";
 import styles from "./home.module.css";
 
 const WORD = "Quack";

@@ -1,0 +1,14 @@
+.git
+.github
+.env
+**/.env
+**/.env.*
+!**/.env.example
+backend/.venv
+backend/.pytest_cache
+backend/.ruff_cache
+backend/tests
+backend/graphify-out
+frontend
+docs
+*.md

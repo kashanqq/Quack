@@ -85,6 +85,9 @@
 
 .sidebar {
   position: relative;
+  view-transition-name: sidebar;
+  grid-area: 1 / 1 / 3 / 2;
+  z-index: 10;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -105,53 +108,34 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 14px 12px 10px 16px;
+  /* Clear of the floating header */
+  padding: 20px 12px 8px 20px;
 }
 
-/* Выбор / Подготовка — top of the left column */
-.modeSwitch {
+.sidebarSection {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sidebarFoot {
+  flex: none;
+  padding: 8px 12px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.railFoot {
   display: flex;
-  gap: 4px;
-  padding: 4px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 14px;
-}
-
-.modeSwitchRail {
   flex-direction: column;
-}
-
-.modeButton {
-  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-width: 36px;
-  height: 34px;
-  padding: 0 12px;
-  background: none;
-  border: 0;
-  border-radius: 10px;
-  color: var(--text-dim);
-  font-size: 14px;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background 0.25s ease, color 0.25s ease;
+  gap: 6px;
+  margin-top: auto;
+  padding: 8px 0 12px;
 }
 
-.modeSwitchRail .modeButton {
-  padding: 0;
-}
-
-.modeButton:hover {
-  color: var(--text);
-}
-
-.modeButton[aria-selected="true"] {
-  background: var(--accent-tint);
-  color: var(--text);
-  box-shadow: inset 0 0 0 1px rgba(255, 166, 77, 0.35);
-}
 
 .sidebarScroll {
   flex: 1;
@@ -160,7 +144,7 @@
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #4a4643 transparent;
-  animation: fade-in 0.3s ease both;
+  animation: fade-in 0.2s ease both;
 }
 
 .newChat {
@@ -202,11 +186,20 @@
   padding: 4px;
   background: rgba(0, 0, 0, 0.25);
   border-radius: 12px;
+  /* The column can be dragged narrower, so the tabs size themselves to it, not to the screen */
+  container-type: inline-size;
 }
 
+/* Label and count sit side by side while they fit; when they don't, the count drops under the label
+   instead of sliding over the next tab */
 .tab {
   position: relative;
+  display: flex;
   flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px 4px;
   min-width: 0;
   padding: 7px 4px;
   background: none;
@@ -214,9 +207,23 @@
   border-radius: 9px;
   color: var(--text-dim);
   font-size: 13px;
-  white-space: nowrap;
   cursor: pointer;
   transition: background 0.25s ease, color 0.25s ease;
+}
+
+.tabLabel {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@container (max-width: 270px) {
+  .tab {
+    padding: 6px 2px;
+    font-size: 12px;
+  }
 }
 
 .tab[aria-selected="true"] {
@@ -225,15 +232,15 @@
 }
 
 .tabBody {
-  animation: fade-in 0.3s ease both;
+  animation: fade-in 0.2s ease both;
 }
 
 .count {
   display: inline-grid;
+  flex: none;
   place-items: center;
   min-width: 18px;
   height: 18px;
-  margin-left: 4px;
   padding: 0 5px;
   background: rgba(255, 255, 255, 0.12);
   border-radius: 9px;
@@ -249,6 +256,9 @@
 
 .list {
   display: grid;
+  /* Without this the track grows to the longest unbroken line and the rows run past the column edge,
+     where it clips them — along with the star button */
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   margin: 0;
   padding: 0;
@@ -260,7 +270,7 @@
   align-items: center;
   gap: 4px;
   border-radius: 12px;
-  animation: row-in 0.35s var(--ease-out) both;
+  animation: row-in 0.24s var(--ease-out) both;
   transition: background 0.2s ease;
 }
 
@@ -339,6 +349,14 @@
   font-size: 15px;
 }
 
+/* University names wrap instead of being cut off: the name is what the student is looking for */
+.rowTitleFull {
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+
 .rowSub {
   margin-top: 2px;
   color: var(--text-faint);
@@ -378,13 +396,15 @@
 
 .rail {
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding-top: 14px;
-  overflow-y: auto;
-  scrollbar-width: none;
-  animation: fade-in 0.3s ease both;
+  min-height: 0;
+  padding-top: 18px;
+  /* Visible so the account menu can open beside the rail */
+  overflow: visible;
+  animation: fade-in 0.2s ease both;
 }
 
 .railDivider {
@@ -495,7 +515,7 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 24px;
   scroll-snap-align: start;
-  animation: card-in 0.5s var(--ease-out) both;
+  animation: card-in 0.32s var(--ease-out) both;
   transition: transform 0.25s var(--ease-out), border-color 0.25s ease;
 }
 
@@ -688,7 +708,7 @@
   padding: 10px 14px;
   background: var(--bubble-bg);
   border-radius: 14px;
-  animation: row-in 0.35s var(--ease-out) both;
+  animation: row-in 0.24s var(--ease-out) both;
 }
 
 .factorMark {
@@ -932,7 +952,7 @@
     z-index: 30;
     display: flex;
     width: min(340px, 88vw);
-    animation: drawer-in 0.35s var(--ease-out) both;
+    animation: drawer-in 0.26s var(--ease-out) both;
   }
 
   .mobileBackdrop {
@@ -941,7 +961,7 @@
     z-index: 29;
     display: block;
     background: rgba(0, 0, 0, 0.5);
-    animation: fade-in 0.3s ease both;
+    animation: fade-in 0.2s ease both;
   }
 
   .toast {
@@ -949,4 +969,41 @@
     width: max-content;
     max-width: calc(100% - 32px);
   }
+}
+
+/* ---------- A category and the parts of it ---------- */
+
+/* The open category unfolds into its sub-tabs, so the column mirrors what is on screen */
+.group {
+  display: grid;
+  gap: 4px;
+}
+
+.subList {
+  display: grid;
+  gap: 2px;
+  margin: 2px 0 6px 15px;
+  padding: 0 0 0 9px;
+  list-style: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.subRow .rowMain {
+  padding: 7px 8px;
+}
+
+.subRow .rowTitle {
+  font-size: 14px;
+}
+
+.subRow .rowSub {
+  font-size: 12px;
+}
+
+.railSub {
+  opacity: 0.7;
+}
+
+.railSub[aria-pressed="true"] {
+  opacity: 1;
 }

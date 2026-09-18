@@ -5,17 +5,15 @@ import type { Profile } from "./assistant";
 import { Icon, type IconName } from "./Icon";
 import { LevelDot, type ProgramActions } from "./ProgramUi";
 import { evaluate, programById } from "./programs";
+import { DASH_TABS, type DashTab } from "../dashboard/dashboardRules";
+import { PREP_SUBS, PREP_TABS, subFor, type PrepSub, type PrepTab } from "../prep/prepModel";
+import { UserMenu } from "./UserMenu";
 import styles from "./layout.module.css";
 
-export type Mode = "choice" | "prep";
+export type Mode = "dashboard" | "choice" | "prep";
 export type SidebarTab = "picks" | "saved" | "compare";
 
 export type ChatSummary = { id: string; title: string; updatedAt: number };
-
-const MODES: { mode: Mode; label: string; icon: IconName }[] = [
-  { mode: "choice", label: "Выбор", icon: "graduation-cap" },
-  { mode: "prep", label: "Подготовка", icon: "book-open-check" },
-];
 
 const TABS: { tab: SidebarTab; label: string; icon: IconName }[] = [
   { tab: "picks", label: "Подборка", icon: "sparkles" },
@@ -26,7 +24,6 @@ const TABS: { tab: SidebarTab; label: string; icon: IconName }[] = [
 type SidebarProps = {
   collapsed: boolean;
   mode: Mode;
-  onMode: (mode: Mode) => void;
   tab: SidebarTab;
   onTab: (tab: SidebarTab) => void;
   picks: string[];
@@ -34,11 +31,18 @@ type SidebarProps = {
   actions: ProgramActions;
   chats: ChatSummary[];
   activeChatId: string | null;
-  onNewChat: () => void;
   onSelectChat: (id: string) => void;
   onDeleteChat: (id: string) => void;
   onToggle: () => void;
   onOpenCompare: () => void;
+  onRestart: () => void;
+  /** The student profile opens from the avatar at the bottom, in every section */
+  profileToggle: { open: boolean; readiness: number; onToggle: () => void };
+  prepTab: PrepTab;
+  onPrepTab: (tab: PrepTab, sub?: PrepSub) => void;
+  prepSub: PrepSub;
+  dashTab: DashTab;
+  onDashTab: (tab: DashTab) => void;
 };
 
 const timeLabel = (ts: number) => {
@@ -50,11 +54,11 @@ const timeLabel = (ts: number) => {
 };
 
 /**
- * Left column: section switch (Выбор / Подготовка) at the top, like Claude's Chat / Code,
- * then programs (picks, favourites, comparison) and chat history. Collapses to an icon rail.
+ * Left column: programs (picks, favourites, comparison), chat history and the account at the bottom.
+ * Collapses to an icon rail.
  */
 export function Sidebar(props: SidebarProps) {
-  const { collapsed, mode, onMode, tab, onTab, picks, profile, actions, chats, activeChatId } = props;
+  const { collapsed, mode, tab, onTab, picks, profile, actions, chats, activeChatId } = props;
   const historyRef = useRef<HTMLElement>(null);
 
   const counts: Record<SidebarTab, number> = {
@@ -63,38 +67,66 @@ export function Sidebar(props: SidebarProps) {
     compare: actions.compare.length,
   };
 
-  const modeSwitch = (
-    <div className={`${styles.modeSwitch} ${collapsed ? styles.modeSwitchRail : ""}`} role="tablist" aria-label="Раздел">
-      {MODES.map((m) => (
-        <button
-          key={m.mode}
-          type="button"
-          role="tab"
-          aria-selected={mode === m.mode}
-          className={styles.modeButton}
-          title={m.label}
-          onClick={() => onMode(m.mode)}
-        >
-          <Icon name={m.icon} size={18} />
-          {!collapsed && <span>{m.label}</span>}
-        </button>
-      ))}
-    </div>
-  );
-
   if (collapsed) {
     return (
       <div className={styles.rail}>
         <button type="button" className={styles.iconButton} aria-label="Развернуть левую панель" onClick={props.onToggle}>
           <Icon name="panel-left-open" />
         </button>
-        {modeSwitch}
-        {mode === "choice" && (
+        <span className={styles.railDivider} />
+        {mode === "prep" && (
           <>
             <span className={styles.railDivider} />
-            <button type="button" className={styles.iconButton} aria-label="Новый чат" title="Новый чат" onClick={props.onNewChat}>
-              <Icon name="plus" />
-            </button>
+            {PREP_TABS.map((t) => (
+              <button
+                key={t.tab}
+                type="button"
+                className={styles.iconButton}
+                aria-label={t.label}
+                title={t.label}
+                aria-pressed={props.prepTab === t.tab}
+                onClick={() => props.onPrepTab(t.tab)}
+              >
+                <Icon name={t.icon} />
+              </button>
+            ))}
+            <span className={styles.railDivider} />
+            {PREP_SUBS[props.prepTab].map((s) => (
+              <button
+                key={s.sub}
+                type="button"
+                className={`${styles.iconButton} ${styles.railSub}`}
+                aria-label={`${s.label} — ${s.hint}`}
+                title={s.label}
+                aria-pressed={subFor(props.prepTab, props.prepSub) === s.sub}
+                onClick={() => props.onPrepTab(props.prepTab, s.sub)}
+              >
+                <Icon name={s.icon} size={16} />
+              </button>
+            ))}
+          </>
+        )}
+        {mode === "dashboard" && (
+          <>
+            <span className={styles.railDivider} />
+            {DASH_TABS.map((t) => (
+              <button
+                key={t.tab}
+                type="button"
+                className={styles.iconButton}
+                aria-label={t.label}
+                title={t.label}
+                aria-pressed={props.dashTab === t.tab}
+                onClick={() => props.onDashTab(t.tab)}
+              >
+                <Icon name={t.icon} />
+              </button>
+            ))}
+          </>
+        )}
+        {mode !== "prep" && (
+          <>
+            <span className={styles.railDivider} />
             {TABS.map(({ tab: t, label, icon }) => (
               <button
                 key={t}
@@ -130,6 +162,9 @@ export function Sidebar(props: SidebarProps) {
             </button>
           </>
         )}
+        <div className={styles.railFoot}>
+          <UserMenu onRestart={props.onRestart} profile={props.profileToggle} compact />
+        </div>
       </div>
     );
   }
@@ -139,39 +174,118 @@ export function Sidebar(props: SidebarProps) {
   return (
     <div className={styles.sidebarInner}>
       <div className={styles.sidebarHead}>
-        {modeSwitch}
+        <p className={styles.sidebarSection}>{mode === "prep" ? "Подготовка" : mode === "dashboard" ? "Обзор" : "Выбор"}</p>
         <button type="button" className={styles.iconButton} aria-label="Свернуть левую панель" onClick={props.onToggle}>
           <Icon name="panel-left-close" />
         </button>
       </div>
 
-      {mode === "prep" ? (
-        <div className={styles.sidebarScroll} key="prep">
-          <p className={styles.sectionLabel}>Подготовка</p>
+      {mode === "dashboard" ? (
+        <div className={styles.sidebarScroll} key="dashboard">
           <ul className={styles.list}>
-            {["Обзор", "Сеты", "Текущий сет"].map((item) => (
-              <li key={item} className={`${styles.row} ${styles.rowDisabled}`}>
-                <span className={styles.rowMain}>
-                  <span className={styles.rowTitle}>{item}</span>
-                </span>
-                <span className={styles.soon}>скоро</span>
+            {DASH_TABS.map((t, i) => (
+              <li
+                key={t.tab}
+                className={`${styles.row} ${props.dashTab === t.tab ? styles.rowActive : ""}`}
+                style={{ animationDelay: `${i * 24}ms` }}
+              >
+                <button
+                  type="button"
+                  className={styles.rowMain}
+                  aria-current={props.dashTab === t.tab}
+                  onClick={() => props.onDashTab(t.tab)}
+                >
+                  <Icon name={t.icon} size={16} className={styles.rowIcon} />
+                  <span className={styles.rowText}>
+                    <span className={styles.rowTitle}>{t.label}</span>
+                  </span>
+                </button>
               </li>
             ))}
+          </ul>
+
+          <section className={styles.section} aria-label="Сохранённые">
+            <p className={styles.sectionLabel}>Сохранённые</p>
+            {actions.saved.length === 0 ? (
+              <p className={styles.empty}>Нажми ☆ на карточке программы в «Выборе».</p>
+            ) : (
+              <ul className={styles.list}>
+                {actions.saved.map((id, i) => {
+                  const program = programById(id);
+                  return (
+                    <li key={id} className={styles.row} style={{ animationDelay: `${i * 24}ms` }}>
+                      <button type="button" className={styles.rowMain} onClick={() => actions.onOpen(id)}>
+                        <LevelDot level={evaluate(program, profile).level} />
+                        <span className={styles.rowText}>
+                          <span className={`${styles.rowTitle} ${styles.rowTitleFull}`}>{program.university}</span>
+                          <span className={styles.rowSub}>
+                            {program.city} · {program.program}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </div>
+      ) : mode === "prep" ? (
+        <div className={styles.sidebarScroll} key="prep">
+          <ul className={styles.list}>
+            {PREP_TABS.map((t, i) => {
+              const open = props.prepTab === t.tab;
+              return (
+                <li key={t.tab} style={{ animationDelay: `${i * 30}ms` }} className={styles.group}>
+                  <div className={`${styles.row} ${open ? styles.rowActive : ""}`}>
+                    <button type="button" className={styles.rowMain} aria-current={open} onClick={() => props.onPrepTab(t.tab)}>
+                      <Icon name={t.icon} size={16} className={styles.rowIcon} />
+                      <span className={styles.rowText}>
+                        <span className={styles.rowTitle}>{t.label}</span>
+                      </span>
+                    </button>
+                  </div>
+                  {/* Only the open tab unfolds, so the column stays a single list of what is on screen */}
+                  {open && (
+                    <ul className={styles.subList}>
+                      {PREP_SUBS[t.tab].map((s, j) => {
+                        const active = subFor(props.prepTab, props.prepSub) === s.sub;
+                        return (
+                          <li
+                            key={s.sub}
+                            className={`${styles.row} ${styles.subRow} ${active ? styles.rowActive : ""}`}
+                            style={{ animationDelay: `${j * 24}ms` }}
+                          >
+                            <button
+                              type="button"
+                              className={styles.rowMain}
+                              aria-current={active}
+                              onClick={() => props.onPrepTab(t.tab, s.sub)}
+                            >
+                              <Icon name={s.icon} size={15} className={styles.rowIcon} />
+                              <span className={styles.rowText}>
+                                <span className={styles.rowTitle}>{s.label}</span>
+                                <span className={styles.rowSub}>{s.hint}</span>
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : (
         <div className={styles.sidebarScroll} key="choice">
-          <button type="button" className={styles.newChat} onClick={props.onNewChat}>
-            <Icon name="plus" size={18} />
-            Новый чат
-          </button>
-
           <section className={styles.section} aria-label="Программы">
             <p className={styles.sectionLabel}>Программы</p>
             <div className={styles.tabs} role="tablist">
               {TABS.map(({ tab: t, label }) => (
                 <button key={t} type="button" role="tab" aria-selected={tab === t} className={styles.tab} onClick={() => onTab(t)}>
-                  {label}
+                  <span className={styles.tabLabel}>{label}</span>
                   {counts[t] > 0 && <span className={styles.count}>{counts[t]}</span>}
                 </button>
               ))}
@@ -194,7 +308,7 @@ export function Sidebar(props: SidebarProps) {
                         <button type="button" className={styles.rowMain} onClick={() => actions.onOpen(id)}>
                           <LevelDot level={evaluate(program, profile).level} />
                           <span className={styles.rowText}>
-                            <span className={styles.rowTitle}>{program.university}</span>
+                            <span className={`${styles.rowTitle} ${styles.rowTitleFull}`}>{program.university}</span>
                             <span className={styles.rowSub}>
                               {program.city} · {program.program}
                             </span>
@@ -276,6 +390,9 @@ export function Sidebar(props: SidebarProps) {
           </section>
         </div>
       )}
+      <div className={styles.sidebarFoot}>
+        <UserMenu onRestart={props.onRestart} profile={props.profileToggle} />
+      </div>
     </div>
   );
 }

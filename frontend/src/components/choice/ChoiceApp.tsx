@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import {
   CONFIRM_REPLY,
   EMPTY_PROFILE,
+  editField,
   extract,
   fieldValue,
   placeholderFor,
@@ -17,6 +18,13 @@ import {
   type FieldKey,
   type Profile,
 } from "./assistant";
+import { Dashboard } from "../dashboard/Dashboard";
+import type { DashTab } from "../dashboard/dashboardRules";
+import { PrepView } from "../prep/PrepView";
+import { useQuack } from "../quack/source";
+import { morph } from "@/components/transition/morph";
+import { FirstHint, resetHints } from "@/components/hints/FirstHint";
+import type { PrepSub, PrepTab } from "../prep/prepModel";
 import { ChatMessage, type ChatMsg } from "./ChatMessage";
 import { CompareView } from "./CompareView";
 import { CustomScrollbar } from "./CustomScrollbar";
@@ -25,6 +33,7 @@ import { ProgramCards, ProgramDrawer, type ProgramActions } from "./ProgramUi";
 import { recommend } from "./programs";
 import { ResizeHandle } from "./ResizeHandle";
 import { Sidebar, type ChatSummary, type Mode, type SidebarTab } from "./Sidebar";
+import { Icon } from "./Icon";
 import { Topbar } from "./Topbar";
 import styles from "./choice.module.css";
 import layout from "./layout.module.css";
@@ -60,9 +69,25 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
+/** What the assistant says when the questions are skipped: what it knows and what it has to guess. */
+function skipReply(profile: Profile) {
+  const guesses: string[] = [];
+  if (!profile.direction) guesses.push("направление любое");
+  if (!profile.location) guesses.push("страна любая");
+  if (!profile.sat && !profile.ielts && !profile.ent) guesses.push("IELTS около 6.0");
+  if (!profile.budget && !profile.grant) guesses.push("грант желательно");
+  if (!guesses.length) return "Хорошо, вот программы по тому, что ты уже рассказал.";
+  return `Хорошо, без вопросов. Где не знаю, предполагаю: ${guesses.join(", ")}. Поправить можно в профиле или просто напиши мне, и подборка обновится.`;
+}
+
 export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const [stage, setStage] = useState<"intro" | "chat">("intro");
-  const [mode, setMode] = useState<Mode>("choice");
+  const [mode, setMode] = useState<Mode>("dashboard");
+  const [prepTab, setPrepTab] = useState<PrepTab>("overview");
+  const [prepSub, setPrepSub] = useState<PrepSub>("now");
+  const [dashTab, setDashTab] = useState<DashTab>("overview");
+  // The source's functions are stable, so effects can depend on them
+  const { state: quackState, report: reportToQuack, markSeen: markQuackSeen, reset: resetQuack } = useQuack();
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
   const [confirmed, setConfirmed] = useState(false);
   const [versions, setVersions] = useState<Partial<Record<FieldKey, number>>>({});
@@ -99,12 +124,15 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   // Mirrors of state that the async assistant flow reads without waiting for a render
   const profileRef = useRef(profile);
+  // Whether the current chat already has a summary; each chat gets its own
   const summarySentRef = useRef(false);
   const busyRef = useRef(false);
   const idRef = useRef(0);
   const mounted = useRef(true);
-  const layoutLoaded = useRef(false);
-  const workspaceLoaded = useRef(false);
+  // Effects, not refs: writing must wait until the loaded state has actually been applied,
+  // otherwise React's double mount in development saves the empty state over the stored one
+  const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
+  const [layoutLoaded, setLayoutLoaded] = useState(false);
 
   const messagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -131,7 +159,6 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
       const stored = JSON.parse(localStorage.getItem(WORKSPACE_KEY) ?? "null");
       if (stored) {
         profileRef.current = stored.profile ?? EMPTY_PROFILE;
-        summarySentRef.current = Boolean(stored.summarySent);
         setProfile(profileRef.current);
         setConfirmed(Boolean(stored.confirmed));
         setPicks(stored.picks ?? []);
@@ -141,18 +168,18 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
         idRef.current = Math.max(0, ...(stored.sessions ?? []).flatMap((c: Session) => c.messages.map((m) => m.id)));
       }
     } catch {}
-    workspaceLoaded.current = true;
+    setWorkspaceLoaded(true);
   }, []);
 
   useEffect(() => {
-    if (!workspaceLoaded.current) return;
+    if (!workspaceLoaded) return;
     try {
       localStorage.setItem(
         WORKSPACE_KEY,
-        JSON.stringify({ profile, confirmed, summarySent: summarySentRef.current, picks, saved, compare, sessions })
+        JSON.stringify({ profile, confirmed, picks, saved, compare, sessions })
       );
     } catch {}
-  }, [profile, confirmed, picks, saved, compare, sessions]);
+  }, [workspaceLoaded, profile, confirmed, picks, saved, compare, sessions]);
 
   // Keep the active chat's stored copy in sync with what is on screen
   useEffect(() => {
@@ -176,15 +203,22 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
       if (stored?.left) setLeft({ ...stored.left, collapsed: false });
       if (stored?.right) setRight(stored.right);
     } catch {}
-    layoutLoaded.current = true;
+    setLayoutLoaded(true);
   }, []);
 
   useEffect(() => {
-    if (!layoutLoaded.current || resizing) return;
+    if (!layoutLoaded || resizing) return;
     try {
       localStorage.setItem(LAYOUT_KEY, JSON.stringify({ left, right }));
     } catch {}
-  }, [left, right, resizing]);
+  }, [layoutLoaded, left, right, resizing]);
+
+  useEffect(() => {
+    if (!profileOverlayOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setProfileOverlayOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [profileOverlayOpen]);
 
   /* ---------- Greeting rotation ---------- */
 
@@ -290,13 +324,19 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const openSidebarTab = (tab: SidebarTab) => {
     setSidebarTab(tab);
     setLeft((l) => (l.collapsed ? { ...l, collapsed: false, width: l.lastWidth, userSet: true } : l));
-    setMobileProgramsOpen(true);
+    openMobilePrograms();
   };
 
   const programActions: ProgramActions = {
     saved,
     compare,
-    onToggleSave: (id) => setSaved((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id])),
+    onToggleSave: (id) =>
+      setSaved((list) => {
+        if (list.includes(id)) return list.filter((x) => x !== id);
+        // The first save is when the other sections start to matter: say so once, briefly
+        if (!list.length) setToast("Сохранено. Под неё уже собирается «Подготовка»");
+        return [...list, id];
+      }),
     onToggleCompare: (id) =>
       setCompare((list) => {
         if (list.includes(id)) return list.filter((x) => x !== id);
@@ -343,15 +383,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   /* ---------- Composer ---------- */
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const text = input.trim();
-    if (!text || busyRef.current) return;
-
-    setInput("");
-    setSentTick((t) => t + 1);
-    setBusyState(true);
-
+  async function openChat(text: string) {
     if (!activeChatRef.current) {
       const id = `chat-${Date.now()}`;
       const title = text.length > 42 ? `${text.slice(0, 40)}…` : text;
@@ -366,7 +398,18 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
       setLeft((l) => (l.userSet ? l : { ...l, collapsed: true }));
       await sleep(prefersReducedMotion() ? 0 : 450);
     }
+  }
 
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || busyRef.current) return;
+
+    setInput("");
+    setSentTick((t) => t + 1);
+    setBusyState(true);
+
+    await openChat(text);
     addUserMessage(text);
     if (!(await handleIntent(text))) await respond(text);
     if (!mounted.current) return;
@@ -385,6 +428,11 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     await assistantSay(CONFIRM_REPLY);
     if (!mounted.current) return;
 
+    showPicks();
+    setBusyState(false);
+  }
+
+  function showPicks() {
     const ids = recommend(profileRef.current);
     setPicks(ids);
     setSidebarTab("picks");
@@ -393,7 +441,24 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
       { id: ++idRef.current, role: "assistant", text: "", confirm: "none", editable: false, programs: ids },
     ]);
     setPlaceholder("Сравни программы или спроси что угодно...");
+  }
+
+  /**
+   * The questions are optional: programs right away from what the student has said, with the gaps
+   * filled by plain guesses that are named out loud and can be corrected later.
+   */
+  async function skipQuestions() {
+    if (busyRef.current) return;
+    setBusyState(true);
+    const ask = "Покажи программы по тому, что уже знаешь";
+    await openChat(ask);
+    addUserMessage(ask);
+
+    await assistantSay(skipReply(profileRef.current));
+    if (!mounted.current) return;
+    showPicks();
     setBusyState(false);
+    inputRef.current?.focus();
   }
 
   function onEditStart(id: number) {
@@ -426,6 +491,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   function showChat(id: string | null, list: ChatItem[]) {
     activeChatRef.current = id;
     setActiveChatId(id);
+    summarySentRef.current = list.some((m) => m.role === "assistant" && m.editable);
     setMessages(list);
     setStage(list.length ? "chat" : "intro");
     setGreeting({ current: 0, leaving: -1 });
@@ -439,10 +505,6 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     requestAnimationFrame(() => inputRef.current?.focus());
   }
 
-  const newChat = () => {
-    if (!busyRef.current) showChat(null, []);
-  };
-
   const selectChat = (id: string) => {
     const chat = sessions.find((c) => c.id === id);
     if (chat && !busyRef.current) showChat(id, chat.messages);
@@ -455,29 +517,76 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   };
 
   const changeMode = (next: Mode) => {
-    setMode(next);
-    setView("chat");
-    setDetailId(null);
+    morph(() => {
+      setMode(next);
+      setView("chat");
+      setDetailId(null);
+    });
   };
 
   const restart = () => {
+    resetHints();
     try {
       localStorage.removeItem(WORKSPACE_KEY);
     } catch {}
+    resetQuack();
     onRestart();
   };
+
+  /* ---------- What Quack wants to tell the student ---------- */
+
+  // Profile and saved programs are sources of truth: every change is recomputed at once,
+  // and whatever moved since the last visit makes the Quack! button glow
+  useEffect(() => {
+    if (workspaceLoaded) reportToQuack({ profile, saved });
+  }, [reportToQuack, workspaceLoaded, profile, saved]);
+
+  // Seen a moment after Quack opens, so the glow does not vanish before it is noticed
+  const freshKey = quackState.fresh.map((s) => `${s.id}@${s.at}`).join("|");
+  useEffect(() => {
+    if (mode !== "dashboard" || !freshKey) return;
+    const timer = setTimeout(markQuackSeen, 1500);
+    return () => clearTimeout(timer);
+  }, [markQuackSeen, mode, freshKey]);
+
+  const alert = { level: quackState.glow, reasons: quackState.fresh.map((s) => s.title) };
+
+  /* ---------- Student profile ---------- */
+
+  // On phones and cramped windows the profile and the left column open over the chat: never both at once
+  const openMobilePrograms = () => {
+    setProfileOverlayOpen(false);
+    setMobileProgramsOpen(true);
+  };
+
+  const toggleProfileOverlay = () =>
+    setProfileOverlayOpen((open) => {
+      if (!open) setMobileProgramsOpen(false);
+      return !open;
+    });
+
+  function onEditField(key: FieldKey, value: string) {
+    const next = editField(profileRef.current, key, value);
+    profileRef.current = next;
+    setProfile(next);
+    setVersions((v) => ({ ...v, [key]: (v[key] ?? 0) + 1 }));
+    setPlaceholder(placeholderFor(next));
+  }
 
   /* ---------- Panel resizing ---------- */
 
   const phone = viewportWidth <= PHONE_MAX;
   const leftWidth = left.collapsed ? RAIL_W : left.width;
-  const rightAvailable = stage === "chat" && mode === "choice";
-  // On laptop-sized windows the panel may not fit beside the chat: then it opens over it
+  // Beside the chat the profile is a column of its own. Everywhere else — Quack, preparation, the
+  // greeting, a cramped window, a phone — it slides over the page from the button in the left column
   const roomForRight = viewportWidth - leftWidth - CHAT_MIN;
-  const rightOverlay = rightAvailable && !phone && roomForRight < RIGHT_MIN;
-  const rightWidth =
-    !rightAvailable || right.hidden || rightOverlay ? 0 : phone ? right.width : Math.min(right.width, roomForRight);
-  const profileVisible = rightOverlay ? profileOverlayOpen : rightWidth > 0;
+  const docked = stage === "chat" && mode === "choice" && !phone && roomForRight >= RIGHT_MIN;
+  const rightWidth = docked && !right.hidden ? Math.min(right.width, roomForRight) : 0;
+  const profileVisible = docked ? rightWidth > 0 : profileOverlayOpen;
+
+  useEffect(() => {
+    if (docked) setProfileOverlayOpen(false);
+  }, [docked]);
 
   const settleLeft = (width: number) =>
     setLeft((l) =>
@@ -494,21 +603,15 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   const toggleRight = () => setRight((r) => ({ ...r, hidden: !r.hidden, width: r.lastWidth }));
 
+  const readinessValue = readiness(profile, confirmed);
+  const canSkip = !picks.length && !busy && !messages.some((m) => m.confirm === "shown");
+  const toggleProfile = docked ? toggleRight : toggleProfileOverlay;
+
   const gridStyle = { "--left": `${leftWidth}px`, "--right": `${rightWidth}px` } as CSSProperties;
   const sidebarCollapsed = leftWidth < LEFT_SNAP && !mobileProgramsOpen;
 
   return (
     <div className={styles.page}>
-      <Topbar
-        onRestart={restart}
-        onOpenPrograms={() => setMobileProgramsOpen(true)}
-        profilePanel={
-          rightAvailable
-            ? { open: profileVisible, onToggle: rightOverlay ? () => setProfileOverlayOpen((v) => !v) : toggleRight }
-            : undefined
-        }
-      />
-
       <main
         className={`${styles.app} ${resizing ? styles.isResizing : ""}`}
         data-stage={stage}
@@ -516,6 +619,13 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
         data-view={view}
         style={gridStyle}
       >
+        <Topbar
+          mode={mode}
+          onMode={changeMode}
+          onOpenMenu={openMobilePrograms}
+          alert={alert}
+        />
+
         <aside
           className={`${layout.sidebar} ${mobileProgramsOpen ? layout.sidebarMobileOpen : ""}`}
           aria-label="Навигация"
@@ -523,19 +633,37 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
           <Sidebar
             collapsed={sidebarCollapsed}
             mode={mode}
-            onMode={changeMode}
             tab={sidebarTab}
             picks={picks}
             profile={profile}
             actions={programActions}
             chats={[...sessions].sort((a, b) => b.updatedAt - a.updatedAt)}
             activeChatId={activeChatId}
-            onNewChat={newChat}
             onSelectChat={selectChat}
             onDeleteChat={deleteChat}
             onTab={setSidebarTab}
             onToggle={mobileProgramsOpen ? () => setMobileProgramsOpen(false) : toggleLeft}
             onOpenCompare={openCompare}
+            onRestart={restart}
+            profileToggle={{ open: profileVisible, readiness: readinessValue, onToggle: toggleProfile }}
+            prepTab={prepTab}
+            prepSub={prepSub}
+            onPrepTab={(tab, sub) =>
+              morph(() => {
+                setMode("prep");
+                setPrepTab(tab);
+                if (sub) setPrepSub(sub);
+                setMobileProgramsOpen(false);
+              })
+            }
+            dashTab={dashTab}
+            onDashTab={(tab) =>
+              morph(() => {
+                setMode("dashboard");
+                setDashTab(tab);
+                setMobileProgramsOpen(false);
+              })
+            }
           />
           <ResizeHandle
             side="left"
@@ -560,6 +688,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
           />
         </aside>
         {mobileProgramsOpen && <div className={layout.mobileBackdrop} onClick={() => setMobileProgramsOpen(false)} />}
+        {!docked && profileVisible && <div className={styles.profileBackdrop} onClick={() => setProfileOverlayOpen(false)} />}
 
         <section className={styles.chat}>
           <div className={styles.chatBody}>
@@ -619,13 +748,35 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
               <ProgramDrawer id={detailId} profile={profile} actions={programActions} onClose={() => setDetailId(null)} />
             </div>
 
+            <div className={`${styles.view} ${styles.viewDashboard}`} aria-hidden={mode !== "dashboard"}>
+              {mode === "dashboard" && (
+                <Dashboard
+                  tab={dashTab}
+                  onTab={(t) => morph(() => setDashTab(t))}
+                  saved={saved}
+                  profile={profile}
+                  chatDays={sessions.map((c) => c.updatedAt)}
+                  onUnsave={(id) => setSaved((list) => list.filter((x) => x !== id))}
+                  onOpenChoice={() => changeMode("choice")}
+                  onOpenPrep={(tab) => {
+                    setPrepTab(tab);
+                    changeMode("prep");
+                  }}
+                />
+              )}
+            </div>
+
             <div className={`${styles.view} ${styles.viewPrep}`} aria-hidden={mode !== "prep"}>
-              <h2 className={styles.prepTitle}>Подготовка</h2>
-              <p className={styles.prepText}>
-                {saved.length
-                  ? "Скоро здесь появятся требования, вехи и первый сет — по программам из избранного."
-                  : "Откроется, когда ты сохранишь первую программу: здесь появятся требования, вехи и первый сет."}
-              </p>
+              {mode === "prep" && (
+                <PrepView
+                  tab={prepTab}
+                  onTab={setPrepTab}
+                  sub={prepSub}
+                  onSub={setPrepSub}
+                  saved={saved}
+                  onGoToChoice={() => changeMode("choice")}
+                />
+              )}
             </div>
 
             {toast && (
@@ -634,6 +785,21 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
               </div>
             )}
           </div>
+
+          {mode === "choice" && view === "chat" && (
+            <div className={styles.composerNote}>
+              {canSkip ? (
+                <button type="button" className={styles.skipButton} onClick={skipQuestions}>
+                  Пропустить вопросы и показать программы <Icon name="chevron-right" size={14} />
+                </button>
+              ) : picks.length > 0 ? (
+                <FirstHint id="choice-picks" title="Что дальше">
+                  Нажимай ☆ на программах, которые нравятся. Из избранного Quack соберёт подготовку к экзаменам и будет следить за
+                  сроками в «Обзоре».
+                </FirstHint>
+              ) : null}
+            </div>
+          )}
 
           <form className={styles.composer} autoComplete="off" onSubmit={onSubmit}>
             <input
@@ -659,14 +825,14 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
         </section>
 
         <aside
-          className={`${styles.profile} ${rightOverlay && profileOverlayOpen ? styles.profileOverlay : ""}`}
-          aria-label="Как я тебя вижу"
+          className={`${styles.profile} ${!docked && profileOverlayOpen ? styles.profileOverlay : ""}`}
+          aria-label="Профиль студента"
           aria-hidden={!profileVisible}
         >
-          {rightAvailable && !rightOverlay && (
+          {docked && (
             <ResizeHandle
               side="right"
-              label="Ширина панели «Как я тебя вижу»"
+              label="Ширина профиля студента"
               value={rightWidth}
               min={0}
               max={RIGHT_MAX}
@@ -688,11 +854,10 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
           )}
           <ProfilePanel
             profile={profile}
-            readiness={readiness(profile, confirmed)}
+            readiness={readinessValue}
             versions={versions}
-            onHide={() =>
-              rightOverlay ? setProfileOverlayOpen(false) : setRight((r) => ({ ...r, hidden: true, width: r.lastWidth }))
-            }
+            onEdit={onEditField}
+            onHide={() => (docked ? setRight((r) => ({ ...r, hidden: true, width: r.lastWidth })) : setProfileOverlayOpen(false))}
           />
         </aside>
       </main>

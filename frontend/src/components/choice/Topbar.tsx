@@ -1,96 +1,103 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { usePageTransition } from "@/components/transition/TransitionProvider";
-import { TransitionLink } from "@/components/transition/TransitionLink";
-import { Icon } from "./Icon";
+import { PixelDuck } from "@/components/duck/PixelDuck";
+import { Icon, type IconName } from "./Icon";
+import type { SignalLevel } from "../quack/contract";
+import type { Mode } from "./Sidebar";
 import styles from "./choice.module.css";
 import layout from "./layout.module.css";
 
 type TopbarProps = {
-  onRestart: () => void;
-  /** Toggle for the "Как я тебя вижу" panel; omitted while it isn't available */
-  profilePanel?: { open: boolean; onToggle: () => void };
-  /** Opens the left column (programs, chats) on phones */
-  onOpenPrograms: () => void;
+  mode: Mode;
+  onMode: (mode: Mode) => void;
+  /** Opens the left column (programs, chats, account) on phones */
+  onOpenMenu: () => void;
+  /** Something the student has not seen yet: a gradient runs around the button until they open it */
+  alert?: { level: SignalLevel | null; reasons: string[] };
 };
 
-export function Topbar({ onRestart, profilePanel, onOpenPrograms }: TopbarProps) {
-  const { runWithLoader } = usePageTransition();
-  const [open, setOpen] = useState(false);
-  const userRef = useRef<HTMLDivElement>(null);
+/** What the menu drawer holds in each section — on phones it is the only way to switch categories */
+const MENU_LABEL: Record<Mode, string> = {
+  choice: "Меню: программы и чаты",
+  prep: "Меню: разделы подготовки",
+  dashboard: "Меню: разделы обзора",
+};
 
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (!userRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("click", onClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("click", onClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+const MODES: { mode: Mode; label: string; icon: IconName }[] = [
+  { mode: "choice", label: "Выбор", icon: "graduation-cap" },
+  { mode: "prep", label: "Подготовка", icon: "book-open-check" },
+];
 
+/** Выбор · Quack! · Подготовка — the logo in the middle opens the overview. */
+const LETTERS = [..."Quack"];
+
+export function Topbar({ mode, onMode, onOpenMenu, alert }: TopbarProps) {
   return (
     <header className={styles.topbar}>
-      <TransitionLink className={styles.topbarLogo} href="/">
-        Quack<span className={styles.accent}>!</span>
-      </TransitionLink>
-
-      <div className={styles.user} ref={userRef}>
-        <button
-          className={styles.userButton}
-          type="button"
-          aria-haspopup="menu"
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-        >
-          <img className={styles.userAvatar} src="/assets/avatar.svg" alt="" />
-          <span className={styles.userName}>user_name</span>
-          <img className={styles.userChevron} src="/assets/chevron-down.svg" alt="" />
+      <div className={styles.topbarSide}>
+        <button type="button" className={`${layout.iconButton} ${styles.menuButton} ${styles.glass}`} aria-label={MENU_LABEL[mode]} onClick={onOpenMenu}>
+          <Icon name="menu" />
         </button>
-        <div className={`${styles.userMenu} ${open ? styles.isOpen : ""}`} role="menu">
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              runWithLoader(onRestart);
-            }}
-          >
-            Начать заново
-          </button>
-          <TransitionLink role="menuitem" href="/">
-            Выйти
-          </TransitionLink>
-        </div>
       </div>
 
-      <div className={styles.topbarActions}>
+      <div className={styles.modeSwitch} role="tablist" aria-label="Раздел">
         <button
           type="button"
-          className={`${layout.iconButton} ${styles.mobileOnly}`}
-          aria-label="Меню: программы и чаты"
-          onClick={onOpenPrograms}
+          role="tab"
+          aria-selected={mode === "choice"}
+          className={`${styles.modeButton} ${styles.glass}`}
+          title={MODES[0].label}
+          onClick={() => onMode("choice")}
         >
-          <Icon name="graduation-cap" />
+          <Icon name={MODES[0].icon} size={18} />
+          <span className={styles.modeLabel}>{MODES[0].label}</span>
         </button>
-        {profilePanel && (
-          <button
-            type="button"
-            className={layout.iconButton}
-            aria-label={profilePanel.open ? "Скрыть «Как я тебя вижу»" : "Показать «Как я тебя вижу»"}
-            title="Как я тебя вижу"
-            aria-pressed={profilePanel.open}
-            onClick={profilePanel.onToggle}
-          >
-            <Icon name={profilePanel.open ? "panel-right-close" : "panel-right-open"} />
-          </button>
-        )}
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "dashboard"}
+          className={styles.topbarLogo}
+          data-alert={alert?.level ?? undefined}
+          title={alert?.level ? `Обзор · ${alert.reasons[0]}` : "Обзор: экзамены, дедлайны, календарь"}
+          aria-label={alert?.level ? `Обзор. Есть важное: ${alert.reasons.join("; ")}` : "Обзор"}
+          onClick={() => onMode("dashboard")}
+        >
+          <span className={styles.logoLetters}>
+            {LETTERS.map((letter, i) => (
+              <span key={i} className={styles.letter} style={{ animationDelay: `${i * 70}ms` }}>
+                {letter}
+              </span>
+            ))}
+            <span className={`${styles.letter} ${styles.accent}`} style={{ animationDelay: `${LETTERS.length * 70}ms` }}>
+              !
+            </span>
+          </span>
+          {/* The duck walks along the top edge of the button while the overview is open */}
+          {mode === "dashboard" && (
+            <span className={styles.logoTrack} aria-hidden="true">
+              <span className={styles.logoDuck}>
+                <PixelDuck tempo="steady" />
+              </span>
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "prep"}
+          className={`${styles.modeButton} ${styles.glass}`}
+          title={MODES[1].label}
+          onClick={() => onMode("prep")}
+        >
+          <Icon name={MODES[1].icon} size={18} />
+          <span className={styles.modeLabel}>{MODES[1].label}</span>
+        </button>
       </div>
+
+      {/* Keeps the section switch centred; the profile lives in the left column now */}
+      <div className={`${styles.topbarSide} ${styles.topbarRight}`} />
     </header>
   );
 }
