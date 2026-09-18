@@ -1,9 +1,10 @@
 """Student-owned milestone completion marks."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import MilestoneMark
@@ -28,6 +29,19 @@ async def set_mark(
                 MilestoneMark.milestone_key == key,
             )
         )
-    elif await session.get(MilestoneMark, (student_id, key)) is None:
-        session.add(MilestoneMark(student_id=student_id, milestone_key=key))
+    else:
+        statement = insert(MilestoneMark).values(
+            student_id=student_id,
+            milestone_key=key,
+            done_at=datetime.now(UTC),
+        )
+        await session.execute(
+            statement.on_conflict_do_update(
+                index_elements=[
+                    MilestoneMark.student_id,
+                    MilestoneMark.milestone_key,
+                ],
+                set_={"done_at": statement.excluded.done_at},
+            )
+        )
     await session.flush()
