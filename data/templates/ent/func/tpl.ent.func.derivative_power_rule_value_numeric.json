@@ -1,0 +1,67 @@
+{
+  "id": "tpl.ent.func.derivative_power_rule_value_numeric",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 1,
+  "skill_id": "ent.func.derivative",
+  "tags": [
+    "power_rule",
+    "derivative_value",
+    "polynomial"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        1,
+        5
+      ],
+      "choices": null
+    },
+    "n": {
+      "range": [
+        2,
+        6
+      ],
+      "choices": null
+    },
+    "x0": {
+      "range": [
+        2,
+        4
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "a * n * x0**(n-1) <= 500",
+    "x0 != n - 1"
+  ],
+  "stem": "Найдите значение производной функции y = {a}x^{n} в точке x₀ = {x0}.",
+  "correct": "a * n * x0**(n-1)",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "a * x0**(n-1)",
+      "misconception_id": "lib.derivative_power_rule_slip"
+    },
+    {
+      "expr": "a * n * x0**n",
+      "misconception_id": "lib.derivative_power_rule_slip"
+    },
+    {
+      "expr": "a * (n-1) * x0**(n-2)",
+      "misconception_id": "lib.derivative_power_rule_slip"
+    }
+  ],
+  "solution": [
+    "Производная степенной функции y = {a}x^{n} находится по правилу дифференцирования степени: y′ = {a}·{n}·x^({n} − 1).",
+    "Значение производной в точке x₀ равно значению полученного выражения при x = {x0}.",
+    "Подставляем x₀ = {x0}: y′({x0}) = {a}·{n}·{x0}^({n} − 1) = {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

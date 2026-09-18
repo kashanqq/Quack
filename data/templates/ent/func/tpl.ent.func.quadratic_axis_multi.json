@@ -1,0 +1,74 @@
+{
+  "id": "tpl.ent.func.quadratic_axis_multi",
+  "exam_id": "ENT_MATH",
+  "type": "multi_select",
+  "difficulty": 3,
+  "skill_id": "ent.func.quadratic",
+  "tags": [
+    "axis",
+    "symmetry",
+    "parabola"
+  ],
+  "time_reference_sec": 120,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        1,
+        5
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        2,
+        12
+      ],
+      "choices": null
+    },
+    "c": {
+      "range": [
+        1,
+        10
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "b % (2*a) == 0"
+  ],
+  "stem": "Дана парабола y = {a}x² + {b}x + {c}. Выберите все верные утверждения.",
+  "correct": [
+    "ось симметрии параболы — вертикальная прямая",
+    "абсцисса вершины параболы отрицательна"
+  ],
+  "distractors": [
+    {
+      "expr": "ось симметрии параболы — горизонтальная прямая",
+      "misconception_id": null
+    },
+    {
+      "expr": "абсцисса вершины параболы положительна",
+      "misconception_id": "lib.vertex_sign_drop"
+    },
+    {
+      "expr": "парабола не имеет оси симметрии",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": [
+    {
+      "omit": "абсцисса вершины параболы отрицательна",
+      "misconception_id": "lib.vertex_sign_drop"
+    }
+  ],
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Парабола y = ax² + bx + c симметрична относительно вертикальной прямой x = −b/(2a).",
+    "При a = {a}, b = {b} абсцисса вершины равна −{b}/(2·{a}) < 0, поэтому вершина лежит левее оси ординат.",
+    "Следовательно, верны утверждения: ось симметрии вертикальна и абсцисса вершины отрицательна."
+  ],
+  "generator": null,
+  "figure": null
+}

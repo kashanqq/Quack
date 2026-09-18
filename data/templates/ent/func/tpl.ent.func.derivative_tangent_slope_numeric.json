@@ -1,0 +1,68 @@
+{
+  "id": "tpl.ent.func.derivative_tangent_slope_numeric",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 2,
+  "skill_id": "ent.func.derivative",
+  "tags": [
+    "tangent",
+    "slope",
+    "power_rule",
+    "application"
+  ],
+  "time_reference_sec": 120,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        1,
+        4
+      ],
+      "choices": null
+    },
+    "n": {
+      "range": [
+        2,
+        5
+      ],
+      "choices": null
+    },
+    "x0": {
+      "range": [
+        2,
+        3
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "a * n * x0**(n-1) <= 200",
+    "x0 != n - 1"
+  ],
+  "stem": "Найдите угловой коэффициент касательной к графику функции y = {a}x^{n} в точке с абсциссой x₀ = {x0}.",
+  "correct": "a * n * x0**(n-1)",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "a * x0**(n-1)",
+      "misconception_id": "lib.derivative_power_rule_slip"
+    },
+    {
+      "expr": "a * n * x0**n",
+      "misconception_id": "lib.derivative_power_rule_slip"
+    },
+    {
+      "expr": "a * (n-1) * x0**(n-2)",
+      "misconception_id": "lib.derivative_power_rule_slip"
+    }
+  ],
+  "solution": [
+    "Производная функции y = {a}x^{n} находится по правилу дифференцирования степени: y′ = {a}·{n}·x^({n} − 1).",
+    "Угловой коэффициент касательной в точке x₀ равен значению производной в этой точке.",
+    "Подставляем x₀ = {x0}: k = {a}·{n}·{x0}^({n} − 1) = {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

@@ -1,0 +1,73 @@
+{
+  "id": "tpl.ent.func.logarithm_eq_odz_mcq5",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 2,
+  "skill_id": "ent.func.logarithm",
+  "tags": [
+    "log_eq",
+    "odz",
+    "linear_inside"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        5
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        1,
+        6
+      ],
+      "choices": null
+    },
+    "c": {
+      "range": [
+        2,
+        7
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "c > b",
+    "c - b != 1"
+  ],
+  "stem": "Решите уравнение: log_{a}(x + {b}) = log_{a}({c}).",
+  "correct": "c - b",
+  "distractors": [
+    {
+      "expr": "c + b",
+      "misconception_id": null
+    },
+    {
+      "expr": "a*c - b",
+      "misconception_id": "lib.exp_base_confusion"
+    },
+    {
+      "expr": "c - a*b",
+      "misconception_id": null
+    },
+    {
+      "expr": "b - c",
+      "misconception_id": "lib.log_odz_skip"
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "ОДЗ: x + {b} > 0, то есть x > −{b}.",
+    "Так как основания логарифмов одинаковы, приравниваем аргументы: x + {b} = {c}.",
+    "x = {c} − {b}.",
+    "Проверяем ОДЗ: найденное значение больше −{b}, поэтому корень подходит.",
+    "Ответ: вариант {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

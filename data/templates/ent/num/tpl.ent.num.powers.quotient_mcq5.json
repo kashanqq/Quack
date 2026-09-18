@@ -1,0 +1,70 @@
+{
+  "id": "tpl.ent.num.powers.quotient_mcq5",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 2,
+  "skill_id": "ent.num.powers",
+  "tags": [
+    "powers",
+    "exponent_rules",
+    "division"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        5
+      ],
+      "choices": null
+    },
+    "m": {
+      "range": [
+        5,
+        9
+      ],
+      "choices": null
+    },
+    "n": {
+      "range": [
+        2,
+        4
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "m > n"
+  ],
+  "stem": "Упростите выражение: {a}^{m} / {a}^{n}",
+  "correct": "a**(m - n)",
+  "distractors": [
+    {
+      "expr": "a**(m / n)",
+      "misconception_id": "lib.power_rules_swap"
+    },
+    {
+      "expr": "a**(m + n)",
+      "misconception_id": null
+    },
+    {
+      "expr": "a**(n - m)",
+      "misconception_id": null
+    },
+    {
+      "expr": "a**(m * n)",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "При делении степеней с одинаковым основанием показатели вычитаются: a^m / a^n = a^(m−n).",
+    "Основание {a} одинаковое, поэтому {a}^{m} / {a}^{n} = {a}^({m} − {n}).",
+    "Ответ: вариант {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

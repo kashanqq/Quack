@@ -1,0 +1,67 @@
+{
+  "id": "tpl.ent.num.powers.nested_power_numeric",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 3,
+  "skill_id": "ent.num.powers",
+  "tags": [
+    "powers",
+    "exponent_rules",
+    "nested_powers"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        4
+      ],
+      "choices": null
+    },
+    "m": {
+      "range": [
+        2,
+        4
+      ],
+      "choices": null
+    },
+    "n": {
+      "range": [
+        2,
+        4
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "m != n"
+  ],
+  "stem": "Найдите значение выражения: ({a}^{m})^{n}",
+  "correct": "a**(m * n)",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "a**(m + n)",
+      "misconception_id": "lib.power_rules_swap"
+    },
+    {
+      "expr": "a**(m - n)",
+      "misconception_id": null
+    },
+    {
+      "expr": "a**(n - m)",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "При возведении степени в степень показатели перемножаются: (a^m)^n = a^(m·n).",
+    "В данном выражении основание {a} остаётся прежним, а показатели {m} и {n} перемножаются.",
+    "Получаем: ({a}^{m})^{n} = {a}^({m}·{n}).",
+    "Ответ: {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

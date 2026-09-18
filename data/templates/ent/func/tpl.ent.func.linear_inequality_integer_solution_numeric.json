@@ -1,0 +1,66 @@
+{
+  "id": "tpl.ent.func.linear_inequality_integer_solution_numeric",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 3,
+  "skill_id": "ent.func.linear",
+  "tags": [
+    "linear_inequality",
+    "integer_solution",
+    "linear_function"
+  ],
+  "time_reference_sec": 150,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        6
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        1,
+        10
+      ],
+      "choices": null
+    },
+    "c": {
+      "range": [
+        1,
+        5
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "a > c",
+    "b % (a - c) == 0",
+    "b // (a - c) >= 2"
+  ],
+  "stem": "Найдите наибольшее целое число x, удовлетворяющее неравенству {a}x − {b} < {c}x + 1.",
+  "correct": "b // (a - c)",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "b // (a - c) + 1",
+      "misconception_id": "lib.inequality_endpoint"
+    },
+    {
+      "expr": "b // (a - c) - 1",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Перенесём все слагаемые с x в левую часть, а числа — в правую: {a}x − {c}x < 1 + {b}.",
+    "Приводим подобные: ({a} − {c})x < {b} + 1.",
+    "Так как {a} − {c} > 0, делим обе части неравенства на {a} − {c}, знак неравенства не меняется: x < ({b} + 1)/({a} − {c}).",
+    "Вычисляем правую часть: ({b} + 1)/({a} − {c}) = {answer} + 1/({a} − {c}).",
+    "Наибольшее целое число, меньшее {answer} + 1/({a} − {c}), равно {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

@@ -1,0 +1,73 @@
+{
+  "id": "tpl.ent.func.quadratic_vertex_ord_mcq5",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 3,
+  "skill_id": "ent.func.quadratic",
+  "tags": [
+    "vertex",
+    "parabola",
+    "extremum"
+  ],
+  "time_reference_sec": 120,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        1,
+        4
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        2,
+        12
+      ],
+      "choices": null
+    },
+    "c": {
+      "range": [
+        1,
+        10
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "b % (2*a) == 0",
+    "b*b % (4*a) == 0"
+  ],
+  "stem": "Найдите ординату вершины параболы y = {a}x² + {b}x + {c}.",
+  "correct": "c - b*b/(4*a)",
+  "distractors": [
+    {
+      "expr": "c + b*b/(4*a)",
+      "misconception_id": "lib.vertex_sign_drop"
+    },
+    {
+      "expr": "c - b*b/(2*a)",
+      "misconception_id": null
+    },
+    {
+      "expr": "c + b*b/(2*a)",
+      "misconception_id": null
+    },
+    {
+      "expr": "b*b/(4*a) - c",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Ордината вершины параболы y = ax² + bx + c равна значению функции в точке x₀ = −b/(2a).",
+    "Подставляем x₀ в уравнение: y₀ = a·(−b/(2a))² + b·(−b/(2a)) + c.",
+    "Упрощаем: y₀ = b²/(4a) − b²/(2a) + c = c − b²/(4a).",
+    "При a = {a}, b = {b}, c = {c} подставляем эти значения в формулу y₀ = c − b²/(4a).",
+    "Ответ: вариант {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

@@ -1,0 +1,77 @@
+{
+  "id": "tpl.ent.num.progression.arith_sum_multi_select",
+  "exam_id": "ENT_MATH",
+  "type": "multi_select",
+  "difficulty": 3,
+  "skill_id": "ent.num.progression",
+  "tags": [
+    "arithmetic_progression",
+    "sum",
+    "properties"
+  ],
+  "time_reference_sec": 120,
+  "kind": "template",
+  "params": {
+    "a1": {
+      "range": [
+        1,
+        5
+      ],
+      "choices": null
+    },
+    "d": {
+      "range": [
+        2,
+        6
+      ],
+      "choices": null
+    },
+    "n": {
+      "range": [
+        4,
+        8
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "a1 + (n-1)*d <= 50"
+  ],
+  "stem": "Дана арифметическая прогрессия с первым членом {a1}, разностью {d} и числом членов {n}. Выберите все верные утверждения о сумме её первых {n} членов.",
+  "correct": [
+    "Сумма первых n членов равна n·(a_1 + a_n)/2",
+    "Сумма первых n членов равна n·a_1 + n·(n−1)·d/2"
+  ],
+  "distractors": [
+    {
+      "expr": "Сумма первых n членов равна n·a_1 + n·d",
+      "misconception_id": "lib.progression_term_off_by_one"
+    },
+    {
+      "expr": "Сумма первых n членов равна n·(a_1 + a_n)",
+      "misconception_id": null
+    },
+    {
+      "expr": "Сумма первых n членов равна a_1·(d^n − 1)/(d − 1)",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": [
+    {
+      "omit": "Сумма первых n членов равна n·(a_1 + a_n)/2",
+      "misconception_id": null
+    }
+  ],
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Сумма первых n членов арифметической прогрессии вычисляется по формуле S_n = n·(a_1 + a_n)/2.",
+    "Подставляя формулу n-го члена a_n = a_1 + (n−1)·d, получаем S_n = n·(a_1 + a_1 + (n−1)·d)/2 = n·a_1 + n·(n−1)·d/2.",
+    "Утверждение «Сумма первых n членов равна n·a_1 + n·d» неверно: в нём потерян множитель (n−1)/2 при d.",
+    "Утверждение «Сумма первых n членов равна n·(a_1 + a_n)» неверно: пропущено деление на 2.",
+    "Утверждение «Сумма первых n членов равна a_1·(d^n − 1)/(d − 1)» неверно: это формула суммы геометрической прогрессии, а не арифметической.",
+    "Верные утверждения: S_n = n·(a_1 + a_n)/2 и S_n = n·a_1 + n·(n−1)·d/2."
+  ],
+  "generator": null,
+  "figure": null
+}

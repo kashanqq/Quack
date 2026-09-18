@@ -1,0 +1,68 @@
+{
+  "id": "tpl.ent.func.linear_inequality_count_integer_solutions_numeric",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 3,
+  "skill_id": "ent.func.linear",
+  "tags": [
+    "linear_inequality",
+    "integer_solutions",
+    "linear_function",
+    "двойное_неравенство"
+  ],
+  "time_reference_sec": 150,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        5
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        1,
+        4
+      ],
+      "choices": null
+    },
+    "c": {
+      "range": [
+        6,
+        10
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "a > 0",
+    "c > b",
+    "c - b >= 2*a"
+  ],
+  "stem": "Найдите количество целых чисел x, удовлетворяющих неравенству {b} < {a}x < {c}.",
+  "correct": "floor((c - 1)/a) - floor(b/a)",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "floor((c - 1)/a) - floor(b/a) + 1",
+      "misconception_id": "lib.inequality_endpoint"
+    },
+    {
+      "expr": "floor((c - 1)/a) - floor(b/a) - 1",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Решим двойное неравенство {b} < {a}x < {c}. Разделим все части неравенства на положительное число {a}: {b}/{a} < x < {c}/{a}.",
+    "Найдём целые числа, лежащие в интервале ({b}/{a}; {c}/{a}).",
+    "Наименьшее целое число, большее {b}/{a}, равно floor({b}/{a}) + 1, если {b}/{a} не целое, и равно {b}/{a} + 1, если {b}/{a} целое. В общем виде это floor({b}/{a}) + 1.",
+    "Наибольшее целое число, меньшее {c}/{a}, равно ceiling({c}/{a}) − 1, что равно floor(({c} − 1)/{a}).",
+    "Количество целых чисел в интервале равно floor(({c} − 1)/{a}) − floor({b}/{a}).",
+    "Подставляя значения, получаем {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

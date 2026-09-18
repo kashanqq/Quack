@@ -1,0 +1,64 @@
+{
+  "id": "tpl.ent.func.exponential_equation_same_base_numeric",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 2,
+  "skill_id": "ent.func.exponential",
+  "tags": [
+    "exponential_equation",
+    "same_base",
+    "integer_solution"
+  ],
+  "time_reference_sec": 120,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        5
+      ],
+      "choices": null
+    },
+    "m": {
+      "range": [
+        1,
+        4
+      ],
+      "choices": null
+    },
+    "n": {
+      "range": [
+        1,
+        4
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "m != n"
+  ],
+  "stem": "Решите уравнение {a}^(x + {m}) = {a}^({n}). В ответе укажите значение x.",
+  "correct": "n - m",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "m - n",
+      "misconception_id": "lib.exp_base_confusion"
+    },
+    {
+      "expr": "n + m",
+      "misconception_id": "lib.exp_base_confusion"
+    }
+  ],
+  "solution": [
+    "Основания степеней в левой и правой частях уравнения одинаковы и равны {a}.",
+    "Показательная функция с основанием {a} > 1 строго монотонна, поэтому равенство степеней равносильно равенству показателей.",
+    "Приравниваем показатели: x + {m} = {n}.",
+    "Выражаем x: x = {n} − {m}.",
+    "Получаем x = {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}
