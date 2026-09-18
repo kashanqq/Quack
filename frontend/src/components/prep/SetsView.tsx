@@ -46,7 +46,7 @@ const STATUS_TEXT = { ...SET_STATUS_LABEL, proposed: "предложен" };
 export function SetsView({ model, sub, exam, onExam, onMakeCurrent, onModel, openSet, onOpenSet, onToast }: Props) {
   const switcher = <ExamSwitch exam={exam} onExam={onExam} />;
   // Keyed by exam: the map keeps a layout and a selection per exam, and switching starts clean
-  if (sub === "map") return <KnowledgeMap key={exam} exam={exam} switcher={switcher} model={model} onModel={onModel} />;
+  if (sub === "map") return <KnowledgeMap key={exam} exam={exam} switcher={switcher} model={model} onModel={onModel} onOpen={(id, topic) => onOpenSet(id, topic)} />;
   if (sub === "route") return <Route exam={exam} switcher={switcher} model={model} onOpen={(id) => onOpenSet(id)} />;
   const set = openSet ? SETS.find((s) => s.id === openSet.id) : undefined;
   if (set) {
@@ -440,16 +440,23 @@ function KnowledgeMap({
   switcher,
   model,
   onModel,
+  onOpen,
 }: {
   exam: ExamId;
   switcher: React.ReactNode;
   model: PrepModel;
   onModel: (model: PrepModel) => void;
+  /** Into the set's graph, with this skill's topic open first */
+  onOpen: (setId: string, topic: string) => void;
 }) {
   // Nothing open at first: the card would cover the map before the student has looked at it
   const [selected, setSelected] = useState<string | null>(null);
   const current = SETS.find((s) => s.id === model.currentSet);
   const skill = selected ? skillById(selected) : null;
+  // Where the title leads: the first set with this skill that is still ahead, else the last one passed
+  const target = skill
+    ? (SETS.find((s) => s.skills.includes(skill.id) && !model.doneSets.includes(s.id)) ?? SETS.find((s) => s.skills.includes(skill.id)))
+    : undefined;
 
   return (
     <div className={styles.canvasGrid}>
@@ -472,7 +479,21 @@ function KnowledgeMap({
             skill && (
               <div className={styles.skillPanel}>
                 <p className={styles.eyebrow}>{skill.area}</p>
-                <h4>{skill.name}</h4>
+                {target ? (
+                  <h4>
+                    <button
+                      type="button"
+                      className={styles.skillTitleLink}
+                      title={`Открыть сет ${target.number} · ${target.title} на этой теме`}
+                      onClick={() => onOpen(target.id, skill.id)}
+                    >
+                      {skill.name}
+                      <Icon name="chevron-right" size={16} />
+                    </button>
+                  </h4>
+                ) : (
+                  <h4>{skill.name}</h4>
+                )}
                 <p className={styles.skillState}>
                   <StateGlyph state={model.states[skill.id]} size={16} />
                   {STATE_LABEL[model.states[skill.id]]} · вспомнит сейчас ~{Math.round(model.recall[skill.id] * 100)}% · вес{" "}

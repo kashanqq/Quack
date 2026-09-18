@@ -25,6 +25,40 @@ import { store } from "../account/store";
 
 const STORAGE_KEY = "quack-prep";
 
+/** One first-visit note per part of the section: what it shows and what to press. The ids are kept once seen. */
+const INTROS: Record<PrepSub | "set", { id: string; title: string; text: string }> = {
+  now: {
+    id: "prep",
+    title: "Зачем «Подготовка»",
+    text: "Здесь план подготовки к экзаменам, которые требуют твои программы. «Сейчас» — главное на сегодня: какой сет в работе, что сделать дальше и успеваешь ли к тесту.",
+  },
+  requirements: {
+    id: "prep-requirements",
+    title: "Что такое «Требования»",
+    text: "Какие экзамены и на какой балл нужны сохранённым программам, и когда ты, по прогнозу, будешь готов. Цели пересчитываются, когда меняется список программ.",
+  },
+  list: {
+    id: "prep-list",
+    title: "Что такое сет",
+    text: "Сет — несколько связанных тем с общим дедлайном. Сверху три, которые мы советуем сейчас по твоим ошибкам. Нажми на карточку — откроется граф тем сета.",
+  },
+  route: {
+    id: "prep-route",
+    title: "Как читать маршрут",
+    text: "Сеты по порядку на шкале времени до теста: отметка «сегодня», прогноз готовности и дата экзамена. Нажми на сет, чтобы открыть его.",
+  },
+  map: {
+    id: "prep-map",
+    title: "Как читать карту навыков",
+    text: "Все темы экзамена и связи между ними: стрелка ведёт к теме, которая опирается на предыдущую. Нажми на навык — рядом откроется карточка. Её заголовок — ссылка: он откроет сет с этой темой.",
+  },
+  set: {
+    id: "prep-set",
+    title: "Внутри сета",
+    text: "Темы сета на шкале до его дедлайна, у каждой свой срок. Нажми на тему — откроется чат с ассистентом, который начинает с короткого материала, и мок-тест рядом. Ответы в тесте сразу меняют состояние темы.",
+  },
+};
+
 type Props = {
   tab: PrepTab;
   onTab: (tab: PrepTab) => void;
@@ -67,6 +101,8 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
   // An open set, the route and the map are drawings: they take all the height left
   const setOpen = programs.length > 0 && tab === "sets" && current === "list" && !!openSet;
   const fill = setOpen || (programs.length > 0 && tab === "sets" && (current === "route" || current === "map"));
+
+  const intro = INTROS[setOpen ? "set" : current];
 
   /** One move for both levels, so a jump across the section is a single animated step */
   const go = (next: PrepTab, nextSub?: PrepSub, nextExam?: ExamId) =>
@@ -119,16 +155,14 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
           </div>
         ) : (
           <>
-            {setOpen ? null : saved.length ? (
-              <FirstHint id="prep" title="Зачем «Подготовка»">
-                Здесь план подготовки к экзаменам, которые требуют твои программы. В «Сетах» сверху три, которые мы советуем по твоим
-                ошибкам. Внутри сета — граф тем до дедлайна: в каждой теме материал, проверка и ассистент.
-              </FirstHint>
-            ) : (
+            {!saved.length && (
               <FirstHint id="prep-demo" title="Это пример" action={{ label: "Перейти к выбору", onClick: onGoToChoice }}>
                 План собран на демо-программах. Сохрани свои в «Выборе», и подготовка пересоберётся под их экзамены и сроки.
               </FirstHint>
             )}
+            <FirstHint key={intro.id} id={intro.id} title={intro.title}>
+              {intro.text}
+            </FirstHint>
             {/* Tabs and their parts are picked only in the left column — on phones it is the menu drawer */}
             <div key={`${tab}-${current}-${openSet?.id ?? ""}`} className={styles.tabBody}>
               {tab === "overview" && (

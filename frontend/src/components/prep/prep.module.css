@@ -1324,6 +1324,55 @@
   font-size: 14px;
 }
 
+/* The skill's name leads into its set: plain text at rest, a quiet arrow and underline tell it is a link */
+.skillTitleLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline dotted rgba(255, 166, 77, 0.45);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 5px;
+  transition: color 0.2s ease, text-decoration-color 0.2s ease;
+}
+
+.skillTitleLink > svg {
+  flex: none;
+  color: var(--accent-label);
+  opacity: 0.55;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.skillTitleLink:hover,
+.skillTitleLink:focus-visible {
+  color: var(--accent-label);
+  text-decoration-style: solid;
+  text-decoration-color: currentColor;
+}
+
+.skillTitleLink:hover > svg,
+.skillTitleLink:focus-visible > svg {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skillTitleLink > svg {
+    transition: none;
+  }
+
+  .skillTitleLink:hover > svg,
+  .skillTitleLink:focus-visible > svg {
+    transform: none;
+  }
+}
+
 .rootNote {
   margin: 0 0 12px;
   padding: 8px 10px;
@@ -1463,11 +1512,6 @@
 
 .checkState[data-state="lowData"] {
   color: var(--low);
-}
-
-.assistantEmpty {
-  display: grid;
-  gap: 12px;
 }
 
 .promptChips {
@@ -2106,10 +2150,6 @@
   min-height: 0;
 }
 
-.setStage[data-panel] {
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
-}
-
 .setGraphCard {
   display: flex;
   flex-direction: column;
@@ -2242,8 +2282,8 @@
 }
 
 .setNode .mapShape {
-  width: 84px;
-  height: 84px;
+  width: 64px;
+  height: 64px;
 }
 
 .setNode .mapChip {
@@ -2286,120 +2326,590 @@
   text-transform: none;
 }
 
-/* ---------- A topic: material, check, assistant ---------- */
+/* ---------- A topic opened: the chat and the mock test instead of the graph ---------- */
 
-.topicPanel {
+.topicWork {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  animation: rise 0.26s var(--ease-out) both;
+}
+
+/* The set's topics under the title: move between them without the graph */
+.topicSteps {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-left: 52px;
+}
+
+.topicSteps button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px 4px 9px;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--canvas-line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.topicSteps button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.topicSteps button[aria-current="true"] {
+  color: var(--text);
+  border-color: rgba(255, 122, 0, 0.6);
+  background: rgba(255, 122, 0, 0.12);
+}
+
+.topicWorkStage {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
+  gap: 16px;
+  min-height: 0;
+}
+
+.chatPane {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+}
+
+.chatPane .chatLines {
+  padding-right: 6px;
+}
+
+.chatPane .chatLine {
+  max-width: min(90%, 720px);
+}
+
+.chatPane .promptChips {
+  margin-top: 12px;
+}
+
+.sidePane {
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #57524e transparent;
-  animation: rise 0.26s var(--ease-out) both;
 }
 
-.topicHeadSide {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
+/* ---------- Материалы: the mock test, notes and flashcards the student asked for ---------- */
+
+.materials {
+  display: grid;
+  gap: 14px;
+  animation: fade 0.2s ease both;
+}
+
+.materialsHead h3 {
+  margin: 0 0 2px;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.materialsHead span {
+  font-size: 13px;
+}
+
+.materialGroup {
+  display: grid;
   gap: 6px;
+}
+
+.materialGroup > .eyebrow {
+  margin: 4px 0 2px;
+}
+
+.materialItem {
+  position: relative;
+}
+
+.materialRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 40px 10px 10px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  background: var(--inset-bg);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.materialRow:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.materialRow > svg:last-child {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--text-faint);
+}
+
+.materialMock {
+  padding-right: 12px;
+  border-color: rgba(255, 122, 0, 0.35);
+}
+
+.materialIcon {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+.materialIcon[data-kind="mock"] {
+  color: var(--accent-label);
+  background: rgba(255, 122, 0, 0.14);
+}
+
+.materialIcon[data-kind="cards"] {
+  color: #9db7ff;
+}
+
+.materialText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.materialText span {
+  font-size: 12px;
+}
+
+.materialItem .pinRemove {
+  top: 50%;
+  right: 30px;
+  translate: 0 -50%;
+}
+
+.materialEmpty {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  background: none;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.materialEmpty:hover:not(:disabled) {
+  color: var(--text);
+  border-color: rgba(255, 166, 77, 0.5);
+}
+
+.paneCount {
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 17px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+}
+
+/* One material opened in the column: back to the list, its title, its actions */
+.viewerHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.viewerTitle {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+}
+
+.viewerTitle span {
+  font-size: 12px;
+}
+
+.viewerActions {
+  display: flex;
+  gap: 6px;
+}
+
+.viewerActions button {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 
 .topicClose {
   display: inline-grid;
+  flex-shrink: 0;
   place-items: center;
-  width: 30px;
-  height: 30px;
-  color: var(--text-faint);
-  background: none;
-  border: 0;
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--canvas-line);
+  border-radius: 9px;
   cursor: pointer;
 }
 
 .topicClose:hover {
   color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* A generated note, read like a document */
+.markdown {
+  font-size: 14px;
+  line-height: 1.55;
+  animation: fade 0.2s ease both;
+}
+
+.markdown h1 {
+  margin: 0 0 2px;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.markdown h1 + p {
+  margin-top: 0;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.markdown h2 {
+  margin: 18px 0 6px;
+  color: var(--accent-label);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.markdown p {
+  margin: 0 0 8px;
+}
+
+.markdown ul {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+
+/* ---------- Flashcards: one big card that flips, the Quizlet way ---------- */
+
+.flash {
+  display: grid;
+  gap: 12px;
+  outline: none;
+  animation: fade 0.2s ease both;
+}
+
+.flashProgress {
+  height: 4px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+}
+
+.flashProgress span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s var(--ease-out);
+}
+
+.flashCard {
+  height: 280px;
+  padding: 0;
+  color: var(--text);
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  perspective: 1200px;
+}
+
+.flashInner {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.45s var(--ease-out);
+}
+
+.flashCard[data-flipped] .flashInner {
+  transform: rotateY(180deg);
+}
+
+.flashFace {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  padding: 24px 22px;
+  font-size: 18px;
+  line-height: 1.45;
+  text-align: center;
+  white-space: pre-line;
+  background: #3b3633;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  backface-visibility: hidden;
+}
+
+.flashBack {
+  background: #2e3a2c;
+  border-color: rgba(124, 207, 107, 0.3);
+  transform: rotateY(180deg);
+}
+
+.flashSide {
+  color: var(--text-faint);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.flash:focus-visible .flashFace {
+  border-color: rgba(255, 166, 77, 0.6);
+}
+
+.flashControls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.flashNav {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--canvas-line);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.flashNav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.flashNav:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.flipX {
+  transform: scaleX(-1);
+}
+
+.flashCount {
+  min-width: 56px;
+  color: var(--text-dim);
+  font-size: 15px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.flashFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flashInner {
+    transition: none;
+  }
+}
+
+.pinRemove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: var(--text-faint);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.pinRemove:hover {
+  color: var(--text);
   background: rgba(255, 255, 255, 0.06);
 }
 
-.topicHead {
+/* An assistant answer with «В конспект» under it */
+.chatReply {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+}
+
+.pinButton,
+.pinDone {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 6px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 12px;
+  border-radius: 7px;
+}
+
+.pinButton {
+  color: var(--text-faint);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.pinButton:hover {
+  color: var(--accent-label);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mockTest {
+  display: grid;
+  gap: 14px;
+  animation: fade 0.2s ease both;
+}
+
+.mockHead {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
 }
 
-.topicHead .eyebrow {
-  display: flex;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.topicTitle {
+.mockHead h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 500;
 }
 
-.topicTabs {
+.mockHead .eyebrow {
+  margin-bottom: 4px;
+}
+
+.mockDots {
   display: flex;
-  gap: 2px;
-  margin: 14px -20px 0;
-  padding: 0 14px;
-  border-bottom: 1px solid var(--canvas-line);
+  gap: 5px;
+  padding-bottom: 5px;
 }
 
-.topicTabs button {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px 10px 11px;
-  color: var(--text-dim);
-  font: inherit;
-  font-size: 14px;
-  background: none;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease;
+.mockDots span {
+  width: 8px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+  transition: background 0.2s ease;
 }
 
-.topicTabs button:hover {
-  color: var(--text);
+.mockDots span[data-result="current"] {
+  background: var(--accent);
 }
 
-.topicTabs button[aria-selected="true"] {
-  color: var(--text);
-  border-bottom-color: var(--accent);
+.mockDots span[data-result="correct"] {
+  background: var(--solid);
 }
 
-.topicBody {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-  padding-top: 16px;
-  animation: fade 0.2s ease both;
+.mockDots span[data-result="wrong"] {
+  background: var(--weak);
 }
 
-.topicBody > .task {
+.mockTest > .task {
   margin-top: 0;
 }
 
-.material {
+.mockResult {
   display: grid;
-  gap: 4px;
-  font-size: 15px;
-  line-height: 1.5;
+  gap: 10px;
 }
 
-.material > p {
-  margin: 0 0 8px;
+.mockScore {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 18px;
 }
 
-.material .eyebrow {
-  margin: 8px 0 4px;
+.mockScore strong {
+  color: var(--text);
+  font-size: 34px;
+  font-weight: 500;
+}
+
+.mockReview {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mockReview li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  background: var(--inset-bg);
+  border-radius: 10px;
+}
+
+.mockReview li > svg {
+  margin-top: 2px;
+  color: var(--weak);
+}
+
+.mockReview li[data-correct="true"] > svg {
+  color: var(--solid);
+}
+
+/* Only phones and narrow windows switch between the chat and the test */
+.paneSwitch {
+  display: none;
 }
 
 .materialPoints {
@@ -2407,21 +2917,6 @@
   gap: 4px;
   margin: 0 0 6px;
   padding-left: 18px;
-}
-
-.example {
-  padding: 10px 14px;
-  background: var(--inset-bg);
-  border-radius: 10px;
-}
-
-.example p {
-  margin: 0;
-}
-
-.exampleAnswer {
-  margin-top: 6px !important;
-  color: var(--solid);
 }
 
 .note {
@@ -2434,7 +2929,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  min-height: 320px;
+  min-height: 0;
 }
 
 @keyframes fade {
@@ -2454,8 +2949,7 @@
     overflow-y: auto;
   }
 
-  .setStage,
-  .setStage[data-panel] {
+  .setStage {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -2464,21 +2958,59 @@
     flex: none;
   }
 
-  .topicPanel {
+  .paneSwitch {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--canvas-line);
+    border-radius: 12px;
+  }
+
+  .paneSwitch button {
+    display: inline-flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 34px;
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 14px;
+    background: none;
+    border: 0;
+    border-radius: 9px;
+    cursor: pointer;
+  }
+
+  .paneSwitch button[aria-selected="true"] {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .topicWorkStage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .topicWorkStage[data-pane="chat"] > .sidePane,
+  .topicWorkStage[data-pane="side"] > .chatPane {
+    display: none;
+  }
+
+  .chatPane {
+    height: min(720px, calc(100dvh - 190px));
+  }
+
+  .sidePane {
     overflow: visible;
+  }
+
+  .topicSteps {
+    padding-left: 0;
   }
 }
 
 @media (max-width: 760px) {
-  .topicTabs {
-    margin: 12px -14px 0;
-    padding: 0 6px;
-  }
-
-  .topicTabs button {
-    padding: 9px 8px 11px;
-    font-size: 13px;
-  }
 
   .setGraphScroll {
     height: auto;
