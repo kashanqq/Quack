@@ -4,7 +4,6 @@ import { Icon } from "../choice/Icon";
 import type { Program } from "../choice/programs";
 import { useQuack } from "../quack/source";
 import { routeDelay } from "../quack/standing";
-import { ForecastChart } from "./ForecastChart";
 import {
   daysBetween,
   formatDate,
@@ -16,15 +15,15 @@ import {
   setById,
   skillById,
   SKILLS,
-  STATE_LABEL,
   TODAY,
   EXAM_IDS,
   EXAMS,
   type ExamId,
   type ExamOutlook,
 } from "./prepData";
-import { closed, MISCONCEPTION_LABEL, proposedSet, readiness, type PrepModel, type PrepSub, type PrepTab } from "./prepModel";
+import { proposedSet, readiness, type PrepModel, type PrepSub, type PrepTab } from "./prepModel";
 import { StateGlyph } from "./SkillGraph";
+import { PixelDuck } from "../duck/PixelDuck";
 import styles from "./prep.module.css";
 
 type Props = {
@@ -54,143 +53,92 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept }: Pr
     sat: { readiness: series.sat.readiness, forecast: series.sat.forecast },
     ielts: { readiness: series.ielts.readiness, forecast: series.ielts.forecast },
   };
-  const forecast = series.sat.forecast;
   const exams = requirements(programs, outlook);
   const list = milestones(programs);
 
-  if (sub === "requirements") return <Requirements exams={exams} series={series} />;
-  return <Now model={model} forecast={forecast} milestoneList={list} onGo={onGo} onOpenSet={onOpenSet} onAccept={onAccept} />;
+  if (sub === "requirements")
+    return (
+      <Requirements exams={exams}>
+        <Important model={model} milestoneList={list} onGo={onGo} onOpenSet={onOpenSet} />
+      </Requirements>
+    );
+  return <Now model={model} forecasts={{ sat: series.sat.forecast, ielts: series.ielts.forecast }} onOpenSet={onOpenSet} onAccept={onAccept} />;
 }
 
-/* ---------- Сейчас: the set in work and what closed last ---------- */
+/* ---------- Сейчас: one calm screen — the set and topic in work, the pace per exam, one button ---------- */
+
+const DUCK_TEMPO = ["fast", "fast", "steady", "chill"] as const;
 
 function Now({
   model,
-  forecast,
-  milestoneList,
-  onGo,
+  forecasts,
   onOpenSet,
   onAccept,
 }: {
   model: PrepModel;
-  forecast: Date;
-  milestoneList: ReturnType<typeof milestones>;
-  onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
+  forecasts: Record<ExamId, Date>;
   onOpenSet: (setId: string, topic?: string) => void;
   onAccept: (setId: string) => void;
 }) {
-  const proposed = proposedSet(model);
+  const { state } = useQuack();
   const current = model.currentSet ? setById(model.currentSet) : null;
-  const report = model.reportFor ? setById(model.reportFor) : null;
+  const set = current ?? proposedSet(model) ?? null;
+  // The topic in work: the first one of the set that does not hold yet
+  const topicId = set?.skills.find((id) => model.states[id] !== "solid") ?? set?.skills[0];
+  const topic = topicId ? skillById(topicId) : null;
+
+  // Quack's verdict per exam; demo programs are not saved, so there only the forecast date
+  const paces = state.standing?.exams.length
+    ? state.standing.exams.map((e) => ({ id: e.id, name: e.name, level: e.level, verdict: e.verdict, summary: e.summary }))
+    : EXAM_IDS.map((id) => ({
+        id,
+        name: EXAMS[id].name,
+        level: (forecasts[id] <= EXAMS[id].test ? 3 : 0) as 0 | 3,
+        verdict: forecasts[id] <= EXAMS[id].test ? "Успеваешь" : "Не успеваешь",
+        summary: `прогноз на ${formatDate(forecasts[id])}, тест ${formatDate(EXAMS[id].test)}`,
+      }));
 
   return (
-    <div className={styles.canvasGrid}>
-      <section className={`${styles.canvas} ${styles.wide}`} aria-label="Сет">
-        {report ? (
+    <div className={styles.nowScreen}>
+      <section className={styles.nowCenter} aria-label="Сейчас">
+        <PixelDuck tempo="steady" className={styles.nowDuck} waving={!set} />
+        {set && topic ? (
           <>
-            <header className={styles.canvasHead}>
-              <h3>
-                Сет {report.number} закрыт <Icon name="circle-check" size={18} className={styles.okIcon} />
-              </h3>
-            </header>
-            <p className={styles.lead}>Хорошая работа — {report.title.toLowerCase()} теперь держатся.</p>
-            <ul className={styles.plainList}>
-              {report.skills.map((id) => (
-                <li key={id}>
-                  <StateGlyph state={model.states[id]} />
-                  {skillById(id).name} — {STATE_LABEL[model.states[id]]}
-                </li>
-              ))}
-              {report.skills
-                .flatMap((id) => model.misconceptions[id])
-                .filter((m) => m.status === "resolved")
-                .map((m) => (
-                  <li key={m.id}>
-                    <Icon name="check" size={14} className={styles.okIcon} />
-                    {m.text} — {MISCONCEPTION_LABEL(m)}
-                  </li>
-                ))}
-            </ul>
+            <h2 className={styles.nowSet}>
+              Сет {set.number} · {set.title}
+            </h2>
+            <p className={styles.nowTopic}>
+              <StateGlyph state={model.states[topic.id]} size={14} />
+              {topic.name}
+            </p>
           </>
         ) : (
-          <header className={styles.canvasHead}>
-            <h3>{current ? `Сейчас: сет ${current.number}` : "Маршрут"}</h3>
-          </header>
+          <h2 className={styles.nowSet}>Все сеты пройдены — осталось закрепление и тест</h2>
         )}
 
-        {current ? (
-          <div className={styles.nextSet}>
-            <span className={styles.muted}>до {formatDate(current.deadline)}</span>
-            <strong>{current.title}</strong>
-            <span>
-              закрыто {closed(model, current)} из {current.skills.length}
-            </span>
-            <button type="button" className={styles.primary} onClick={() => onOpenSet(current.id)}>
-              <Icon name="play" size={16} /> Продолжить
-            </button>
-          </div>
-        ) : proposed ? (
-          <div className={styles.nextSet}>
-            <span className={styles.muted}>Следующий · до {formatDate(proposed.deadline)}</span>
-            <strong>
-              Сет {proposed.number}: {proposed.title}
-            </strong>
-            <span className={styles.muted}>{proposed.why}</span>
-            <div className={styles.actions}>
-              <button type="button" className={styles.primary} onClick={() => onAccept(proposed.id)}>
-                Принять
-              </button>
-              <button type="button" className={styles.secondary} onClick={() => onGo("sets", "list")}>
-                Выбрать другой
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className={styles.muted}>Все сеты пройдены — осталось закрепление и тест.</p>
+        <ul className={styles.nowPaces}>
+          {paces.map((p) => (
+            <li key={p.id} data-pace={p.level}>
+              <PixelDuck tempo={DUCK_TEMPO[p.level]} className={styles.nowPaceDuck} asleep={p.level === 0} />
+              <span className={styles.nowPaceName}>{p.name}</span>
+              <strong>{p.verdict}</strong>
+            </li>
+          ))}
+        </ul>
+
+        {set && topic && (
+          <button
+            type="button"
+            className={styles.nowButton}
+            aria-label={current ? "Продолжить" : "Начать"}
+            title={current ? "Продолжить" : "Начать"}
+            onClick={() => (current ? onOpenSet(set.id, topic.id) : onAccept(set.id))}
+          >
+            <Icon name="play" size={26} />
+          </button>
         )}
       </section>
-
-      <PaceCard forecast={forecast} onGo={onGo} />
-      <Important model={model} milestoneList={milestoneList} onGo={onGo} onOpenSet={onOpenSet} />
     </div>
-  );
-}
-
-/**
- * Pace, in words, from Quack — the same verdict the Quack! screen shows, so the two never disagree.
- * No readiness percentages: the student needs to know whether they make it, not a number.
- */
-function PaceCard({ forecast, onGo }: { forecast: Date; onGo: (tab: PrepTab, sub?: PrepSub) => void }) {
-  const { state } = useQuack();
-  const pace = state.standing?.pace;
-
-  return (
-    <section className={styles.canvas} aria-label="Темп">
-      <header className={styles.canvasHead}>
-        <h3>Темп</h3>
-        <span className={styles.muted}>как в Quack</span>
-      </header>
-      {pace ? (
-        <div className={styles.paceBox} data-pace={pace.level}>
-          <div className={styles.paceHead}>
-            <strong className={styles.paceVerdict}>{pace.verdict}</strong>
-            <span className={styles.paceMeter} aria-hidden="true">
-              {[0, 1, 2, 3].map((step) => (
-                <span key={step} data-on={step <= pace.level} />
-              ))}
-            </span>
-          </div>
-          <p>{pace.summary}</p>
-          {pace.advice[0] && <p className={styles.paceHint}>{pace.advice[0]}</p>}
-        </div>
-      ) : (
-        // Demo programs are not saved, so Quack has nothing to judge: the forecast date alone
-        <p className={styles.lead}>Прогноз готовности — {formatDate(forecast)}</p>
-      )}
-      <button type="button" className={styles.link} onClick={() => onGo("overview", "requirements")}>
-        Требования и прогноз →
-      </button>
-    </section>
   );
 }
 
@@ -294,16 +242,8 @@ function Important({
 
 /* ---------- Требования: the exams the saved programs ask for ---------- */
 
-function Requirements({
-  exams,
-  series,
-}: {
-  exams: ReturnType<typeof requirements>;
-  series: Record<ExamId, ReturnType<typeof forecastSeries>>;
-}) {
-  // A chart for every exam the knowledge model covers and the programs ask for
-  const charted = EXAM_IDS.filter((id) => exams.some((e) => e.id === id && e.hasModel));
-
+/** What each exam asks for and whether the student makes it, in words: no readiness charts or percentages */
+function Requirements({ exams, children }: { exams: ReturnType<typeof requirements>; children: React.ReactNode }) {
   return (
     <div className={styles.canvasGrid}>
       {exams.map((exam) => {
@@ -349,15 +289,8 @@ function Requirements({
         );
       })}
 
-      {charted.map((id) => (
-        <section key={id} className={`${styles.canvas} ${styles.full}`} aria-label={`Прогноз готовности ${EXAMS[id].name}`}>
-          <header className={styles.canvasHead}>
-            <h3>Готовность {EXAMS[id].name} и прогноз</h3>
-            <span className={styles.muted}>факт — сплошная, прогноз — пунктир</span>
-          </header>
-          <ForecastChart points={series[id].points} testDate={EXAMS[id].test} forecast={series[id].forecast} />
-        </section>
-      ))}
+      {/* «Важно сейчас» below the exam targets: «Сейчас» stays a single calm screen */}
+      {children}
     </div>
   );
 }

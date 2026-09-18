@@ -8,6 +8,7 @@ import { evaluate, programById } from "./programs";
 import { DASH_TABS, type DashTab } from "../dashboard/dashboardRules";
 import { PREP_SUBS, PREP_TABS, subFor, type PrepSub, type PrepTab } from "../prep/prepModel";
 import { UserMenu } from "./UserMenu";
+import { HelpDuck } from "../hints/FirstHint";
 import styles from "./layout.module.css";
 
 export type Mode = "dashboard" | "choice" | "prep";
@@ -162,6 +163,7 @@ export function Sidebar(props: SidebarProps) {
             </button>
           </>
         )}
+        <HelpDuck className={styles.railDuck} />
         <div className={styles.railFoot}>
           <UserMenu onRestart={props.onRestart} profile={props.profileToggle} compact />
         </div>
@@ -200,6 +202,7 @@ export function Sidebar(props: SidebarProps) {
                     <span className={styles.rowTitle}>{t.label}</span>
                   </span>
                 </button>
+                {props.dashTab === t.tab && <HelpDuck />}
               </li>
             ))}
           </ul>
@@ -268,6 +271,7 @@ export function Sidebar(props: SidebarProps) {
                                 <span className={styles.rowSub}>{s.hint}</span>
                               </span>
                             </button>
+                            {active && <HelpDuck />}
                           </li>
                         );
                       })}
@@ -281,7 +285,10 @@ export function Sidebar(props: SidebarProps) {
       ) : (
         <div className={styles.sidebarScroll} key="choice">
           <section className={styles.section} aria-label="Программы">
-            <p className={styles.sectionLabel}>Программы</p>
+            <div className={styles.sectionLabelRow}>
+              <p className={styles.sectionLabel}>Программы</p>
+              <HelpDuck />
+            </div>
             <div className={styles.tabs} role="tablist">
               {TABS.map(({ tab: t, label }) => (
                 <button key={t} type="button" role="tab" aria-selected={tab === t} className={styles.tab} onClick={() => onTab(t)}>

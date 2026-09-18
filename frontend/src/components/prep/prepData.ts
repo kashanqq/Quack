@@ -456,7 +456,7 @@ export type SetStatus = "done" | "current" | "upcoming" | "review";
 export const SET_STATUS_LABEL: Record<SetStatus, string> = {
   done: "пройден",
   current: "текущий",
-  upcoming: "предстоит",
+  upcoming: "не начат",
   review: "закрепление",
 };
 
