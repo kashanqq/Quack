@@ -178,3 +178,13 @@ class MisconceptionStateOut(BaseModel):
     updated_at: datetime
     skill_ids: list[str]
     visible_label: str = ""
+
+
+class RootCauseOut(BaseModel):
+    """One edge from evidence to a root skill — memory-architecture §6."""
+
+    from_skill_id: str
+    root_skill_id: str
+    confidence: float
+    source: Literal["diagnostic", "observer", "rule"]
+    created_at: datetime
