@@ -84,12 +84,13 @@ const remoteBackend: StateBackend = {
     return res.json();
   },
   async save(_userId, entries) {
-    await fetch(`${API}/state`, {
+    const res = await fetch(`${API}/state`, {
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entries),
     });
+    if (!res.ok) throw new Error(`state patch ${res.status}`);
   },
   saveOnExit(_userId, entries) {
     // keepalive lets the request finish after the page is gone
@@ -102,7 +103,8 @@ const remoteBackend: StateBackend = {
     }).catch(() => undefined);
   },
   async clear() {
-    await fetch(`${API}/state`, { method: "DELETE", credentials: "include" });
+    const res = await fetch(`${API}/state`, { method: "DELETE", credentials: "include" });
+    if (!res.ok) throw new Error(`state delete ${res.status}`);
   },
 };
 

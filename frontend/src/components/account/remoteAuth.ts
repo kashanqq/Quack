@@ -5,9 +5,13 @@ import { AuthError, type AuthApi, type User } from "./contract";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-type StudentCtx = { student_id: string; email: string; name?: string };
+type StudentCtx = { student_id?: string; id?: string; email: string; name?: string };
 
-const toUser = (s: StudentCtx): User => ({ id: s.student_id, email: s.email, name: s.name ?? s.email.split("@")[0] });
+const toUser = (s: StudentCtx): User => ({
+  id: s.student_id ?? s.id ?? "",
+  email: s.email,
+  name: s.name ?? s.email.split("@")[0],
+});
 
 async function call(path: string, body?: unknown) {
   try {
@@ -46,6 +50,25 @@ export const remoteAuth: AuthApi = {
     const res = await call("/auth/register", { name: name.trim(), email: email.trim(), password });
     if (!res.ok) fail(res.status);
     return toUser(await res.json());
+  },
+
+  async loginWithGoogle(credential?: string) {
+    if (credential) {
+      const res = await call("/auth/google", { credential });
+      if (!res.ok) fail(res.status);
+      return toUser(await res.json());
+    }
+    // Check if backend provides a direct stub/test endpoint
+    const stubRes = await call("/auth/google/stub", {}).catch(() => null);
+    if (stubRes?.ok) {
+      return toUser(await stubRes.json());
+    }
+    // If backend implements OAuth redirect flow
+    if (typeof window !== "undefined") {
+      window.location.assign(`${API}/auth/google/login?next=${encodeURIComponent("/choice")}`);
+      return new Promise<User>(() => {});
+    }
+    throw new AuthError("network");
   },
 
   async logout() {

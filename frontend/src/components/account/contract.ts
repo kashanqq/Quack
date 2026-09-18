@@ -3,13 +3,15 @@
 // (remote*.ts). Screens only ever see these types, so switching is one environment variable.
 //
 // Backend endpoints the remote side expects (FastAPI, cookie `quack_token`, `credentials: "include"`):
-//   POST   /auth/login     {email, password}        → 200 {student_id, email} | 401 | 429   (exists)
-//   GET    /auth/me                                  → 200 {student_id, email} | 401         (exists)
-//   POST   /auth/logout                              → 204                                   (exists)
-//   POST   /auth/register  {email, password, name}   → 201 {student_id, email} | 409         (to add)
-//   GET    /state                                    → 200 {[key]: value}                    (to add)
-//   PATCH  /state          {[key]: value | null}     → 204, null deletes the key             (to add)
-//   DELETE /state                                    → 204, "начать заново"                  (to add)
+//   POST   /auth/login     {email, password}        → 200 {student_id, email, name} | 401 | 429   (exists)
+//   GET    /auth/me                                  → 200 {student_id, email, name} | 401         (exists)
+//   POST   /auth/logout                              → 204                                         (exists)
+//   POST   /auth/register  {email, password, name}   → 201 {student_id, email, name} | 409         (to add)
+//   GET    /auth/google/login?next=...               → 302 Redirect to Google OAuth                (to add)
+//   POST   /auth/google    {credential}              → 200 {student_id, email, name}               (to add)
+//   GET    /state                                    → 200 {[key]: value}                          (to add)
+//   PATCH  /state          {[key]: value | null}     → 204, null deletes the key                   (to add)
+//   DELETE /state                                    → 204, "начать заново"                        (to add)
 
 export type User = {
   id: string;
@@ -31,6 +33,8 @@ export interface AuthApi {
   me(): Promise<User | null>;
   login(email: string, password: string): Promise<User>;
   register(name: string, email: string, password: string): Promise<User>;
+  /** Sign in via Google account (credential token from GIS or OAuth redirect) */
+  loginWithGoogle(credential?: string): Promise<User>;
   logout(): Promise<void>;
 }
 

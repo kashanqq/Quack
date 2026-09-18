@@ -91,6 +91,29 @@ export const localAuth: AuthApi = {
     return startSession(account);
   },
 
+  async loginWithGoogle() {
+    await pause();
+    const address = "alexey.smirnov@gmail.com";
+    const list = accounts();
+    let account = list.find((a) => a.email === address);
+    if (!account) {
+      account = {
+        id: crypto.randomUUID(),
+        email: address,
+        name: "Алексей Смирнов",
+        salt: "google-mock-salt",
+        hash: "google-mock-hash",
+        createdAt: new Date().toISOString(),
+      };
+      try {
+        localStorage.setItem(ACCOUNTS_KEY, JSON.stringify([...list, account]));
+      } catch {
+        throw new AuthError("network");
+      }
+    }
+    return startSession(account);
+  },
+
   async logout() {
     try {
       localStorage.removeItem(SESSION_KEY);
