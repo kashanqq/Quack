@@ -15,7 +15,36 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Check deployment configuration
+        id: config
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          DOMAIN: ${{ secrets.DOMAIN }}
+        run: |
+          set -euo pipefail
+          required=(VPS_HOST VPS_USER VPS_SSH_KEY VPS_KNOWN_HOSTS DOMAIN)
+          missing=()
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              missing+=("$name")
+            fi
+          done
+          if (( ${#missing[@]} == ${#required[@]} )); then
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+            echo '::notice::Deployment skipped: VPS secrets are not configured yet'
+            echo 'Deployment skipped. Configure VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_KNOWN_HOSTS and DOMAIN in repository secrets to enable deployment.' >> "$GITHUB_STEP_SUMMARY"
+          elif (( ${#missing[@]} > 0 )); then
+            echo "::error::Incomplete deployment configuration. Missing secrets: ${missing[*]}"
+            exit 1
+          else
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy exact main commit over SSH
+        if: steps.config.outputs.configured == 'true'
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
@@ -23,8 +52,10 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
-          test -n "$VPS_HOST" && test -n "$VPS_USER"
-          test -n "$VPS_SSH_KEY" && test -n "$VPS_KNOWN_HOSTS"
+          : "${VPS_HOST:?VPS_HOST is required}"
+          : "${VPS_USER:?VPS_USER is required}"
+          : "${VPS_SSH_KEY:?VPS_SSH_KEY is required}"
+          : "${VPS_KNOWN_HOSTS:?VPS_KNOWN_HOSTS is required}"
           printf '%s\n' "$VPS_SSH_KEY" > "$RUNNER_TEMP/quack-deploy-key"
           chmod 600 "$RUNNER_TEMP/quack-deploy-key"
           printf '%s\n' "$VPS_KNOWN_HOSTS" > "$RUNNER_TEMP/quack-known-hosts"
@@ -58,6 +89,7 @@ jobs:
           REMOTE
 
       - name: Verify HTTPS health
+        if: steps.config.outputs.configured == 'true'
         env:
           DOMAIN: ${{ secrets.DOMAIN }}
         run: |
