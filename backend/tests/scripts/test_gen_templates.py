@@ -35,6 +35,27 @@ _VALID_TEMPLATE = {
     "solution": ["{a} + 1 = {answer}"],
 }
 
+# Passes validate_template (multi_select skips the symbolic mcq check, and
+# generate_instance doesn't render option text at all, so it never raises) —
+# only the render-time leftover-`{` check (item 3, app.tasks.generate is
+# B1's, gen_templates.py owns this guard) catches the unrendered `{a}`.
+_LEFTOVER_PLACEHOLDER_TEMPLATE = {
+    "id": "tpl.sat.alg.test_leftover",
+    "exam_id": "SAT_MATH",
+    "type": "multi_select",
+    "difficulty": 1,
+    "skill_id": "sat.alg.slope_lines",
+    "tags": ["test"],
+    "time_reference_sec": 30,
+    "kind": "template",
+    "params": {"a": {"range": [1, 5]}},
+    "constraints": [],
+    "stem": "Уравнение x = {a}. Выберите верные утверждения.",
+    "correct": ["решение равно {a}"],
+    "distractors": [{"expr": "решение больше {a}", "misconception_id": None}],
+    "solution": ["x = {a}"],
+}
+
 # Invalid by construction: the first distractor is the same expression as
 # `correct`, so validate_template's symbolic check ("distractors collapse")
 # rejects it deterministically, with no dependence on seeded randomness.
@@ -152,6 +173,41 @@ async def test_generation_drops_invalid_template_and_writes_only_the_valid_one(
     out = capsys.readouterr().out
     assert "1 отброшено" in out
     assert "distractors collapse" in out
+
+
+async def test_generation_drops_template_with_leftover_placeholder(
+    monkeypatch, tmp_path, capsys
+):
+    gen_templates = _load_module()
+
+    leftover_spec = TaskTemplateSpec.model_validate(_LEFTOVER_PLACEHOLDER_TEMPLATE)
+    script = [gen_templates.GeneratedTemplates(templates=[leftover_spec])]
+    fake_llm = FakeLLMClient(script)
+
+    monkeypatch.setattr(gen_templates, "LLMClient", lambda settings, redis: fake_llm)
+    monkeypatch.setattr(gen_templates, "Redis", _FakeRedis)
+
+    exit_code = await gen_templates.run(
+        [
+            "--exam",
+            "SAT_MATH",
+            "--area",
+            "alg",
+            "--skill",
+            "sat.alg.slope_lines",
+            "--n",
+            "1",
+            "--out",
+            str(tmp_path),
+            "--no-seed-validate",
+        ]
+    )
+
+    assert exit_code == 0
+    assert list(tmp_path.iterdir()) == []
+    out = capsys.readouterr().out
+    assert "1 отброшено" in out
+    assert "leftover placeholder" in out
 
 
 class _DownRedis:

@@ -48,7 +48,7 @@ from app.llm.client import LLMClient  # noqa: E402
 from app.llm.prompts import load_prompt  # noqa: E402
 from app.schemas.llm import LLMMessage  # noqa: E402
 from app.schemas.tasks import TaskTemplateSpec  # noqa: E402
-from app.tasks.generate import validate_template  # noqa: E402
+from app.tasks.generate import generate_instance, validate_template  # noqa: E402
 
 _EXAM_DIR = {"SAT_MATH": "sat", "ENT_MATH": "ent"}
 _SKILLS_FILE = {"SAT_MATH": "sat_math.json", "ENT_MATH": "ent_math.json"}
@@ -197,6 +197,30 @@ def _format_examples(templates: list[dict]) -> str:
     return "\n\n".join(json.dumps(t, ensure_ascii=False, indent=2) for t in templates)
 
 
+def _leftover_placeholder(spec: TaskTemplateSpec, n_seeds: int = 3) -> str | None:
+    """Render a few instances and check that no ``{`` survived substitution.
+
+    ``render_stem`` only substitutes a bare ``{name}`` (a single param or
+    ``{answer}``); anything else in braces — a composite expression, or any
+    ``{...}`` at all in ``multi_select`` option text, which the engine never
+    renders — is left in the string as-is and reaches the student literally.
+    ``validate_template`` doesn't catch this (it checks symbolic/seed
+    invariants, not rendered text), so this is a separate, string-level check.
+    """
+    for seed in range(n_seeds):
+        try:
+            instance = generate_instance(spec, seed=seed)
+        except Exception as exc:
+            return f"seed {seed} crashed: {exc!r}"
+        texts = [instance.stem_rendered, *instance.solution_rendered]
+        texts += [option.text for option in instance.options]
+        texts += [trap.text for trap in instance.trap_answers]
+        for text in texts:
+            if "{" in text:
+                return f"leftover placeholder in seed {seed}: {text!r}"
+    return None
+
+
 def _build_messages(
     exam_format_doc: dict,
     skill: dict,
@@ -322,6 +346,10 @@ async def run(argv: list[str] | None = None) -> int:
                     continue
                 if errors:
                     dropped.append((spec.id, "; ".join(errors)))
+                    continue
+                placeholder_issue = _leftover_placeholder(spec)
+                if placeholder_issue is not None:
+                    dropped.append((spec.id, placeholder_issue))
                     continue
                 out_path.write_text(
                     json.dumps(
