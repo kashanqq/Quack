@@ -22,6 +22,10 @@ class DiagnosticState(BaseModel):
     firm: list[str]
     shaky: list[str]
     last_grade_correct: bool | None
+    # B1 temporary (see docs/sync-log.md): needed for the pure state machine.
+    # B3 — please keep these fields in your schema or drop them after discussion.
+    budget_order: list[str] = []
+    indirect: list[tuple[str, float]] = []
 
 
 class DiagnosticOut(BaseModel):
