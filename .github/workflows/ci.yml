@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+
+      - name: Install Python 3.12
+        run: uv python install 3.12
+
+      - name: Install locked dependencies
+        run: uv sync --frozen
+
+      - name: Ruff lint
+        run: uv run --frozen ruff check . ../scripts/seed.py
+
+      - name: Ruff format
+        run: uv run --frozen ruff format --check . ../scripts/seed.py
+
+      - name: Unit tests
+        run: uv run --frozen pytest -m "not integration"
+
+      - name: Validate seed data
+        run: uv run --frozen python ../scripts/seed.py --validate
+
+      - name: Scan tracked files for secrets
+        run: uv run --frozen pytest tests/test_secrets.py -q
+
+      - name: Generate OpenAPI schema
+        run: >-
+          uv run --frozen python -c
+          'import json; from app.main import create_app;
+          print(json.dumps(create_app().openapi()))'
+          > "$RUNNER_TEMP/quack-openapi.json"
+
+      - name: Check frontend API types
+        working-directory: .
+        run: |
+          if [[ ! -f scripts/gen_types.sh || ! -f frontend/src/api/schema.d.ts ]]; then
+            echo "::error::Frontend API contract is blocked: scripts/gen_types.sh or frontend/src/api/schema.d.ts is missing"
+            exit 1
+          fi
+          make types
+          git diff --exit-code -- frontend/src/api/schema.d.ts
