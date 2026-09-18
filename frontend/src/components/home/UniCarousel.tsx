@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { PROGRAMS, type Program } from "@/components/choice/programs";
 import { copy } from "./copy";
 import styles from "./quack.module.css";
@@ -26,13 +26,10 @@ function admissionOf(p: Program): string {
   return parts.join(" · ");
 }
 
-/** How long the carousel holds still after the globe sends it a program. */
-const PIN_MS = 12000;
-
 type UniCarouselProps = {
   /** True while this is the open tab — the carousel only runs when it is visible. */
   active: boolean;
-  /** Program id picked on the globe; jumps to that card and holds it for a while. */
+  /** Program id picked on the globe; the carousel shows that card and holds it until it is let go. */
   focusId?: string | null;
 };
 
@@ -41,19 +38,15 @@ type UniCarouselProps = {
  * and cross-fades, so a card leaves while the next one is already arriving.
  */
 export function UniCarousel({ active, focusId }: UniCarouselProps) {
-  const [pinned, setPinned] = useState(false);
+  const pinned = Boolean(focusId);
   const [index, setIndex] = useRotator(PROGRAMS.length, CARD_S * 1000, !active || pinned);
   const t = copy.quack.uni;
 
-  // A pick on the globe wins over the timer, but only for long enough to read it.
+  // A pick on the globe wins over the timer for as long as it stays picked.
   useEffect(() => {
     if (!focusId) return;
     const i = PROGRAMS.findIndex((p) => p.id === focusId);
-    if (i < 0) return;
-    setIndex(i);
-    setPinned(true);
-    const timer = setTimeout(() => setPinned(false), PIN_MS);
-    return () => clearTimeout(timer);
+    if (i >= 0) setIndex(i);
   }, [focusId, setIndex]);
 
   return (

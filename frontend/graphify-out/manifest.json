@@ -20,8 +20,8 @@
     "semantic_hash": ""
   },
   "src/app/page.tsx": {
-    "mtime": 1789683425.689317,
-    "ast_hash": "dc72aca7b931dcb33c08f7f147200ad6",
+    "mtime": 1789720346.2638042,
+    "ast_hash": "d2b14ab4973d16f5f9cd4dc984598cdb",
     "semantic_hash": ""
   },
   "src/components/choice/ChatMessage.tsx": {
@@ -75,8 +75,8 @@
     "semantic_hash": ""
   },
   "src/components/home/SiteHeader.tsx": {
-    "mtime": 1789683425.6964312,
-    "ast_hash": "dc52f907ea486411a18e58e6aadceaa6",
+    "mtime": 1789720346.268113,
+    "ast_hash": "7a1f2e68ecaf2ad591e27f84de83ee50",
     "semantic_hash": ""
   },
   "src/components/transition/TransitionLink.tsx": {
@@ -460,8 +460,8 @@
     "semantic_hash": ""
   },
   "src/components/home/CursorAura.tsx": {
-    "mtime": 1789683425.689317,
-    "ast_hash": "41fbe41144c6cb238cc3ab529f497e0e",
+    "mtime": 1789720346.2638042,
+    "ast_hash": "3db432dea6f1f98eca764577bd683d70",
     "semantic_hash": ""
   },
   "src/components/home/DuckLane.tsx": {
@@ -470,8 +470,8 @@
     "semantic_hash": ""
   },
   "src/components/home/Globe.tsx": {
-    "mtime": 1789683425.6952918,
-    "ast_hash": "68921b4ddea9908710a2f48041dedb52",
+    "mtime": 1789720346.264805,
+    "ast_hash": "7e1031754262edaff68b13075a7dd160",
     "semantic_hash": ""
   },
   "src/components/home/PixelDuck.tsx": {
@@ -480,8 +480,8 @@
     "semantic_hash": ""
   },
   "src/components/home/QuackSection.tsx": {
-    "mtime": 1789683425.6964312,
-    "ast_hash": "6a3d28fe2cd4d6182bb4b5b5d674e6e5",
+    "mtime": 1789720346.2658055,
+    "ast_hash": "574c3e4df880105a5745ea79bc539aef",
     "semantic_hash": ""
   },
   "src/components/home/Reveal.tsx": {
@@ -495,13 +495,13 @@
     "semantic_hash": ""
   },
   "src/components/home/UniCarousel.tsx": {
-    "mtime": 1789683425.6964312,
-    "ast_hash": "fdda746969a010ea13aeb18003008ad9",
+    "mtime": 1789720346.2691143,
+    "ast_hash": "3228f1f45c5f3faa612604db4507c8f1",
     "semantic_hash": ""
   },
   "src/components/home/copy.ts": {
-    "mtime": 1789683425.6964312,
-    "ast_hash": "637150571fca4ed0fe5e873cd6aa428f",
+    "mtime": 1789720346.2691143,
+    "ast_hash": "c8b35d9cd7e196308e705fc478c4aa3b",
     "semantic_hash": ""
   },
   "src/components/home/globeData.ts": {
@@ -522,6 +522,46 @@
   "src/components/prep/GraphCanvas.tsx": {
     "mtime": 1789718479.3345501,
     "ast_hash": "b22cfaddd765cf48e21b5f8516018482",
+    "semantic_hash": ""
+  },
+  "src/components/home/LayerStack.tsx": {
+    "mtime": 1789720346.2658055,
+    "ast_hash": "f9d365416af5b0310b335a7bb809aaab",
+    "semantic_hash": ""
+  },
+  "src/components/home/SiteFooter.tsx": {
+    "mtime": 1789720346.2671108,
+    "ast_hash": "e6c0351f1bb3fdc796b897dfd8b75330",
+    "semantic_hash": ""
+  },
+  "public/assets/layers/layer-1.webp": {
+    "mtime": 1789720346.256245,
+    "ast_hash": "7c841809b6571cf7197fb18eea50877c",
+    "semantic_hash": ""
+  },
+  "public/assets/layers/layer-2.webp": {
+    "mtime": 1789720346.2582445,
+    "ast_hash": "9e9a0a4905d7c7e382988c2f3ab39c66",
+    "semantic_hash": ""
+  },
+  "public/assets/layers/layer-3.webp": {
+    "mtime": 1789720346.2582445,
+    "ast_hash": "57a564c43f2b38e280410d7938173e76",
+    "semantic_hash": ""
+  },
+  "public/assets/layers/layer-4.webp": {
+    "mtime": 1789720346.2592432,
+    "ast_hash": "b2af091d69f7e9d6107c6fa8d543c5f4",
+    "semantic_hash": ""
+  },
+  "public/assets/layers/layer-5.webp": {
+    "mtime": 1789720346.2602458,
+    "ast_hash": "1a9b13739dee5c961432ed90f31301c9",
+    "semantic_hash": ""
+  },
+  "public/assets/layers/layer-6.webp": {
+    "mtime": 1789720346.2612455,
+    "ast_hash": "746eaea3691146d1d278327784fda400",
     "semantic_hash": ""
   }
 }
