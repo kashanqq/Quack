@@ -8,7 +8,6 @@ from __future__ import annotations
 from app.config import KnowledgeParams
 from app.schemas.knowledge import Tier
 
-
 _CHAT_TIER_2_KINDS = {"solution_step", "task_in_chat", "avoided_trap"}
 
 _BASE_WEIGHTS: dict[tuple[str, str | None, str | None], float] = {
@@ -64,7 +63,7 @@ def evidence_weight(
     matched: bool,
     params: KnowledgeParams | None = None,
 ) -> float:
-    """base * seen_template_factor (if repeated) * unmatched_incorrect_factor (if not matched)."""
+    """base * seen_template_factor (if repeated) * unmatched factor."""
     if params is None:
         from app.config import settings
 

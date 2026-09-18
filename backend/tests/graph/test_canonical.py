@@ -21,7 +21,6 @@ from app.graph.schema import apply_schema
 from app.seed.exam_formats import seed_exam_formats
 from app.seed.skills import seed_skills
 
-
 pytestmark = [pytest.mark.phase1, pytest.mark.integration]
 
 

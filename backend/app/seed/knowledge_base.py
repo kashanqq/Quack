@@ -171,7 +171,7 @@ async def _seed_routes(driver: AsyncDriver, path: Path) -> SeedReport:
 
 
 def _threshold_to_float(value) -> float | None:
-    """Neo4j properties don't allow mixed types; store list thresholds as two edges? — keep None for ranges."""
+    """Neo4j doesn't allow mixed types — return None for list thresholds."""
     if value is None:
         return None
     if isinstance(value, (int, float)):

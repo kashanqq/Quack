@@ -5,7 +5,7 @@ All numbers come from 20-B1.md §7.1 and §12 config.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -22,7 +22,6 @@ from app.knowledge.hlr import (
 )
 from app.schemas.knowledge import EvidenceIn, KnowledgeStateOut
 
-
 pytestmark = pytest.mark.phase1
 
 
@@ -30,22 +29,22 @@ pytestmark = pytest.mark.phase1
 
 
 def test_recall_p_24h_halflife_24h_is_half():
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     assert recall_p(24.0, t0, t0 + timedelta(hours=24)) == pytest.approx(0.5, abs=1e-9)
 
 
 def test_recall_p_no_elapsed_is_one():
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     assert recall_p(24.0, t0, t0) == pytest.approx(1.0, abs=1e-9)
 
 
 def test_recall_p_negative_elapsed_is_one():
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     assert recall_p(24.0, t0, t0 - timedelta(hours=1)) == pytest.approx(1.0, abs=1e-9)
 
 
 def test_recall_p_48h_halflife_24h_is_quarter():
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     assert recall_p(24.0, t0, t0 + timedelta(hours=48)) == pytest.approx(0.25, abs=1e-9)
 
 
@@ -111,7 +110,7 @@ def test_updated_p_at_obs_incorrect():
 
 
 def test_updated_p_at_obs_partial_between():
-    params = KnowledgeParams()
+    KnowledgeParams()
     # partial = correct с weight*share, затем incorrect с weight*(1-share)
     p_after_correct = updated_p_at_obs(0.5, direction=1, weight=0.5, share=None)
     final = updated_p_at_obs(p_after_correct, direction=-1, weight=0.5, share=None)
@@ -137,7 +136,7 @@ def test_confidence_monotonic_in_mass():
 
 def test_confidence_three_over_k_is_about_0632():
     # 1 - exp(-1) ≈ 0.632
-    params = KnowledgeParams(k_confidence=3.0)
+    KnowledgeParams(k_confidence=3.0)
     c = confidence(3.0, spread=1.0)
     assert c == pytest.approx(0.632, abs=0.01)
 
@@ -167,13 +166,13 @@ def test_spread_factor_empty_is_one():
 
 
 def test_due_at_at_half_target():
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     due = due_at(t0, half_life_h=24.0, p_target=0.5)
     assert due == t0 + timedelta(hours=24)
 
 
 def test_due_at_quarter_target():
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     due = due_at(t0, half_life_h=24.0, p_target=0.25)
     assert due == t0 + timedelta(hours=48)
 
@@ -183,7 +182,7 @@ def test_due_at_quarter_target():
 
 def test_apply_evidence_none_state_creates_starting_state():
     params = KnowledgeParams(alpha=1.0, h0=24.0)
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     ev = _make_evidence(t0, tier=1, weight=1.0, direction=1)
     new_state = apply_evidence(None, ev, params=params)
     assert new_state.half_life_h == pytest.approx(24.0 * (1 + params.alpha))
@@ -194,7 +193,7 @@ def test_apply_evidence_none_state_creates_starting_state():
 
 def test_apply_evidence_chat_tier_3_capped_at_p_chat_cap():
     params = KnowledgeParams(p_chat_cap=0.8)
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     state = _starting_state(t0)
     ev = _make_evidence(t0 + timedelta(hours=1), tier=3, weight=0.6, direction=1)
     new_state = apply_evidence(state, ev, params=params)
@@ -203,7 +202,7 @@ def test_apply_evidence_chat_tier_3_capped_at_p_chat_cap():
 
 def test_apply_evidence_tier_3_does_not_set_has_strong():
     params = KnowledgeParams()
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     state = _starting_state(t0)
     ev = _make_evidence(t0 + timedelta(hours=1), tier=3, weight=0.6, direction=1)
     new_state = apply_evidence(state, ev, params=params)
@@ -212,7 +211,7 @@ def test_apply_evidence_tier_3_does_not_set_has_strong():
 
 def test_apply_evidence_tier_2_sets_has_strong():
     params = KnowledgeParams()
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     state = _starting_state(t0)
     ev = _make_evidence(t0 + timedelta(hours=1), tier=2, weight=0.8, direction=1)
     new_state = apply_evidence(state, ev, params=params)
@@ -221,7 +220,7 @@ def test_apply_evidence_tier_2_sets_has_strong():
 
 def test_apply_evidence_partial_halfway_between_correct_and_incorrect():
     params = KnowledgeParams()
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     state = _starting_state(t0)
 
     ev_correct = _make_evidence(

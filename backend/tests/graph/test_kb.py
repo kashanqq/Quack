@@ -11,7 +11,6 @@ from app.graph.queries.kb import get_admission_route, list_facts_about
 from app.graph.schema import apply_schema
 from app.seed.knowledge_base import seed_knowledge_base
 
-
 pytestmark = [pytest.mark.phase1, pytest.mark.integration]
 
 

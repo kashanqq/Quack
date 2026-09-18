@@ -22,7 +22,6 @@ from app.tasks.evaluate import (
 from app.tasks.generators import GENERATORS
 from app.tasks.render import render_stem, render_value
 
-
 _MCQ_NEEDED = {"mcq4": 3, "mcq5": 4}
 _KEY_LETTERS = ["A", "B", "C", "D", "E"]
 _MAX_SEED_ATTEMPTS = 200
@@ -30,7 +29,7 @@ _VALIDATE_FAILURE_RATE = 0.10
 
 
 def sample_params(spec: TaskTemplateSpec, rng: random.Random) -> dict | None:
-    """Sample params up to _MAX_SEED_ATTEMPTS times; return first satisfying constraints."""
+    """Sample params; return first satisfying constraints."""
     if not spec.params:
         return {} if check_constraints(spec.constraints, {}) else None
     for _ in range(_MAX_SEED_ATTEMPTS):

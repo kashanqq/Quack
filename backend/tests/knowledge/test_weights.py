@@ -9,7 +9,6 @@ import pytest
 
 from app.knowledge.weights import base_weight, evidence_weight, is_strong, tier_for
 
-
 pytestmark = pytest.mark.phase1
 
 

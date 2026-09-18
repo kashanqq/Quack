@@ -14,7 +14,6 @@ from typing import Any, Literal
 
 from sympy import Integer, Rational, nsimplify, simplify
 
-
 _PLACEHOLDER = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
 
 

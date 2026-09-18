@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from sympy import Float, Integer, Rational, sympify
+from sympy import Float, sympify
 
 from app.schemas.tasks import Grade, TaskInstance
 

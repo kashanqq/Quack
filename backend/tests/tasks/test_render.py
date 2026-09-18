@@ -7,7 +7,6 @@ from sympy import Integer, Rational
 
 from app.tasks.render import render_stem, render_value
 
-
 pytestmark = pytest.mark.phase1
 
 

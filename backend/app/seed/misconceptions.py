@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 
 from neo4j import AsyncDriver
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.embeddings import Embedder
 from app.graph import labels as L

@@ -22,7 +22,6 @@ from app.schemas.knowledge import (
     SkillWeight,
 )
 
-
 # --- exam / skills ---
 
 
@@ -118,7 +117,7 @@ async def get_prerequisites(
     WITH p, length(path) AS d, relationships(path) AS rels
     WITH p, d, [r IN rels | r.strength] AS strengths
     RETURN DISTINCT p.id AS skill_id, d AS depth,
-           reduce(m = 1.0, x IN strengths | CASE WHEN x < m THEN x ELSE m END) AS strength
+           reduce(m=1.0, x IN strengths | CASE WHEN x<m THEN x ELSE m END) AS strength
     ORDER BY depth, skill_id
     """
     out: list[Prerequisite] = []
@@ -209,7 +208,8 @@ async def list_misconceptions_for_skill(
 ) -> list[MisconceptionRef]:
     """All library misconceptions ABOUT this skill."""
     query = f"""
-    MATCH (m:{L.MISCONCEPTION} {{scope: 'library'}})-[:{L.ABOUT}]->(s:{L.SKILL} {{id: $skill_id}})
+    MATCH (m:{L.MISCONCEPTION} {{scope: 'library'}})
+          -[:{L.ABOUT}]->(s:{L.SKILL} {{id: $skill_id}})
     OPTIONAL MATCH (m)-[:{L.ABOUT}]->(s2:{L.SKILL})
     WITH m, collect(DISTINCT s2.id) AS skill_ids
     RETURN m.id AS id, m.name AS name, m.description AS description,

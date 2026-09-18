@@ -5,11 +5,9 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
-from sympy import Rational
 
 from app.schemas.tasks import Option, TaskInstance
 from app.tasks.answer import grade
-
 
 pytestmark = pytest.mark.phase1
 

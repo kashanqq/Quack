@@ -20,11 +20,12 @@ def next_status(
     consecutive_avoided: int,
     params: KnowledgeParams,
 ) -> MisconceptionStatus:
-    """Phase 2: implement transitions from §5.1 (suspected → confirmed → resolved → ...).
+    """Phase 2: transitions from §5.1 (suspected → confirmed → resolved).
 
     Rules:
       None + hit (any tier) → suspected
-      suspected + occurrence_count >= misc_confirm_min_occ and strong_count >= 1 → confirmed
+      suspected + occurrence_count >= misc_confirm_min_occ
+          and strong_count >= 1 → confirmed
       confirmed + consecutive_avoided >= misc_resolve_avoided → resolved
       resolved + new hit → confirmed (relapse)
     """

@@ -5,9 +5,9 @@ Uses the seeded canonical graph (skills) plus Student nodes.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -22,7 +22,6 @@ from app.graph.queries.personal import (
 from app.graph.schema import apply_schema
 from app.schemas.knowledge import EvidenceContext, EvidenceIn, KnowledgeStateOut
 from app.seed.skills import seed_skills
-
 
 pytestmark = [pytest.mark.phase1, pytest.mark.integration]
 
@@ -53,7 +52,7 @@ async def test_upsert_state_creates_chain(seeded_graph):
     sid = uuid4()
     await ensure_student(seeded_graph, sid)
 
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     s1 = _make_state("math.alg.linear_eq", "SAT_MATH", t0, p_at_obs=0.5)
     await upsert_state(seeded_graph, sid, s1, source_event_id=1)
 
@@ -81,7 +80,7 @@ async def test_upsert_state_creates_chain(seeded_graph):
 async def test_merge_evidence_idempotent(seeded_graph):
     sid = uuid4()
     await ensure_student(seeded_graph, sid)
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     ev = _make_evidence(t0, event_id=42, skill_id="math.alg.linear_eq")
 
     await merge_evidence(seeded_graph, sid, ev)
@@ -102,7 +101,7 @@ async def test_two_students_do_not_see_each_other(seeded_graph):
     sid1, sid2 = uuid4(), uuid4()
     await ensure_student(seeded_graph, sid1)
     await ensure_student(seeded_graph, sid2)
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     s = _make_state("math.alg.linear_eq", "SAT_MATH", t0, p_at_obs=0.5)
     await upsert_state(seeded_graph, sid1, s, source_event_id=1)
 
@@ -113,7 +112,7 @@ async def test_two_students_do_not_see_each_other(seeded_graph):
 async def test_get_state_recomputes_p_recall(seeded_graph):
     sid = uuid4()
     await ensure_student(seeded_graph, sid)
-    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
     s = _make_state("math.alg.linear_eq", "SAT_MATH", t0, p_at_obs=0.8)
     # half_life 24h — через 24 часа p_recall должен быть ~0.5
     s = s.model_copy(

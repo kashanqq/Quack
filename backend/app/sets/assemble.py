@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.config import KnowledgeParams
 from app.sets.queue import QueueItem

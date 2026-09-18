@@ -9,9 +9,7 @@ from app.schemas.tasks import (
     ParamSpec,
     TaskTemplateSpec,
 )
-from app.tasks.evaluate import TemplateError
 from app.tasks.generate import generate_instance, validate_template
-
 
 pytestmark = pytest.mark.phase1
 

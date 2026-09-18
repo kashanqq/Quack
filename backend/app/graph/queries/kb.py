@@ -49,7 +49,7 @@ async def get_admission_route(
 
 
 async def list_requirements(driver: AsyncDriver, program_id: str) -> list[dict]:
-    """Program requirements — read from Postgres in the real path; here for the graph side.
+    """Program requirements — read from Postgres in the real path.
 
     Program nodes are not in Neo4j (they live in Postgres `programs_cache`).
     This function returns an empty list for now — placeholder until B3 wires

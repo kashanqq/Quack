@@ -6,7 +6,7 @@ No eval. Whitelist of names only. Any name outside the dictionary → TemplateEr
 from __future__ import annotations
 
 import pytest
-from sympy import Integer, Rational, sqrt
+from sympy import Integer, Rational
 
 from app.tasks.evaluate import (
     TemplateError,
@@ -15,7 +15,6 @@ from app.tasks.evaluate import (
     eval_expr,
     to_canonical,
 )
-
 
 pytestmark = pytest.mark.phase1
 

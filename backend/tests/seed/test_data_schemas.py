@@ -16,7 +16,6 @@ from app.schemas.tasks import TaskTemplateSpec
 from app.seed.skills import SkillsFile
 from app.tasks.generate import validate_template
 
-
 pytestmark = pytest.mark.phase1
 
 DATA = Path(__file__).resolve().parents[3] / "data"
@@ -60,6 +59,27 @@ def test_weights_sum_to_max_raw_score():
         )
 
 
+def _has_cycle(graph: dict[str, list[str]]) -> bool:
+    """Return True if the adjacency dict has a cycle."""
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color: dict[str, int] = {n: WHITE for n in graph}
+
+    def dfs(n: str) -> bool:
+        color[n] = GRAY
+        for m in graph.get(n, []):
+            if color.get(m) == GRAY:
+                return False
+            if color.get(m) == WHITE and not dfs(m):
+                return False
+        color[n] = BLACK
+        return True
+
+    for n in graph:
+        if color[n] == WHITE and not dfs(n):
+            return True
+    return False
+
+
 def test_requires_is_dag():
     for f in _all_skill_files():
         data = SkillsFile.model_validate(_load(f))
@@ -69,27 +89,11 @@ def test_requires_is_dag():
                 graph.setdefault(s.id, []).append(r.skill_id)
                 graph.setdefault(r.skill_id, [])
 
-        # simple DFS cycle detection
-        WHITE, GRAY, BLACK = 0, 1, 2
-        color: dict[str, int] = {n: WHITE for n in graph}
-
-        def dfs(n: str) -> bool:
-            color[n] = GRAY
-            for m in graph.get(n, []):
-                if color.get(m) == GRAY:
-                    return False
-                if color.get(m) == WHITE and not dfs(m):
-                    return False
-            color[n] = BLACK
-            return True
-
-        for n in graph:
-            if color[n] == WHITE:
-                assert dfs(n), f"{f.name}: cycle in REQUIRES at {n}"
+        assert not _has_cycle(graph), f"{f.name}: cycle in REQUIRES"
 
 
 def test_area_skills_are_defined_somewhere():
-    """Every skill_id referenced in areas[].skills must be defined in one of the skill files."""
+    """Every skill_id in areas[].skills is defined in some skill file."""
     all_defined: set[str] = set()
     for f in _all_skill_files():
         data = SkillsFile.model_validate(_load(f))
@@ -179,7 +183,8 @@ def test_every_template_parses_and_validates():
         for o in spec.omission_traps or []:
             if o.misconception_id:
                 assert o.misconception_id in misc_ids, (
-                    f"{f.name}: omission misconception {o.misconception_id} not in library"
+                    f"{f.name}: omission misconception "
+                    f"{o.misconception_id} not in library"
                 )
         errors = validate_template(spec)
         assert errors == [], f"{f.name}: {errors}"

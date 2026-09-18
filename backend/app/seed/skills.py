@@ -66,7 +66,7 @@ class SeedReport(BaseModel):
     nodes: int = 0
     rels: int = 0
 
-    def __add__(self, other: "SeedReport") -> "SeedReport":
+    def __add__(self, other: SeedReport) -> SeedReport:
         return SeedReport(nodes=self.nodes + other.nodes, rels=self.rels + other.rels)
 
 
@@ -78,7 +78,7 @@ class SeedError(Exception):
 
 
 async def seed_skills(driver: AsyncDriver, path: Path) -> SeedReport:
-    """Load every .json under data/skills/. Exam + Area + Skill + HAS_AREA + HAS_SKILL + REQUIRES."""
+    """Load skills from data/skills/. Exam + Area + Skill + all relations."""
     report = SeedReport()
     files = sorted(path.glob("*.json"))
     if not files:

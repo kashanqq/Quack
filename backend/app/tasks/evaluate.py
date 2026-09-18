@@ -9,8 +9,8 @@ Source: 20-B1.md §4.1.
 from __future__ import annotations
 
 from sympy import (
-    E,
     Abs,
+    E,
     Float,
     Integer,
     Max,

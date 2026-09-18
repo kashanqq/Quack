@@ -1,6 +1,7 @@
 """Registry of non-parametric task generators — memory-architecture-quack.md §3.5.
 
-A generator is a callable(rng) -> {"params": dict, "correct": value, "distractors": list[DistractorSpec]}.
+A generator is a callable(rng) -> dict with keys:
+  "params" (dict), "correct" (value), "distractors" (list[DistractorSpec]).
 Used only when TaskTemplateSpec.generator is set (usually for tasks with figures
 or non-trivial param logic).
 """
@@ -8,12 +9,11 @@ or non-trivial param logic).
 from __future__ import annotations
 
 import random
-from typing import Callable
+from collections.abc import Callable
 
 from sympy import Integer
 
 from app.schemas.tasks import DistractorSpec
-
 
 GENERATORS: dict[str, Callable[[random.Random], dict]] = {}
 

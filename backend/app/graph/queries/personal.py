@@ -10,7 +10,7 @@ Stubs (phase 2): get_misc_states, upsert_misc_state, add_root_cause, list_eviden
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from neo4j import AsyncDriver
@@ -18,7 +18,6 @@ from neo4j import AsyncDriver
 from app.graph import labels as L
 from app.knowledge.hlr import recall_p
 from app.schemas.knowledge import EvidenceIn, KnowledgeStateOut
-
 
 # --- real ---
 
@@ -33,7 +32,7 @@ async def ensure_student(driver: AsyncDriver, student_id: UUID) -> None:
 async def get_state(
     driver: AsyncDriver, student_id: UUID, skill_id: str, exam_id: str
 ) -> KnowledgeStateOut | None:
-    """Latest KnowledgeState for (student, skill, exam), with p_recall recomputed at read time."""
+    """Latest state for (student, skill, exam); p_recall at read time."""
     query = f"""
     MATCH (st:{L.STUDENT} {{id: $student_id}})-[:{L.HAS_STATE}]->(k:{L.KNOWLEDGE_STATE})
     MATCH (k)-[:{L.FOR_SKILL}]->(s:{L.SKILL} {{id: $skill_id}})
@@ -53,7 +52,7 @@ async def get_state(
         rec = await result.single()
     if rec is None:
         return None
-    return _row_to_state(rec, now=datetime.now(timezone.utc))
+    return _row_to_state(rec, now=datetime.now(UTC))
 
 
 async def get_states(
@@ -71,7 +70,7 @@ async def get_states(
            k.created_at AS created_at
     ORDER BY k.skill_id
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     out: list[KnowledgeStateOut] = []
     async with driver.session() as session:
         result = await session.run(query, student_id=str(student_id), exam_id=exam_id)

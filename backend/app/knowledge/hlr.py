@@ -44,7 +44,7 @@ def updated_half_life(
 
     direction=1 (correct):   h *= (1 + alpha * weight * difficulty_factor)
     direction=-1 (incorrect): h *= max(0.25, 1 - beta * weight)
-    direction=0 (partial):   correct with weight*share, then incorrect with weight*(1-share)
+    direction=0 (partial):   correct with weight*share, then incorrect
     Then clamp to [h_min, h_max].
     """
     if direction == 1:
@@ -104,7 +104,8 @@ def spread_factor(outcomes: list[int]) -> float:
     if len(outcomes) < 2:
         return 1.0
     alternations = sum(
-        1 for a, b in zip(outcomes, outcomes[1:]) if a != b and a != 0 and b != 0
+        1 for a, b in zip(outcomes, outcomes[1:], strict=False)
+        if a != b and a != 0 and b != 0
     )
     # Normalize by number of comparisons to get rate in [0, 1]
     rate = alternations / (len(outcomes) - 1)
@@ -128,7 +129,6 @@ def apply_evidence(
     Starting state (state is None): h = params.h0, p_at_obs = 0.5, counters = 0,
     evidence_mass = 0, has_strong = False, last_observed_at = ev.observed_at.
     """
-    now = ev.observed_at
     if state is None:
         state = KnowledgeStateOut(
             skill_id=ev.skill_id,
