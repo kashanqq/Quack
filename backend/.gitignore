@@ -9,3 +9,9 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+
+# Docs: the spec package, the sync log, decisions and the acceptance
+# checklist are shared artefacts and belong in git (00-contracts.md §2).
+# Only locally generated output under docs/ stays out.
+docs/**/_local/
+docs/**/*.local.md

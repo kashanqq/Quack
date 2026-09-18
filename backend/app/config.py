@@ -2,7 +2,7 @@
 
 from typing import Literal, Self
 
-from pydantic import BaseModel, Field, SecretStr, model_validator
+from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     """Infrastructure and application configuration, without service initialization."""
 
     model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
         env_nested_delimiter="__",
         hide_input_in_errors=True,
     )
@@ -70,13 +73,26 @@ class Settings(BaseSettings):
     LLM_API_KEY: SecretStr = SecretStr("")
     MODEL_CHAT: str = ""
     MODEL_BULK: str = ""
-    LLM_STRUCTURED_MODE: str = "json_schema"
+    LLM_STRUCTURED_MODE: Literal["response_format", "tool"] = "response_format"
+    LLM_STRICT_SCHEMA: bool = False
+    LLM_REASONING_CHAT: str | None = "low"
+    LLM_REASONING_BULK: str | None = "high"
     LLM_TIMEOUT_CHAT_S: float = 30
     LLM_TIMEOUT_BULK_S: float = 90
     # Local starting limits; configure these for the selected provider.
     LLM_RPM_CHAT: int = 10
     LLM_RPM_BULK: int = 10
     LLM_FORCE_DOWN: bool = False
+
+    @field_validator("LLM_REASONING_CHAT", "LLM_REASONING_BULK", mode="before")
+    @classmethod
+    def _empty_reasoning_means_unset(cls, value: object) -> object:
+        """An empty env value means "don't pass reasoning_effort at all",
+        not the literal string "" (docs/decisions/llm-provider.md, TTFT
+        matrix) — ``LLMClient`` already treats ``None`` this way."""
+        if value == "":
+            return None
+        return value
 
     TAVILY_API_KEY: SecretStr = SecretStr("")
     EMBEDDING_MODEL: str = "intfloat/multilingual-e5-small"
