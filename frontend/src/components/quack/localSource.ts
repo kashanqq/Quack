@@ -1,7 +1,7 @@
 // The Quack source that runs in the browser until the backend exists. It keeps the latest sources of
 // truth, recomputes the standing on every report, and lets the planner compare it with the standing
-// the student saw last. The baseline, the history and when each signal was first noticed live in
-// localStorage, so a reload keeps the glow exactly as it was.
+// the student saw last. The baseline, the history and when each signal was first noticed are kept in
+// the student's store, so a reload or a new sign-in keeps the glow exactly as it was.
 
 import { FIELDS, fieldValue } from "../choice/assistant";
 import { programById } from "../choice/programs";
@@ -11,38 +11,31 @@ import { EMPTY_STATE, glowOf, type QuackState, type Signal, type Standing } from
 import { firstBaseline, plan } from "./planner";
 import type { QuackSource } from "./source";
 import { computeStanding, type QuackInputs } from "./standing";
+import { store } from "../account/store";
 
 const KEYS = {
   baseline: "quack-baseline",
   history: "quack-history",
   known: "quack-known",
-  /** A cause written right before a reload (the demo clock), picked up by the first recompute */
-  pendingCause: "quack-pending-cause",
 };
+/** Device-level: a cause written right before a reload (the demo clock), picked up by the first recompute */
+const PENDING_CAUSE_KEY = "quack-pending-cause";
 const PREP_KEY = "quack-prep";
 const HISTORY_MAX = 12;
 
 type Known = Record<string, { at: string; cause?: string }>;
 
-function read<T>(key: string, fallback: T): T {
+const read = <T,>(key: string, fallback: T): T => store.get<T>(key) ?? fallback;
+const write = (key: string, value: unknown) => store.set(key, value);
+
+function takePendingCause(): string | undefined {
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
+    const raw = localStorage.getItem(PENDING_CAUSE_KEY);
+    localStorage.removeItem(PENDING_CAUSE_KEY);
+    return raw ? (JSON.parse(raw) as string) : undefined;
   } catch {
-    return fallback;
+    return undefined;
   }
-}
-
-function write(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
-}
-
-function forget(key: string) {
-  try {
-    localStorage.removeItem(key);
-  } catch {}
 }
 
 /* ---------- What the student did, in words ---------- */
@@ -112,9 +105,7 @@ export function localSource(): QuackSource {
   const load = () => {
     if (loaded) return;
     loaded = true;
-    try {
-      prep = reviveModel(JSON.parse(localStorage.getItem(PREP_KEY) ?? "null")) ?? initialModel();
-    } catch {}
+    prep = reviveModel(store.get(PREP_KEY)) ?? initialModel();
     baseline = read<Standing | null>(KEYS.baseline, null);
     history = read<Signal[]>(KEYS.history, []);
     known = read<Known>(KEYS.known, {});
@@ -163,9 +154,7 @@ export function localSource(): QuackSource {
         // Nothing is compared until the workspace (profile and saved programs) has been loaded
         if (!change.profile || !change.saved) return;
         inputs = { profile: change.profile, saved: change.saved, prep };
-        const pending = read<string | null>(KEYS.pendingCause, null);
-        forget(KEYS.pendingCause);
-        recompute(pending ?? undefined);
+        recompute(takePendingCause());
         return;
       }
       inputs = { profile: change.profile ?? before.profile, saved: change.saved ?? before.saved, prep };
@@ -184,7 +173,7 @@ export function localSource(): QuackSource {
     },
 
     reset() {
-      Object.values(KEYS).forEach(forget);
+      Object.values(KEYS).forEach((key) => store.set(key, null));
       baseline = null;
       history = [];
       known = {};

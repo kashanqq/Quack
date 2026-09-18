@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePageTransition } from "@/components/transition/TransitionProvider";
-import { TransitionLink } from "@/components/transition/TransitionLink";
+import { useAccount } from "@/components/account/AuthGate";
 import { DEMO_SHIFT, shiftDemoClock } from "../prep/prepData";
 import { Icon } from "./Icon";
 import styles from "./choice.module.css";
@@ -20,6 +20,7 @@ type Props = {
  */
 export function UserMenu({ onRestart, profile, compact = false }: Props) {
   const { runWithLoader } = usePageTransition();
+  const { user, signOut } = useAccount();
   const [open, setOpen] = useState(false);
   // Read after mount: the server renders day zero, and the menu is in the markup from the start
   const [shift, setShift] = useState(0);
@@ -55,7 +56,9 @@ export function UserMenu({ onRestart, profile, compact = false }: Props) {
           <img className={styles.userAvatar} src="/assets/avatar.svg" alt="" />
           {!compact && (
             <span className={styles.userText}>
-              <span className={styles.userName}>user_name</span>
+              <span className={styles.userName} title={user.email}>
+                {user.name}
+              </span>
               {/* How full the profile is — the number lives in the tooltip */}
               <span className={styles.userMeter} aria-hidden="true">
                 <span style={{ width: `${profile.readiness}%` }} />
@@ -99,9 +102,9 @@ export function UserMenu({ onRestart, profile, compact = false }: Props) {
             Демо: вернуть сегодня
           </button>
         )}
-        <TransitionLink role="menuitem" href="/">
+        <button type="button" role="menuitem" onClick={() => runWithLoader(signOut)}>
           Выйти
-        </TransitionLink>
+        </button>
       </div>
     </div>
   );

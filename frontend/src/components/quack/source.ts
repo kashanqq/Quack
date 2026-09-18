@@ -26,10 +26,12 @@ let instance: QuackSource | null = null;
 
 export function quackSource(): QuackSource {
   if (!instance) {
-    instance =
-      process.env.NEXT_PUBLIC_QUACK_SOURCE === "remote"
-        ? remoteSource(process.env.NEXT_PUBLIC_API_URL ?? "/api")
-        : localSource();
+    const isRemote =
+      process.env.NEXT_PUBLIC_QUACK_SOURCE === "remote" ||
+      process.env.NEXT_PUBLIC_DATA_SOURCE === "remote";
+    instance = isRemote
+      ? remoteSource(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000")
+      : localSource();
   }
   return instance;
 }
