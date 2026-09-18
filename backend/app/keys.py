@@ -29,10 +29,6 @@ def knowledge_version(student_id: str) -> str:
     return f"quack:knowledge:version:{student_id}"
 
 
-def forecast(student_id: str, exam_id: str) -> str:
-    return f"quack:forecast:{student_id}:{exam_id}"
-
-
 def ctx_topic(student_id: str, skill_id: str) -> str:
     return f"quack:ctx:topic:{student_id}:{skill_id}"
 

@@ -1,14 +1,17 @@
 """Shared event and Phase 1 payload contracts."""
 
-from datetime import date, datetime
+from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.schemas.common import ExamId, MockKind, TaskMode
-from app.schemas.diagnostic import DiagnosticResult, DiagnosticState
+from app.schemas.common import ExamId
+
+TaskMode = Literal[
+    "topic", "mock_set", "mock_topic", "mock_misconception", "diagnostic", "chat"
+]
 
 
 class EventType(StrEnum):
@@ -110,72 +113,3 @@ class ProfileUpdatedPayload(_Payload):
 
 class ProgramSavedPayload(_Payload):
     program_id: str
-
-
-class TaskSkippedPayload(_Payload):
-    instance_id: UUID
-    mode: TaskMode
-    time_spent_sec: int
-
-
-class DiagnosticProgressPayload(_Payload):
-    run_id: UUID
-    state: DiagnosticState
-
-
-class DiagnosticCompletedPayload(_Payload):
-    run_id: UUID
-    result: DiagnosticResult
-
-
-class MockStartedPayload(_Payload):
-    run_id: UUID
-    kind: MockKind
-    exam_id: ExamId
-    predicted_before: float | None
-
-
-class MockCompletedPayload(_Payload):
-    run_id: UUID
-    raw_score: float
-    scaled_score: float | None
-    predicted_before: float | None
-
-
-class SetOpenedPayload(_Payload):
-    set_id: UUID
-    skill_ids: list[str]
-
-
-class SetCompletedPayload(_Payload):
-    set_id: UUID
-
-
-class SetSwitchedByUserPayload(_Payload):
-    from_set_id: UUID | None
-    to_set_id: UUID
-
-
-class SetDeadlineChangedPayload(_Payload):
-    set_id: UUID
-    old: date
-    new: date
-
-
-class TopicOpenedPayload(_Payload):
-    set_id: UUID
-    skill_id: str
-
-
-class TopicCompletedPayload(_Payload):
-    set_id: UUID
-    skill_id: str
-
-
-class MisconceptionDisputedPayload(_Payload):
-    misconception_id: str
-
-
-class MilestoneDonePayload(_Payload):
-    milestone_key: str
-    done: bool

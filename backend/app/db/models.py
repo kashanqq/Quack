@@ -6,12 +6,8 @@ from uuid import UUID
 
 from sqlalchemy import (
     BigInteger,
-    Boolean,
-    CheckConstraint,
     Date,
     DateTime,
-    Float,
-    ForeignKey,
     Index,
     Integer,
     Text,
@@ -154,140 +150,6 @@ class TaskInstance(Base):
     time_reference_sec: Mapped[int] = mapped_column(Integer)
     difficulty: Mapped[int] = mapped_column(Integer)
     tags: Mapped[list[str]] = mapped_column(ARRAY(Text))
-    mode: Mapped[str | None] = mapped_column(Text)
-    issued_event_id: Mapped[int | None] = mapped_column(BigInteger)
-    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    correct: Mapped[bool | None] = mapped_column(Boolean)
-
-
-class Set(Base):
-    __tablename__ = "sets"
-    __table_args__ = (
-        Index("ix_sets_student_exam_status", "student_id", "exam_id", "status"),
-        CheckConstraint(
-            "status IN ('upcoming', 'current', 'done')", name="ck_sets_status"
-        ),
-        CheckConstraint(
-            "kind IN ('regular', 'review', 'consolidation')", name="ck_sets_kind"
-        ),
-    )
-
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
-    student_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True))
-    exam_id: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(Text)
-    position: Mapped[int] = mapped_column(Integer)
-    deadline: Mapped[date] = mapped_column(Date)
-    reason: Mapped[str] = mapped_column(Text)
-    kind: Mapped[str] = mapped_column(Text)
-    opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    rebuilt_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-
-
-class SetTopic(Base):
-    __tablename__ = "set_topics"
-    __table_args__ = (
-        CheckConstraint(
-            "kind IN ('topic', 'check', 'review')", name="ck_set_topics_kind"
-        ),
-        CheckConstraint("status IN ('open', 'closed')", name="ck_set_topics_status"),
-    )
-
-    set_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("sets.id"), primary_key=True
-    )
-    skill_id: Mapped[str] = mapped_column(Text, primary_key=True)
-    position: Mapped[int] = mapped_column(Integer)
-    kind: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(Text)
-
-
-class DiagnosticRun(Base):
-    __tablename__ = "diagnostic_runs"
-    __table_args__ = (
-        Index(
-            "uq_diagnostic_runs_active_student_exam",
-            "student_id",
-            "exam_id",
-            unique=True,
-            postgresql_where=text("status = 'active'"),
-        ),
-        CheckConstraint(
-            "status IN ('active', 'completed', 'abandoned')",
-            name="ck_diagnostic_runs_status",
-        ),
-    )
-
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
-    student_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True))
-    exam_id: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(Text)
-    state: Mapped[dict[str, Any]] = mapped_column(JSONB)
-    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
-    started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-
-class MockRun(Base):
-    __tablename__ = "mock_runs"
-    __table_args__ = (
-        CheckConstraint(
-            "kind IN ('mock_set', 'mock_topic', 'mock_misconception')",
-            name="ck_mock_runs_kind",
-        ),
-        CheckConstraint(
-            "status IN ('active', 'completed', 'abandoned')",
-            name="ck_mock_runs_status",
-        ),
-    )
-
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
-    student_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True))
-    exam_id: Mapped[str] = mapped_column(Text)
-    kind: Mapped[str] = mapped_column(Text)
-    set_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True))
-    skill_id: Mapped[str | None] = mapped_column(Text)
-    misconception_id: Mapped[str | None] = mapped_column(Text)
-    section_name: Mapped[str] = mapped_column(Text)
-    instance_ids: Mapped[list[UUID]] = mapped_column(ARRAY(PG_UUID(as_uuid=True)))
-    predicted_before: Mapped[float | None] = mapped_column(Float)
-    raw_score: Mapped[float | None] = mapped_column(Float)
-    scaled_score: Mapped[float | None] = mapped_column(Float)
-    status: Mapped[str] = mapped_column(Text)
-    started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-
-class MilestoneMark(Base):
-    __tablename__ = "milestone_marks"
-
-    student_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
-    milestone_key: Mapped[str] = mapped_column(Text, primary_key=True)
-    done_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-
-
-class ForecastCache(Base):
-    __tablename__ = "forecast_cache"
-
-    student_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
-    exam_id: Mapped[str] = mapped_column(Text, primary_key=True)
-    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
-    as_of_event_id: Mapped[int] = mapped_column(BigInteger)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
 
 
 class SeenTemplate(Base):

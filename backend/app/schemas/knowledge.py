@@ -1,14 +1,19 @@
-"""Shared knowledge-layer contracts for Phases 1 and 2."""
+"""Pydantic models for the knowledge layer.
+
+TEMPORARY: this file is B3's zone (see 00-contracts.md §6), but B3 hasn't
+shipped it yet and pure modules (app.knowledge.*, app.tasks.*) may not
+import from app.graph.* (00-contracts.md §4.4). B1 placed it here as a
+stopgap so tests and pure code can run — see docs/sync-log.md.
+
+On sync: merge with B3's version and delete this note.
+"""
 
 from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Any, Literal
-from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel
-
-from app.schemas.common import SkillLevel
+from pydantic import BaseModel
 
 ExamId = Literal["SAT_MATH", "ENT_MATH"]
 Tier = Literal[1, 2, 3]
@@ -19,7 +24,6 @@ TaskType = Literal["mcq4", "mcq5", "multi_select", "numeric"]
 ErrorClass = Literal["computational", "conceptual", "attention", "procedural"]
 Direction = Literal[1, -1, 0]
 EvidenceSource = Literal["task", "mock", "diagnostic", "chat", "self_report"]
-MisconceptionStatus = Literal["suspected", "confirmed", "resolved", "disputed"]
 
 
 class SkillRef(BaseModel):
@@ -155,6 +159,11 @@ class FactOut(BaseModel):
     is_demo: bool
 
 
+# --- Temporary: phase-2 additions (B3's zone, will be merged from skeleton) ---
+
+MisconceptionStatus = Literal["suspected", "confirmed", "resolved", "disputed"]
+
+
 class MisconceptionStateOut(BaseModel):
     """State of one misconception for one student — memory-architecture §5."""
 
@@ -164,26 +173,11 @@ class MisconceptionStateOut(BaseModel):
     occurrence_count: int
     strong_count: int
     consecutive_avoided: int
-    triggers: dict[str, Any]
-    first_seen_at: AwareDatetime
-    updated_at: AwareDatetime
+    triggers: dict
+    first_seen_at: datetime
+    updated_at: datetime
     skill_ids: list[str]
     visible_label: str = ""
-
-
-class EvidenceOut(BaseModel):
-    evidence_id: str
-    event_id: int
-    skill_id: str
-    kind: str
-    tier: Tier
-    source: EvidenceSource
-    weight: float
-    direction: Direction
-    observed_at: AwareDatetime
-    summary: str | None
-    instance_id: UUID | None
-    message_id: UUID | None
 
 
 class RootCauseOut(BaseModel):
@@ -193,49 +187,4 @@ class RootCauseOut(BaseModel):
     root_skill_id: str
     confidence: float
     source: Literal["diagnostic", "observer", "rule"]
-    created_at: AwareDatetime
-
-
-class SkillStateView(BaseModel):
-    skill_id: str
-    name: str
-    area_id: str
-    exam_id: ExamId
-    weight: float
-    p_target: float
-    level: SkillLevel
-    p_recall: float
-    confidence: float
-    trend: Literal["up", "flat", "down"]
-    due_at: AwareDatetime | None
-    is_root: bool
-    n_evidence: int
-
-
-class ForecastOut(BaseModel):
-    exam_id: ExamId
-    predicted_raw: float
-    predicted_scaled: float | None
-    coverage: float
-    hours_needed: float
-    ready_by: date | None
-    test_date: date | None
-    on_track: bool | None
-    as_of_event_id: int
-    note: str
-
-
-class MisconceptionChange(BaseModel):
-    misconception_id: str
-    from_status: MisconceptionStatus | None
-    to_status: MisconceptionStatus
-    counters: dict[str, Any]
-
-
-class ReconcileResult(BaseModel):
-    evidence: list[EvidenceIn]
-    state_after: KnowledgeStateOut
-    cross_exam_state: KnowledgeStateOut | None
-    misconception_change: MisconceptionChange | None
-    root_causes: list[RootCauseOut]
-    words: str
+    created_at: datetime

@@ -85,7 +85,7 @@ async def test_event_lifecycle_and_handler_rollback(monkeypatch):
             failed_id = None
 
             @dispatcher.on(EventType.profile_updated)
-            async def fail(session, event, deps):
+            async def fail(session, event):
                 nonlocal failed_id
                 failed_id = event.id
                 raise RuntimeError("handler failed")

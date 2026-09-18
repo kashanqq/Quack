@@ -44,28 +44,6 @@ class KnowledgeParams(BaseModel):
     chat_window: int = 10
     context_budget_tokens: int = 3000
 
-    check_size: int = 3
-    review_window_days: int = 7
-    consolidation_days: int = 7
-    mock_set_min: int = 8
-    mock_set_max: int = 12
-    mock_topic_min: int = 5
-    mock_topic_max: int = 7
-    mock_misc_n: int = 3
-    diag_reask_after: int = 3
-    min_candidates: int = 3
-    matching_priority_weights: dict[str, int] = Field(
-        default_factory=lambda: {
-            "realism": 3,
-            "cost": 2,
-            "ranking": 1,
-            "location": 1,
-            "program": 2,
-            "research": 1,
-            "mobility": 1,
-        }
-    )
-
 
 class Settings(BaseSettings):
     """Infrastructure and application configuration, without service initialization."""
@@ -122,11 +100,6 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     GIT_SHA: str = "dev"
     KNOWLEDGE: KnowledgeParams = Field(default_factory=KnowledgeParams)
-
-    @property
-    def knowledge(self) -> KnowledgeParams:
-        """Phase 2 access to the existing Phase 1 knowledge settings."""
-        return self.KNOWLEDGE
 
     @model_validator(mode="after")
     def validate_prod_jwt_secret(self) -> Self:
