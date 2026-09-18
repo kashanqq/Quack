@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Profile } from "./assistant";
 import { Icon } from "./Icon";
 import { LEVEL_LABEL, evaluate, formatEur, programById, type Level } from "./programs";
@@ -21,66 +22,118 @@ export function LevelDot({ level }: { level: Level }) {
   return <span className={`${styles.levelDot} ${styles[level]}`} title={LEVEL_LABEL[level]} />;
 }
 
-/** Horizontal row of program cards posted by the assistant into the chat. */
+/**
+ * Horizontal row of program cards posted by the assistant into the chat. It scrolls sideways:
+ * a swipe on touch screens, the arrows or a trackpad on desktop. Arrows and edge fades show only
+ * where there is more to see.
+ */
 export function ProgramCards({ ids, profile, actions }: { ids: string[]; profile: Profile; actions: ProgramActions }) {
-  return (
-    <div className={styles.cards}>
-      {ids.map((id, i) => {
-        const program = programById(id);
-        const evaluation = evaluate(program, profile);
-        const saved = actions.saved.includes(id);
-        const comparing = actions.compare.includes(id);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ start: true, end: true });
 
-        return (
-          <article key={id} className={styles.card} style={{ animationDelay: `${i * 90}ms` }}>
-            <div className={styles.cardTop}>
-              <LevelBadge level={evaluation.level} />
-              <span className={styles.demo}>демо</span>
-            </div>
-            <h3 className={styles.cardUni}>{program.university}</h3>
-            <p className={styles.cardProgram}>{program.program}</p>
-            <p className={styles.cardMeta}>
-              {program.city}, {program.country} · {formatEur(program.costEur)}
-            </p>
-            <p className={styles.cardFit}>
-              {evaluation.fits.length > 0 && (
-                <>
-                  <span className={styles.fitLabel}>Подходит тебе:</span> {evaluation.fits.join(", ")}
-                </>
-              )}
-              {evaluation.misfits.length > 0 && (
-                <>
-                  {evaluation.fits.length > 0 && <br />}
-                  <span className={styles.fitLabel}>Но:</span> {evaluation.misfits.join(", ")}
-                </>
-              )}
-            </p>
-            <div className={styles.cardActions}>
-              <button
-                type="button"
-                className={`${styles.pillButton} ${styles.saveButton}`}
-                aria-pressed={saved}
-                aria-label={saved ? "Убрать из избранного" : "В избранное"}
-                onClick={() => actions.onToggleSave(id)}
-              >
-                <Icon name="star" size={16} />
-              </button>
-              <button
-                type="button"
-                className={styles.pillButton}
-                aria-pressed={comparing}
-                onClick={() => actions.onToggleCompare(id)}
-              >
-                <Icon name="git-compare" size={16} />
-                {comparing ? "В сравнении" : "Сравнить"}
-              </button>
-              <button type="button" className={`${styles.pillButton} ${styles.cardMore}`} onClick={() => actions.onOpen(id)}>
-                Подробнее
-              </button>
-            </div>
-          </article>
-        );
-      })}
+  const measure = useCallback(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    const start = row.scrollLeft <= 4;
+    const end = row.scrollLeft + row.clientWidth >= row.scrollWidth - 4;
+    setEdges((e) => (e.start === start && e.end === end ? e : { start, end }));
+  }, []);
+
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, [measure, ids.length]);
+
+  /** One press moves by most of a screenful, leaving the last card partly in view for context. */
+  const page = (dir: 1 | -1) => {
+    const row = rowRef.current;
+    row?.scrollBy({ left: dir * row.clientWidth * 0.8, behavior: "smooth" });
+  };
+
+  return (
+    <div className={styles.cardsRail} data-start={edges.start} data-end={edges.end}>
+      <button
+        type="button"
+        className={styles.cardsArrow}
+        data-dir="prev"
+        aria-label="Предыдущие программы"
+        hidden={edges.start}
+        onClick={() => page(-1)}
+      >
+        <Icon name="chevron-right" size={18} />
+      </button>
+      <button
+        type="button"
+        className={styles.cardsArrow}
+        data-dir="next"
+        aria-label="Следующие программы"
+        hidden={edges.end}
+        onClick={() => page(1)}
+      >
+        <Icon name="chevron-right" size={18} />
+      </button>
+      <div ref={rowRef} className={styles.cards} onScroll={measure}>
+        {ids.map((id, i) => {
+          const program = programById(id);
+          const evaluation = evaluate(program, profile);
+          const saved = actions.saved.includes(id);
+          const comparing = actions.compare.includes(id);
+
+          return (
+            <article key={id} className={styles.card} style={{ animationDelay: `${i * 90}ms` }}>
+              <div className={styles.cardTop}>
+                <LevelBadge level={evaluation.level} />
+                <span className={styles.demo}>демо</span>
+              </div>
+              <h3 className={styles.cardUni}>{program.university}</h3>
+              <p className={styles.cardProgram}>{program.program}</p>
+              <p className={styles.cardMeta}>
+                {program.city}, {program.country} · {formatEur(program.costEur)}
+              </p>
+              <p className={styles.cardFit}>
+                {evaluation.fits.length > 0 && (
+                  <>
+                    <span className={styles.fitLabel}>Подходит тебе:</span> {evaluation.fits.join(", ")}
+                  </>
+                )}
+                {evaluation.misfits.length > 0 && (
+                  <>
+                    {evaluation.fits.length > 0 && <br />}
+                    <span className={styles.fitLabel}>Но:</span> {evaluation.misfits.join(", ")}
+                  </>
+                )}
+              </p>
+              <div className={styles.cardActions}>
+                <button
+                  type="button"
+                  className={`${styles.pillButton} ${styles.saveButton}`}
+                  aria-pressed={saved}
+                  aria-label={saved ? "Убрать из избранного" : "В избранное"}
+                  onClick={() => actions.onToggleSave(id)}
+                >
+                  <Icon name="star" size={16} />
+                </button>
+                <button
+                  type="button"
+                  className={styles.pillButton}
+                  aria-pressed={comparing}
+                  onClick={() => actions.onToggleCompare(id)}
+                >
+                  <Icon name="git-compare" size={16} />
+                  {comparing ? "В сравнении" : "Сравнить"}
+                </button>
+                <button type="button" className={`${styles.pillButton} ${styles.cardMore}`} onClick={() => actions.onOpen(id)}>
+                  Подробнее
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
     </div>
   );
 }

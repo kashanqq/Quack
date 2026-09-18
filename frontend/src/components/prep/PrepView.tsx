@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { morph } from "@/components/transition/morph";
 import { CurrentSet } from "./CurrentSet";
 import { Overview } from "./Overview";
-import { savedPrograms } from "./prepData";
+import { savedPrograms, setById, type ExamId } from "./prepData";
 import {
   acceptSet,
   initialModel,
@@ -44,6 +44,8 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
     }
   });
   const [toast, setToast] = useState<string | null>(null);
+  // Which exam the route, the map and the set list show; starts on the exam of the set in work
+  const [exam, setExam] = useState<ExamId>(() => (model.currentSet ? setById(model.currentSet).exam : "sat"));
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // A sub-tab belongs to its tab; switching tabs falls back to the first one
@@ -70,16 +72,17 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
   const programs = savedPrograms(saved, model.demo);
 
   /** One move for both levels, so a jump across the section is a single animated step */
-  const go = (next: PrepTab, nextSub?: PrepSub) =>
+  const go = (next: PrepTab, nextSub?: PrepSub, nextExam?: ExamId) =>
     morph(() => {
       onTab(next);
       if (nextSub) onSub(nextSub);
+      if (nextExam) setExam(nextExam);
     });
 
   const accept = (id: string) => {
     setModel((m) => acceptSet(m, id));
     setToast("Сет принят — он в «Текущем сете»");
-    go("current", "guide");
+    go("current", "check", setById(id).exam);
   };
 
   const choose = (id: string) => {
@@ -122,7 +125,7 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
             {saved.length ? (
               <FirstHint id="prep" title="Зачем «Подготовка»">
                 Здесь план подготовки к экзаменам, которые требуют твои программы. Начни с «Сейчас»: там темп и что сделать первым.
-                Потом открывай «Текущий сет» и решай задачи, план подстроится под результаты. Разделы слева.
+                Потом в «Текущем сете» проверяй себя: каждый верный ответ красит навык на карте. Ассистент там же соберёт план к твоей дате. Разделы слева.
               </FirstHint>
             ) : (
               <FirstHint id="prep-demo" title="Это пример" action={{ label: "Перейти к выбору", onClick: onGoToChoice }}>
@@ -150,7 +153,9 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
                   }}
                 />
               )}
-              {tab === "sets" && <SetsView model={model} sub={current} onMakeCurrent={choose} onModel={setModel} />}
+              {tab === "sets" && (
+                <SetsView model={model} sub={current} exam={exam} onExam={setExam} onMakeCurrent={choose} onModel={setModel} />
+              )}
               {tab === "current" && (
                 <CurrentSet
                   model={model}

@@ -51,6 +51,30 @@ export function parseDeadline(text: string): Date {
   return d;
 }
 
+/** First day of every month the span touches: the ticks on routes and charts. */
+export function monthStarts(from: Date, to: Date): Date[] {
+  const list: Date[] = [];
+  const d = new Date(from.getFullYear(), from.getMonth(), 1);
+  if (d < from) d.setMonth(d.getMonth() + 1);
+  for (; d <= to; d.setMonth(d.getMonth() + 1)) list.push(new Date(d));
+  return list;
+}
+
+/* ---------- Exams with a knowledge model ---------- */
+
+/**
+ * Every exam the section prepares for has its own skills, sets, readiness and forecast. The screens
+ * show one exam at a time and switch between them, so the map never mixes maths with English.
+ */
+export type ExamId = "sat" | "ielts";
+
+export const EXAM_IDS: ExamId[] = ["sat", "ielts"];
+
+export const EXAMS: Record<ExamId, { name: string; test: Date; routeFrom: Date; routeTo: Date }> = {
+  sat: { name: "SAT Math", test: day(11, 7), routeFrom: day(9, 1), routeTo: day(11, 12) },
+  ielts: { name: "IELTS Academic", test: day(12, 12), routeFrom: day(9, 1), routeTo: day(12, 17) },
+};
+
 /* ---------- Skill map (§5.2) ---------- */
 
 /** State words from memory-architecture: closed/solid, shaky, prerequisite not held, low data. */
@@ -74,10 +98,11 @@ export type Misconception = {
   trigger?: string;
 };
 
-export type Evidence = { source: "мок" | "замер" | "задача" | "чат"; text: string; date: Date };
+export type Evidence = { source: "мок" | "замер" | "задача" | "проверка" | "чат"; text: string; date: Date };
 
 export type Skill = {
   id: string;
+  exam: ExamId;
   name: string;
   area: string;
   /** Share of the exam score, % */
@@ -92,9 +117,13 @@ export type Skill = {
   evidence: Evidence[];
 };
 
-export const AREAS = ["Алгебра", "Продвинутая математика", "Анализ данных", "Геометрия и тригонометрия"];
+/** Areas are the lanes of the map and the groups of the set list, per exam. */
+export const AREAS: Record<ExamId, string[]> = {
+  sat: ["Алгебра", "Продвинутая математика", "Анализ данных", "Геометрия и тригонометрия"],
+  ielts: ["Listening", "Reading", "Writing", "Speaking"],
+};
 
-export const SKILLS: Skill[] = [
+const SAT_SKILLS: Omit<Skill, "exam">[] = [
   {
     id: "linear",
     name: "Линейные уравнения",
@@ -277,6 +306,147 @@ export const SKILLS: Skill[] = [
   },
 ];
 
+const IELTS_SKILLS: Omit<Skill, "exam">[] = [
+  {
+    id: "l-detail",
+    name: "Детали и формы",
+    area: "Listening",
+    weight: 12,
+    state: "solid",
+    recall: 0.82,
+    requires: [],
+    misconceptions: [],
+    evidence: [{ source: "замер", text: "Section 1: 9 из 10, ошибка в написании фамилии", date: day(9, 5) }],
+  },
+  {
+    id: "l-maps",
+    name: "Карты и схемы",
+    area: "Listening",
+    weight: 8,
+    state: "shaky",
+    recall: 0.5,
+    requires: ["l-detail"],
+    misconceptions: [],
+    evidence: [{ source: "замер", text: "План здания: 3 из 5 — путает «напротив» и «рядом с»", date: day(9, 5) }],
+  },
+  {
+    id: "l-lecture",
+    name: "Лекция: главная мысль",
+    area: "Listening",
+    weight: 10,
+    state: "lowData",
+    recall: 0.45,
+    requires: ["l-detail"],
+    misconceptions: [],
+    evidence: [],
+  },
+  {
+    id: "r-scan",
+    name: "Поиск информации",
+    area: "Reading",
+    weight: 10,
+    state: "solid",
+    recall: 0.85,
+    requires: [],
+    misconceptions: [],
+    evidence: [{ source: "замер", text: "Matching information: 6 из 7", date: day(9, 5) }],
+  },
+  {
+    id: "r-tfng",
+    name: "True / False / Not Given",
+    area: "Reading",
+    weight: 12,
+    state: "weak",
+    recall: 0.35,
+    requires: ["r-scan"],
+    misconceptions: [
+      {
+        id: "tfng-false",
+        text: "Ставит False, когда в тексте ответа просто нет",
+        status: "confirmed",
+        observations: 3,
+        trigger: "когда утверждение звучит правдоподобно",
+      },
+    ],
+    evidence: [
+      { source: "замер", text: "TFNG: 2 из 6, все ошибки — False вместо Not Given", date: day(9, 5) },
+      { source: "чат", text: "«если в тексте этого нет, значит неправда»", date: day(9, 11) },
+    ],
+  },
+  {
+    id: "r-headings",
+    name: "Заголовки абзацев",
+    area: "Reading",
+    weight: 8,
+    state: "shaky",
+    recall: 0.5,
+    requires: ["r-scan"],
+    misconceptions: [],
+    evidence: [{ source: "замер", text: "3 из 5: выбирает заголовок по совпавшему слову", date: day(9, 5) }],
+  },
+  {
+    id: "w-task1",
+    name: "Task 1: описание графика",
+    area: "Writing",
+    weight: 12,
+    state: "shaky",
+    recall: 0.5,
+    requires: [],
+    misconceptions: [],
+    evidence: [{ source: "замер", text: "Черновик без обзора (overview) — потолок 5.5 по Task Achievement", date: day(9, 6) }],
+  },
+  {
+    id: "w-coherence",
+    name: "Связность и связки",
+    area: "Writing",
+    weight: 6,
+    state: "shaky",
+    recall: 0.48,
+    requires: [],
+    root: true,
+    misconceptions: [],
+    evidence: [{ source: "замер", text: "Абзацы без главной мысли, связки подряд: moreover, furthermore", date: day(9, 6) }],
+  },
+  {
+    id: "w-task2",
+    name: "Task 2: эссе",
+    area: "Writing",
+    weight: 16,
+    state: "weak",
+    recall: 0.3,
+    requires: ["w-coherence"],
+    misconceptions: [],
+    evidence: [{ source: "замер", text: "Эссе на 5.0: мысль теряется ко второму абзацу — идёт от связности", date: day(9, 6) }],
+  },
+  {
+    id: "s-part1",
+    name: "Part 1: короткие ответы",
+    area: "Speaking",
+    weight: 6,
+    state: "solid",
+    recall: 0.88,
+    requires: [],
+    misconceptions: [],
+    evidence: [{ source: "замер", text: "Отвечает развёрнуто, без пауз", date: day(9, 7) }],
+  },
+  {
+    id: "s-part2",
+    name: "Part 2: монолог 2 минуты",
+    area: "Speaking",
+    weight: 10,
+    state: "lowData",
+    recall: 0.4,
+    requires: ["s-part1"],
+    misconceptions: [],
+    evidence: [],
+  },
+];
+
+export const SKILLS: Skill[] = [
+  ...SAT_SKILLS.map((s) => ({ ...s, exam: "sat" as const })),
+  ...IELTS_SKILLS.map((s) => ({ ...s, exam: "ielts" as const })),
+];
+
 export const skillById = (id: string) => SKILLS.find((s) => s.id === id)!;
 
 /* ---------- Sets (§4.3) ---------- */
@@ -292,6 +462,8 @@ export const SET_STATUS_LABEL: Record<SetStatus, string> = {
 
 export type StudySet = {
   id: string;
+  exam: ExamId;
+  /** Counted within its exam: SAT and IELTS each start from set 1 */
   number: number;
   title: string;
   /** Area the set is filed under on the Sets tab */
@@ -303,7 +475,7 @@ export type StudySet = {
   why: string;
 };
 
-export const SETS: StudySet[] = [
+const SAT_SETS: Omit<StudySet, "exam">[] = [
   {
     id: "s1",
     number: 1,
@@ -372,82 +544,187 @@ export const SETS: StudySet[] = [
   },
 ];
 
+/* IELTS runs alongside SAT: its sets overlap the maths ones in time and end before the December test. */
+const IELTS_SETS: Omit<StudySet, "exam">[] = [
+  {
+    id: "i1",
+    number: 1,
+    title: "Reading: TFNG и заголовки",
+    area: "Reading",
+    skills: ["r-scan", "r-tfng", "r-headings"],
+    start: day(9, 21),
+    deadline: day(10, 12),
+    status: "upcoming",
+    why: "True / False / Not Given — подтверждённая ловушка и самый большой вес в Reading",
+  },
+  {
+    id: "i2",
+    number: 2,
+    title: "Writing: связность и эссе",
+    area: "Writing",
+    skills: ["w-coherence", "w-task2"],
+    start: day(10, 13),
+    deadline: day(11, 2),
+    status: "upcoming",
+    why: "Связность — корень: из-за неё эссе не поднимается выше 5.5",
+  },
+  {
+    id: "i3",
+    number: 3,
+    title: "Listening: карты и лекции",
+    area: "Listening",
+    skills: ["l-detail", "l-maps", "l-lecture"],
+    start: day(11, 3),
+    deadline: day(11, 17),
+    status: "upcoming",
+    why: "Детали уже держатся — на них строятся карты и лекция",
+  },
+  {
+    id: "i4",
+    number: 4,
+    title: "Task 1 и монолог",
+    area: "Speaking",
+    skills: ["w-task1", "s-part1", "s-part2"],
+    start: day(11, 18),
+    deadline: day(11, 29),
+    status: "upcoming",
+    why: "Оба про описание: график на письме и тема на две минуты вслух",
+  },
+  {
+    id: "i5",
+    number: 5,
+    title: "Пробный IELTS целиком",
+    area: "Reading",
+    skills: ["r-tfng", "w-task2", "s-part2"],
+    start: day(11, 30),
+    deadline: day(12, 7),
+    status: "review",
+    why: "Последняя неделя — без новых навыков, полный тест на время",
+  },
+];
+
+export const SETS: StudySet[] = [
+  ...SAT_SETS.map((s) => ({ ...s, exam: "sat" as const })),
+  ...IELTS_SETS.map((s) => ({ ...s, exam: "ielts" as const })),
+];
+
 export const setById = (id: string) => SETS.find((s) => s.id === id)!;
 
 /** A skill is closed for the set when it is solid. */
 export const closedCount = (set: StudySet, states: Record<string, SkillState>) =>
   set.skills.filter((id) => states[id] === "solid").length;
 
-/* ---------- Topic guidelines (§4.4) ---------- */
+/* ---------- «Проверь себя» (§4.4) ---------- */
 
+/**
+ * Short questions that prove a skill rather than teach it: each answer is evidence for the knowledge
+ * model, and the skill's node on the map turns green or yellow with it. A trap option names the
+ * misconception it reveals.
+ */
 export type Task = {
   id: string;
   text: string;
   options: { label: string; correct?: boolean; trap?: string }[];
-  explain: string;
 };
 
-export type Guideline = { prepare: string; mustKnow: string[]; traps: string[]; practice: string; tasks: Task[] };
-
-export const GUIDELINES: Record<string, Guideline> = {
-  circle: {
-    prepare: "Начни с вписанного и центрального угла — на них держится вся тригонометрия дальше. Рисуй чертёж к каждой задаче.",
-    mustKnow: ["Вписанный угол равен половине центрального", "Угол, опирающийся на диаметр, — прямой", "Касательная перпендикулярна радиусу"],
-    traps: ["Берёшь центральный угол вместо вписанного, когда дуга не подписана"],
-    practice: "6–8 задач на углы и дуги, потом мок по топику",
-    tasks: [
-      {
-        id: "c1",
-        text: "Центральный угол AOB = 110°. Чему равен вписанный угол ACB, опирающийся на ту же дугу?",
-        options: [
-          { label: "55°", correct: true },
-          { label: "110°", trap: "Взял центральный угол вместо вписанного" },
-          { label: "70°" },
-          { label: "220°" },
-        ],
-        explain: "Вписанный угол равен половине центрального, опирающегося на ту же дугу: 110° / 2 = 55°.",
-      },
-      {
-        id: "c2",
-        text: "Треугольник вписан в окружность, одна его сторона — диаметр. Какой угол напротив диаметра?",
-        options: [{ label: "45°" }, { label: "60°" }, { label: "90°", correct: true }, { label: "Зависит от треугольника", trap: "Не узнал угол, опирающийся на диаметр" }],
-        explain: "Угол, опирающийся на диаметр, всегда прямой: он вписанный и опирается на дугу 180°.",
-      },
-    ],
-  },
-  abs: {
-    prepare: "Раскрывай модуль по определению и всегда проверяй обе ветви — это твоя подтверждённая ловушка.",
-    mustKnow: ["|a| = a при a ≥ 0 и −a при a < 0", "|x − a| = b даёт x = a ± b при b ≥ 0", "Уравнение |…| = отрицательное число решений не имеет"],
-    traps: ["Теряешь вторую ветвь — чаще при отрицательной ветви и когда торопишься"],
-    practice: "Уравнения с модулем, у которых два корня, потом неравенства с модулем",
-    tasks: [
-      {
-        id: "a1",
-        text: "Сколько решений у уравнения |2x − 1| = 5?",
-        options: [
-          { label: "1", trap: "Потерял вторую ветвь" },
-          { label: "2", correct: true },
-          { label: "0" },
-          { label: "Бесконечно много" },
-        ],
-        explain: "2x − 1 = 5 даёт x = 3, 2x − 1 = −5 даёт x = −2. Два корня.",
-      },
-    ],
-  },
-  triangles: {
-    prepare: "Навык уже твёрдый — здесь он как повторение перед тригонометрией.",
-    mustKnow: ["Признаки подобия", "Отношение площадей — квадрат коэффициента подобия"],
-    traps: [],
-    practice: "2–3 задачи на повторение",
-    tasks: [
-      {
-        id: "t1",
-        text: "Треугольники подобны с коэффициентом 3. Во сколько раз площадь большего больше?",
-        options: [{ label: "3", trap: "Взял коэффициент вместо его квадрата" }, { label: "6" }, { label: "9", correct: true }, { label: "27" }],
-        explain: "Площади подобных фигур относятся как квадрат коэффициента: 3² = 9.",
-      },
-    ],
-  },
+export const CHECKS: Record<string, Task[]> = {
+  circle: [
+    {
+      id: "c1",
+      text: "Центральный угол AOB = 110°. Чему равен вписанный угол ACB, опирающийся на ту же дугу?",
+      options: [
+        { label: "55°", correct: true },
+        { label: "110°", trap: "Взял центральный угол вместо вписанного" },
+        { label: "70°" },
+        { label: "220°" },
+      ],
+    },
+    {
+      id: "c2",
+      text: "Треугольник вписан в окружность, одна его сторона — диаметр. Какой угол напротив диаметра?",
+      options: [{ label: "45°" }, { label: "60°" }, { label: "90°", correct: true }, { label: "Зависит от треугольника", trap: "Не узнал угол, опирающийся на диаметр" }],
+    },
+  ],
+  abs: [
+    {
+      id: "a1",
+      text: "Сколько решений у уравнения |2x − 1| = 5?",
+      options: [{ label: "1", trap: "Потерял вторую ветвь" }, { label: "2", correct: true }, { label: "0" }, { label: "Бесконечно много" }],
+    },
+  ],
+  triangles: [
+    {
+      id: "t1",
+      text: "Треугольники подобны с коэффициентом 3. Во сколько раз площадь большего больше?",
+      options: [{ label: "3", trap: "Взял коэффициент вместо его квадрата" }, { label: "6" }, { label: "9", correct: true }, { label: "27" }],
+    },
+  ],
+  "r-scan": [
+    {
+      id: "rs1",
+      text: "Текст: «The museum, founded in 1872, moved to its current building in 1905». Когда музей переехал?",
+      options: [{ label: "1872", trap: "Взял первую дату, не дочитав предложение" }, { label: "1905", correct: true }, { label: "Не сказано" }],
+    },
+  ],
+  "r-tfng": [
+    {
+      id: "tf1",
+      text: "Текст: «Most visitors arrive by train». Утверждение: «The museum is free to visit». Ответ?",
+      options: [
+        { label: "True" },
+        { label: "False", trap: "False вместо Not Given: в тексте этого нет" },
+        { label: "Not Given", correct: true },
+      ],
+    },
+    {
+      id: "tf2",
+      text: "Текст: «The bridge was completed two years behind schedule». Утверждение: «The bridge was finished on time». Ответ?",
+      options: [{ label: "True" }, { label: "False", correct: true }, { label: "Not Given", trap: "Not Given, хотя текст прямо противоречит" }],
+    },
+  ],
+  "r-headings": [
+    {
+      id: "rh1",
+      text: "Абзац о том, почему города сажают деревья: тень, воздух, дешевле кондиционеров. Лучший заголовок?",
+      options: [
+        { label: "The history of city parks", trap: "Выбрал заголовок по совпавшему слову, а не по мысли" },
+        { label: "Practical benefits of urban trees", correct: true },
+        { label: "How air conditioners work" },
+      ],
+    },
+  ],
+  "w-coherence": [
+    {
+      id: "wc1",
+      text: "Какая связка подходит: «Prices rose sharply. ___, demand stayed the same»?",
+      options: [{ label: "Moreover", trap: "Связка добавления там, где нужен контраст" }, { label: "However", correct: true }, { label: "Therefore" }],
+    },
+  ],
+  "w-task2": [
+    {
+      id: "wt1",
+      text: "Тема: «Some think students should study abroad». С чего по критериям лучше начать эссе?",
+      options: [
+        { label: "С истории образования за границей", trap: "Вступление уходит от вопроса" },
+        { label: "Перефразировать тему и сразу дать свою позицию", correct: true },
+        { label: "С цитаты известного человека" },
+      ],
+    },
+  ],
+  "w-task1": [
+    {
+      id: "w1",
+      text: "Что обязательно должно быть в Task 1, чтобы подняться выше 5.5?",
+      options: [{ label: "Все числа с графика" }, { label: "Обзор главных тенденций (overview)", correct: true }, { label: "Своё мнение", trap: "Мнение в Task 1 не нужно" }],
+    },
+  ],
+  "l-maps": [
+    {
+      id: "lm1",
+      text: "На записи: «The café is opposite the library». Где кафе на плане?",
+      options: [{ label: "Рядом с библиотекой, стена к стене", trap: "Путает «opposite» и «next to»" }, { label: "Через проход, лицом к библиотеке", correct: true }, { label: "За библиотекой" }],
+    },
+  ],
 };
 
 /* ---------- Exams and requirements (§4.1) ---------- */
@@ -484,8 +761,11 @@ export function savedPrograms(saved: string[], demo: boolean): Program[] {
   return ids.map(programById).filter(Boolean);
 }
 
+/** Readiness now and its forecast, per exam with a knowledge model. */
+export type ExamOutlook = Record<ExamId, { readiness: number; forecast: Date }>;
+
 /** Requirements are derived from saved programs: the highest threshold wins. */
-export function requirements(programs: Program[], forecast: Date, readinessNow: number): ExamRequirement[] {
+export function requirements(programs: Program[], outlook: ExamOutlook): ExamRequirement[] {
   const result: ExamRequirement[] = [];
 
   const satPrograms = programs.filter((p) => p.satMin);
@@ -498,12 +778,11 @@ export function requirements(programs: Program[], forecast: Date, readinessNow: 
       name: "SAT Math",
       target: String(math),
       targetNote: `из 800 · порог ${top} в сумме у ${satPrograms.find((p) => p.satMin === top)!.university}`,
-      testDate: day(11, 7),
-      testCandidates: [day(11, 7), day(12, 5)],
+      testDate: EXAMS.sat.test,
+      testCandidates: [EXAMS.sat.test, day(12, 5)],
       programs: satPrograms,
       hasModel: true,
-      readiness: readinessNow,
-      forecast,
+      ...outlook.sat,
     });
   }
 
@@ -514,10 +793,11 @@ export function requirements(programs: Program[], forecast: Date, readinessNow: 
       name: "IELTS Academic",
       target: top.toFixed(1),
       targetNote: `нужен всем сохранённым · выше всех у ${programs.find((p) => p.ieltsMin === top)!.university}`,
-      testDate: day(12, 12),
-      testCandidates: [day(12, 12), day(1, 16, 2027)],
+      testDate: EXAMS.ielts.test,
+      testCandidates: [EXAMS.ielts.test, day(1, 16, 2027)],
       programs,
-      hasModel: false,
+      hasModel: true,
+      ...outlook.ielts,
     });
   }
 
@@ -534,7 +814,7 @@ export function milestones(programs: Program[]): Milestone[] {
   }
   if (programs.length) {
     list.push(
-      { id: "ielts-window", date: day(11, 10), title: "Окно подготовки к IELTS", detail: "10 ноября – 11 декабря · без модели знаний", source: "демо", checkable: false },
+      { id: "ielts-reg", date: day(11, 12), title: "Регистрация на IELTS", detail: "Тест 12 декабря · British Council", source: "демо", checkable: true },
       { id: "ielts-test", date: day(12, 12), title: "IELTS — тест", detail: "Ближайший слот в Алматы", source: "демо", checkable: true }
     );
   }
@@ -570,19 +850,39 @@ export function conflicts(list: Milestone[]): { id: string; text: string; option
 
 export type ForecastPoint = { date: Date; value: number; kind: "actual" | "forecast" };
 
+/**
+ * The demo history of each exam, the readiness it starts from, and when it would reach 100% from
+ * there. IELTS starts later and lower and aims at the December test.
+ */
+const FORECAST_BASE: Record<ExamId, { history: [Date, number][]; baseline: number; done: Date }> = {
+  sat: {
+    history: [
+      [day(9, 1), 18],
+      [day(9, 4), 27],
+      [day(9, 8), 33],
+      [day(9, 12), 40],
+      [day(9, 15), 44],
+    ],
+    baseline: 54,
+    done: day(11, 3),
+  },
+  ielts: {
+    history: [
+      [day(9, 5), 24],
+      [day(9, 10), 31],
+      [day(9, 15), 37],
+    ],
+    baseline: 41,
+    done: day(12, 1),
+  },
+};
+
 /** Readiness history and the forecast to 100%. Higher readiness pulls the forecast in; manual changes push it out. */
-export function forecastSeries(now: number, extraDays = 0): { points: ForecastPoint[]; forecast: Date } {
-  const history: [Date, number][] = [
-    [day(9, 1), 18],
-    [day(9, 4), 27],
-    [day(9, 8), 33],
-    [day(9, 12), 40],
-    [day(9, 15), 44],
-  ];
+export function forecastSeries(now: number, extraDays = 0, exam: ExamId = "sat"): { points: ForecastPoint[]; forecast: Date } {
+  const { history, baseline, done } = FORECAST_BASE[exam];
   // Each point of readiness above the demo baseline saves about half a day
-  const baseline = 54;
   const shift = extraDays - Math.round((now - baseline) * 0.5);
-  const forecast = new Date(day(11, 3).getTime() + shift * 86_400_000);
+  const forecast = new Date(done.getTime() + shift * 86_400_000);
   const span = Math.max(1, daysBetween(TODAY, forecast));
   const future = [0.2, 0.42, 0.62, 0.8, 1].map((t) => {
     const date = new Date(TODAY.getTime() + Math.round(span * t) * 86_400_000);

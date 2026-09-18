@@ -1,5 +1,5 @@
 // State of the "Подготовка" section and the rules that change it. Pure functions, no React:
-// a task answer is evidence, evidence moves skill state, a set is passed when all its skills are solid.
+// a self-check answer is evidence, evidence moves skill state, a set is passed when all its skills are solid.
 
 import {
   SETS,
@@ -7,6 +7,7 @@ import {
   TODAY,
   setById,
   type Evidence,
+  type ExamId,
   type Misconception,
   type SetStatus,
   type SkillState,
@@ -36,9 +37,8 @@ export type PrepSub =
   | "route"
   | "map"
   | "all"
-  | "guide"
-  | "tasks"
-  | "tutor";
+  | "check"
+  | "assistant";
 
 export const PREP_SUBS: Record<PrepTab, { sub: PrepSub; label: string; icon: IconName; hint: string }[]> = {
   overview: [
@@ -53,9 +53,8 @@ export const PREP_SUBS: Record<PrepTab, { sub: PrepSub; label: string; icon: Ico
     { sub: "all", label: "Все сеты", icon: "layers", hint: "по областям" },
   ],
   current: [
-    { sub: "guide", label: "Гайдлайн", icon: "book-open-check", hint: "как готовиться" },
-    { sub: "tasks", label: "Задачи", icon: "list-checks", hint: "решать и проверять" },
-    { sub: "tutor", label: "Репетитор", icon: "message-circle", hint: "спросить по топику" },
+    { sub: "check", label: "Проверь себя", icon: "circle-check", hint: "докажи, что знаешь" },
+    { sub: "assistant", label: "Ассистент", icon: "message-circle", hint: "план к твоему сроку" },
   ],
 };
 
@@ -100,7 +99,18 @@ export function initialModel(): PrepModel {
 /** localStorage keeps dates as strings; bring them back. */
 export function reviveModel(raw: unknown): PrepModel | null {
   if (!raw || typeof raw !== "object") return null;
-  const model = { ...initialModel(), ...(raw as Partial<PrepModel>) };
+  const fresh = initialModel();
+  const saved = raw as Partial<PrepModel>;
+  // Per-skill records are merged, not replaced: a model saved before a skill (or a whole exam) was
+  // added still gets that skill's starting state
+  const model: PrepModel = {
+    ...fresh,
+    ...saved,
+    states: { ...fresh.states, ...saved.states },
+    recall: { ...fresh.recall, ...saved.recall },
+    misconceptions: { ...fresh.misconceptions, ...saved.misconceptions },
+    evidence: { ...fresh.evidence, ...saved.evidence },
+  };
   model.evidence = Object.fromEntries(
     Object.entries(model.evidence).map(([id, list]) => [id, list.map((e) => ({ ...e, date: new Date(e.date) }))])
   );
@@ -121,10 +131,11 @@ export function proposedSet(model: PrepModel): StudySet | undefined {
 
 export const closed = (model: PrepModel, set: StudySet) => set.skills.filter((id) => model.states[id] === "solid").length;
 
-/** Overall readiness: weighted share of solid skills, shaky counts half. */
-export function readiness(model: PrepModel): number {
-  const total = SKILLS.reduce((sum, s) => sum + s.weight, 0);
-  const got = SKILLS.reduce(
+/** Readiness for one exam: weighted share of its solid skills, shaky counts half. */
+export function readiness(model: PrepModel, exam: ExamId = "sat"): number {
+  const skills = SKILLS.filter((s) => s.exam === exam);
+  const total = skills.reduce((sum, s) => sum + s.weight, 0);
+  const got = skills.reduce(
     (sum, s) => sum + s.weight * (model.states[s.id] === "solid" ? 1 : model.states[s.id] === "shaky" ? 0.5 : 0),
     0
   );
@@ -161,7 +172,7 @@ export function answerTask(model: PrepModel, skillId: string, task: Task, option
   const to = option.correct ? UP[from] : from === "solid" ? "shaky" : from;
 
   const evidence: Evidence = {
-    source: "задача",
+    source: "проверка",
     text: `${task.text.slice(0, 60)}… — ответ ${option.label}${option.correct ? ", верно" : option.trap ? `, ловушка: ${option.trap.toLowerCase()}` : ", неверно"}`,
     date: TODAY,
   };
