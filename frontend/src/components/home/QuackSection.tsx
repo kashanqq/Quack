@@ -73,6 +73,12 @@ export function QuackSection() {
         </h2>
       </Reveal>
 
+      {/* Why this is a path and not a catalogue, before the demo panels show the parts. */}
+      <Reveal className={styles.intro} delay={0.08}>
+        <h3 className={styles.introTitle}>{copy.quack.intro.title}</h3>
+        <p className={styles.introText}>{copy.quack.intro.text}</p>
+      </Reveal>
+
       <div className={styles.stage}>
         <div ref={growRef} className={styles.mainWrap}>
           <div className={styles.main}>

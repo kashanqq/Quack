@@ -1,0 +1,609 @@
+/* The closing screen: one card that sums the product up, asks to start, and ends
+   in a small pixel lake where an angler keeps catching ducks. --u is one sprite
+   pixel; every position in the scene is a whole number of them. */
+
+.section {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 80px 16px;
+  /* The flyer waits off to the right of the card; that must never scroll the page. */
+  overflow-x: clip;
+}
+
+.card {
+  --u: 3px;
+  --cycle: 4s;
+  position: relative;
+  width: min(1180px, 100%);
+  padding: 64px 56px 0;
+  background: #242120;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 28px;
+  text-align: center;
+}
+
+/* The text sits in front of the scene, so the tossed duck flies behind it. */
+.card > :not(.scene) {
+  position: relative;
+  z-index: 2;
+}
+
+.kicker {
+  margin: 0;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.title {
+  max-width: 940px;
+  margin: 16px auto 0;
+  font-family: var(--font-mono);
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.text {
+  max-width: 780px;
+  margin: 20px auto 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: var(--font-text);
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+/* Read aloud, not shown: the scene acts these out. Reduced motion shows them instead. */
+.steps {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ctaRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 40px;
+}
+
+.cta {
+  display: grid;
+  place-items: center;
+  min-width: 240px;
+  height: 60px;
+  padding: 4px 32px 0;
+  background: var(--accent);
+  border-radius: 44px;
+  color: #ffffff;
+  font-family: var(--font-text);
+  font-size: 24px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: scale 0.25s var(--ease-out), filter 0.25s, box-shadow 0.25s;
+  /* Swallows the tossed duck and hands out the flag, in time with the scene. */
+  animation: cta-catch var(--cycle) linear infinite;
+}
+
+.cta:hover {
+  scale: 1.04;
+  filter: brightness(1.08);
+  box-shadow: 0 10px 40px rgba(255, 122, 0, 0.35);
+}
+
+.cta:active {
+  scale: 0.98;
+}
+
+.note {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: var(--font-text);
+  font-size: 14px;
+}
+
+/* ---------- The scene ---------- */
+
+.scene {
+  position: relative;
+  z-index: 1;
+  height: calc(var(--u) * 80);
+  /* Bleeds to the card's edges so the ground runs border to border. */
+  margin: 8px -56px 0;
+  container-type: inline-size;
+}
+
+.scene svg {
+  display: block;
+  height: auto;
+}
+
+.scenery {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 0 0 27px 27px;
+  opacity: 0.6;
+}
+
+.ground {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--u) * 640);
+  max-width: none;
+}
+
+.lake {
+  position: absolute;
+  bottom: var(--u);
+  left: calc(50% - var(--u) * 46);
+  width: calc(var(--u) * 100);
+}
+
+.reedsLeft,
+.reedsRight,
+.tree {
+  position: absolute;
+  bottom: calc(var(--u) * 5);
+}
+
+.reedsLeft {
+  left: calc(50% - var(--u) * 50);
+  width: calc(var(--u) * 6);
+}
+
+.reedsRight {
+  left: calc(50% + var(--u) * 52);
+  width: calc(var(--u) * 6);
+}
+
+.tree {
+  left: 8%;
+  width: calc(var(--u) * 13);
+}
+
+/* The angler's spot: its bottom-left corner is where he stands, on the grass line. */
+.rig {
+  position: absolute;
+  bottom: calc(var(--u) * 5);
+  left: calc(50% - var(--u) * 64);
+  width: 0;
+  height: 0;
+}
+
+.angler {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--u) * 14);
+}
+
+.rod {
+  position: absolute;
+  bottom: calc(var(--u) * 10);
+  left: calc(var(--u) * 13);
+  width: calc(var(--u) * 28);
+}
+
+.rodStraight {
+  animation: rod-straight var(--cycle) linear infinite;
+}
+
+.rodBent {
+  opacity: 0;
+  animation: rod-bent var(--cycle) linear infinite;
+}
+
+/* From the rod tip down to the float; it shortens as the catch is reeled in. */
+.line {
+  position: absolute;
+  bottom: calc(var(--u) * 2);
+  left: calc(var(--u) * 40.5);
+  width: 1px;
+  height: calc(var(--u) * 28);
+  background: rgba(255, 255, 255, 0.4);
+  transform-origin: top;
+  animation: line var(--cycle) linear infinite;
+}
+
+/* Everything inside is cut off at the water surface, so it can sink and surface. */
+.waterline {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  clip-path: inset(-3000px -3000px 0 -3000px);
+}
+
+.float {
+  position: absolute;
+  bottom: calc(var(--u) * -2);
+  left: calc(var(--u) * 39.5);
+  width: calc(var(--u) * 2);
+  animation: float var(--cycle) linear infinite;
+}
+
+.hooked {
+  position: absolute;
+  bottom: calc(var(--u) * -14);
+  left: calc(var(--u) * 32.5);
+  width: calc(var(--u) * 16);
+  animation: hooked var(--cycle) linear infinite;
+}
+
+.hooked svg,
+.flyerDuck svg {
+  width: 100%;
+}
+
+.splash {
+  position: absolute;
+  bottom: 0;
+  left: calc(var(--u) * 34.5);
+  width: calc(var(--u) * 12);
+  opacity: 0;
+  animation: splash var(--cycle) linear infinite;
+}
+
+/* The duck back from the sky, towing a step of the path behind it. */
+.flyer {
+  position: absolute;
+  top: calc(var(--u) * 4);
+  right: 3%;
+  display: flex;
+  align-items: center;
+  /* Runs on its own clock, shifted to the moment the first duck lands in the button.
+     It leaves just as the next duck lands, so one flag hands over straight to the next. */
+  animation: flyer var(--cycle) linear calc(var(--cycle) * 0.417) infinite backwards;
+}
+
+.flyerDuck {
+  flex: none;
+  width: calc(var(--u) * 16);
+  transform: scaleX(-1);
+}
+
+.rope {
+  flex: none;
+  width: 22px;
+  height: 1px;
+  margin-top: 6px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.flag {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  row-gap: 2px;
+  width: 290px;
+  padding: 14px 18px;
+  background: #1f1d1b;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  text-align: left;
+  transform-origin: left center;
+  animation: flag-wave 1.6s ease-in-out infinite alternate;
+}
+
+.flagNum {
+  grid-row: 1 / 3;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  border-radius: 9px;
+  color: #1a1715;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.flagTitle {
+  font-family: var(--font-mono);
+  font-size: 17px;
+}
+
+.flagText {
+  color: rgba(255, 255, 255, 0.6);
+  font-family: var(--font-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Nothing moves while the scene is off screen, and it all resumes in step. */
+.section[data-play="false"] :is(.rodStraight, .rodBent, .line, .float, .hooked, .splash, .flyer, .cta) {
+  animation-play-state: paused;
+}
+
+/* ---------- One cycle (4s) ----------
+   0–12%   the float dips, the duck is yanked out and reeled up to the rod tip
+   15–40%  the angler tosses it in an arc straight into the "start" button
+   40–51%  the button swallows it with a little pop
+   42%+    the flag leaves the button and hovers on the right (the flyer runs on its
+           own clock, see .flyer); meanwhile the angler casts again, and the flag
+           flies off just as the next duck lands, so the next flag follows at once
+   --bx/--by: from the duck's spot under water to the button's centre.
+   --fx/--fy: from the flyer's resting spot to the button's centre.
+   Both are measured by the component from the live layout. */
+
+@keyframes float {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  3.1% {
+    transform: translateY(calc(var(--u) * 2));
+  }
+  6% {
+    transform: translateY(calc(var(--u) * 4));
+    opacity: 1;
+  }
+  6.2%,
+  88% {
+    transform: translateY(calc(var(--u) * 4));
+    opacity: 0;
+  }
+  95%,
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes rod-straight {
+  0%,
+  2.9% {
+    opacity: 1;
+  }
+  3.1%,
+  18.3% {
+    opacity: 0;
+  }
+  18.5%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes rod-bent {
+  0%,
+  2.9% {
+    opacity: 0;
+  }
+  3.1%,
+  18.3% {
+    opacity: 1;
+  }
+  18.5%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes line {
+  0%,
+  3.1% {
+    transform: scaleY(1);
+  }
+  6.2% {
+    transform: scaleY(0.71);
+  }
+  12.3%,
+  88% {
+    transform: scaleY(0.07);
+  }
+  95%,
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes hooked {
+  0%,
+  3.1% {
+    transform: translate(0, 0) rotate(0) scale(1);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1);
+  }
+  6.2% {
+    transform: translate(0, calc(var(--u) * -10)) rotate(0) scale(1);
+  }
+  12.3% {
+    transform: translate(0, calc(var(--u) * -28)) rotate(-6deg) scale(1);
+  }
+  /* A short wind-up, then the throw. */
+  15.4% {
+    transform: translate(calc(var(--u) * -2), calc(var(--u) * -31)) rotate(-16deg) scale(1);
+    animation-timing-function: cubic-bezier(0.25, 0.6, 0.45, 1);
+  }
+  /* The top of the arc sits above the button, so the duck drops into it. */
+  29.3% {
+    transform: translate(calc(var(--bx) * 0.62), calc(var(--by) - var(--u) * 26)) rotate(8deg) scale(0.9);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0.6);
+  }
+  40% {
+    transform: translate(var(--bx), var(--by)) rotate(20deg) scale(0.5);
+    opacity: 1;
+  }
+  41.6% {
+    transform: translate(var(--bx), var(--by)) rotate(20deg) scale(0.35);
+    opacity: 0;
+  }
+  /* Back under the water, out of sight, ready for the next cast. */
+  41.7%,
+  100% {
+    transform: translate(0, 0) rotate(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes splash {
+  0%,
+  4.5% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  5.4% {
+    opacity: 1;
+  }
+  16.9%,
+  100% {
+    transform: translateY(calc(var(--u) * -3));
+    opacity: 0;
+  }
+}
+
+@keyframes cta-catch {
+  0%,
+  38.5% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 122, 0, 0);
+  }
+  41.6% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 10px rgba(255, 122, 0, 0.25);
+  }
+  46.2% {
+    transform: scale(0.97);
+  }
+  50.8%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 22px rgba(255, 122, 0, 0);
+  }
+}
+
+/* The flyer's own cycle: 0% is the moment it leaves the button. */
+@keyframes flyer {
+  0% {
+    transform: translate(var(--fx), var(--fy)) scale(0.3);
+    opacity: 0;
+    animation-timing-function: linear;
+  }
+  2.5% {
+    transform: translate(var(--fx), var(--fy)) scale(0.35);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  8% {
+    transform: translate(calc(var(--fx) * 0.35), calc(var(--fy) * 0.35 - var(--u) * 6)) scale(0.85);
+    animation-timing-function: cubic-bezier(0.3, 0.3, 0.3, 1);
+  }
+  15% {
+    transform: translate(0, 0) scale(1);
+    animation-timing-function: ease-in-out;
+  }
+  38% {
+    transform: translate(0, calc(var(--u) * -1.5)) scale(1);
+    animation-timing-function: ease-in-out;
+  }
+  60% {
+    transform: translate(0, var(--u)) scale(1);
+    animation-timing-function: ease-in-out;
+  }
+  80% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.8, 0.5);
+  }
+  /* Gone just as the next duck drops into the button. */
+  98% {
+    transform: translate(28cqw, calc(var(--u) * -40)) scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(var(--fx), var(--fy)) scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes flag-wave {
+  from {
+    transform: rotate(-1.2deg);
+  }
+  to {
+    transform: rotate(1.2deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .card {
+    --u: 2px;
+    padding: 40px 22px 0;
+  }
+  .title {
+    font-size: 26px;
+  }
+  .text {
+    font-size: 15px;
+  }
+  .scene {
+    /* Taller sky, so the flag never overlaps the rod on a narrow card. */
+    height: calc(var(--u) * 100);
+    margin: 8px -22px 0;
+  }
+  .flag {
+    width: 200px;
+    padding: 10px 12px;
+  }
+  .flagTitle {
+    font-size: 15px;
+  }
+  .flagText {
+    font-size: 12px;
+  }
+  .tree {
+    display: none;
+  }
+}
+
+/* Without motion the scene holds still on the first step, and the steps are listed in full. */
+@media (prefers-reduced-motion: reduce) {
+  .rodStraight,
+  .rodBent,
+  .line,
+  .float,
+  .hooked,
+  .splash,
+  .flyer,
+  .flag,
+  .cta {
+    animation: none;
+  }
+  .hooked,
+  .splash {
+    opacity: 0;
+  }
+  .steps {
+    position: relative !important;
+    width: auto;
+    height: auto;
+    margin: 28px auto 0;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+    max-width: 640px;
+    padding: 0;
+    list-style: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: var(--font-text);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+}
