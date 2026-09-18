@@ -31,7 +31,7 @@ export const SCENE_PALETTE: Palette = {
 };
 
 /* A 16-wide strip, tiled across the whole width. Row 1 is the surface. */
-const GROUND = [
+export const GROUND = [
   "..t.....t.t.....",
   "gggGgggggggGgggg",
   "GGGGGGGGGGGGGGGG",
@@ -48,7 +48,7 @@ const POND = [
   "....wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww....",
 ];
 
-const REEDS = [
+export const REEDS = [
   ".b..b.",
   ".b..b.",
   ".g..b.",
@@ -84,7 +84,7 @@ const HALL = [
 ];
 const HALL_DOOR = 14.5;
 
-const TREE = [
+export const TREE = [
   "....lllll....",
   "..llllLllll..",
   ".lllLllllLll.",

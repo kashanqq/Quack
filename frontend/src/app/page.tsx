@@ -1,4 +1,5 @@
 import { copy } from "@/components/home/copy";
+import { Closing } from "@/components/home/Closing";
 import { CursorAura } from "@/components/home/CursorAura";
 import { HeroLandscape } from "@/components/home/HeroLandscape";
 import { HeroTitle } from "@/components/home/HeroTitle";
@@ -50,6 +51,8 @@ export default function HomePage() {
         <QuackSection />
 
         <LayerStack />
+
+        <Closing />
 
         <SiteFooter />
       </div>

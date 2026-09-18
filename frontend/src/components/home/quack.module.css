@@ -22,7 +22,7 @@
 }
 
 .heading {
-  margin: 0 0 44px;
+  margin: 0 0 28px;
   font-family: var(--font-mono);
   font-size: 64px;
   font-weight: 400;
@@ -613,5 +613,39 @@
   }
   .dotFill {
     transform: scaleX(1);
+  }
+}
+
+/* Intro under the heading: what makes this a path rather than a catalogue. */
+
+.intro {
+  width: min(880px, calc(100% - 32px));
+  margin: 0 auto 56px;
+  text-align: center;
+}
+
+.introTitle {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.introText {
+  max-width: 760px;
+  margin: 16px auto 0;
+  color: var(--panel-ink-dim);
+  font-family: var(--font-text);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+@media (max-width: 760px) {
+  .introTitle {
+    font-size: 24px;
+  }
+  .introText {
+    font-size: 15px;
   }
 }
