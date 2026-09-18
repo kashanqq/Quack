@@ -23,6 +23,12 @@ from app import keys
             "quack:ctx:topic:student-1:skill-2",
         ),
         (keys.lock, ("example",), "quack:lock:example"),
+        (
+            keys.forecast,
+            ("student-1", "SAT_MATH"),
+            "quack:forecast:student-1:SAT_MATH",
+        ),
+        (keys.lock, ("rebuild:student-1",), "quack:lock:rebuild:student-1"),
     ],
 )
 def test_exact_key(factory, args, expected):

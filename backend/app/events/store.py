@@ -9,19 +9,33 @@ from redis.asyncio import Redis
 from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.db.models import Event as EventRow
 from app.events import dispatch as dispatcher
 from app.events.session import current_session_id
 from app.schemas.events import (
+    DiagnosticCompletedPayload,
+    DiagnosticProgressPayload,
     Event,
     EventIn,
     EventType,
     MessageAssistantPayload,
     MessageUserPayload,
+    MilestoneDonePayload,
+    MisconceptionDisputedPayload,
+    MockCompletedPayload,
+    MockStartedPayload,
     ProfileUpdatedPayload,
     ProgramSavedPayload,
+    SetCompletedPayload,
+    SetDeadlineChangedPayload,
+    SetOpenedPayload,
+    SetSwitchedByUserPayload,
     TaskAnsweredPayload,
     TaskIssuedPayload,
+    TaskSkippedPayload,
+    TopicCompletedPayload,
+    TopicOpenedPayload,
 )
 
 _PAYLOAD_MODELS: dict[EventType, type[BaseModel]] = {
@@ -32,6 +46,21 @@ _PAYLOAD_MODELS: dict[EventType, type[BaseModel]] = {
     EventType.profile_updated: ProfileUpdatedPayload,
     EventType.program_saved: ProgramSavedPayload,
     EventType.program_removed: ProgramSavedPayload,
+    EventType.task_skipped: TaskSkippedPayload,
+    EventType.task_timed_out: TaskSkippedPayload,
+    EventType.diagnostic_progress: DiagnosticProgressPayload,
+    EventType.diagnostic_completed: DiagnosticCompletedPayload,
+    EventType.mock_started: MockStartedPayload,
+    EventType.mock_completed: MockCompletedPayload,
+    EventType.set_opened: SetOpenedPayload,
+    EventType.set_completed: SetCompletedPayload,
+    EventType.set_switched_by_user: SetSwitchedByUserPayload,
+    EventType.set_deadline_changed: SetDeadlineChangedPayload,
+    EventType.topic_opened: TopicOpenedPayload,
+    EventType.topic_completed: TopicCompletedPayload,
+    EventType.misconception_disputed: MisconceptionDisputedPayload,
+    EventType.misconception_undisputed: MisconceptionDisputedPayload,
+    EventType.milestone_done: MilestoneDonePayload,
 }
 _json_payload = TypeAdapter(dict[str, Any])
 
@@ -40,11 +69,16 @@ def _validated_payload(ev: EventIn) -> dict[str, Any]:
     model = _PAYLOAD_MODELS.get(ev.type)
     if model is not None:
         return model.model_validate(ev.payload).model_dump(mode="json")
-    # Phase 2 event types have no agreed field-level payload schema yet.
+    # Other event types have no agreed field-level payload schema.
     return _json_payload.dump_python(ev.payload, mode="json")
 
 
-async def append(session: AsyncSession, redis: Redis, ev: EventIn) -> Event:
+async def append(
+    session: AsyncSession,
+    redis: Redis,
+    ev: EventIn,
+    deps: dispatcher.RuleDeps | None = None,
+) -> Event:
     session_id = ev.session_id
     if session_id is None:
         session_id = await current_session_id(redis, ev.student_id)
@@ -79,7 +113,14 @@ async def append(session: AsyncSession, redis: Redis, ev: EventIn) -> Event:
         id=event_id,
         ingested_at=ingested_at,
     )
-    await dispatcher.dispatch(session, event)
+    if deps is None:
+        deps = dispatcher.RuleDeps(
+            graph=None,
+            redis=redis,
+            params=settings.KNOWLEDGE,
+            now=lambda: datetime.now(UTC),
+        )
+    await dispatcher.dispatch(session, event, deps)
     return event
 
 
@@ -119,3 +160,14 @@ async def list_events(
         statement = statement.where(EventRow.occurred_at >= since)
     result = await session.scalars(statement.order_by(EventRow.id).limit(limit))
     return [Event.model_validate(row) for row in result]
+
+
+async def list_by_type(
+    session: AsyncSession,
+    student_id: UUID,
+    types: list[EventType],
+    since: datetime | None,
+    limit: int,
+) -> list[Event]:
+    """List a student's selected events in the existing ascending ID order."""
+    return await list_events(session, student_id, types=types, since=since, limit=limit)

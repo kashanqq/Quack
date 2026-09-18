@@ -1,0 +1,28 @@
+{
+  "exam": {"id": "SAT_MATH", "name": "Phase 2 test SAT Math", "max_raw_score": 10},
+  "areas": [
+    {
+      "id": "test.phase2.area.algebra", "name": "Test algebra", "score_share": 0.6,
+      "skills": [
+        {"id": "test.phase2.skill.linear", "weight": 2},
+        {"id": "test.phase2.skill.absolute", "weight": 2},
+        {"id": "test.phase2.skill.quadratic", "weight": 2}
+      ]
+    },
+    {
+      "id": "test.phase2.area.geometry", "name": "Test geometry", "score_share": 0.4,
+      "skills": [
+        {"id": "test.phase2.skill.circle", "weight": 2},
+        {"id": "test.phase2.skill.triangle", "weight": 2}
+      ]
+    }
+  ],
+  "skills": [
+    {"id": "test.phase2.skill.linear", "name": "Linear", "description": "Linear equations", "effort_h": 2, "requires": []},
+    {"id": "test.phase2.skill.absolute", "name": "Absolute", "description": "Absolute value equations", "effort_h": 2, "requires": [{"skill_id": "test.phase2.skill.linear", "strength": 0.9}]},
+    {"id": "test.phase2.skill.quadratic", "name": "Quadratic", "description": "Quadratic equations", "effort_h": 2, "requires": [{"skill_id": "test.phase2.skill.linear", "strength": 0.8}]},
+    {"id": "test.phase2.skill.circle", "name": "Circle", "description": "Circle and chord", "effort_h": 2, "requires": []},
+    {"id": "test.phase2.skill.triangle", "name": "Triangle", "description": "Triangles", "effort_h": 2, "requires": []}
+  ],
+  "sources": [{"url": "https://example.invalid/phase2-test", "checked_at": "2026-09-18"}]
+}

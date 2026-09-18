@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -112,3 +112,75 @@ async def get_seen(
         .where(SeenTemplate.student_id == student_id, TemplateRow.skill_id == skill_id)
     )
     return dict(rows.all())
+
+
+async def list_templates_for_skills(
+    session: AsyncSession, skill_ids: list[str]
+) -> dict[str, list[TaskTemplateSpec]]:
+    if not skill_ids:
+        return {}
+    rows = (
+        await session.scalars(
+            select(TemplateRow)
+            .where(TemplateRow.skill_id.in_(skill_ids))
+            .order_by(TemplateRow.skill_id, TemplateRow.id)
+        )
+    ).all()
+    grouped: dict[str, list[TaskTemplateSpec]] = {}
+    for row in rows:
+        grouped.setdefault(row.skill_id, []).append(
+            TaskTemplateSpec.model_validate(row.spec)
+        )
+    return grouped
+
+
+async def get_seen_many(
+    session: AsyncSession, student_id: UUID, skill_ids: list[str]
+) -> dict[str, int]:
+    if not skill_ids:
+        return {}
+    rows = await session.execute(
+        select(SeenTemplate.template_id, SeenTemplate.n_seen)
+        .join(TemplateRow, TemplateRow.id == SeenTemplate.template_id)
+        .where(
+            SeenTemplate.student_id == student_id,
+            TemplateRow.skill_id.in_(skill_ids),
+        )
+    )
+    return dict(rows.all())
+
+
+async def mark_answered(
+    session: AsyncSession,
+    instance_id: UUID,
+    answered_at: datetime,
+    correct: bool,
+) -> None:
+    await session.execute(
+        update(InstanceRow)
+        .where(InstanceRow.id == instance_id)
+        .values(answered_at=answered_at, correct=correct)
+    )
+    await session.flush()
+
+
+async def list_instances(
+    session: AsyncSession, student_id: UUID, ids: list[UUID]
+) -> list[TaskInstance]:
+    if not ids:
+        return []
+    rows = (
+        await session.scalars(
+            select(InstanceRow).where(
+                InstanceRow.student_id == student_id, InstanceRow.id.in_(ids)
+            )
+        )
+    ).all()
+    fields = TaskInstance.model_fields
+    by_id = {
+        row.id: TaskInstance.model_validate(
+            {name: getattr(row, name) for name in fields}
+        )
+        for row in rows
+    }
+    return [by_id[instance_id] for instance_id in ids if instance_id in by_id]

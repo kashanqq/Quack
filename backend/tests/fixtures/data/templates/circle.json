@@ -1,0 +1,22 @@
+{
+  "id": "test.phase2.template.circle",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 3,
+  "skill_id": "test.phase2.skill.circle",
+  "tags": ["circle", "chord"],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "A circle has radius {r}. A chord is {d} units from its center. Find its length.",
+  "correct": "2*sqrt(r**2 - d**2)",
+  "distractors": [
+    {"expr": "sqrt(r**2 - d**2)", "misconception_id": null},
+    {"expr": "r + d", "misconception_id": null},
+    {"expr": "2*d", "misconception_id": null}
+  ],
+  "solution": ["Half the chord is sqrt({r}² - {d}²).", "Double it: {answer}."],
+  "generator": "sat.geom.circle_chord",
+  "figure": null
+}
