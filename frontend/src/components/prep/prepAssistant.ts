@@ -3,8 +3,9 @@
 // with. A request to explain material is turned back to planning and to «Проверь себя».
 // Pure functions over the prep model; stands in for the backend until there is one.
 
-import { daysBetween, EXAMS, formatDate, formatShort, parseDeadline, SETS, skillById, SKILLS, TODAY, type ExamId } from "./prepData";
+import { daysBetween, EXAMS, formatDate, formatShort, parseDeadline, SETS, skillById, SKILLS, TODAY, type ExamId, type StudySet } from "./prepData";
 import type { PrepModel } from "./prepModel";
+import type { TopicContent } from "./topicContent";
 
 const DAY = 86_400_000;
 const addDays = (d: Date, n: number) => new Date(d.getTime() + Math.round(n) * DAY);
@@ -151,4 +152,57 @@ export function assistantReply(text: string, model: PrepModel, fallback: ExamId)
   }
 
   return "Я собираю план подготовки. Напиши экзамен и срок — например, «IELTS 12 декабря, как успеть?» — или спроси, сколько заниматься в день и с чего начать.";
+}
+
+/* ---------- The assistant inside a topic ---------- */
+
+export const TOPIC_PROMPTS = ["Объясни проще", "Дай пример", "Где я ошибаюсь?", "Успею к дедлайну?"];
+
+/**
+ * A reply inside one topic of one set. Answers about the material come from the topic's own short
+ * explanation; about mistakes — from the knowledge model; about time — from the set's deadline.
+ * Demo rules until the backend runs a model with this same context (product-logic §4.5).
+ */
+export function topicReply(text: string, model: PrepModel, skillId: string, set: StudySet, content: TopicContent | undefined): string {
+  const t = text.toLowerCase();
+  const skill = skillById(skillId);
+
+  if (/пример|покажи|разбер/.test(t)) {
+    return content ? `Пример: ${content.example.q}\nРешение: ${content.example.a}` : `Примеров по теме «${skill.name}» пока нет.`;
+  }
+
+  if (/ошиб|ловушк|где я|не так|неправ/.test(t)) {
+    const own = model.misconceptions[skillId].filter((m) => m.status === "confirmed" || m.status === "suspected");
+    if (own.length) {
+      return [
+        `По твоим ответам в теме «${skill.name}»:`,
+        ...own.map((m) => `• ${m.text}${m.trigger ? ` — ${m.trigger}` : ""}`),
+        "Проверка во вкладке рядом покажет, ушла ли ошибка.",
+      ].join("\n");
+    }
+    return `Своих ловушек в этой теме у тебя пока не видно. Частая у всех: ${content?.trap.toLowerCase() ?? "невнимательность в знаках"}`;
+  }
+
+  if (/успе|дедлайн|срок|сколько|когда|время|план/.test(t)) {
+    const left = daysBetween(TODAY, set.deadline);
+    const open = set.skills.filter((id) => model.states[id] !== "solid");
+    if (!open.length) return `Все темы сета ${set.number} уже держатся — можно закрывать его.`;
+    if (left <= 0) {
+      return `Дедлайн сета был ${formatDate(set.deadline)}. Это не страшно: прогноз уже пересчитан. Осталось доказать тем: ${open.length} — начни с «${skillById(open[0]).name}».`;
+    }
+    const perDay = minutesPerDay(open.length, left);
+    return `До дедлайна ${formatDate(set.deadline)} — ${left} дн., не доказано тем: ${open.length}. Примерно ${perDay} мин в день хватит. ${
+      model.states[skillId] === "solid" ? "Эта тема уже держится — переходи к следующей." : "Эту тему закрой проверкой, когда будешь уверен."
+    }`;
+  }
+
+  if (/провер|тест|задач/.test(t)) return "Задачи — во вкладке «Проверка». Каждый верный ответ красит тему на графе.";
+
+  if (content && /объясн|проще|что такое|не понима|как|зачем|почему|теори/.test(t)) {
+    return [content.summary, "Нужно уметь:", ...content.points.map((p) => `• ${p}`)].join("\n");
+  }
+
+  return content
+    ? `${content.summary}\nСпроси пример, свои ошибки в этой теме или успеешь ли к дедлайну.`
+    : `Спроси пример, свои ошибки в теме «${skill.name}» или успеешь ли к дедлайну.`;
 }

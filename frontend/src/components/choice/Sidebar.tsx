@@ -73,7 +73,6 @@ export function Sidebar(props: SidebarProps) {
         <button type="button" className={styles.iconButton} aria-label="Развернуть левую панель" onClick={props.onToggle}>
           <Icon name="panel-left-open" />
         </button>
-        <span className={styles.railDivider} />
         {mode === "prep" && (
           <>
             <span className={styles.railDivider} />
@@ -124,7 +123,8 @@ export function Sidebar(props: SidebarProps) {
             ))}
           </>
         )}
-        {mode !== "prep" && (
+        {/* Programs and chats belong to «Выбор» only */}
+        {mode === "choice" && (
           <>
             <span className={styles.railDivider} />
             {TABS.map(({ tab: t, label, icon }) => (

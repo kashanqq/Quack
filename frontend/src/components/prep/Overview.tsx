@@ -6,7 +6,6 @@ import { useQuack } from "../quack/source";
 import { routeDelay } from "../quack/standing";
 import { ForecastChart } from "./ForecastChart";
 import {
-  conflicts,
   daysBetween,
   formatDate,
   formatShort,
@@ -14,6 +13,7 @@ import {
   milestones,
   realismShift,
   requirements,
+  SETS,
   setById,
   skillById,
   SKILLS,
@@ -34,16 +34,16 @@ type Props = {
   sub: PrepSub;
   /** Jump to another tab, optionally straight to one of its sub-tabs */
   onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
+  /** Opens a set's graph, optionally with one of its topics selected */
+  onOpenSet: (setId: string, topic?: string) => void;
   onAccept: (setId: string) => void;
-  onToggleMilestone: (id: string) => void;
-  onResolveConflict: (id: string, option: string) => void;
 };
 
 /**
  * §4.1 — the section's overview, split into four sub-tabs so one screen answers one question:
  * what to do now, what the programs demand, which dates are coming, how the programs are changing.
  */
-export function Overview({ model, programs, sub, onGo, onAccept, onToggleMilestone, onResolveConflict }: Props) {
+export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept }: Props) {
   // Each exam with a knowledge model has its own readiness, history and forecast
   const series = Object.fromEntries(
     EXAM_IDS.map((id) => {
@@ -60,18 +60,8 @@ export function Overview({ model, programs, sub, onGo, onAccept, onToggleMilesto
   const list = milestones(programs);
 
   if (sub === "requirements") return <Requirements exams={exams} series={series} />;
-  if (sub === "milestones")
-    return (
-      <Milestones
-        list={list}
-        conflictList={conflicts(list)}
-        model={model}
-        onToggleMilestone={onToggleMilestone}
-        onResolveConflict={onResolveConflict}
-      />
-    );
   if (sub === "programs") return <Programs programs={programs} onGo={onGo} />;
-  return <Now model={model} forecast={forecast} milestoneList={list} onGo={onGo} onAccept={onAccept} />;
+  return <Now model={model} forecast={forecast} milestoneList={list} onGo={onGo} onOpenSet={onOpenSet} onAccept={onAccept} />;
 }
 
 /* ---------- Сейчас: the set in work and what closed last ---------- */
@@ -81,12 +71,14 @@ function Now({
   forecast,
   milestoneList,
   onGo,
+  onOpenSet,
   onAccept,
 }: {
   model: PrepModel;
   forecast: Date;
   milestoneList: ReturnType<typeof milestones>;
   onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
+  onOpenSet: (setId: string, topic?: string) => void;
   onAccept: (setId: string) => void;
 }) {
   const proposed = proposedSet(model);
@@ -135,7 +127,7 @@ function Now({
             <span>
               закрыто {closed(model, current)} из {current.skills.length}
             </span>
-            <button type="button" className={styles.primary} onClick={() => onGo("current")}>
+            <button type="button" className={styles.primary} onClick={() => onOpenSet(current.id)}>
               <Icon name="play" size={16} /> Продолжить
             </button>
           </div>
@@ -150,7 +142,7 @@ function Now({
               <button type="button" className={styles.primary} onClick={() => onAccept(proposed.id)}>
                 Принять
               </button>
-              <button type="button" className={styles.secondary} onClick={() => onGo("sets")}>
+              <button type="button" className={styles.secondary} onClick={() => onGo("sets", "list")}>
                 Выбрать другой
               </button>
             </div>
@@ -161,7 +153,7 @@ function Now({
       </section>
 
       <PaceCard forecast={forecast} onGo={onGo} />
-      <Important model={model} milestoneList={milestoneList} onGo={onGo} />
+      <Important model={model} milestoneList={milestoneList} onGo={onGo} onOpenSet={onOpenSet} />
     </div>
   );
 }
@@ -209,11 +201,18 @@ function Important({
   model,
   milestoneList,
   onGo,
+  onOpenSet,
 }: {
   model: PrepModel;
   milestoneList: ReturnType<typeof milestones>;
   onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
+  onOpenSet: (setId: string, topic?: string) => void;
 }) {
+  // The set a topic is practised in: an open one first, the current one above all
+  const setWith = (skillId: string) =>
+    SETS.find((s) => s.id === model.currentSet && s.skills.includes(skillId)) ??
+    SETS.find((s) => s.skills.includes(skillId) && !model.doneSets.includes(s.id)) ??
+    SETS.find((s) => s.skills.includes(skillId));
   const items: { key: string; tone: "root" | "trap" | "late" | "date"; title: string; text: string; go: () => void; action: string }[] = [];
 
   for (const root of SKILLS.filter((s) => s.root && model.states[s.id] !== "solid")) {
@@ -236,8 +235,11 @@ function Important({
       tone: "trap",
       title: `Ловушка: ${skill.name}`,
       text: trap.text,
-      go: () => onGo("current", "check"),
-      action: "Проверь себя",
+      go: () => {
+        const set = setWith(skill.id);
+        if (set) onOpenSet(set.id, skill.id);
+      },
+      action: "Проверить",
     });
   }
 
@@ -248,7 +250,7 @@ function Important({
       tone: "late",
       title: `Сет ${delay.set.number} ещё открыт`,
       text: `срок был ${formatDate(delay.set.deadline)} — прогноз сдвинулся на ${delay.days} дн.`,
-      go: () => onGo("current"),
+      go: () => onOpenSet(delay.set.id),
       action: "Продолжить",
     });
   }
@@ -261,8 +263,8 @@ function Important({
       tone: "date",
       title: next.title,
       text: left === 0 ? "сегодня" : `через ${left} дн. · ${formatDate(next.date)}`,
-      go: () => onGo("overview", "milestones"),
-      action: "Вехи",
+      go: () => onGo("overview", "requirements"),
+      action: "Требования",
     });
   }
 
@@ -343,7 +345,7 @@ function Requirements({
                 </p>
               </div>
             ) : (
-              <p className={styles.muted}>Без модели знаний: подготовка идёт окнами на вехах, прогноза нет.</p>
+              <p className={styles.muted}>Без модели знаний: подготовка идёт окнами до дат экзамена, прогноза нет.</p>
             )}
           </section>
         );
@@ -358,96 +360,6 @@ function Requirements({
           <ForecastChart points={series[id].points} testDate={EXAMS[id].test} forecast={series[id].forecast} />
         </section>
       ))}
-    </div>
-  );
-}
-
-/* ---------- Вехи: the dates, and the conflicts between them ---------- */
-
-function Milestones({
-  list,
-  conflictList,
-  model,
-  onToggleMilestone,
-  onResolveConflict,
-}: {
-  list: ReturnType<typeof milestones>;
-  conflictList: ReturnType<typeof conflicts>;
-  model: PrepModel;
-  onToggleMilestone: (id: string) => void;
-  onResolveConflict: (id: string, option: string) => void;
-}) {
-  const done = list.filter((m) => model.milestonesDone.includes(m.id)).length;
-  const open = conflictList.filter((c) => !model.resolvedConflicts[c.id]);
-
-  return (
-    <div className={styles.canvasGrid}>
-      {open.length > 0 && (
-        <section className={`${styles.canvas} ${styles.full}`} aria-label="Конфликты вех">
-          <header className={styles.canvasHead}>
-            <h3>
-              <Icon name="triangle-alert" size={18} /> Требуют решения
-            </h3>
-          </header>
-          {open.map((c) => (
-            <div key={c.id} className={styles.conflict} role="alert">
-              <Icon name="triangle-alert" size={18} />
-              <div>
-                <p>{c.text}</p>
-                <div className={styles.actions}>
-                  {c.options.map((o) => (
-                    <button key={o} type="button" className={styles.secondary} onClick={() => onResolveConflict(c.id, o)}>
-                      {o}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}
-        </section>
-      )}
-
-      <section className={`${styles.canvas} ${styles.full}`} aria-label="Вехи">
-        <header className={styles.canvasHead}>
-          <h3>Вехи</h3>
-          <span className={styles.muted}>
-            сделано {done} из {list.length}
-          </span>
-        </header>
-
-        <ol className={styles.timeline}>
-          {list.map((m) => {
-            const isDone = model.milestonesDone.includes(m.id);
-            const left = daysBetween(TODAY, m.date);
-            return (
-              <li key={m.id} className={`${styles.milestone} ${isDone ? styles.milestoneDone : ""}`}>
-                <span className={styles.milestoneDate}>
-                  {formatShort(m.date)}
-                  <span>{left > 0 ? `через ${left} дн.` : "сегодня"}</span>
-                </span>
-                <span className={styles.milestoneDot} aria-hidden="true" />
-                <span className={styles.milestoneBody}>
-                  <strong>{m.title}</strong>
-                  <span className={styles.muted}>
-                    {m.detail} · {m.source}
-                  </span>
-                </span>
-                {m.checkable && (
-                  <label className={styles.check}>
-                    <input type="checkbox" checked={isDone} onChange={() => onToggleMilestone(m.id)} />
-                    <span>{isDone ? "сделано" : "отметить"}</span>
-                  </label>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-        {Object.values(model.resolvedConflicts).map((choice) => (
-          <p key={choice} className={styles.muted}>
-            Выбрано: {choice}. Вехи пересобраны.
-          </p>
-        ))}
-      </section>
     </div>
   );
 }

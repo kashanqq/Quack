@@ -5,7 +5,6 @@ import {
   SETS,
   SKILLS,
   TODAY,
-  setById,
   type Evidence,
   type ExamId,
   type Misconception,
@@ -17,44 +16,29 @@ import {
 
 import type { IconName } from "../choice/Icon";
 
-export type PrepTab = "overview" | "sets" | "current";
+export type PrepTab = "overview" | "sets";
 
 export const PREP_TABS: { tab: PrepTab; label: string; icon: IconName }[] = [
   { tab: "overview", label: "Обзор", icon: "layout-dashboard" },
   { tab: "sets", label: "Сеты", icon: "route" },
-  { tab: "current", label: "Текущий сет", icon: "target" },
 ];
 
 /**
  * Every tab holds several separate things, so each one is split further: the tab says which part of
  * preparation you are in, the sub-tab says what you are looking at. The left column shows both.
  */
-export type PrepSub =
-  | "now"
-  | "requirements"
-  | "milestones"
-  | "programs"
-  | "route"
-  | "map"
-  | "all"
-  | "check"
-  | "assistant";
+export type PrepSub = "now" | "requirements" | "programs" | "list" | "route" | "map";
 
 export const PREP_SUBS: Record<PrepTab, { sub: PrepSub; label: string; icon: IconName; hint: string }[]> = {
   overview: [
-    { sub: "now", label: "Сейчас", icon: "target", hint: "текущий сет и отчёт" },
+    { sub: "now", label: "Сейчас", icon: "target", hint: "что делать и темп" },
     { sub: "requirements", label: "Требования", icon: "gauge", hint: "цели экзаменов и прогноз" },
-    { sub: "milestones", label: "Вехи", icon: "flag", hint: "даты и конфликты" },
     { sub: "programs", label: "Программы", icon: "graduation-cap", hint: "как меняются оценки" },
   ],
   sets: [
+    { sub: "list", label: "Все сеты", icon: "layers", hint: "три рекомендованных сверху" },
     { sub: "route", label: "Маршрут", icon: "route", hint: "сеты по датам" },
-    { sub: "map", label: "Карта навыков", icon: "network", hint: "граф и свидетельства" },
-    { sub: "all", label: "Все сеты", icon: "layers", hint: "по областям" },
-  ],
-  current: [
-    { sub: "check", label: "Проверь себя", icon: "circle-check", hint: "докажи, что знаешь" },
-    { sub: "assistant", label: "Ассистент", icon: "message-circle", hint: "план к твоему сроку" },
+    { sub: "map", label: "Карта навыков", icon: "network", hint: "все темы экзамена" },
   ],
 };
 
@@ -122,6 +106,55 @@ export function setStatus(model: PrepModel, set: StudySet): SetStatus | "propose
   if (model.currentSet === set.id) return "current";
   if (!model.currentSet && proposedSet(model)?.id === set.id) return "proposed";
   return set.status === "review" ? "review" : "upcoming";
+}
+
+/**
+ * Why a set is worth taking now, from what the model knows about the student: roots of errors,
+ * confirmed traps, skills that do not hold. A set leaning on skills that are not there yet goes lower.
+ */
+export type Recommendation = { set: StudySet; score: number; reasons: string[] };
+
+const GAP: Record<SkillState, number> = { weak: 1, lowData: 0.6, shaky: 0.5, solid: 0 };
+
+export function rankSets(model: PrepModel, exam: ExamId): Recommendation[] {
+  return SETS.filter((s) => s.exam === exam && !model.doneSets.includes(s.id))
+    .map((set) => {
+      const reasons: string[] = [];
+      let score = 0;
+      for (const id of set.skills) {
+        const skill = SKILLS.find((s) => s.id === id)!;
+        const state = model.states[id];
+        score += GAP[state] * skill.weight;
+        if (state === "solid") continue;
+        if (skill.root) {
+          score += 30;
+          reasons.push(`корень ошибок: ${skill.name}`);
+        }
+        const traps = model.misconceptions[id].filter((m) => m.status === "confirmed");
+        if (traps.length) {
+          score += 25;
+          reasons.push(`подтверждённая ловушка: ${skill.name}`);
+        } else if (state === "weak") {
+          reasons.push(`не держится: ${skill.name}`);
+        }
+      }
+      // Prerequisites outside the set that do not hold yet: the set would be built on sand
+      const missing = [
+        ...new Set(
+          set.skills.flatMap((id) => SKILLS.find((s) => s.id === id)!.requires).filter((id) => !set.skills.includes(id) && model.states[id] !== "solid")
+        ),
+      ];
+      score -= missing.length * 12;
+      if (missing.length) reasons.push(`сначала нужно: ${missing.map((id) => SKILLS.find((s) => s.id === id)!.name).join(", ")}`);
+      // Review comes last by design: no new skills in it
+      if (set.status === "review") score -= 40;
+      if (!reasons.length) {
+        const open = set.skills.filter((id) => model.states[id] !== "solid").length;
+        reasons.push(open ? `осталось доказать тем: ${open} из ${set.skills.length}` : "всё уже держится — повторение");
+      }
+      return { set, score, reasons };
+    })
+    .sort((a, b) => b.score - a.score);
 }
 
 /** The next set the system recommends: the first one in the route that isn't passed. */
@@ -207,12 +240,17 @@ export function answerTask(model: PrepModel, skillId: string, task: Task, option
     evidence: { ...model.evidence, [skillId]: [evidence, ...model.evidence[skillId]] },
   };
 
+  // Any open set with this topic may be complete now — not only the current one
   let setPassed: StudySet | undefined;
-  if (next.currentSet) {
-    const set = setById(next.currentSet);
+  for (const set of SETS.filter((s) => s.skills.includes(skillId) && !next.doneSets.includes(s.id))) {
     if (closed(next, set) === set.skills.length) {
       setPassed = set;
-      next = { ...next, doneSets: [...next.doneSets, set.id], currentSet: null, reportFor: set.id };
+      next = {
+        ...next,
+        doneSets: [...next.doneSets, set.id],
+        currentSet: next.currentSet === set.id ? null : next.currentSet,
+        reportFor: set.id,
+      };
     }
   }
 

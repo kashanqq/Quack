@@ -17,26 +17,12 @@
   text-align: left;
 }
 
-.prepHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px 24px;
-  padding: 12px 32px 10px;
-  border-bottom: 1px solid var(--canvas-line);
-}
 
-.prepTitle {
-  margin: 0 0 2px;
-  font-size: 24px;
-  font-weight: 400;
-}
 
 .prepScroll {
   flex: 1;
   min-height: 0;
-  padding: 10px 32px 28px;
+  padding: 18px 32px 28px;
   overflow-y: auto;
   scrollbar-color: #57524e transparent;
   scrollbar-width: thin;
@@ -347,13 +333,6 @@
   gap: 8px;
 }
 
-.dotList {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding-left: 18px;
-}
-
 /* ---------- Exam cards ---------- */
 
 .examTarget {
@@ -379,28 +358,6 @@
 .readiness p {
   margin: 8px 0 0;
   font-size: 14px;
-}
-
-.readinessRow {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 6px;
-  font-size: 14px;
-}
-
-.bar {
-  height: 8px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-}
-
-.bar span {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  border-radius: 4px;
-  transition: width 0.9s var(--ease);
 }
 
 /* ---------- Report / next set ---------- */
@@ -429,90 +386,6 @@
 
 /* ---------- Milestones ---------- */
 
-.timeline {
-  position: relative;
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.milestone {
-  position: relative;
-  display: grid;
-  grid-template-columns: 86px 20px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  transition: opacity 0.3s ease;
-}
-
-.milestone::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 105px;
-  width: 2px;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.milestone:first-child::before {
-  top: 50%;
-}
-
-.milestone:last-child::before {
-  bottom: 50%;
-}
-
-.milestoneDate {
-  display: grid;
-  font-family: var(--font-mono);
-  font-size: 14px;
-  text-align: right;
-}
-
-.milestoneDate span {
-  color: var(--text-faint);
-  font-family: var(--font-text);
-  font-size: 11px;
-}
-
-.milestoneDot {
-  position: relative;
-  z-index: 1;
-  width: 12px;
-  height: 12px;
-  justify-self: center;
-  background: var(--canvas-bg);
-  border: 2px solid var(--accent-label);
-  border-radius: 50%;
-  transition: background 0.3s ease, border-color 0.3s ease;
-}
-
-.milestoneBody {
-  display: grid;
-  gap: 2px;
-  font-size: 15px;
-}
-
-.milestoneBody strong {
-  font-weight: 500;
-}
-
-.milestoneDone {
-  opacity: 0.6;
-}
-
-.milestoneDone .milestoneDot {
-  background: var(--solid);
-  border-color: var(--solid);
-}
-
-.milestoneDone .milestoneBody strong {
-  text-decoration: line-through;
-}
-
 .check {
   display: inline-flex;
   align-items: center;
@@ -526,27 +399,6 @@
   width: 16px;
   height: 16px;
   accent-color: var(--solid);
-}
-
-.conflict {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 14px;
-  padding: 12px 14px;
-  color: var(--shaky);
-  background: rgba(255, 196, 74, 0.08);
-  border: 1px solid rgba(255, 196, 74, 0.3);
-  border-radius: 14px;
-}
-
-.conflict p {
-  margin: 0;
-  color: var(--text);
-  font-size: 15px;
-}
-
-.conflict .actions {
-  margin-top: 8px;
 }
 
 /* ---------- Side cards ---------- */
@@ -1520,18 +1372,6 @@
 
 /* ---------- Sets by area ---------- */
 
-.areaGroups {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-}
-
-.areaGroup {
-  display: grid;
-  align-content: start;
-  gap: 10px;
-}
-
 .setCard {
   display: grid;
   gap: 4px;
@@ -1591,24 +1431,7 @@
   line-height: 1.35;
 }
 
-/* ---------- Current set ---------- */
-
-.setWork {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  grid-template-areas:
-    "head head"
-    "topics topic";
-  align-items: start;
-  gap: 16px;
-}
-
-/* The assistant plans the whole preparation, not a topic: it takes the full width. */
-.setWork[data-mode="assistant"] {
-  grid-template-areas:
-    "head head"
-    "topic topic";
-}
+/* ---------- Checks (inside a topic) ---------- */
 
 /* Where the skill stands on the map right now, in the map's own colours. */
 .checkState {
@@ -1668,23 +1491,10 @@
   color: var(--accent);
 }
 
-.setHeader {
-  grid-area: head;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px 32px;
-}
-
 .setTitle {
   margin: 0 0 4px;
   font-size: 26px;
   font-weight: 500;
-}
-
-.setHeader p {
-  margin: 0;
 }
 
 .setProgress {
@@ -1718,58 +1528,6 @@
 
 .segments span[data-state="weak"] {
   background: var(--weak);
-}
-
-.topics {
-  grid-area: topics;
-  display: grid;
-  gap: 4px;
-  padding: 14px 10px;
-}
-
-.topics .eyebrow {
-  padding: 0 8px;
-}
-
-.topic {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px;
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  background: none;
-  border: 0;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.topic .glyph {
-  margin-top: 3px;
-}
-
-.topic:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.topic[aria-current="true"] {
-  background: var(--accent-tint);
-}
-
-.topicText {
-  display: grid;
-  gap: 2px;
-  font-size: 15px;
-}
-
-.topicText .muted {
-  font-size: 12px;
-}
-
-.topicCanvas {
-  grid-area: topic;
 }
 
 .task {
@@ -1868,15 +1626,6 @@
 
 /* ---------- Prep chat ---------- */
 
-.chatCanvas {
-  grid-area: topic;
-  display: flex;
-  flex-direction: column;
-  height: min(620px, calc(100dvh - 260px));
-  min-height: 380px;
-  padding-bottom: 14px;
-}
-
 .chatLines {
   display: grid;
   flex: 1;
@@ -1904,24 +1653,6 @@
   justify-self: end;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 14px 14px 4px 14px;
-}
-
-.systemLine {
-  font-size: 13px;
-  color: var(--accent-label);
-  animation: rise 0.3s var(--ease-out) both;
-}
-
-.systemLine summary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-
-.systemLine p {
-  margin: 4px 0 0 20px;
-  color: var(--text-faint);
 }
 
 .chatForm {
@@ -1973,14 +1704,6 @@
   }
 }
 
-/* ---------- Narrower screens ---------- */
-
-@media (max-width: 1400px) {
-  .setWork {
-    grid-template-columns: 220px minmax(0, 1fr);
-  }
-}
-
 @media (max-width: 1100px) {
   .canvasGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1992,10 +1715,6 @@
 }
 
 @media (max-width: 760px) {
-  .prepHead {
-    padding: 12px 16px 10px;
-  }
-
   .prepScroll {
     padding: 14px 12px 32px;
   }
@@ -2018,29 +1737,8 @@
     font-size: 12px;
   }
 
-  .setWork,
-  .setWork[data-mode="assistant"] {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "head"
-      "topics"
-      "topic";
-  }
-
   .options {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .milestone {
-    grid-template-columns: 62px 16px minmax(0, 1fr);
-  }
-
-  .milestone::before {
-    left: 77px;
-  }
-
-  .milestone .check {
-    grid-column: 3;
   }
 
   .evidence li {
@@ -2155,3 +1853,606 @@
 .important li .link {
   flex: none;
 }
+
+/* ---------- Сеты: three recommended, then the rest ---------- */
+
+.setList {
+  display: grid;
+  gap: 14px;
+}
+
+.setListHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px 20px;
+}
+
+.setListHead h3 {
+  margin: 0 0 2px;
+  font-size: 19px;
+  font-weight: 500;
+}
+
+.setListHead p {
+  margin: 0;
+}
+
+.recGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.setGridSmall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.setList > .eyebrow {
+  margin: 10px 0 0;
+}
+
+.setCard {
+  cursor: pointer;
+  animation: rise 0.3s var(--ease-out) both;
+}
+
+.setCard:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.setCard .primary,
+.setCard .secondary {
+  justify-self: start;
+  align-self: end;
+  min-height: 32px;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+/* The recommended ones carry more: they are the start of the answer to "what now" */
+.setCardRec {
+  align-content: start;
+  padding: 16px;
+  background: var(--canvas-bg);
+  border-color: var(--canvas-line);
+}
+
+.setCardRec:hover {
+  border-color: rgba(255, 166, 77, 0.45);
+}
+
+.recGrid > .setCardRec:nth-child(2) {
+  animation-delay: 40ms;
+}
+
+.recGrid > .setCardRec:nth-child(3) {
+  animation-delay: 80ms;
+}
+
+.setCardTitle {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.recRank {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: #1f1d1b;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--accent);
+  border-radius: 7px;
+}
+
+.recReasons {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  list-style: none;
+}
+
+.recReasons li {
+  position: relative;
+  padding-left: 14px;
+  line-height: 1.35;
+}
+
+.recReasons li::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: 2px;
+  width: 5px;
+  height: 5px;
+  background: var(--accent-label);
+  border-radius: 50%;
+}
+
+/* ---------- One set: a bar, then the topic graph over the whole screen and the topic beside it ---------- */
+
+.prepScroll[data-fill] {
+  display: flex;
+  flex-direction: column;
+  padding-top: 14px;
+  padding-bottom: 20px;
+  overflow: hidden;
+}
+
+.prepScroll[data-fill] > .tabBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.setDetail {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.setBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.backLink {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--canvas-line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.backLink:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.setBarTitle {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 220px;
+}
+
+.setBarTitle h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.setBarTitle span {
+  font-size: 13px;
+}
+
+.setBarSide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  font-size: 14px;
+}
+
+.setBarSide .setProgress {
+  font-size: 14px;
+}
+
+.setStage {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  min-height: 0;
+}
+
+.setStage[data-panel] {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+}
+
+.setGraphCard {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.setGraphScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #57524e transparent;
+}
+
+.setGraph {
+  position: relative;
+  min-width: 100%;
+}
+
+/* The share of the set's window that is already behind */
+.setPast {
+  fill: rgba(255, 255, 255, 0.025);
+}
+
+.setDeadlineLine {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+/* A topic's share of the axis: its colour says where its own deadline stands */
+.setSeg line {
+  stroke: rgba(255, 255, 255, 0.16);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.setSeg circle {
+  fill: var(--canvas-bg);
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 2;
+}
+
+.setSeg[data-due="done"] line {
+  stroke: color-mix(in srgb, var(--solid) 55%, transparent);
+}
+
+.setSeg[data-due="done"] circle {
+  fill: var(--solid);
+  stroke: var(--solid);
+}
+
+.setSeg[data-due="now"] line {
+  stroke: var(--accent);
+}
+
+.setSeg[data-due="now"] circle {
+  stroke: var(--accent);
+}
+
+.setSeg[data-due="late"] line {
+  stroke: color-mix(in srgb, var(--weak) 70%, transparent);
+}
+
+.setSeg[data-due="late"] circle {
+  fill: var(--weak);
+  stroke: var(--weak);
+}
+
+/* Start and the set's deadline at the ends of the axis */
+.setEnd {
+  position: absolute;
+  display: grid;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.setEnd b {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.setEndDeadline,
+.setEndDeadline b {
+  color: var(--accent-label);
+}
+
+/* A topic's own deadline under its share of the axis */
+.setDue {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.setDue b {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.setDue[data-due="now"] b {
+  color: var(--accent-label);
+}
+
+.setDue[data-due="late"],
+.setDue[data-due="late"] b {
+  color: var(--weak);
+}
+
+.setDue[data-due="done"] {
+  color: var(--solid);
+}
+
+.setGraph[data-vertical] .setDue {
+  justify-items: start;
+}
+
+.setTodayMark {
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.setNode .mapShape {
+  width: 84px;
+  height: 84px;
+}
+
+.setNode .mapChip {
+  font-size: 14px;
+}
+
+/* The topic whose share today falls in */
+.setNodeNow .mapShapeBox {
+  box-shadow: 0 0 0 4px var(--canvas-bg), 0 0 0 6px rgba(255, 122, 0, 0.5);
+}
+
+.nowTag {
+  padding: 0 6px;
+  color: #1f1d1b;
+  font-size: 11px;
+  line-height: 17px;
+  background: var(--accent);
+  border-radius: 6px;
+}
+
+.setNode {
+  cursor: pointer;
+}
+
+.setNode:hover .mapChip {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.behindTag {
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 17px;
+  border-radius: 6px;
+}
+
+
+.behindTag {
+  color: #1f1d1b;
+  background: var(--shaky);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ---------- A topic: material, check, assistant ---------- */
+
+.topicPanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #57524e transparent;
+  animation: rise 0.26s var(--ease-out) both;
+}
+
+.topicHeadSide {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.topicClose {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--text-faint);
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.topicClose:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.topicHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.topicHead .eyebrow {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.topicTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.topicTabs {
+  display: flex;
+  gap: 2px;
+  margin: 14px -20px 0;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--canvas-line);
+}
+
+.topicTabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 10px 11px;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 14px;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.topicTabs button:hover {
+  color: var(--text);
+}
+
+.topicTabs button[aria-selected="true"] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.topicBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: 16px;
+  animation: fade 0.2s ease both;
+}
+
+.topicBody > .task {
+  margin-top: 0;
+}
+
+.material {
+  display: grid;
+  gap: 4px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.material > p {
+  margin: 0 0 8px;
+}
+
+.material .eyebrow {
+  margin: 8px 0 4px;
+}
+
+.materialPoints {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+
+.example {
+  padding: 10px 14px;
+  background: var(--inset-bg);
+  border-radius: 10px;
+}
+
+.example p {
+  margin: 0;
+}
+
+.exampleAnswer {
+  margin-top: 6px !important;
+  color: var(--solid);
+}
+
+.note {
+  margin: 10px 0 0;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.topicChat {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 320px;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 1100px) {
+  .recGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Narrow screens: the page scrolls, the topic goes under the graph */
+  .prepScroll[data-fill] {
+    display: block;
+    overflow-y: auto;
+  }
+
+  .setStage,
+  .setStage[data-panel] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .setGraphScroll {
+    height: 440px;
+    flex: none;
+  }
+
+  .topicPanel {
+    overflow: visible;
+  }
+}
+
+@media (max-width: 760px) {
+  .topicTabs {
+    margin: 12px -14px 0;
+    padding: 0 6px;
+  }
+
+  .topicTabs button {
+    padding: 9px 8px 11px;
+    font-size: 13px;
+  }
+
+  .setGraphScroll {
+    height: auto;
+  }
+
+  .setBarTitle h2 {
+    font-size: 18px;
+  }
+
+  .options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+

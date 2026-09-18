@@ -6,7 +6,6 @@
 import { FirstHint } from "@/components/hints/FirstHint";
 import { useEffect, useRef, useState } from "react";
 import { morph } from "@/components/transition/morph";
-import { CurrentSet } from "./CurrentSet";
 import { Overview } from "./Overview";
 import { savedPrograms, setById, type ExamId } from "./prepData";
 import {
@@ -41,6 +40,8 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
   const [toast, setToast] = useState<string | null>(null);
   // Which exam the route, the map and the set list show; starts on the exam of the set in work
   const [exam, setExam] = useState<ExamId>(() => (model.currentSet ? setById(model.currentSet).exam : "sat"));
+  // The set opened on «Сеты»: its graph and topics replace the list until the student goes back
+  const [openSet, setOpenSet] = useState<{ id: string; topic?: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // A sub-tab belongs to its tab; switching tabs falls back to the first one
@@ -60,9 +61,11 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
-  }, [tab, current]);
+  }, [tab, current, openSet?.id]);
 
   const programs = savedPrograms(saved, model.demo);
+  // An open set is a screen of its own: the graph takes all the height left
+  const fill = programs.length > 0 && tab === "sets" && current === "list" && !!openSet;
 
   /** One move for both levels, so a jump across the section is a single animated step */
   const go = (next: PrepTab, nextSub?: PrepSub, nextExam?: ExamId) =>
@@ -72,10 +75,20 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
       if (nextExam) setExam(nextExam);
     });
 
+  /** Straight into a set's graph, from anywhere in the section */
+  const openSetAt = (id: string | null, topic?: string) =>
+    morph(() => {
+      setOpenSet(id ? { id, topic } : null);
+      if (!id) return;
+      onTab("sets");
+      onSub("list");
+      setExam(setById(id).exam);
+    });
+
   const accept = (id: string) => {
     setModel((m) => acceptSet(m, id));
-    setToast("Сет принят — он в «Текущем сете»");
-    go("current", "check", setById(id).exam);
+    setToast("Сет принят — начни с первой темы на графе");
+    openSetAt(id);
   };
 
   const choose = (id: string) => {
@@ -86,23 +99,13 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
 
   return (
     <div className={styles.prep}>
-      <header className={styles.prepHead}>
-        <div>
-          <h2 className={styles.prepTitle}>Подготовка</h2>
-          <p className={styles.muted}>
-            {programs.length
-              ? `По ${saved.length ? "сохранённым " : "демо-"}программам: ${programs.map((p) => p.university).join(", ")}`
-              : "Вход раздела — сохранённые программы"}
-          </p>
-        </div>
-      </header>
-
-      <div className={styles.prepScroll} ref={scrollRef}>
+      {/* No section title: the column already says «Подготовка», the room goes to the work itself */}
+      <div className={styles.prepScroll} ref={scrollRef} data-fill={fill || undefined}>
         {programs.length === 0 ? (
           <div className={styles.emptyCanvas}>
             <h3>Сначала сохрани программы</h3>
             <p className={styles.muted}>
-              Из сохранённых программ выводятся требования: какие экзамены и на какой балл. Из требований — вехи и маршрут из сетов.
+              Из сохранённых программ выводятся требования: какие экзамены и на какой балл. Из требований — маршрут из сетов с дедлайнами.
             </p>
             <div className={styles.actions}>
               <button type="button" className={styles.primary} onClick={onGoToChoice}>
@@ -115,10 +118,10 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
           </div>
         ) : (
           <>
-            {saved.length ? (
+            {fill ? null : saved.length ? (
               <FirstHint id="prep" title="Зачем «Подготовка»">
-                Здесь план подготовки к экзаменам, которые требуют твои программы. Начни с «Сейчас»: там темп и что сделать первым.
-                Потом в «Текущем сете» проверяй себя: каждый верный ответ красит навык на карте. Ассистент там же соберёт план к твоей дате. Разделы слева.
+                Здесь план подготовки к экзаменам, которые требуют твои программы. В «Сетах» сверху три, которые мы советуем по твоим
+                ошибкам. Внутри сета — граф тем до дедлайна: в каждой теме материал, проверка и ассистент.
               </FirstHint>
             ) : (
               <FirstHint id="prep-demo" title="Это пример" action={{ label: "Перейти к выбору", onClick: onGoToChoice }}>
@@ -126,36 +129,27 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
               </FirstHint>
             )}
             {/* Tabs and their parts are picked only in the left column — on phones it is the menu drawer */}
-            <div key={`${tab}-${current}`} className={styles.tabBody}>
+            <div key={`${tab}-${current}-${openSet?.id ?? ""}`} className={styles.tabBody}>
               {tab === "overview" && (
                 <Overview
                   model={model}
                   programs={programs}
                   sub={current}
                   onGo={go}
+                  onOpenSet={openSetAt}
                   onAccept={accept}
-                  onToggleMilestone={(id) =>
-                    setModel((m) => ({
-                      ...m,
-                      milestonesDone: m.milestonesDone.includes(id) ? m.milestonesDone.filter((x) => x !== id) : [...m.milestonesDone, id],
-                    }))
-                  }
-                  onResolveConflict={(id, option) => {
-                    setModel((m) => ({ ...m, resolvedConflicts: { ...m.resolvedConflicts, [id]: option } }));
-                    setToast("Решение принято — вехи пересобраны");
-                  }}
                 />
               )}
               {tab === "sets" && (
-                <SetsView model={model} sub={current} exam={exam} onExam={setExam} onMakeCurrent={choose} onModel={setModel} />
-              )}
-              {tab === "current" && (
-                <CurrentSet
+                <SetsView
                   model={model}
                   sub={current}
+                  exam={exam}
+                  onExam={setExam}
+                  onMakeCurrent={choose}
                   onModel={setModel}
-                  onAccept={accept}
-                  onGo={go}
+                  openSet={openSet}
+                  onOpenSet={openSetAt}
                   onToast={setToast}
                 />
               )}

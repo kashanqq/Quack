@@ -86,7 +86,7 @@ export function StateLegend() {
 }
 
 /** The node itself: the same four shapes as the small glyph, drawn big, with recall as an outer arc. */
-function NodeMark({ state, recall }: { state: SkillState; recall: number }) {
+export function NodeMark({ state, recall }: { state: SkillState; recall: number }) {
   const c = NODE / 2;
   const track = 2 * Math.PI * (R + 5);
   return (
