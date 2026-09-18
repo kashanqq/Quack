@@ -4,7 +4,10 @@
     "name": "Путаница площади и периметра",
     "description": "Ученик использует формулу периметра, когда спрашивают площадь (или наоборот), особенно для составных фигур.",
     "error_class": "attention",
-    "skill_ids": ["sat.geo.area_volume", "ent.geo.polygon"],
+    "skill_ids": [
+      "sat.geo.area_volume",
+      "ent.geo.polygon"
+    ],
     "exam_specific": null
   },
   {
@@ -12,7 +15,140 @@
     "name": "Ошибка в единицах измерения",
     "description": "Ученик переводит линейные единицы, но забывает возвести коэффициент в квадрат или в куб при переводе площади или объёма.",
     "error_class": "computational",
-    "skill_ids": ["sat.geo.area_volume", "ent.stereo.prism"],
+    "skill_ids": [
+      "sat.geo.area_volume",
+      "ent.stereo.prism"
+    ],
     "exam_specific": null
+  },
+  {
+    "id": "lib.geo.perimeter_area",
+    "name": "Use perimeter in place of area",
+    "description": "Use perimeter in place of area when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.geo.area_volume"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.geo.triangle_half",
+    "name": "Forget one half in triangle area",
+    "description": "Forget one half in triangle area when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.geo.area_volume"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.geo.volume_product",
+    "name": "Add side lengths instead of multiplying for volume",
+    "description": "Add side lengths instead of multiplying for volume when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.geo.area_volume"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.geo.angle_complement",
+    "name": "Subtract from 90 instead of 180",
+    "description": "Subtract from 90 instead of 180 when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.geo.lines_angles"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.geo.angle_parallel",
+    "name": "Treat alternate interior angles as supplementary",
+    "description": "Treat alternate interior angles as supplementary when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.geo.lines_angles"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.geo.angle_vertical",
+    "name": "Treat vertical angles as supplementary",
+    "description": "Treat vertical angles as supplementary when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.geo.lines_angles"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.geo.scale_add",
+    "name": "Add the scale factor rather than multiplying",
+    "description": "Add the scale factor rather than multiplying when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.geo.triangles"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.geo.triangle_sum",
+    "name": "Use an incorrect triangle angle total",
+    "description": "Use an incorrect triangle angle total when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.geo.triangles"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.geo.pythagorean_sum",
+    "name": "Add legs instead of squares",
+    "description": "Add legs instead of squares when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.geo.triangles"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.geo.circle_radius",
+    "name": "Confuse radius, diameter, area and circumference",
+    "description": "Confuse radius, diameter, area and circumference when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.geo.circle"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.geo.trig_ratio",
+    "name": "Swap numerator and denominator in trigonometric ratios",
+    "description": "Swap numerator and denominator in trigonometric ratios when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.geo.trig_right"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.geo.unit_circle_swap",
+    "name": "Swap sine and cosine unit-circle coordinates",
+    "description": "Swap sine and cosine unit-circle coordinates when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.geo.trig_unit_circle"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.geo.unit_circle_sign",
+    "name": "Ignore the sign in the left half-plane",
+    "description": "Ignore the sign in the left half-plane when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.geo.trig_unit_circle"
+    ],
+    "exam_specific": "SAT_MATH"
   }
 ]

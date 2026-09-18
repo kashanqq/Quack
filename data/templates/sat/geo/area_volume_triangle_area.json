@@ -1,0 +1,38 @@
+{
+  "id": "tpl.sat.geo.area_volume.triangle_area",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 3,
+  "skill_id": "sat.geo.area_volume",
+  "tags": [
+    "geo",
+    "area_volume",
+    "triangle_area"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "A triangle has base 10 and height 6. What is its area?",
+  "correct": "30",
+  "distractors": [
+    {
+      "expr": "60",
+      "misconception_id": "lib.geo.triangle_half"
+    },
+    {
+      "expr": "16",
+      "misconception_id": null
+    },
+    {
+      "expr": "40",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the area volume rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

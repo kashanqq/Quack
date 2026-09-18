@@ -1,0 +1,40 @@
+{
+  "id": "tpl.sat.geo.lines_angles.parallel",
+  "exam_id": "SAT_MATH",
+  "type": "numeric",
+  "difficulty": 4,
+  "skill_id": "sat.geo.lines_angles",
+  "tags": [
+    "geo",
+    "lines_angles",
+    "parallel"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "Parallel lines are cut by a transversal. An alternate interior angle is 72 degrees. What is its partner?",
+  "correct": "72",
+  "distractors": [],
+  "solution": [
+    "Use the lines angles rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null,
+  "answer_forms": [
+    "integer",
+    "fraction",
+    "decimal:2"
+  ],
+  "trap_answers": [
+    {
+      "expr": "108",
+      "misconception_id": "lib.geo.angle_parallel"
+    },
+    {
+      "expr": "18",
+      "misconception_id": null
+    }
+  ]
+}

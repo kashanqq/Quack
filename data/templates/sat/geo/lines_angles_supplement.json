@@ -1,0 +1,46 @@
+{
+  "id": "tpl.sat.geo.lines_angles.supplement",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 2,
+  "skill_id": "sat.geo.lines_angles",
+  "tags": [
+    "geo",
+    "lines_angles",
+    "supplement"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {
+    "a": {
+      "choices": [
+        110,
+        120,
+        135
+      ]
+    }
+  },
+  "constraints": [],
+  "stem": "Two angles form a straight line. One is {a} degrees. What is the other?",
+  "correct": "180-a",
+  "distractors": [
+    {
+      "expr": "a",
+      "misconception_id": "lib.geo.angle_complement"
+    },
+    {
+      "expr": "90-a",
+      "misconception_id": null
+    },
+    {
+      "expr": "180+a",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the lines angles rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

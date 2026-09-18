@@ -1,0 +1,38 @@
+{
+  "id": "tpl.sat.geo.trig_right.tangent",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 4,
+  "skill_id": "sat.geo.trig_right",
+  "tags": [
+    "geo",
+    "trig_right",
+    "tangent"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "In a right triangle, opposite = 5 and adjacent = 12. What is tan(theta)?",
+  "correct": "5/12",
+  "distractors": [
+    {
+      "expr": "12/5",
+      "misconception_id": "lib.geo.trig_ratio"
+    },
+    {
+      "expr": "5/13",
+      "misconception_id": null
+    },
+    {
+      "expr": "12/13",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the trig right rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

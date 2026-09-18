@@ -1,0 +1,40 @@
+{
+  "id": "tpl.sat.geo.area_volume.box_volume",
+  "exam_id": "SAT_MATH",
+  "type": "numeric",
+  "difficulty": 4,
+  "skill_id": "sat.geo.area_volume",
+  "tags": [
+    "geo",
+    "area_volume",
+    "box_volume"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "A rectangular prism measures 3 by 4 by 5. What is its volume?",
+  "correct": "60",
+  "distractors": [],
+  "solution": [
+    "Use the area volume rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null,
+  "answer_forms": [
+    "integer",
+    "fraction",
+    "decimal:2"
+  ],
+  "trap_answers": [
+    {
+      "expr": "47",
+      "misconception_id": "lib.geo.volume_product"
+    },
+    {
+      "expr": "12",
+      "misconception_id": null
+    }
+  ]
+}

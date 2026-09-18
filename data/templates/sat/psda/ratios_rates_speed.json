@@ -1,0 +1,38 @@
+{
+  "id": "tpl.sat.psda.ratios_rates.speed",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 3,
+  "skill_id": "sat.psda.ratios_rates",
+  "tags": [
+    "psda",
+    "ratios_rates",
+    "speed"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "A train travels 90 km in 1.5 hours. What is its speed in km/h?",
+  "correct": "60",
+  "distractors": [
+    {
+      "expr": "135",
+      "misconception_id": "lib.psda.ratio_invert"
+    },
+    {
+      "expr": "45",
+      "misconception_id": null
+    },
+    {
+      "expr": "90",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the ratios rates rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

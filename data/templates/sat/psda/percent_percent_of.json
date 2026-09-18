@@ -1,0 +1,52 @@
+{
+  "id": "tpl.sat.psda.percent.percent_of",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 2,
+  "skill_id": "sat.psda.percent",
+  "tags": [
+    "psda",
+    "percent",
+    "percent_of"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {
+    "p": {
+      "choices": [
+        10,
+        20,
+        25
+      ]
+    },
+    "n": {
+      "choices": [
+        80,
+        120
+      ]
+    }
+  },
+  "constraints": [],
+  "stem": "What is {p} percent of {n}?",
+  "correct": "n*p/100",
+  "distractors": [
+    {
+      "expr": "p",
+      "misconception_id": "lib.psda.percent_base"
+    },
+    {
+      "expr": "n-p",
+      "misconception_id": null
+    },
+    {
+      "expr": "n+p",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the percent rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}
