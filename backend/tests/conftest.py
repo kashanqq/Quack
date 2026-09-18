@@ -72,6 +72,18 @@ async def db_session():
         await close_engine(engine)
 
 
+async def wipe_graph(driver) -> None:
+    """Очистить граф перед сидированием.
+
+    Все интеграционные модули работают с одной и той же локальной базой, а
+    сидируют разные наборы (`data/skills` и `tests/fixtures/data/skills`).
+    Без очистки веса навыков одного набора попадали в проверки другого, и
+    результат зависел от порядка запуска модулей.
+    """
+    async with driver.session() as session:
+        await session.run("MATCH (n) DETACH DELETE n")
+
+
 @pytest.fixture
 async def seeded_graph():
     uri = os.environ.get("TEST_NEO4J_URI")
@@ -99,6 +111,7 @@ async def seeded_graph():
             return [[1.0] + [0.0] * 383 for _ in texts]
 
     try:
+        await wipe_graph(driver)
         await ensure_schema(driver, 384)
         await seed_skills(driver, FIXTURE_DATA / "skills")
         await seed_misconceptions(

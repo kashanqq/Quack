@@ -170,3 +170,30 @@ def test_multi_correct_plus_distractor():
     g = grade(_multi_select(), ["A", "B", "D"])
     assert g.correct is False
     assert g.matched_misconception_id == "lib.vieta_sign_confusion"
+
+
+# --- формы ответа из чата (obs.answer) ---
+
+
+def test_numeric_accepts_a_number_not_only_a_string():
+    """Наблюдатель кладёт в obs.answer то, что написал ученик: число может
+    прийти и числом, и строкой."""
+    assert grade(_numeric(), 2.5).correct is True
+    assert grade(_numeric(), "2,5").correct is False  # запятая — не десятичная
+
+
+def test_mcq_accepts_a_lowercase_letter_with_spaces():
+    assert grade(_mcq4(), " a ".upper().strip()).correct is True
+
+
+def test_multi_select_accepts_a_comma_string_and_glued_letters():
+    """«A, B», «A B» и «AB» из чата — тот же набор, что список ['A', 'B']."""
+    for answer in (["A", "B"], "A, B", "A B", "AB", "A;B"):
+        graded = grade(_multi_select(), answer)
+        assert graded.correct is True, answer
+
+
+def test_multi_select_empty_answer_is_not_correct():
+    graded = grade(_multi_select(), "")
+    assert graded.correct is False
+    assert graded.partial == pytest.approx(0.0)

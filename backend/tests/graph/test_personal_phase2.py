@@ -34,16 +34,22 @@ from app.schemas.knowledge import (
 )
 from app.seed.misconceptions import seed_misconceptions
 from app.seed.skills import seed_skills
+from tests.conftest import wipe_graph
 
-pytestmark = [pytest.mark.phase1, pytest.mark.integration]
+pytestmark = [
+    pytest.mark.phase1,
+    pytest.mark.integration,
+    pytest.mark.asyncio(loop_scope="module"),  # module-scoped driver fixtures
+]
 
 DATA = Path(__file__).resolve().parents[3] / "data"
 NOW = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="module", loop_scope="module")
 async def seeded(graph):
     """Seed skills and misconceptions once for the module."""
+    await wipe_graph(graph)
     await apply_schema(graph, 384)
     await seed_skills(graph, DATA / "skills")
 
@@ -73,12 +79,20 @@ def _state(skill_id: str, exam_id: str = "SAT_MATH") -> KnowledgeStateOut:
     )
 
 
-def _evidence(event_id: int, skill_id: str) -> EvidenceIn:
+def _evidence(
+    event_id: int,
+    skill_id: str,
+    *,
+    ordinal: int = 0,
+    kind: str = "task",
+    context: EvidenceContext | None = None,
+) -> EvidenceIn:
     return EvidenceIn(
         event_id=event_id,
+        ordinal=ordinal,
         skill_id=skill_id,
         exam_id="SAT_MATH",
-        kind="task",
+        kind=kind,
         tier=2,
         source="task",
         weight=0.8,
@@ -86,7 +100,7 @@ def _evidence(event_id: int, skill_id: str) -> EvidenceIn:
         share=None,
         difficulty_factor=1.0,
         summary=None,
-        context=EvidenceContext(),
+        context=context or EvidenceContext(),
         observed_at=NOW,
         extractor_version=None,
     )
@@ -149,14 +163,64 @@ async def test_upsert_misc_state_updates_existing(seeded):
 # --- evidence ---
 
 
+def _unique_event_id() -> int:
+    """Evidence живёт по ключу (event_id, skill, ordinal) и переживает
+    перезапуск тестов на той же базе — идентификатор уникален на прогон."""
+    return int(uuid4().int % 1_000_000) + 1_000_000
+
+
 async def test_merge_evidence_and_list(seeded):
     sid = uuid4()
+    event_id = _unique_event_id()
     await ensure_student(seeded, sid)
-    await merge_evidence(seeded, sid, _evidence(42, "math.alg.linear_eq"))
+    await merge_evidence(seeded, sid, _evidence(event_id, "math.alg.linear_eq"))
     evidence = await list_evidence(seeded, sid, "math.alg.linear_eq")
     assert len(evidence) == 1
-    assert evidence[0].event_id == 42
-    assert evidence[0].evidence_id == "42:math.alg.linear_eq"
+    assert evidence[0].event_id == event_id
+    assert evidence[0].evidence_id == f"{event_id}:math.alg.linear_eq:0"
+
+
+async def test_merge_evidence_keeps_ordinals_apart(seeded):
+    """Ответ и попадание в заблуждение — одно событие, один навык, два узла."""
+    sid = uuid4()
+    event_id = _unique_event_id()
+    await ensure_student(seeded, sid)
+    await merge_evidence(seeded, sid, _evidence(event_id, "math.alg.linear_eq"))
+    await merge_evidence(
+        seeded,
+        sid,
+        _evidence(event_id, "math.alg.linear_eq", ordinal=1, kind="misconception_hit"),
+    )
+    evidence = await list_evidence(seeded, sid, "math.alg.linear_eq")
+    by_ordinal = {item.ordinal: item for item in evidence if item.event_id == event_id}
+    assert set(by_ordinal) == {0, 1}
+    assert by_ordinal[0].kind == "task"
+    assert by_ordinal[1].kind == "misconception_hit"
+
+
+async def test_merge_evidence_writes_context(seeded):
+    """Без контекста `explain_belief` не может раскрыть свидетельство
+    до задачи или сообщения — list_evidence отдавал одни None."""
+    sid = uuid4()
+    instance_id = uuid4()
+    message_id = uuid4()
+    event_id = _unique_event_id()
+    await ensure_student(seeded, sid)
+    await merge_evidence(
+        seeded,
+        sid,
+        _evidence(
+            event_id,
+            "math.alg.linear_eq",
+            context=EvidenceContext(
+                instance_id=instance_id, message_id=message_id, mode="topic"
+            ),
+        ),
+    )
+    evidence = await list_evidence(seeded, sid, "math.alg.linear_eq")
+    item = next(item for item in evidence if item.event_id == event_id)
+    assert item.instance_id == instance_id
+    assert item.message_id == message_id
 
 
 # --- root causes ---
@@ -165,10 +229,11 @@ async def test_merge_evidence_and_list(seeded):
 async def test_add_root_cause_and_list(seeded):
     sid = uuid4()
     await ensure_student(seeded, sid)
-    await merge_evidence(seeded, sid, _evidence(99, "sat.alg.abs_value_eq"))
+    event_id = _unique_event_id()
+    await merge_evidence(seeded, sid, _evidence(event_id, "sat.alg.abs_value_eq"))
     await add_root_cause(
         seeded,
-        "99:sat.alg.abs_value_eq",
+        f"{event_id}:sat.alg.abs_value_eq:0",
         "math.alg.linear_eq",
         confidence=0.4,
         source="rule",
@@ -182,12 +247,18 @@ async def test_add_root_cause_and_list(seeded):
 async def test_add_root_cause_idempotent(seeded):
     sid = uuid4()
     await ensure_student(seeded, sid)
-    await merge_evidence(seeded, sid, _evidence(77, "sat.alg.abs_value_eq"))
+    event_id = _unique_event_id()
+    await merge_evidence(seeded, sid, _evidence(event_id, "sat.alg.abs_value_eq"))
     await add_root_cause(
-        seeded, "77:sat.alg.abs_value_eq", "math.alg.linear_eq", 0.4, "rule"
+        seeded,
+        f"{event_id}:sat.alg.abs_value_eq:0",
+        "math.alg.linear_eq",
+        0.4,
+        "rule",
     )
+    # Двухчастная форма фазы 1 читается как тот же узел (ordinal = 0)
     await add_root_cause(
-        seeded, "77:sat.alg.abs_value_eq", "math.alg.linear_eq", 0.4, "rule"
+        seeded, f"{event_id}:sat.alg.abs_value_eq", "math.alg.linear_eq", 0.4, "rule"
     )
     roots = await list_root_causes(seeded, sid, window_days=30)
     assert len(roots) == 1
@@ -202,6 +273,9 @@ async def test_get_state_history_walks_previous(seeded):
     s1 = _state("math.alg.quadratic_roots")
     s2 = _state("math.alg.quadratic_roots").model_copy(update={"p_at_obs": 0.7})
     await upsert_state(seeded, sid, s1, source_event_id=1)
+    await upsert_state(seeded, sid, s2, source_event_id=2)
+
+    # Повторный dispatch того же события ничего не добавляет
     await upsert_state(seeded, sid, s2, source_event_id=2)
 
     history = await get_state_history(

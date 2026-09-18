@@ -20,6 +20,18 @@ if TYPE_CHECKING:
     from app.agents.router import AgentDeps
 
 
+class ToolPayload(BaseModel):
+    """Two views of one tool result — see `schemas.chat.ToolResult`.
+
+    `data` — то, что рендерит фронт; `model_data` — сжатая проекция для
+    контекста модели. Инструмент возвращает `ToolPayload`, только если эти
+    два представления действительно разные.
+    """
+
+    data: Any = None
+    model_data: Any = None
+
+
 @dataclass
 class ToolCtx:
     student_id: str
@@ -98,6 +110,8 @@ class ToolRegistry:
         except ValidationError as exc:
             raise ValidationFailed(str(exc)) from exc
         result = await spec.fn(parsed_args, ctx)
+        if isinstance(result, ToolPayload):
+            return result
         if isinstance(result, BaseModel):
             return result.model_dump()
         return result

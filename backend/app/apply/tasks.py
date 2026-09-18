@@ -33,9 +33,18 @@ _logger = structlog.get_logger(__name__)
 
 
 async def issue(
-    session: AsyncSession, deps: RuleDeps, student_id: UUID, req: TaskRequestIn
+    session: AsyncSession,
+    deps: RuleDeps,
+    student_id: UUID,
+    req: TaskRequestIn,
+    chat_id: UUID | None = None,
 ) -> TaskInstanceOut:
-    """Pick a template for the requested skill/set and create one instance."""
+    """Pick a template for the requested skill/set and create one instance.
+
+    ``chat_id`` is set when the tutor hands the task over inside a chat
+    (``get_task``): the observer reads its window by ``chat_id``, so a
+    ``task.issued`` without it is invisible to the observer.
+    """
     skill_id = await _resolve_skill(session, student_id, req)
 
     # 1. Шаблоны навыка
@@ -47,9 +56,10 @@ async def issue(
     # 2. Seen
     seen = await tasks_repo.get_seen_many(session, student_id, [skill_id])
 
-    # 3. Последние грейды навыка — пока недоступно без list_by_skill;
-    # передаём пустой список (pick_template берёт медиану сложности)
-    last_grades: list[bool] = []
+    # 3. Последние грейды навыка — последние ответы ученика по этому навыку
+    last_grades = await tasks_repo.last_grades_for_skill(
+        session, student_id, skill_id, limit=2
+    )
 
     # 4. Выбор шаблона
     rng = random.Random()
@@ -60,6 +70,7 @@ async def issue(
         with_trap=req.with_trap,
         other_structure_than=None,
         rng=rng,
+        difficulty=req.difficulty,
     )
     if spec is None:
         raise NotFound(f"no suitable template for skill {skill_id}")
@@ -68,12 +79,10 @@ async def issue(
     seed = rng.randint(1, 10**9)
     instance = generate_instance(spec, seed=seed, student_id=student_id)
 
-    # 6. Запись в БД
-    await tasks_repo.insert_instance(session, student_id, instance)
-
-    # 7. Событие task.issued
-    via = "topic" if req.mode == "topic" else req.mode
-    await events_store.append(
+    # 6. Событие task.issued — раньше записи экземпляра, чтобы у экземпляра
+    # сразу был issued_event_id (окно наблюдателя ходит по этой связи)
+    via = _via(req.mode)
+    issued = await events_store.append(
         session,
         deps.redis,
         EventIn(
@@ -89,14 +98,35 @@ async def issue(
             exam_id=instance.exam_id,
             set_id=req.set_id,
             topic_skill_id=skill_id,
-            chat_id=None,
+            chat_id=chat_id,
             occurred_at=None,
             extractor_version=None,
             source_event_ids=None,
         ),
+        # `task.issued` не имеет правил и намеренно остаётся без processed_at:
+        # это часть окна наблюдателя (§8.1), которое он сам и закрывает.
+        dispatch_event=False,
+    )
+
+    # 7. Запись экземпляра вместе с режимом и ссылкой на событие
+    await tasks_repo.insert_instance(
+        session,
+        student_id,
+        instance,
+        mode=req.mode,
+        issued_event_id=issued.id,
     )
 
     return _to_out(instance, mode=req.mode, provenance=spec.kind)
+
+
+def _via(mode: str) -> str:
+    """`task.issued.via` — где ученик получил задачу (00-contracts §5.2)."""
+    if mode in ("mock_set", "mock_topic", "mock_misconception"):
+        return "mock"
+    if mode in ("diagnostic", "chat"):
+        return mode
+    return "topic"
 
 
 # --- helpers ---

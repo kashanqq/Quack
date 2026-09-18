@@ -58,6 +58,16 @@ async def list_requirements(driver: AsyncDriver, program_id: str) -> list[dict]:
     return []
 
 
+def _as_date(value):
+    """neo4j.time.Date -> datetime.date. Драйвер отдаёт свой тип, а
+    контракты (`TestDate`, `FactOut`) объявлены на стандартном `date`.
+    """
+    if value is None:
+        return None
+    to_native = getattr(value, "to_native", None)
+    return to_native() if callable(to_native) else value
+
+
 async def list_test_dates(driver: AsyncDriver, exam_id: str) -> list[TestDate]:
     """TestDate nodes attached to an Exam, ordered by date."""
     query = f"""
@@ -74,11 +84,11 @@ async def list_test_dates(driver: AsyncDriver, exam_id: str) -> list[TestDate]:
             out.append(
                 TestDate(
                     exam_id=exam_id,
-                    date=rec["date"],
-                    registration_deadline=rec["registration_deadline"],
-                    late_deadline=rec["late_deadline"],
+                    date=_as_date(rec["date"]),
+                    registration_deadline=_as_date(rec["registration_deadline"]),
+                    late_deadline=_as_date(rec["late_deadline"]),
                     source=rec["source"] or "",
-                    checked_at=rec["checked_at"],
+                    checked_at=_as_date(rec["checked_at"]),
                     is_demo=bool(rec["is_demo"]),
                 )
             )
@@ -101,7 +111,7 @@ async def list_facts_about(driver: AsyncDriver, node_id: str) -> list[FactOut]:
                 FactOut(
                     text=rec["text"],
                     source=rec["source"],
-                    checked_at=rec["checked_at"],
+                    checked_at=_as_date(rec["checked_at"]),
                     is_demo=bool(rec["is_demo"]),
                 )
             )

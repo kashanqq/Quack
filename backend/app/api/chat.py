@@ -43,12 +43,22 @@ def _agent_router() -> Any:
         raise
 
 
-def _chat_id(student_id: UUID, kind: ChatKind, body: ChatMessageIn) -> UUID:
+def chat_id_for(
+    student_id: UUID,
+    kind: ChatKind,
+    set_id: UUID | None = None,
+    topic_skill_id: str | None = None,
+) -> UUID:
+    """The stable id of one chat — the key the observer window is read by."""
     if kind == "selection":
         return uuid5(student_id, "selection")
-    if body.set_id is None or not body.topic_skill_id:
+    if set_id is None or not topic_skill_id:
         raise ValidationFailed("prep chat requires set_id and topic_skill_id")
-    return uuid5(student_id, f"prep:{body.set_id}:{body.topic_skill_id}")
+    return uuid5(student_id, f"prep:{set_id}:{topic_skill_id}")
+
+
+def _chat_id(student_id: UUID, kind: ChatKind, body: ChatMessageIn) -> UUID:
+    return chat_id_for(student_id, kind, body.set_id, body.topic_skill_id)
 
 
 async def _wrap_agent(
@@ -100,6 +110,11 @@ async def _wrap_agent(
                             set_id=ctx.set_id,
                             topic_skill_id=ctx.topic_skill_id,
                         ),
+                        # Реплики чата не имеют правил и намеренно остаются
+                        # без processed_at: это окно наблюдателя (§8.1),
+                        # которое закрывает он сам. Явный флаг, а не побочный
+                        # эффект `deps=None`.
+                        dispatch_event=False,
                     )
                     await messages.append_message(
                         session,
@@ -165,6 +180,7 @@ async def post_message(
                 set_id=body.set_id,
                 topic_skill_id=body.topic_skill_id,
             ),
+            dispatch_event=False,  # окно наблюдателя, см. message.assistant
         )
         await messages.append_message(
             session, student.student_id, chat_id, "user", body.text, None, saved.id

@@ -377,3 +377,101 @@ def test_knowledge_lists_explain_dispute_and_version(transport, monkeypatch):
         for response in (knowledge, explained, dispute, undispute)
     )
     assert states.await_count == miscs.await_count == explain.await_count == 1
+
+
+# --- кнопка «обновить модель знаний» ---
+
+
+def _refresh_body(set_id):
+    return {"kind": "prep", "set_id": str(set_id), "topic_skill_id": "skill-a"}
+
+
+def _window(n: int):
+    return [
+        Event(
+            id=index + 1,
+            type="message.user",
+            payload={"text": "?"},
+            student_id=uuid4(),
+            occurred_at=datetime(2026, 9, 18, 12, tzinfo=UTC),
+            ingested_at=datetime(2026, 9, 18, 12, tzinfo=UTC),
+        )
+        for index in range(n)
+    ]
+
+
+def test_refresh_queues_the_observer(transport, monkeypatch):
+    set_id = uuid4()
+    enqueued: list = []
+
+    async def list_unprocessed(session, chat_id, limit=50):
+        assert limit == transport.deps.params.observer_window_max
+        return _window(3)
+
+    async def enqueue(arq, queue, fn_name, **kwargs):
+        enqueued.append((queue, fn_name, kwargs))
+        return "job-1"
+
+    monkeypatch.setattr(store, "list_unprocessed", list_unprocessed)
+    monkeypatch.setattr(knowledge_api, "enqueue", enqueue)
+    transport.app.dependency_overrides[deps.get_arq] = lambda: object()
+
+    with _client(transport) as client:
+        response = client.post("/knowledge/refresh", json=_refresh_body(set_id))
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "queued",
+        "job_id": "job-1",
+        "window_size": 3,
+        "failed_reason": None,
+    }
+    assert enqueued[0][0] == "interactive"
+    assert enqueued[0][1] == "observe_chat"
+    assert transport.events[-1].type.value == "observer.requested"
+
+
+def test_refresh_with_an_empty_window_is_not_a_failure(transport, monkeypatch):
+    async def list_unprocessed(session, chat_id, limit=50):
+        return []
+
+    monkeypatch.setattr(store, "list_unprocessed", list_unprocessed)
+    transport.app.dependency_overrides[deps.get_arq] = lambda: object()
+
+    with _client(transport) as client:
+        response = client.post("/knowledge/refresh", json=_refresh_body(uuid4()))
+
+    body = response.json()
+    assert body["status"] == "empty"
+    assert body["failed_reason"] is None
+
+
+def test_refresh_says_why_it_failed(transport, monkeypatch, fake_llm):
+    """`status=failed` без причины фронт не может показать ученику —
+    «модель недоступна» и «очередь недоступна» это разные сообщения."""
+
+    async def list_unprocessed(session, chat_id, limit=50):
+        return _window(2)
+
+    monkeypatch.setattr(store, "list_unprocessed", list_unprocessed)
+    fake_llm.forced_status = "down"
+    transport.app.dependency_overrides[deps.get_arq] = lambda: object()
+
+    with _client(transport) as client:
+        down = client.post("/knowledge/refresh", json=_refresh_body(uuid4()))
+
+    assert down.json()["status"] == "failed"
+    assert down.json()["failed_reason"] == "llm_unavailable"
+
+    fake_llm.forced_status = "ok"
+    transport.app.dependency_overrides[deps.get_arq] = lambda: None
+    with _client(transport) as client:
+        no_queue = client.post("/knowledge/refresh", json=_refresh_body(uuid4()))
+
+    assert no_queue.json()["failed_reason"] == "queue_unavailable"
+
+
+def test_refresh_requires_a_prep_chat_target(transport):
+    with _client(transport) as client:
+        response = client.post("/knowledge/refresh", json={"kind": "prep"})
+    assert response.status_code == 400

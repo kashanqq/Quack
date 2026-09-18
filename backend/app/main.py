@@ -2,13 +2,13 @@
 
 import inspect
 from contextlib import asynccontextmanager
-from importlib import import_module
 from time import perf_counter
 from typing import Any
 from uuid import uuid4
 
 import redis.asyncio as redis_async
 import structlog
+from arq.connections import ArqRedis
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -33,29 +33,36 @@ from app.api.tasks import router as tasks_router
 from app.config import settings
 from app.db.engine import close_engine, create_engine, create_sessionmaker
 from app.errors import AppError, UnsupportedMediaType
+from app.loader import optional_layer  # общая с воркерами, см. app/loader.py
 from app.logging import configure_logging
 
 
-def _optional_layer(name: str) -> Any | None:
-    """Load B1/B2 only when that layer is present in the checkout."""
+def _create_arq() -> ArqRedis | None:
+    """Очередь задач для транспорта: без неё API не может поставить job.
+
+    Пул создаётся лениво (`from_url`, без соединения на старте): недоступный
+    Redis не должен задерживать или ронять подъём приложения. Маршрут,
+    которому нужна очередь, узнаёт о проблеме в момент постановки и
+    отвечает «не поставлено» с причиной (`api/knowledge.refresh`).
+    """
     try:
-        return import_module(name)
-    except ModuleNotFoundError as exc:
-        if exc.name and (name == exc.name or name.startswith(f"{exc.name}.")):
-            return None
-        raise
+        return ArqRedis.from_url(settings.REDIS_URL)
+    except Exception:  # noqa: BLE001
+        structlog.get_logger(__name__).warning("arq_pool_unavailable", exc_info=True)
+        return None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     engine = create_engine(settings)
     redis = None
+    arq = None
     driver = None
     graph_client = None
     llm = None
     try:
         app.state.sessionmaker = create_sessionmaker(engine)
-        graph_client = _optional_layer("app.graph.client")  # B1 integration point.
+        graph_client = optional_layer("app.graph.client")  # B1 integration point.
         if graph_client is not None:
             driver = graph_client.create_driver(settings)
             if inspect.isawaitable(driver):
@@ -63,7 +70,9 @@ async def lifespan(app: FastAPI):
         app.state.neo4j = driver
         redis = redis_async.from_url(settings.REDIS_URL)
         app.state.redis = redis
-        llm_module = _optional_layer("app.llm.client")  # B2 integration point.
+        arq = _create_arq()
+        app.state.arq = arq
+        llm_module = optional_layer("app.llm.client")  # B2 integration point.
         if llm_module is not None:
             llm = llm_module.LLMClient(settings, redis)
         app.state.llm = llm
@@ -75,6 +84,8 @@ async def lifespan(app: FastAPI):
                 result = close()
                 if inspect.isawaitable(result):
                     await result
+        if arq is not None:
+            await arq.aclose()
         if redis is not None:
             await redis.aclose()
         if driver is not None and graph_client is not None:

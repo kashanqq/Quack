@@ -45,10 +45,20 @@ class ToolCall(BaseModel):
 
 
 class ToolResult(BaseModel):
+    """Результат инструмента: `data` уходит на фронт, `model_data` — модели.
+
+    Карточки подбора рендерит фронт, поэтому `data` — полный ответ
+    инструмента. Модели тот же объём не нужен (`run_matching` с limit=10 —
+    это 3–4 КБ JSON в контексте на каждый ход), поэтому инструмент может
+    отдать отдельную сжатую проекцию; `model_data is None` означает «модели
+    показываем то же, что и фронту». В поток SSE поле не сериализуется.
+    """
+
     type: Literal["tool_result"] = "tool_result"
     tool: str
     call_id: str
     data: Any
+    model_data: Any | None = Field(default=None, exclude=True)
     error: str | None = None
 
 

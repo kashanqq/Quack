@@ -13,6 +13,7 @@ from datetime import date
 from pydantic import BaseModel
 
 from app.config import KnowledgeParams
+from app.matching.directions import direction_matches
 from app.schemas.common import ExamId, FactorStatus, Source
 from app.schemas.knowledge import ForecastOut, TestDate
 from app.schemas.matching import FactorOut
@@ -365,7 +366,7 @@ def _preference_factors(profile: Profile, program: Program) -> list[FactorOut]:
         )
 
     direction = profile.questionnaire.direction.field.value
-    if direction and direction.lower() not in program.direction.lower():
+    if direction and not direction_matches(direction, program.direction):
         out.append(
             FactorOut(
                 id="direction",

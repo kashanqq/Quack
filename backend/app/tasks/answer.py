@@ -7,6 +7,7 @@ Source: 20-B1.md §4.4.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from sympy import Float, sympify
@@ -21,6 +22,11 @@ def grade(instance: TaskInstance, answer: Any) -> Grade:
     - numeric: answer is a string; matches instance.answer as sympy value,
       or trap_answers → matched_misconception_id.
     - multi_select: answer is a list of keys; partial credit; omitted traps.
+
+    Ответ приходит и из формы, и из чата (наблюдатель кладёт в
+    `obs.answer` то, что ученик написал словами), поэтому форма терпимая:
+    число для numeric годится и строкой, и числом, а набор для
+    multi_select — и списком букв, и одной строкой «A, B».
     """
     if instance.type in ("mcq4", "mcq5"):
         return _grade_mcq(instance, answer)
@@ -73,10 +79,22 @@ def _num_equal(a, b) -> bool:
         return False
 
 
+def _split_keys(answer: Any) -> list[str]:
+    """Набор ключей из списка, либо из строки вида «A, B» / «A B» / «AB»."""
+    if isinstance(answer, list | tuple | set):
+        return [str(key).strip() for key in answer]
+    text = str(answer).strip()
+    if not text:
+        return []
+    parts = [part.strip() for part in re.split(r"[,;\s]+", text) if part.strip()]
+    if len(parts) == 1 and len(parts[0]) > 1 and parts[0].isalpha():
+        # «AB» — слитный набор букв
+        return list(parts[0])
+    return parts
+
+
 def _grade_multi_select(instance: TaskInstance, answer: Any) -> Grade:
-    if not isinstance(answer, list):
-        answer = [answer]
-    selected = {str(k) for k in answer}
+    selected = {key for key in _split_keys(answer) if key}
     correct_keys = {o.key for o in instance.options if o.correct}
     all_options = {o.key: o for o in instance.options}
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -143,30 +144,48 @@ async def test_issue_returns_instance_out(monkeypatch):
     async def fake_seen(session, student_id, skill_ids):
         return {}
 
-    async def fake_insert(session, student_id, inst):
+    inserted: list = []
+
+    async def fake_insert(
+        session, student_id, inst, *, mode=None, issued_event_id=None
+    ):
+        inserted.append((inst, mode, issued_event_id))
         return None
 
     appended: list = []
 
-    async def fake_append(session, redis, ev):
+    async def fake_append(session, redis, ev, *, dispatch_event=True):
         appended.append(ev)
-        return None
+        return SimpleNamespace(id=len(appended))
+
+    async def fake_grades(session, student_id, skill_id, limit=2):
+        return []
 
     monkeypatch.setattr(
         "app.apply.tasks.tasks_repo.list_templates_for_skills", fake_templates
     )
     monkeypatch.setattr("app.apply.tasks.tasks_repo.get_seen_many", fake_seen)
     monkeypatch.setattr("app.apply.tasks.tasks_repo.insert_instance", fake_insert)
+    monkeypatch.setattr("app.apply.tasks.tasks_repo.last_grades_for_skill", fake_grades)
     monkeypatch.setattr("app.apply.tasks.events_store.append", fake_append)
 
-    req = _req(skill_id="math.alg.linear_eq")
-    out = await issue(None, _deps(), sid, req)
+    chat_id = uuid4()
+    req = _req(skill_id="math.alg.linear_eq", mode="chat")
+    out = await issue(None, _deps(), sid, req, chat_id=chat_id)
 
     assert out.skill_id == spec.skill_id
     assert out.template_id == spec.id
     assert out.options  # непраздно
     assert not hasattr(out, "answer")
     assert len(appended) == 1
+    # Задача репетитора видна окну наблюдателя: событие привязано к чату,
+    # у экземпляра есть issued_event_id и режим.
+    assert appended[0].chat_id == chat_id
+    assert appended[0].payload["via"] == "chat"
+    instance, mode, issued_event_id = inserted[0]
+    assert mode == "chat"
+    assert issued_event_id == 1
+    assert str(instance.id) == str(appended[0].payload["instance_id"])
 
 
 async def test_issue_from_set_picks_first_open_topic(monkeypatch):
@@ -219,11 +238,16 @@ async def test_issue_from_set_picks_first_open_topic(monkeypatch):
     async def fake_seen(session, student_id, skill_ids):
         return {}
 
-    async def fake_insert(session, student_id, inst):
+    async def fake_insert(
+        session, student_id, inst, *, mode=None, issued_event_id=None
+    ):
         return None
 
-    async def fake_append(session, redis, ev):
-        return None
+    async def fake_append(session, redis, ev, *, dispatch_event=True):
+        return SimpleNamespace(id=1)
+
+    async def fake_grades(session, student_id, skill_id, limit=2):
+        return []
 
     monkeypatch.setattr("app.apply.tasks.sets_repo.get_set", fake_get_set)
     monkeypatch.setattr(
@@ -231,6 +255,7 @@ async def test_issue_from_set_picks_first_open_topic(monkeypatch):
     )
     monkeypatch.setattr("app.apply.tasks.tasks_repo.get_seen_many", fake_seen)
     monkeypatch.setattr("app.apply.tasks.tasks_repo.insert_instance", fake_insert)
+    monkeypatch.setattr("app.apply.tasks.tasks_repo.last_grades_for_skill", fake_grades)
     monkeypatch.setattr("app.apply.tasks.events_store.append", fake_append)
 
     req = _req(set_id=set_id)

@@ -26,7 +26,14 @@ from app.llm.structured import (
     structured_validation_retry_message,
 )
 from app.schemas.chat import StreamEvent, TextDelta, ToolCall
-from app.schemas.llm import LLMMessage, LLMResult, LLMStatus, ModelSlot, ToolCallOut
+from app.schemas.llm import (
+    LLMMessage,
+    LLMResult,
+    LLMStatus,
+    LLMUsage,
+    ModelSlot,
+    ToolCallOut,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +92,11 @@ class FakeLLMClient:
         self._script: list[FakeTurn] = list(script) if script else []
         self.calls: list[FakeCall] = []
         self.forced_status: LLMStatus = "ok"
+        self._last_usage: LLMUsage | None = None
+
+    def last_usage(self) -> LLMUsage | None:
+        """Same accessor as the real client: usage of the last scripted turn."""
+        return self._last_usage
 
     def _pop(self) -> FakeTurn | None:
         if not self._script:
@@ -112,6 +124,7 @@ class FakeLLMClient:
         if isinstance(turn, str):
             return LLMResult(text=turn, tool_calls=[], usage=None, finish_reason="stop")
         if isinstance(turn, LLMResult):
+            self._last_usage = turn.usage
             return turn
         raise TypeError(f"unexpected script item for complete(): {turn!r}")
 
@@ -160,6 +173,8 @@ class FakeLLMClient:
             if turn is None:
                 raise LLMUnavailable("structured output failed")
             if isinstance(turn, str | LLMResult):
+                if isinstance(turn, LLMResult):
+                    self._last_usage = turn.usage
                 raw_text = turn if isinstance(turn, str) else turn.text
                 parsed, error = parse_structured_output(raw_text, schema)
                 if parsed is not None:

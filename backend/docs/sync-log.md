@@ -114,3 +114,154 @@ LLM_TIMEOUT_BULK_S, LLM_RPM_CHAT, LLM_RPM_BULK, LLM_FORCE_DOWN`) со значе
 `agents.router.run_chat` (эхо) и `llm_client.status()` реализованы и проверены фейком
 (`docs/tz/notes/b2-progress.md`), ждут только проводки B3 (00-contracts §7: B3 ждёт
 `run_chat` и `status()` к 19:00, ориентир уже был).
+
+---
+
+# Фаза 2: закрытие замечаний ревью (19.09.2026)
+
+[19.09.2026] [B1] **Замороженный контракт `app/schemas/knowledge.py` изменён.**
+`EvidenceIn.ordinal: int = 0`, `EvidenceContext.instance_id/message_id`,
+`EvidenceOut.ordinal`. Причина: `merge_evidence` делал MERGE по
+(event_id, skill_id) и не писал контекст — второе свидетельство одного
+события (попадание в заблуждение) затирало первое, а `list_evidence` всегда
+отдавал `instance_id=None, message_id=None`, из-за чего `explain_belief` и
+раскрытие «до сообщения» были невозможны. Поля добавлены со значениями по
+умолчанию, совместимость сохранена. Идентификатор свидетельства теперь
+`{event_id}:{skill_id}:{ordinal}` (`personal.evidence_id` /
+`parse_evidence_id`; двухчастная форма фазы 1 читается как ordinal = 0).
+
+[19.09.2026] [B1] **Идемпотентность `apply_task_answered`.** `upsert_state`
+больше не создаёт узел безусловно: если состояние по (skill, exam) уже
+записано этим же `source_event_id` — вызов пустой. Сам обработчик выходит
+раньше, если экземпляр уже отвечен (`tasks_repo.get_answered_at`), потому
+что `bump_seen` и `mark_answered` не идемпотентны. Проверка сквозная:
+`tests/apply/test_e2e_task.py::test_repeated_dispatch_keeps_the_same_counters`.
+
+[19.09.2026] [B3] **Окно наблюдателя — явный флаг, а не побочный эффект.**
+`message.user`, `message.assistant` (`api/chat.py`) и `task.issued`
+(`apply/tasks.py`) пишутся с `dispatch_event=False`: они намеренно остаются
+без `processed_at`, это окно наблюдателя (§8.1), которое он сам и закрывает.
+Раньше это держалось на том, что транспорт передавал `deps=None`, и любой
+рефакторинг транспорта съел бы окно. `events.store.append` теперь пишет
+предупреждение `dispatch_without_deps`, если правила диспетчеризуются без
+`RuleDeps`.
+
+[19.09.2026] [B1] **Задача репетитора видна наблюдателю.** `apply.tasks.issue`
+принимает `chat_id` и пишет `task.issued` с ним; событие пишется раньше
+экземпляра, и экземпляр сохраняется с `mode` и `issued_event_id`. `via`
+считается по режиму (`mock_*` → `mock`, `chat` → `chat`, иначе `topic`).
+
+[19.09.2026] [B1] **Вес задачи из чата.** Пара `("task", "chat")` внесена в
+таблицу §4.3 со значением 0.8; `reconcile_task_answer` для режима `chat`
+ставит `source="task"`, `kind="task_in_chat"`. Раньше выходило
+`source="chat"`, `kind=None` — такой комбинации в таблице нет, вес был 0,
+то есть ответ на задачу из чата не двигал модель знаний вовсе.
+
+[19.09.2026] [B3] **Очередь задач в API.** `app.state.arq` (`ArqRedis`,
+создаётся лениво через `from_url`, чтобы недоступный Redis не задерживал
+старт) и зависимость `api.deps.get_arq`. `enqueue` переехал в
+`app/workers/queue.py`, чтобы маршруты не импортировали воркер (кольцо
+`api → workers.main → main`); загрузка необязательных слоёв — в `app/loader.py`.
+
+[19.09.2026] [B3] **Пер-функциональные таймауты задач.** `job_timeout` очереди
+остаётся потолком коротких задач (interactive 30 с, bulk 90 с), а задачи,
+которые ходят в LLM, объявляют свой собственный через `arq.worker.func`:
+`observe_chat` — `LLM_TIMEOUT_BULK_S + 15` и так далее (`app/workers/registry.py`,
+таблицы `JOB_TIMEOUTS` / `JOB_QUEUES`). Наблюдатель на слоте bulk в 30 с
+очереди не укладывался.
+
+## Ответы на уточнения ревью
+
+[19.09.2026] [B1] `TaskRequestIn.difficulty: int | None` добавлено (замороженный
+контракт `schemas/tasks.py`) — иначе `GetTaskArgs.difficulty` репетитора было
+некуда передать. `tasks.select.pick_template(difficulty=...)` заменяет расчёт
+по последним ответам. Заодно `apply.tasks.issue` наконец передаёт реальные
+последние оценки навыка (`tasks_repo.last_grades_for_skill`), а не пустой список.
+
+[19.09.2026] [B1] `p_target` закрыт в этой фазе. `app/apply/targets.py` берёт
+цель из `roadmap.requirements.build_requirements` (максимальный порог
+сохранённых программ либо ручная цель анкеты) и считает
+`min(p_target_max, target / max_raw)`; порог в шкалированных баллах переводится
+в сырые по таблице экзамена. Используют `apply.sets.rebuild_sets`,
+`apply.knowledge.states_view` и `apply.task_answered` (через новый аргумент
+`reconcile_task_answer(p_target=...)`). TODO в `apply/sets.py` и
+`apply/knowledge.py` сняты.
+
+[19.09.2026] [B1] Формат `obs.answer` подтверждён и расширен: `tasks.answer.grade`
+принимает букву для mcq, число или строку для numeric, список букв, а теперь и
+одну строку «A, B» / «A B» / «AB» для multi_select — наблюдатель кладёт в
+`obs.answer` то, что написал ученик.
+
+[19.09.2026] [B1] Синонимы направлений: `app/matching/directions.py`
+(`direction_matches`) вместо сравнения подстрокой в `matching/hard.py`.
+Словарь покрывает направления демо-датасета в русском и английском написании;
+незнакомое направление по-прежнему сравнивается подстрокой в обе стороны.
+
+[19.09.2026] [B3] Кнопка «обновить модель знаний»: `POST /knowledge/refresh`
+пишет `observer.requested` и ставит `observe_chat` на очередь `interactive`.
+Ответ `RefreshOut{status: queued|empty|failed, job_id, window_size,
+failed_reason}`. `failed_reason` добавлен: `llm_unavailable`,
+`queue_unavailable`, `job_not_enqueued` — «модель недоступна» и «очередь
+недоступна» это разные сообщения ученику, а пустое окно вообще не ошибка
+(`empty`).
+
+[19.09.2026] [B2] Чат сета: поддержка контекстом и наблюдателем остаётся,
+фронт его не запрашивает — в фазу не включаем, отдельного маршрута не заводим.
+`chat_id_for(student_id, kind, set_id, topic_skill_id)` вынесен из `api/chat.py`
+в общую функцию, так что подключение — один вызов, когда фронт будет готов.
+
+[19.09.2026] [B2] `tool_result.data`: `ToolResult` получил `model_data`
+(в поток SSE не сериализуется). Инструмент, у которого представление для фронта
+и для модели различаются, возвращает `ToolPayload(data=..., model_data=...)`;
+`run_tool_loop` кладёт в контекст модели именно `model_data`. Сжатая проекция
+подбора — `app/matching/brief.py` (id, вуз, направление, реализм, три главных
+фактора) вместо 3–4 КБ карточек на каждый ход.
+
+[19.09.2026] [B2] Расход токенов: `LLMClient.last_usage()` (тот же метод у
+`FakeLLMClient` и в протоколе `LLMLike`) — `complete`, `structured` и `stream`
+пишут туда usage последнего вызова, так что расход наблюдателя измерим, а не
+оценивается по прайсу.
+
+[19.09.2026] [B1] Новые параметры в `KnowledgeParams` (и в §12
+`memory-architecture-quack.md`): `observer_window_max=30`,
+`assistant_max_questions=3`, `assistant_readiness_threshold=0.6`,
+`context_set_multiplier=2.0`, `tutor_escalate_after_failures=2`. Таймауты задач —
+в `Settings`: `JOB_TIMEOUT_DEFAULT_S`, `JOB_TIMEOUT_MAX_S` и свойства
+`job_timeout_llm_chat_s` / `job_timeout_llm_bulk_s`.
+
+## Попутно найденное и починенное
+
+[19.09.2026] [B1] `personal.upsert_misc_state` не работал вовсе: Cypher падал с
+`42N24 A WITH clause is required between 'MERGE' and 'MATCH'`. Добавлен
+`WITH ms, m`. Раньше это не ловилось, потому что интеграционные тесты графа не
+запускались (см. ниже).
+
+[19.09.2026] [B1] `graph.queries.kb`: `list_test_dates` / `list_facts_about`
+отдавали `neo4j.time.Date`, а контракты объявлены на `datetime.date` — падала
+валидация. Добавлен `_as_date`.
+
+[19.09.2026] [B1] `merge_evidence` не писал `e.student_id`, хотя индекс
+`evidence_recent` объявлен на `(student_id, observed_at)`. Теперь пишет. Индекс
+`evidence_key` расширен до `(event_id, skill_id, ordinal)`, добавлены индексы по
+`ctx_instance_id` и `ctx_message_id`.
+
+[19.09.2026] [B1] `apply.profile_updated` теперь действительно вызывает
+`reconcile_prior` (§4.8) и пишет приоры анкеты в граф; раньше это был TODO в
+докстринге, а приоры никуда не попадали.
+
+[19.09.2026] [B3] Интеграционные тесты графа: `tests/graph/test_personal_phase2.py`
+не объявлял `pytest.mark.asyncio(loop_scope="module")` и падал целиком
+(«attached to a different loop»), а модули сидировали разные наборы навыков в
+одну базу, из-за чего `test_sat_weights_sum_to_max_raw_score` зависел от порядка
+запуска. Добавлены `loop_scope` и общая очистка графа
+(`tests.conftest.wipe_graph`) перед сидированием.
+
+[19.09.2026] [B1] `apply.diagnostic._persist_indirect` писал косвенные
+свидетельства с `event_id=0`, то есть все они за всё время сводились в один
+узел на навык. Теперь свидетельства привязаны к событию `diagnostic.progress`
+(и разведены по `ordinal`), а само событие пишется с `dispatch_event=False` —
+правил у него нет.
+
+[19.09.2026] [B1] `apply.sets` клал прогноз в кэш с `as_of_event_id=0`, так что
+по нему нельзя было понять, на каком состоянии журнала он посчитан. Добавлен
+`events.store.last_event_id(session, student_id)`.

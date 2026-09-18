@@ -1,17 +1,18 @@
 """ARQ queues and shared infrastructure lifecycle."""
 
 import inspect
-from typing import Any, Literal
-from uuid import uuid4
+from typing import Any
 
 import redis.asyncio as redis_async
-import structlog
-from arq.connections import ArqRedis, RedisSettings
+from arq.connections import RedisSettings
 
 from app.config import settings
 from app.db.engine import close_engine, create_engine, create_sessionmaker
-from app.main import _optional_layer
+from app.loader import optional_layer as _optional_layer
 from app.workers import registry
+from app.workers.queue import enqueue
+
+__all__ = ["WorkerBulk", "WorkerInteractive", "enqueue", "shutdown", "startup"]
 
 
 async def startup(ctx: dict[str, Any]) -> None:
@@ -62,20 +63,6 @@ async def shutdown(ctx: dict[str, Any]) -> None:
     if engine is not None:
         await close_engine(engine)
     ctx.pop("sessionmaker", None)
-
-
-async def enqueue(
-    redis: ArqRedis,
-    queue: Literal["interactive", "bulk"],
-    fn_name: str,
-    **kwargs: Any,
-) -> str | None:
-    if queue not in {"interactive", "bulk"}:
-        raise ValueError("queue must be interactive or bulk")
-    request_id = structlog.contextvars.get_contextvars().get("request_id")
-    kwargs["request_id"] = request_id or uuid4().hex[:16]
-    job = await redis.enqueue_job(fn_name, _queue_name=queue, **kwargs)
-    return job.job_id if job is not None else None
 
 
 class WorkerInteractive:

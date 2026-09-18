@@ -138,9 +138,7 @@ async def answer(
         deps.params,
     )
 
-    await _persist_indirect(deps, student_id, instance.exam_id, new_state)
-
-    await events_store.append(
+    progress = await events_store.append(
         session,
         deps.redis,
         EventIn(
@@ -155,6 +153,14 @@ async def answer(
             extractor_version=None,
             source_event_ids=None,
         ),
+        # У diagnostic.progress нет правил: диспетчеризовать нечего.
+        dispatch_event=False,
+    )
+
+    # Свидетельства привязаны к этому событию: ключ (event_id, skill, ordinal)
+    # иначе схлопнул бы все косвенные свидетельства ученика в один узел.
+    await _persist_indirect(
+        deps, student_id, instance.exam_id, new_state, event_id=progress.id
     )
 
     await diag_repo.save_state(session, student_id, run_id, new_state)
@@ -270,15 +276,17 @@ async def _persist_indirect(
     student_id: UUID,
     exam_id: ExamId,
     state: DiagnosticState,
+    event_id: int,
 ) -> None:
     """Записать косвенные свидетельства предпосылкам (kind='indirect')."""
     if deps.graph is None or not state.indirect:
         return
     from app.schemas.knowledge import EvidenceContext, EvidenceIn
 
-    for skill_id, weight in state.indirect[-5:]:
+    for ordinal, (skill_id, weight) in enumerate(state.indirect[-5:]):
         ev = EvidenceIn(
-            event_id=0,
+            event_id=event_id,
+            ordinal=ordinal,
             skill_id=skill_id,
             exam_id=exam_id,
             kind="indirect",

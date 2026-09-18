@@ -20,6 +20,7 @@ from app.graph.queries.canonical import (
 from app.graph.schema import apply_schema
 from app.seed.exam_formats import seed_exam_formats
 from app.seed.skills import seed_skills
+from tests.conftest import wipe_graph
 
 pytestmark = [
     pytest.mark.phase1,
@@ -34,6 +35,7 @@ DATA = Path(__file__).resolve().parents[3] / "data"
 @pytest_asyncio.fixture(scope="module", loop_scope="module")
 async def seeded_graph(graph):
     """Seed skills + exam formats once for the module, then yield the driver."""
+    await wipe_graph(graph)
     await apply_schema(graph, 384)
     await seed_skills(graph, DATA / "skills")
     await seed_exam_formats(graph, DATA / "exam_formats")
