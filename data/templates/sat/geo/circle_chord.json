@@ -1,0 +1,25 @@
+{
+  "id": "tpl.sat.geo.circle_chord",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 4,
+  "skill_id": "sat.geo.circle",
+  "tags": ["circle", "chord"],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "В окружности радиусом {r} проведена хорда AB. Расстояние от центра до хорды равно {d}. Найдите длину хорды AB.",
+  "correct": "2*sqrt(r**2 - d**2)",
+  "distractors": [
+    { "expr": "sqrt(r**2 - d**2)", "misconception_id": null },
+    { "expr": "r + d", "misconception_id": null },
+    { "expr": "2*d", "misconception_id": null }
+  ],
+  "solution": [
+    "Половина хорды = sqrt({r}² − {d}²)",
+    "AB = 2 × sqrt({r}² − {d}²) = {answer}"
+  ],
+  "generator": "sat.geom.circle_chord",
+  "figure": null
+}

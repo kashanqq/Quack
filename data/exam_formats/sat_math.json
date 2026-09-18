@@ -1,0 +1,42 @@
+{
+  "exam_id": "SAT_MATH",
+  "name": "Digital SAT — Math",
+  "max_raw_score": 44,
+  "sections": [
+    {
+      "name": "Module 1",
+      "n_items": 22,
+      "minutes": 35,
+      "item_types": { "mcq4": 17, "numeric": 5 },
+      "scoring_rule": "1 балл за верный ответ; без штрафа за неверный; числовой ответ — точное совпадение или допустимая форма записи",
+      "calculator": true,
+      "adaptive": false,
+      "area_shares": {
+        "area.sat.algebra": 0.5,
+        "area.sat.advanced": 0.5
+      },
+      "difficulty_shares": { "1": 0.2, "2": 0.3, "3": 0.3, "4": 0.2 },
+      "answer_forms": ["integer", "fraction", "decimal:2"]
+    },
+    {
+      "name": "Module 2",
+      "n_items": 22,
+      "minutes": 35,
+      "item_types": { "mcq4": 17, "numeric": 5 },
+      "scoring_rule": "1 балл за верный ответ; второй модуль адаптивный — сложность зависит от результата первого",
+      "calculator": true,
+      "adaptive": true,
+      "area_shares": {
+        "area.sat.algebra": 0.5,
+        "area.sat.advanced": 0.5
+      },
+      "difficulty_shares": { "1": 0.1, "2": 0.3, "3": 0.4, "4": 0.2 },
+      "answer_forms": ["integer", "fraction", "decimal:2"]
+    }
+  ],
+  "scale_table": null,
+  "scale_note": "Шкала SAT Math оценочная: College Board не публикует точную конверсию для Digital SAT.",
+  "source": "https://satsuite.collegeboard.org/sat/whats-on-the-test/math",
+  "checked_at": "2026-09-17",
+  "is_demo": true
+}
