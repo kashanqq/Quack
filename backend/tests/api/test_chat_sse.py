@@ -154,8 +154,9 @@ def test_oversized_text_rejected_before_stream(monkeypatch):
 
 
 def test_missing_b2_returns_503_before_write(monkeypatch):
+    agent_router = chat._agent_router
     app, token, _, saved_events, _ = _setup(monkeypatch, [])
-    monkeypatch.undo()
+    monkeypatch.setattr(chat, "_agent_router", agent_router)
 
     def missing(_name):
         exc = ModuleNotFoundError("No module named 'app.agents'")

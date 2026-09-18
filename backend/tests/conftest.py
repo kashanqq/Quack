@@ -3,6 +3,8 @@
 import fakeredis.aioredis
 import pytest
 
+from app.llm.fake import FakeLLMClient
+
 
 @pytest.fixture
 async def redis():
@@ -13,4 +15,6 @@ async def redis():
         await client.aclose()
 
 
-# TODO(B2): add fake_llm when app.llm.fake.FakeLLMClient is merged.
+@pytest.fixture
+def fake_llm():
+    return FakeLLMClient()

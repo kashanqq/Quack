@@ -1,5 +1,6 @@
 """Health, request middleware and log redaction contracts."""
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.api import health as health_module
@@ -7,7 +8,10 @@ from app.logging import mask_secrets
 from app.main import create_app
 
 
-def test_health_all_storage_ok(monkeypatch):
+@pytest.mark.parametrize("llm_status", ["ok", "degraded", "down"])
+def test_health_all_storage_ok(monkeypatch, fake_llm, llm_status):
+    fake_llm.forced_status = llm_status
+
     async def healthy(_request):
         return True
 
@@ -25,7 +29,7 @@ def test_health_all_storage_ok(monkeypatch):
             "redis": "ok",
             "search": "skipped",
         },
-        "llm_status": "down",
+        "llm_status": llm_status,
         "version": "dev",
     }
 

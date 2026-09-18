@@ -13,6 +13,14 @@ def llm_ratelimit(slot: str) -> str:
     return f"quack:llm:ratelimit:{slot}"
 
 
+def llm_errors() -> str:
+    return "quack:llm:errors"
+
+
+def llm_probe() -> str:
+    return "quack:llm:probe"
+
+
 def login_ratelimit(ip: str) -> str:
     return f"quack:auth:rl:{ip}"
 
