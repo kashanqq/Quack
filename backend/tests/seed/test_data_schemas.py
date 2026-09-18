@@ -164,6 +164,7 @@ def test_library_parses_and_skills_exist():
 
     assert total >= 10, f"only {total} misconceptions in catalog"
 
+
 # --- templates ---
 
 
