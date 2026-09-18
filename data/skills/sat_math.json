@@ -10,8 +10,8 @@
       "name": "Algebra",
       "score_share": 0.5,
       "skills": [
-        { "id": "math.alg.linear_eq", "weight": 8.0 },
-        { "id": "sat.alg.abs_value_eq", "weight": 6.0 },
+        { "id": "math.alg.linear_eq", "weight": 10.0 },
+        { "id": "sat.alg.abs_value_eq", "weight": 8.0 },
         { "id": "math.alg.quadratic_roots", "weight": 8.0 }
       ]
     },
@@ -20,8 +20,8 @@
       "name": "Advanced Math",
       "score_share": 0.5,
       "skills": [
-        { "id": "sat.adv.functions", "weight": 8.0 },
-        { "id": "sat.adv.exponential", "weight": 8.0 }
+        { "id": "sat.adv.functions", "weight": 9.0 },
+        { "id": "sat.adv.exponential", "weight": 9.0 }
       ]
     }
   ],

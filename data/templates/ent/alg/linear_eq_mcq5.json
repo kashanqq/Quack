@@ -1,0 +1,30 @@
+{
+  "id": "tpl.ent.alg.linear_eq_mcq5",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 2,
+  "skill_id": "math.alg.linear_eq",
+  "tags": ["linear_eq"],
+  "time_reference_sec": 60,
+  "kind": "template",
+  "params": {
+    "a": { "range": [2, 9] },
+    "b": { "range": [1, 20] },
+    "c": { "range": [5, 40] }
+  },
+  "constraints": ["(c - b) % a == 0", "c > b"],
+  "stem": "Решите уравнение: {a}x + {b} = {c}",
+  "correct": "(c - b)/a",
+  "distractors": [
+    { "expr": "(c + b)/a", "misconception_id": null },
+    { "expr": "c/a - b", "misconception_id": null },
+    { "expr": "c - b", "misconception_id": null },
+    { "expr": "(b - c)/a", "misconception_id": null }
+  ],
+  "solution": [
+    "{a}x = {c} − {b}",
+    "x = ({c} − {b})/{a} = {answer}"
+  ],
+  "generator": null,
+  "figure": null
+}
