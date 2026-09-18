@@ -73,13 +73,13 @@ def test_generate_instance_deterministic(abs_template):
 
     i3 = generate_instance(abs_template, seed=2)
     # могут совпасть, но обычно разные; проверим по answer если возможно
-    assert (i1.answer != i3.answer) or ([o.text for o in i1.options] != [o.text for o in i3.options])
+    assert (i1.answer != i3.answer) or (
+        [o.text for o in i1.options] != [o.text for o in i3.options]
+    )
 
 
 def test_generate_instance_prefers_student_misconceptions(abs_template):
-    inst = generate_instance(
-        abs_template, seed=1, student_misc={"lib.abs_sign_drop"}
-    )
+    inst = generate_instance(abs_template, seed=1, student_misc={"lib.abs_sign_drop"})
     misc_ids = {o.misconception_id for o in inst.options}
     assert "lib.abs_sign_drop" in misc_ids
 
@@ -123,7 +123,9 @@ def test_generate_numeric_no_options():
         distractors=[],
         answer_forms=["integer", "fraction", "decimal:2"],
         trap_answers=[
-            DistractorSpec(expr="base * pct / 100", misconception_id="lib.percent_of_not_increase"),
+            DistractorSpec(
+                expr="base * pct / 100", misconception_id="lib.percent_of_not_increase"
+            ),
             DistractorSpec(expr="base * (100 - pct) / 100", misconception_id=None),
         ],
         solution=["{base} × (1 + {pct}/100)", "= {answer}"],
@@ -132,7 +134,9 @@ def test_generate_numeric_no_options():
     assert inst.options == []
     assert isinstance(inst.answer, str)
     assert len(inst.trap_answers) >= 1
-    assert any(t.misconception_id == "lib.percent_of_not_increase" for t in inst.trap_answers)
+    assert any(
+        t.misconception_id == "lib.percent_of_not_increase" for t in inst.trap_answers
+    )
 
 
 def test_generate_multi_select_answer_is_list_of_keys():

@@ -31,9 +31,7 @@ def next_status(
     raise NotImplementedError("phase 2")
 
 
-def update_triggers(
-    evidences: list[EvidenceIn], *, params: KnowledgeParams
-) -> dict:
+def update_triggers(evidences: list[EvidenceIn], *, params: KnowledgeParams) -> dict:
     """Phase 2: aggregate triggers from evidence contexts (§5.3).
 
     Returns a dict with by_task_type, by_difficulty, hurried, late_session,

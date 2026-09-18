@@ -99,7 +99,11 @@ async def list_areas(driver: AsyncDriver, exam_id: str) -> list[AreaOut]:
         result = await session.run(query, exam_id=exam_id)
         async for rec in result:
             out.append(
-                AreaOut(id=rec["id"], name=rec["name"], score_share=float(rec["score_share"]))
+                AreaOut(
+                    id=rec["id"],
+                    name=rec["name"],
+                    score_share=float(rec["score_share"]),
+                )
             )
     return out
 

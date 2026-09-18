@@ -140,7 +140,9 @@ def validate_template(spec: TaskTemplateSpec, n_seeds: int = 50) -> list[str]:
                         errors.append(f"distractors collapse: {d.expr} == correct")
                         break
                     if any(equal_values(d_expr, s) for s in seen):
-                        errors.append(f"distractors collapse: {d.expr} duplicates another")
+                        errors.append(
+                            f"distractors collapse: {d.expr} duplicates another"
+                        )
                         break
                     seen.append(d_expr)
             except TemplateError:
@@ -216,7 +218,9 @@ def _build_mcq(
     answer_key = ""
     for i, (text, is_correct, misc_id) in enumerate(entries):
         key = _KEY_LETTERS[i]
-        options.append(Option(key=key, text=text, correct=is_correct, misconception_id=misc_id))
+        options.append(
+            Option(key=key, text=text, correct=is_correct, misconception_id=misc_id)
+        )
         if is_correct:
             answer_key = key
     return options, answer_key, []
@@ -229,9 +233,12 @@ def _build_multi_select(
     spec: TaskTemplateSpec,
 ) -> tuple[list[Option], list[str], list[Option]]:
     correct_items = [
-        str(x) for x in (correct_val if isinstance(correct_val, list) else [correct_val])
+        str(x)
+        for x in (correct_val if isinstance(correct_val, list) else [correct_val])
     ]
-    entries: list[tuple[str, bool, str | None]] = [(s, True, None) for s in correct_items]
+    entries: list[tuple[str, bool, str | None]] = [
+        (s, True, None) for s in correct_items
+    ]
     seen_texts = set(correct_items)
     for d in distractor_specs:
         text = str(d.expr)
@@ -246,7 +253,9 @@ def _build_multi_select(
     answer_keys: list[str] = []
     for i, (text, is_correct, misc_id) in enumerate(entries):
         key = _KEY_LETTERS[i]
-        options.append(Option(key=key, text=text, correct=is_correct, misconception_id=misc_id))
+        options.append(
+            Option(key=key, text=text, correct=is_correct, misconception_id=misc_id)
+        )
         if is_correct:
             answer_keys.append(key)
 
@@ -254,7 +263,9 @@ def _build_multi_select(
     return options, answer_keys, trap_options
 
 
-def _build_multi_select_traps(spec: TaskTemplateSpec, options: list[Option]) -> list[Option]:
+def _build_multi_select_traps(
+    spec: TaskTemplateSpec, options: list[Option]
+) -> list[Option]:
     if not spec.omission_traps:
         return []
     text_to_key = {o.text: o.key for o in options}
@@ -262,7 +273,12 @@ def _build_multi_select_traps(spec: TaskTemplateSpec, options: list[Option]) -> 
     for ot in spec.omission_traps:
         key = text_to_key.get(ot.omit, "")
         out.append(
-            Option(key=key, text=ot.omit, correct=False, misconception_id=ot.misconception_id)
+            Option(
+                key=key,
+                text=ot.omit,
+                correct=False,
+                misconception_id=ot.misconception_id,
+            )
         )
     return out
 
@@ -282,7 +298,10 @@ def _build_numeric(
         text = render_value(val, "auto")
         trap_options.append(
             Option(
-                key=f"T{i + 1}", text=text, correct=False, misconception_id=t.misconception_id
+                key=f"T{i + 1}",
+                text=text,
+                correct=False,
+                misconception_id=t.misconception_id,
             )
         )
     return [], answer, trap_options

@@ -63,38 +63,51 @@ def test_difficulty_factor_bounds():
 
 def test_updated_half_life_correct_doubles_with_alpha_1():
     params = KnowledgeParams(alpha=1.0)
-    h = updated_half_life(24.0, direction=1, weight=1.0, difficulty_factor=1.0, share=None, params=params)
+    h = updated_half_life(
+        24.0, direction=1, weight=1.0, difficulty_factor=1.0, share=None, params=params
+    )
     assert h == pytest.approx(48.0, abs=1e-9)
 
 
 def test_updated_half_life_incorrect_halves_with_beta_half():
     params = KnowledgeParams(beta=0.5)
-    h = updated_half_life(24.0, direction=-1, weight=1.0, difficulty_factor=1.0, share=None, params=params)
+    h = updated_half_life(
+        24.0, direction=-1, weight=1.0, difficulty_factor=1.0, share=None, params=params
+    )
     assert h == pytest.approx(12.0, abs=1e-9)
 
 
 def test_updated_half_life_incorrect_floor_at_quarter_of_h():
     # Проверяем floor 0.25 отдельно, h_min выставлен ниже, чтобы не мешал
     params = KnowledgeParams(beta=2.0, h_min=1.0)
-    h = updated_half_life(24.0, direction=-1, weight=1.0, difficulty_factor=1.0, share=None, params=params)
+    h = updated_half_life(
+        24.0, direction=-1, weight=1.0, difficulty_factor=1.0, share=None, params=params
+    )
     assert h == pytest.approx(6.0, abs=1e-9)  # 24 * max(0.25, 1 - 2) = 24 * 0.25
 
 
 def test_updated_half_life_clamped_to_h_min():
     # 24 * 0.25 = 6 < h_min=12, значит клампится в 12
     params = KnowledgeParams(beta=2.0, h_min=12.0)
-    h = updated_half_life(24.0, direction=-1, weight=1.0, difficulty_factor=1.0, share=None, params=params)
+    h = updated_half_life(
+        24.0, direction=-1, weight=1.0, difficulty_factor=1.0, share=None, params=params
+    )
     assert h == pytest.approx(12.0, abs=1e-9)
+
 
 # --- updated_p_at_obs ---
 
 
 def test_updated_p_at_obs_correct():
-    assert updated_p_at_obs(0.5, direction=1, weight=1.0, share=None) == pytest.approx(0.75, abs=1e-9)
+    assert updated_p_at_obs(0.5, direction=1, weight=1.0, share=None) == pytest.approx(
+        0.75, abs=1e-9
+    )
 
 
 def test_updated_p_at_obs_incorrect():
-    assert updated_p_at_obs(0.5, direction=-1, weight=1.0, share=None) == pytest.approx(0.25, abs=1e-9)
+    assert updated_p_at_obs(0.5, direction=-1, weight=1.0, share=None) == pytest.approx(
+        0.25, abs=1e-9
+    )
 
 
 def test_updated_p_at_obs_partial_between():
@@ -211,15 +224,27 @@ def test_apply_evidence_partial_halfway_between_correct_and_incorrect():
     t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
     state = _starting_state(t0)
 
-    ev_correct = _make_evidence(t0 + timedelta(hours=1), tier=2, weight=0.8, direction=1)
+    ev_correct = _make_evidence(
+        t0 + timedelta(hours=1), tier=2, weight=0.8, direction=1
+    )
     state_correct = apply_evidence(state, ev_correct, params=params)
 
-    state_incorrect = apply_evidence(state, _make_evidence(t0 + timedelta(hours=1), tier=2, weight=0.8, direction=-1), params=params)
+    state_incorrect = apply_evidence(
+        state,
+        _make_evidence(t0 + timedelta(hours=1), tier=2, weight=0.8, direction=-1),
+        params=params,
+    )
 
-    ev_partial = _make_evidence(t0 + timedelta(hours=1), tier=2, weight=0.8, direction=0, share=0.5)
+    ev_partial = _make_evidence(
+        t0 + timedelta(hours=1), tier=2, weight=0.8, direction=0, share=0.5
+    )
     state_partial = apply_evidence(state, ev_partial, params=params)
 
-    assert state_incorrect.half_life_h < state_partial.half_life_h < state_correct.half_life_h
+    assert (
+        state_incorrect.half_life_h
+        < state_partial.half_life_h
+        < state_correct.half_life_h
+    )
 
 
 # --- helpers ---

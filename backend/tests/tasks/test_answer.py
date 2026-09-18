@@ -25,8 +25,15 @@ def _mcq4() -> TaskInstance:
         stem_rendered="...",
         options=[
             Option(key="A", text="6", correct=True, misconception_id=None),
-            Option(key="B", text="5", correct=False, misconception_id="lib.abs_single_branch"),
-            Option(key="C", text="-6", correct=False, misconception_id="lib.abs_sign_drop"),
+            Option(
+                key="B",
+                text="5",
+                correct=False,
+                misconception_id="lib.abs_single_branch",
+            ),
+            Option(
+                key="C", text="-6", correct=False, misconception_id="lib.abs_sign_drop"
+            ),
             Option(key="D", text="3", correct=False, misconception_id=None),
         ],
         answer="A",
@@ -51,7 +58,12 @@ def _numeric() -> TaskInstance:
         answer="5/2",
         trap_answers=[
             Option(key="T1", text="2.5", correct=False, misconception_id="lib.x"),
-            Option(key="T2", text="2.4", correct=False, misconception_id="lib.percent_of_not_increase"),
+            Option(
+                key="T2",
+                text="2.4",
+                correct=False,
+                misconception_id="lib.percent_of_not_increase",
+            ),
         ],
         solution_rendered=["..."],
         time_reference_sec=60,
@@ -73,11 +85,18 @@ def _multi_select() -> TaskInstance:
             Option(key="A", text="r1", correct=True, misconception_id=None),
             Option(key="B", text="r2", correct=True, misconception_id=None),
             Option(key="C", text="w1", correct=False, misconception_id=None),
-            Option(key="D", text="w2", correct=False, misconception_id="lib.vieta_sign_confusion"),
+            Option(
+                key="D",
+                text="w2",
+                correct=False,
+                misconception_id="lib.vieta_sign_confusion",
+            ),
         ],
         answer=["A", "B"],
         trap_answers=[
-            Option(key="B", text="r2", correct=False, misconception_id="lib.omission_r2"),
+            Option(
+                key="B", text="r2", correct=False, misconception_id="lib.omission_r2"
+            ),
         ],
         solution_rendered=["..."],
         time_reference_sec=120,

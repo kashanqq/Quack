@@ -1,4 +1,4 @@
-﻿"""Load skill map and areas into Neo4j — memory-architecture-quack.md §2.1.
+"""Load skill map and areas into Neo4j — memory-architecture-quack.md §2.1.
 
 Idempotent: MERGE by id, SET properties, no deletes.
 Validates Σ weight == max_raw_score, DAG (no cycles in REQUIRES).

@@ -47,7 +47,9 @@ async def get_state(
     LIMIT 1
     """
     async with driver.session() as session:
-        result = await session.run(query, student_id=str(student_id), skill_id=skill_id, exam_id=exam_id)
+        result = await session.run(
+            query, student_id=str(student_id), skill_id=skill_id, exam_id=exam_id
+        )
         rec = await result.single()
     if rec is None:
         return None
@@ -79,7 +81,10 @@ async def get_states(
 
 
 async def upsert_state(
-    driver: AsyncDriver, student_id: UUID, new_state: KnowledgeStateOut, source_event_id: int
+    driver: AsyncDriver,
+    student_id: UUID,
+    new_state: KnowledgeStateOut,
+    source_event_id: int,
 ) -> None:
     """Create a new KnowledgeState, link it via PREVIOUS to the current one (if any).
 
@@ -174,20 +179,30 @@ async def get_misc_states(driver: AsyncDriver, student_id: UUID, skill_ids: list
 
 
 async def upsert_misc_state(
-    driver: AsyncDriver, student_id: UUID, misconception_id: str, status: str, counters: dict
+    driver: AsyncDriver,
+    student_id: UUID,
+    misconception_id: str,
+    status: str,
+    counters: dict,
 ):
     """Phase 2: update MisconceptionState (occurrence_count, strong_count, ...)."""
     raise NotImplementedError("phase 2")
 
 
 async def add_root_cause(
-    driver: AsyncDriver, evidence_id: str, root_skill_id: str, confidence: float, source: str
+    driver: AsyncDriver,
+    evidence_id: str,
+    root_skill_id: str,
+    confidence: float,
+    source: str,
 ):
     """Phase 2: create ROOT_CAUSE edge from evidence to root skill."""
     raise NotImplementedError("phase 2")
 
 
-async def list_evidence(driver: AsyncDriver, student_id: UUID, skill_id: str, limit: int = 50):
+async def list_evidence(
+    driver: AsyncDriver, student_id: UUID, skill_id: str, limit: int = 50
+):
     """Phase 2: all Evidence for a skill, newest first (for 'why do you think so')."""
     raise NotImplementedError("phase 2")
 

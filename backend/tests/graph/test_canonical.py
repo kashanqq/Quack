@@ -67,7 +67,9 @@ async def test_common_skill_has_two_has_skill_edges(seeded_graph):
 
 
 async def test_get_prerequisites_two_levels(seeded_graph):
-    prereqs = await get_prerequisites(seeded_graph, "sat.adv.quadratic_functions", depth=2)
+    prereqs = await get_prerequisites(
+        seeded_graph, "sat.adv.quadratic_functions", depth=2
+    )
     assert len(prereqs) > 0
     depths = {p.depth for p in prereqs}
     assert 1 in depths

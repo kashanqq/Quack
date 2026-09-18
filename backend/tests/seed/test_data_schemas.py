@@ -141,9 +141,7 @@ def test_library_parses_and_skills_exist():
 
     for e in entries:
         for sid in e["skill_ids"]:
-            assert sid in all_defined, (
-                f"{e['id']}: skill {sid} not defined anywhere"
-            )
+            assert sid in all_defined, f"{e['id']}: skill {sid} not defined anywhere"
 
 
 # --- templates ---

@@ -1,4 +1,4 @@
-﻿"""Load task templates into Neo4j and Postgres cache — memory-architecture §3.1.
+"""Load task templates into Neo4j and Postgres cache — memory-architecture §3.1.
 
 Each template lives in its own JSON file under data/templates/<exam>/<area>/<name>.json.
 Writes:
@@ -65,9 +65,7 @@ async def seed_templates(
                 )
             ).single()
             if rec is None:
-                raise SeedError(
-                    spec.id, f"skill {spec.skill_id} not found"
-                )
+                raise SeedError(spec.id, f"skill {spec.skill_id} not found")
 
             await session_neo.run(
                 f"""
@@ -112,9 +110,7 @@ async def seed_templates(
                     )
                 ).single()
                 if rec is None:
-                    raise SeedError(
-                        spec.id, f"misconception {misc_id} not found"
-                    )
+                    raise SeedError(spec.id, f"misconception {misc_id} not found")
                 await session_neo.run(
                     f"""
                     MATCH (t:{L.TASK_TEMPLATE} {{id: $id}})
@@ -145,8 +141,6 @@ def _collect_trap_pairs(spec: TaskTemplateSpec) -> list[tuple[str, str | None]]:
     for o in spec.omission_traps or []:
         pairs.append((o.omit, o.misconception_id))
     return pairs
-
-
 
 
 def validate_templates(path: Path) -> None:

@@ -1,4 +1,4 @@
-﻿"""Load exam formats (sections, scale table) into Neo4j — memory-architecture §2.3.
+"""Load exam formats (sections, scale table) into Neo4j — memory-architecture §2.3.
 
 Idempotent MERGE by (exam_id, section.name) and by exam for the scale table.
 Depends on seed_skills: the Exam node must exist first.
@@ -72,9 +72,7 @@ async def _upsert(driver: AsyncDriver, data: ExamFormatFile) -> SeedReport:
             )
         ).single()
         if rec is None:
-            raise SeedError(
-                data.exam_id, "Exam node missing — run seed_skills first"
-            )
+            raise SeedError(data.exam_id, "Exam node missing — run seed_skills first")
 
         # update Exam-level fields
         await session.run(

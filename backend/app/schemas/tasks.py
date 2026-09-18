@@ -70,7 +70,6 @@ class TaskInstance(BaseModel):
     tags: list[str]
 
 
-
 class Grade(BaseModel):
     correct: bool
     matched_misconception_id: str | None = None

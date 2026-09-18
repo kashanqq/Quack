@@ -1,4 +1,4 @@
-﻿"""Load admission knowledge base — memory-architecture §2.3.
+"""Load admission knowledge base — memory-architecture §2.3.
 
 Reads two files:
   - data/knowledge_base/exams.json: array of Fact nodes with node_id (Exam id)

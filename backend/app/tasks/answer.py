@@ -89,7 +89,9 @@ def _grade_multi_select(instance: TaskInstance, answer: Any) -> Grade:
     if not wrong_chosen:
         partial = len(correct_chosen) / len(correct_keys)
     else:
-        partial = max(0.0, (len(correct_chosen) - len(wrong_chosen)) / len(correct_keys))
+        partial = max(
+            0.0, (len(correct_chosen) - len(wrong_chosen)) / len(correct_keys)
+        )
 
     correct = partial == 1.0 and not wrong_chosen
 

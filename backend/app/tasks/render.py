@@ -45,7 +45,9 @@ def render_stem(stem: str, params: dict[str, Any], answer: Any = None) -> str:
     return _PLACEHOLDER.sub(replace, stem)
 
 
-def render_value(value: Any, form: Literal["auto", "fraction", "decimal", "integer"]) -> str:
+def render_value(
+    value: Any, form: Literal["auto", "fraction", "decimal", "integer"]
+) -> str:
     """Format a sympy value.
 
     - integer: Integer only

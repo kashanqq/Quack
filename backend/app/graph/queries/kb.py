@@ -14,7 +14,9 @@ from app.graph import labels as L
 from app.schemas.knowledge import AdmissionRouteOut, FactOut, TestDate
 
 
-async def get_admission_route(driver: AsyncDriver, country_id: str) -> list[AdmissionRouteOut]:
+async def get_admission_route(
+    driver: AsyncDriver, country_id: str
+) -> list[AdmissionRouteOut]:
     """All routes for a country, each with requirements."""
     query = f"""
     MATCH (c:{L.COUNTRY} {{id: $country_id}})-[:{L.HAS_ROUTE}]->(r:{L.ADMISSION_ROUTE})

@@ -116,7 +116,9 @@ async def test_get_state_recomputes_p_recall(seeded_graph):
     t0 = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
     s = _make_state("math.alg.linear_eq", "SAT_MATH", t0, p_at_obs=0.8)
     # half_life 24h — через 24 часа p_recall должен быть ~0.5
-    s = s.model_copy(update={"half_life_h": 24.0, "last_observed_at": t0 - timedelta(hours=24)})
+    s = s.model_copy(
+        update={"half_life_h": 24.0, "last_observed_at": t0 - timedelta(hours=24)}
+    )
     await upsert_state(seeded_graph, sid, s, source_event_id=1)
 
     got = await get_state(seeded_graph, sid, "math.alg.linear_eq", "SAT_MATH")
@@ -127,7 +129,9 @@ async def test_get_state_recomputes_p_recall(seeded_graph):
 # --- helpers ---
 
 
-def _make_state(skill_id: str, exam_id: str, t0: datetime, p_at_obs: float) -> KnowledgeStateOut:
+def _make_state(
+    skill_id: str, exam_id: str, t0: datetime, p_at_obs: float
+) -> KnowledgeStateOut:
     return KnowledgeStateOut(
         skill_id=skill_id,
         exam_id=exam_id,
