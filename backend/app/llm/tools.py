@@ -36,7 +36,9 @@ class ToolSpec:
     read_only: bool = True
 
 
-def tool(name: str, description: str) -> Callable[[Callable], ToolSpec]:
+def tool(
+    name: str, description: str, read_only: bool = True
+) -> Callable[[Callable], ToolSpec]:
     def decorator(fn: Callable) -> ToolSpec:
         signature = inspect.signature(fn, eval_str=True)
         params = list(signature.parameters.values())
@@ -52,7 +54,11 @@ def tool(name: str, description: str) -> Callable[[Callable], ToolSpec]:
                 "with a BaseModel subclass"
             )
         return ToolSpec(
-            name=name, description=description, args_model=args_model, fn=fn
+            name=name,
+            description=description,
+            args_model=args_model,
+            fn=fn,
+            read_only=read_only,
         )
 
     return decorator
