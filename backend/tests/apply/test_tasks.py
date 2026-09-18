@@ -12,6 +12,7 @@ from app.errors import NotFound, ValidationFailed
 from app.events.dispatch import RuleDeps
 from app.schemas.sets import SetOut, SetProgress, TopicOut
 from app.schemas.tasks import (
+    DistractorSpec,
     ParamSpec,
     TaskRequestIn,
     TaskTemplateSpec,
@@ -58,29 +59,32 @@ def _params():
 
 
 def _template(skill_id: str = "math.alg.linear_eq") -> TaskTemplateSpec:
+    # Шаблон из memory-architecture §3.1 — дистракторы гарантированно
+    # не коллапсируют при constraints b > c и b, c > 0.
     return TaskTemplateSpec(
-        id=f"tpl.sat.alg.{skill_id}",
+        id="tpl.test.abs_eq_sum_roots",
         exam_id="SAT_MATH",
         type="mcq4",
         difficulty=3,
         skill_id=skill_id,
-        tags=["linear_eq"],
-        time_reference_sec=60,
+        tags=["negative_branch", "sum_of_roots"],
+        time_reference_sec=75,
         kind="template",
         params={
-            "a": ParamSpec(range=(2, 9)),
-            "b": ParamSpec(range=(1, 20)),
-            "c": ParamSpec(range=(5, 40)),
+            "a": ParamSpec(range=(2, 5)),
+            "b": ParamSpec(range=(2, 12)),
+            "c": ParamSpec(range=(1, 9)),
         },
-        constraints=["(c - b) % a == 0", "c > b"],
-        stem="Решите: {a}x + {b} = {c}",
-        correct="(c - b)/a",
+        constraints=["(b + c) % a == 0", "(b - c) % a == 0", "b > c"],
+        stem="|{a}x − {b}| = {c}. Чему равна сумма корней?",
+        correct="2*b/a",
         distractors=[
-            {"expr": "(c + b)/a", "misconception_id": None},
-            {"expr": "c/a - b", "misconception_id": None},
-            {"expr": "c - b", "misconception_id": None},
+            DistractorSpec(expr="(b + c)/a", misconception_id=None),
+            DistractorSpec(expr="(b - c)/a", misconception_id=None),
+            DistractorSpec(expr="-2*b/a", misconception_id=None),
+            DistractorSpec(expr="2*c/a", misconception_id=None),
         ],
-        solution=["{a}x = {c} - {b}", "x = {answer}"],
+        solution=["Раскрыть модуль", "x1, x2", "Сумма = {answer}"],
     )
 
 

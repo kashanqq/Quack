@@ -832,6 +832,19 @@ export interface components {
             shaky: string[];
             /** Last Grade Correct */
             last_grade_correct: boolean | null;
+            /**
+             * Budget Order
+             * @default []
+             */
+            budget_order: string[];
+            /**
+             * Indirect
+             * @default []
+             */
+            indirect: [
+                string,
+                number
+            ][];
         };
         /** Direction */
         Direction: {
