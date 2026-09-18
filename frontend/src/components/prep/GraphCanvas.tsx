@@ -20,6 +20,8 @@ type View = { x: number; y: number; k: number };
 
 const MIN_K = 0.45;
 const MAX_K = 1.8;
+/** The zoom a graph opens on at most: a wide screen shows it compact, zooming in stays a scroll away */
+const OPEN_K = 0.8;
 const PAD = 28;
 /** On a narrow canvas the margins around a fitted drawing shrink, every pixel goes to the graph */
 const PAD_NARROW = 8;
@@ -118,7 +120,7 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
     const box = viewportRef.current?.getBoundingClientRect();
     if (!box) return;
     commit();
-    const k = clamp(Math.min((box.width - PAD * 2) / width, (box.height - PAD * 2) / height), MIN_K, 1);
+    const k = clamp(Math.min((box.width - PAD * 2) / width, (box.height - PAD * 2) / height), MIN_K, OPEN_K);
     setView({ k, x: (box.width - width * k) / 2, y: Math.max(PAD, (box.height - height * k) / 2) });
   };
 
@@ -127,7 +129,7 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
     const box = viewportRef.current?.getBoundingClientRect();
     if (!box) return;
     const pad = box.width < SHEET_BELOW ? PAD_NARROW : PAD;
-    const k = clamp((box.width - pad * 2) / width, MIN_K, 1);
+    const k = clamp((box.width - pad * 2) / width, MIN_K, OPEN_K);
     setView({ k, x: (box.width - width * k) / 2, y: pad });
   }, [width]);
 

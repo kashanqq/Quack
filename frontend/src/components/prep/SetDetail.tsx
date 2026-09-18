@@ -145,13 +145,13 @@ const DUE_TEXT: Record<Due, (by: Date) => string> = {
 
 /* ---------- The graph on the set's timeline ---------- */
 
-/** The circle is drawn larger here than on the map: the topics are the whole screen */
-const NODE = 84;
-const NODE_W = 180;
+/** The circle matches the map; the timeline gives the topics their room */
+const NODE = 64;
+const NODE_W = 156;
 /** Room left and right of the axis for the start and the deadline */
 const PAD = 104;
 /** Least room one topic takes along the axis; a long set scrolls sideways */
-const STEP = 200;
+const STEP = 168;
 const MIN_H = 380;
 /** From the bottom: the axis, then the topic deadlines under it */
 const AXIS_FROM_BOTTOM = 70;
@@ -161,7 +161,7 @@ const GAP = 3;
 /** Phones: time runs down the left edge and the topics stack under each other */
 const V_AXIS = 30;
 const V_TOP = 56;
-const V_STEP = 190;
+const V_STEP = 160;
 
 function SetGraph({
   model,
