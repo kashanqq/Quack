@@ -1,5 +1,5 @@
 /* "Quack?" section: the globe on the left, the list and its demo panel in the
-   middle, a lane of ducks down the right. Surfaces use the same dark palette as
+   middle, a lane of ducks down each side. Surfaces use the same dark palette as
    the "Выбор" section, so the landing shows the product in its own colours. */
 
 .section {
@@ -29,27 +29,30 @@
   line-height: 1;
 }
 
-/* Stage: globe | list + panel | duck lane.
-   The duck lane is absolutely placed inside the section, so it costs no layout
-   width; the stage just reserves a gutter for it on wide screens. */
+/* Stage: list + panel, the globe under them, and a duck lane down each side.
+   The duck lanes are absolutely placed inside the section, so they cost no layout
+   width; the stage just reserves a gutter for them on wide screens. */
 
 .stage {
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 30px;
-  width: min(1460px, 100%);
-  padding-right: 140px;
+  gap: 48px;
+  width: min(1720px, 100%);
+  /* Each duck lane gets a gutter of its own, which also keeps
+     the block on the page's centre line. */
+  padding-inline: 140px;
 }
 
 .globeWrap {
-  flex: 0 0 300px;
+  width: min(600px, 100%);
 }
 
 /* The wrapper keeps its layout box while the block inside is scaled, so the
    scroll measurement never feeds back on itself. */
 .mainWrap {
-  flex: 1;
+  width: 100%;
   min-width: 0;
 }
 
@@ -64,7 +67,7 @@
    The Wrap elements are the scroll-reveal wrappers, so they carry the flex sizing. */
 
 .tabsWrap {
-  flex: 0 0 320px;
+  flex: 0 0 340px;
 }
 
 .panelWrap {
@@ -120,6 +123,12 @@
   color: #fff;
 }
 
+/* While a university is picked on the globe, the other items rest. */
+.tabs[data-locked="true"] .tab:not([data-active="true"]) {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .tabNum {
   opacity: 0.55;
 }
@@ -128,7 +137,7 @@
 
 .panel {
   position: relative;
-  min-height: 440px;
+  min-height: 500px;
   padding: 26px 30px;
   overflow: hidden;
   background: var(--panel-bg);
@@ -505,25 +514,13 @@
 
 @media (max-width: 1240px) {
   .stage {
-    padding-right: 0;
+    padding-inline: 0;
   }
 }
 
-/* The globe moves above the block instead of beside it. */
+/* Growing on scroll needs horizontal slack; there is none left here. */
 
 @media (max-width: 1080px) {
-  .stage {
-    flex-direction: column;
-    gap: 26px;
-  }
-  .globeWrap {
-    flex: none;
-    width: min(300px, 100%);
-  }
-  .mainWrap {
-    width: 100%;
-  }
-  /* Growing on scroll needs horizontal slack; there is none left here. */
   .main {
     scale: 1;
   }

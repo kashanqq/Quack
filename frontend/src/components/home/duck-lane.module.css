@@ -1,4 +1,4 @@
-/* A narrow strip down the right edge of the section. Purely ambient: it never
+/* A narrow strip down one edge of the section. Purely ambient: it never
    takes a click and it never takes layout width from the panel. */
 
 .lane {
@@ -9,6 +9,11 @@
   width: 150px;
   overflow: hidden;
   pointer-events: none;
+}
+
+.lane[data-side="left"] {
+  right: auto;
+  left: 0;
 }
 
 .flight {

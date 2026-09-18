@@ -18,6 +18,7 @@ import {
   type PrepSub,
   type PrepTab,
 } from "./prepModel";
+import { quackSource } from "../quack/source";
 import { SetsView } from "./SetsView";
 import styles from "./prep.module.css";
 
@@ -51,6 +52,8 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(model));
     } catch {}
+    // Preparation is a source of truth for Quack: an answer, a passed set or a ticked date is recomputed at once
+    quackSource().report({ prep: model });
   }, [model]);
 
   useEffect(() => {

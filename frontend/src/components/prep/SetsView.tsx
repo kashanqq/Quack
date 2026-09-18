@@ -165,6 +165,7 @@ function Route({ model }: { model: PrepModel }) {
                         Сет {stop.set.number} · {stop.set.title}
                       </span>
                       <span className={styles.routeChipMeta}>
+                        {isNow(status) && <b className={styles.routeNowTag}>сейчас</b>}
                         {STATUS_TEXT[status]} · до {formatShort(stop.set.deadline)}
                       </span>
                     </span>
@@ -184,7 +185,7 @@ function Route({ model }: { model: PrepModel }) {
         )}
 
         <p className={styles.muted}>
-          Кружок — сет на своих датах: {STATUS_TEXT.done} — залит, текущий — оранжевый, предстоит — контур, закрепление — пунктир.
+          Кружок — сет на своих датах: {STATUS_TEXT.done} — залит, текущий — оранжевый и пульсирует, предстоит — контур, закрепление — пунктир.
         </p>
       </section>
     </div>
@@ -198,20 +199,46 @@ const V_AXIS_X = 84;
 const V_TOP = 26;
 const V_BOTTOM = 40;
 const DAY_MS = 86_400_000;
-/** Neighbouring sets (and the test) at least this far apart, so labels of up to two lines never touch */
-const V_MIN_GAP = 76;
+/**
+ * The column is not to scale: neighbouring marks sit at least V_MIN_GAP apart, so labels of up to two
+ * lines never touch, and at most V_MAX_GAP, so a long quiet stretch does not turn into a long empty
+ * axis to scroll past. Dates in between (months, today, the forecast) are placed between their neighbours.
+ */
+const V_MIN_GAP = 64;
+const V_MAX_GAP = 92;
+const V_PER_DAY = 5;
+
+const clampGap = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+function columnScale(marks: number[], from: number, to: number) {
+  const anchors: [number, number][] = [[from, V_TOP]];
+  for (const t of marks) {
+    const [pt, py] = anchors[anchors.length - 1];
+    // The first set only needs room for the month label above it
+    const lo = anchors.length === 1 ? 44 : V_MIN_GAP;
+    anchors.push([t, py + clampGap(((t - pt) / DAY_MS) * V_PER_DAY, lo, V_MAX_GAP)]);
+  }
+  const [lt, ly] = anchors[anchors.length - 1];
+  anchors.push([to, ly + clampGap(((to - lt) / DAY_MS) * V_PER_DAY, 20, 40)]);
+
+  return (d: Date | number) => {
+    const t = +d;
+    let i = anchors.findIndex(([at]) => at >= t);
+    if (i <= 0) i = i === 0 ? 1 : anchors.length - 1;
+    const [t0, y0] = anchors[i - 1];
+    const [t1, y1] = anchors[i];
+    return y0 + ((t - t0) / (t1 - t0 || 1)) * (y1 - y0);
+  };
+}
 
 function RouteColumn({ model, forecast, testDate, inTime }: { model: PrepModel; forecast: Date; testDate: Date; inTime: boolean }) {
   const from = day(9, 1).getTime();
   const to = day(11, 12).getTime();
   const stops = SETS.map((set) => ({ set, at: (set.start.getTime() + set.deadline.getTime()) / 2 }));
 
-  // As many pixels per day as the closest pair of marks needs, within sensible bounds
   const marks = [...stops.map((stop) => stop.at), testDate.getTime()].sort((a, b) => a - b);
-  const closest = Math.min(...marks.slice(1).map((t, i) => (t - marks[i]) / DAY_MS));
-  const perDay = Math.min(14, Math.max(6, V_MIN_GAP / Math.max(closest, 1)));
-  const y = (t: Date | number) => V_TOP + ((+t - from) / DAY_MS) * perDay;
-  const height = y(to) + V_BOTTOM;
+  const y = columnScale(marks, from, to);
+  const height = Math.max(y(to), y(forecast) + 16) + V_BOTTOM;
   const months = [day(9, 1), day(10, 1), day(11, 1)];
 
   return (
@@ -258,6 +285,7 @@ function RouteColumn({ model, forecast, testDate, inTime }: { model: PrepModel; 
                 Сет {set.number} · {set.title}
               </span>
               <span className={styles.routeChipMeta}>
+                {isNow(status) && <b className={styles.routeNowTag}>сейчас</b>}
                 {STATUS_TEXT[status]} · до {formatShort(set.deadline)}
               </span>
             </span>
@@ -278,7 +306,13 @@ function RouteColumn({ model, forecast, testDate, inTime }: { model: PrepModel; 
   );
 }
 
-/** A set drawn the same way a skill is: filled, ringed or dashed, so status is shape as well as colour. */
+/** The set the student is on: the one in work, or the one waiting to be accepted when none is. */
+const isNow = (status: keyof typeof STATUS_TEXT) => status === "current" || status === "proposed";
+
+/**
+ * A set drawn the same way a skill is: filled, ringed or dashed, so status is shape as well as colour.
+ * The set the student is on sends out a slow ring, so «где я сейчас» is found at a glance.
+ */
 function SetMark({ status }: { status: keyof typeof STATUS_TEXT }) {
   const size = SET_R * 2;
   const c = SET_R;
@@ -286,6 +320,12 @@ function SetMark({ status }: { status: keyof typeof STATUS_TEXT }) {
   const filled = status === "done" || status === "current";
   return (
     <svg className={styles.routeMarkShape} width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+      {isNow(status) && (
+        <>
+          <circle cx={c} cy={c} r={r} className={styles.routePulse} />
+          <circle cx={c} cy={c} r={r} className={`${styles.routePulse} ${styles.routePulseLate}`} />
+        </>
+      )}
       {filled ? (
         <circle cx={c} cy={c} r={r} className={styles.mapFill} />
       ) : (

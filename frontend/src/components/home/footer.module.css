@@ -1,0 +1,212 @@
+/* Footer: a dark plate at the end of the page, in the same palette as the panels. */
+
+.footer {
+  position: relative;
+  z-index: 1;
+  width: min(1180px, calc(100% - 32px));
+  margin: 80px auto 24px;
+  padding: 40px 44px 24px;
+  background: #242120;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 28px;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  gap: 48px;
+}
+
+.brand {
+  max-width: 320px;
+}
+
+.logo {
+  font-family: var(--font-mono);
+  font-size: 28px;
+}
+
+.accent {
+  color: var(--accent);
+}
+
+.tagline {
+  margin: 12px 0 0;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.columns {
+  display: flex;
+  gap: 64px;
+}
+
+.columnTitle {
+  margin: 0 0 14px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: var(--font-text);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.column ul {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.column a {
+  color: rgba(255, 255, 255, 0.8);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  transition: color 0.2s ease;
+}
+
+.column a:hover,
+.column a:focus-visible {
+  color: var(--accent);
+}
+
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.4);
+  font-family: var(--font-text);
+  font-size: 13px;
+}
+
+.toTop {
+  color: rgba(255, 255, 255, 0.6);
+  transition: color 0.2s ease;
+}
+
+.toTop:hover,
+.toTop:focus-visible {
+  color: var(--accent);
+}
+
+/* Ducks on the top edge of the plate (FooterDucks). */
+
+.ducks {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  pointer-events: none;
+}
+
+.waver {
+  position: absolute;
+  bottom: 0;
+  left: 64px;
+}
+
+.tuft {
+  position: absolute;
+  bottom: 0;
+  left: 6px;
+  opacity: 0.7;
+}
+
+.waverDuck {
+  position: relative;
+  width: 48px;
+  margin-bottom: 3px;
+}
+
+.pond {
+  position: absolute;
+  right: 72px;
+  bottom: -2px;
+}
+
+.pond > svg {
+  display: block;
+  opacity: 0.8;
+}
+
+/* The sleeper floats: only its top half shows above the water line. */
+.sleep {
+  position: absolute;
+  right: 12px;
+  bottom: 6px;
+  left: 12px;
+  height: 40px;
+  overflow: hidden;
+}
+
+.sleeper {
+  position: absolute;
+  bottom: -9px;
+  left: 12px;
+  width: 48px;
+}
+
+.zzz {
+  position: absolute;
+  bottom: 40px;
+  left: 58px;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.zzz i {
+  position: absolute;
+  font-style: normal;
+  opacity: 0;
+  animation: zzz 3s linear infinite;
+}
+
+.zzz i:nth-child(2) {
+  animation-delay: 1s;
+}
+
+.zzz i:nth-child(3) {
+  animation-delay: 2s;
+}
+
+@keyframes zzz {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+    scale: 0.7;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 14px -30px;
+    scale: 1.15;
+  }
+}
+
+@media (max-width: 760px) {
+  .footer {
+    padding: 32px 24px 20px;
+  }
+  .top {
+    flex-direction: column;
+    gap: 32px;
+  }
+  .columns {
+    flex-wrap: wrap;
+    gap: 32px 48px;
+  }
+  .bottom {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

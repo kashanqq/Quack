@@ -2,6 +2,8 @@
 
 import { Icon } from "../choice/Icon";
 import type { Program } from "../choice/programs";
+import { useQuack } from "../quack/source";
+import { routeDelay } from "../quack/standing";
 import { ForecastChart } from "./ForecastChart";
 import {
   conflicts,
@@ -14,6 +16,7 @@ import {
   requirements,
   setById,
   skillById,
+  SKILLS,
   STATE_LABEL,
   TODAY,
 } from "./prepData";
@@ -54,21 +57,19 @@ export function Overview({ model, programs, sub, onGo, onAccept, onToggleMilesto
       />
     );
   if (sub === "programs") return <Programs programs={programs} onGo={onGo} />;
-  return <Now model={model} readinessNow={now} forecast={forecast} milestoneList={list} onGo={onGo} onAccept={onAccept} />;
+  return <Now model={model} forecast={forecast} milestoneList={list} onGo={onGo} onAccept={onAccept} />;
 }
 
 /* ---------- Сейчас: the set in work and what closed last ---------- */
 
 function Now({
   model,
-  readinessNow,
   forecast,
   milestoneList,
   onGo,
   onAccept,
 }: {
   model: PrepModel;
-  readinessNow: number;
   forecast: Date;
   milestoneList: ReturnType<typeof milestones>;
   onGo: (tab: PrepTab, sub?: PrepSub) => void;
@@ -77,7 +78,6 @@ function Now({
   const proposed = proposedSet(model);
   const current = model.currentSet ? setById(model.currentSet) : null;
   const report = model.reportFor ? setById(model.reportFor) : null;
-  const nextMilestone = milestoneList.find((m) => m.date >= TODAY && !model.milestonesDone.includes(m.id));
 
   return (
     <div className={styles.canvasGrid}>
@@ -146,36 +146,135 @@ function Now({
         )}
       </section>
 
-      <section className={styles.canvas} aria-label="Готовность">
-        <header className={styles.canvasHead}>
-          <h3>Готовность</h3>
-        </header>
-        <div className={styles.readiness}>
-          <div className={styles.readinessRow}>
-            <span>по всем навыкам</span>
-            <strong>{readinessNow}%</strong>
-          </div>
-          <div className={styles.bar} role="progressbar" aria-valuenow={readinessNow} aria-valuemin={0} aria-valuemax={100}>
-            <span style={{ width: `${readinessNow}%` }} />
-          </div>
-          <p className={styles.muted}>Прогноз готовности — {formatDate(forecast)}</p>
-        </div>
-        {nextMilestone && (
-          <dl className={styles.facts}>
-            <div>
-              <dt>Ближайшая веха</dt>
-              <dd>
-                {nextMilestone.title}
-                <span className={styles.muted}> · через {daysBetween(TODAY, nextMilestone.date)} дн.</span>
-              </dd>
-            </div>
-          </dl>
-        )}
-        <button type="button" className={styles.link} onClick={() => onGo("overview", "requirements")}>
-          Требования и прогноз →
-        </button>
-      </section>
+      <PaceCard forecast={forecast} onGo={onGo} />
+      <Important model={model} milestoneList={milestoneList} onGo={onGo} />
     </div>
+  );
+}
+
+/**
+ * Pace, in words, from Quack — the same verdict the Quack! screen shows, so the two never disagree.
+ * No readiness percentages: the student needs to know whether they make it, not a number.
+ */
+function PaceCard({ forecast, onGo }: { forecast: Date; onGo: (tab: PrepTab, sub?: PrepSub) => void }) {
+  const { state } = useQuack();
+  const pace = state.standing?.pace;
+
+  return (
+    <section className={styles.canvas} aria-label="Темп">
+      <header className={styles.canvasHead}>
+        <h3>Темп</h3>
+        <span className={styles.muted}>как в Quack</span>
+      </header>
+      {pace ? (
+        <div className={styles.paceBox} data-pace={pace.level}>
+          <div className={styles.paceHead}>
+            <strong className={styles.paceVerdict}>{pace.verdict}</strong>
+            <span className={styles.paceMeter} aria-hidden="true">
+              {[0, 1, 2, 3].map((step) => (
+                <span key={step} data-on={step <= pace.level} />
+              ))}
+            </span>
+          </div>
+          <p>{pace.summary}</p>
+          {pace.advice[0] && <p className={styles.paceHint}>{pace.advice[0]}</p>}
+        </div>
+      ) : (
+        // Demo programs are not saved, so Quack has nothing to judge: the forecast date alone
+        <p className={styles.lead}>Прогноз готовности — {formatDate(forecast)}</p>
+      )}
+      <button type="button" className={styles.link} onClick={() => onGo("overview", "requirements")}>
+        Требования и прогноз →
+      </button>
+    </section>
+  );
+}
+
+/** The few things worth knowing before anything else: the root of the errors, confirmed traps, what is late, the next date. */
+function Important({
+  model,
+  milestoneList,
+  onGo,
+}: {
+  model: PrepModel;
+  milestoneList: ReturnType<typeof milestones>;
+  onGo: (tab: PrepTab, sub?: PrepSub) => void;
+}) {
+  const items: { key: string; tone: "root" | "trap" | "late" | "date"; title: string; text: string; go: () => void; action: string }[] = [];
+
+  for (const root of SKILLS.filter((s) => s.root && model.states[s.id] !== "solid")) {
+    const above = SKILLS.filter((s) => s.requires.includes(root.id)).map((s) => s.name.toLowerCase());
+    items.push({
+      key: `root-${root.id}`,
+      tone: "root",
+      title: `Корень: ${root.name}`,
+      text: above.length ? `из-за него ошибки в теме «${above.join("», «")}»` : "из-за него ошибки выше по карте",
+      go: () => onGo("sets", "map"),
+      action: "На карте",
+    });
+  }
+
+  for (const skill of SKILLS) {
+    const trap = model.misconceptions[skill.id].find((m) => m.status === "confirmed");
+    if (!trap) continue;
+    items.push({
+      key: `trap-${skill.id}`,
+      tone: "trap",
+      title: `Ловушка: ${skill.name}`,
+      text: trap.text,
+      go: () => onGo("current", "tasks"),
+      action: "Задачи",
+    });
+  }
+
+  const delay = routeDelay(model);
+  if (delay) {
+    items.push({
+      key: "late",
+      tone: "late",
+      title: `Сет ${delay.set.number} ещё открыт`,
+      text: `срок был ${formatDate(delay.set.deadline)} — прогноз сдвинулся на ${delay.days} дн.`,
+      go: () => onGo("current"),
+      action: "Продолжить",
+    });
+  }
+
+  const next = milestoneList.find((m) => m.date >= TODAY && !model.milestonesDone.includes(m.id));
+  if (next) {
+    const left = daysBetween(TODAY, next.date);
+    items.push({
+      key: `date-${next.id}`,
+      tone: "date",
+      title: next.title,
+      text: left === 0 ? "сегодня" : `через ${left} дн. · ${formatDate(next.date)}`,
+      go: () => onGo("overview", "milestones"),
+      action: "Вехи",
+    });
+  }
+
+  return (
+    <section className={`${styles.canvas} ${styles.full}`} aria-label="Важно сейчас">
+      <header className={styles.canvasHead}>
+        <h3>Важно сейчас</h3>
+      </header>
+      {items.length === 0 ? (
+        <p className={styles.muted}>Корней ошибок и подтверждённых ловушек нет, сроки в порядке.</p>
+      ) : (
+        <ul className={styles.important}>
+          {items.map((item) => (
+            <li key={item.key} data-tone={item.tone}>
+              <div>
+                <strong>{item.title}</strong>
+                <span className={styles.muted}>{item.text}</span>
+              </div>
+              <button type="button" className={styles.link} onClick={item.go}>
+                {item.action} →
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -225,13 +324,6 @@ function Requirements({
             </dl>
             {exam.hasModel ? (
               <div className={styles.readiness}>
-                <div className={styles.readinessRow}>
-                  <span>Готовность</span>
-                  <strong>{exam.readiness}%</strong>
-                </div>
-                <div className={styles.bar} role="progressbar" aria-valuenow={exam.readiness} aria-valuemin={0} aria-valuemax={100}>
-                  <span style={{ width: `${exam.readiness}%` }} />
-                </div>
                 <p className={margin >= 0 ? styles.ok : styles.warn}>
                   Прогноз {formatDate(exam.forecast!)} —{" "}
                   {margin >= 0 ? `успеваешь, запас ${margin} дн.` : `на ${-margin} дн. позже теста, стоит добавить часов`}

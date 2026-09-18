@@ -14,6 +14,8 @@
   /* The pointer drives the spin, so the browser must not steal the gesture. */
   touch-action: none;
   cursor: grab;
+  /* Read by the canvas for its city labels. */
+  font-family: var(--font-text);
 }
 
 .canvas:active {

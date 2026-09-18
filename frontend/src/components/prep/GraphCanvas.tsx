@@ -74,8 +74,12 @@ type Props = {
   popover?: Popover | null;
   /** A press on the empty background that did not turn into a pan */
   onBackgroundTap?: () => void;
+  /** Points that must not be missed: while one is off screen, an arrow at the edge points its way */
+  beacons?: Beacon[];
   children: ReactNode;
 };
+
+export type Beacon = { id: string; at: { x: number; y: number }; label: string; tone: "root" | "trap" };
 
 type Popover = {
   /** The point in drawing coordinates, and how far to the side of it the card starts */
@@ -90,10 +94,12 @@ type Popover = {
  * A canvas the way Obsidian does it: the drawing sits in an open plane, the background drags to move
  * it, Ctrl + wheel zooms. Every graph on this screen — and the ones still to come — lives in one.
  */
-export function GraphCanvas({ width, height, label, tools, hint, storageKey, popover, onBackgroundTap, children }: Props) {
+export function GraphCanvas({ width, height, label, tools, hint, storageKey, popover, onBackgroundTap, beacons, children }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<View>({ x: 0, y: PAD, k: 1 });
   const [grabbing, setGrabbing] = useState(false);
+  /** A short glide when the view jumps to a point, so the student sees where the map went */
+  const [gliding, setGliding] = useState(false);
   /** Nothing is remembered until the map has actually been moved — the first visit always gets a fresh view */
   const [touched, setTouched] = useState(false);
   const pan = useRef<{ id: number; x: number; y: number; sx: number; sy: number; moved: boolean } | null>(null);
@@ -132,6 +138,14 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
     const k = clamp((box.width - pad * 2) / width, MIN_K, 1);
     setView({ k, x: (box.width - width * k) / 2, y: pad });
   }, [width]);
+
+  /** Brings a point of the drawing to the middle of the viewport */
+  const focusOn = (at: { x: number; y: number }) => {
+    setTouched(true);
+    setGliding(true);
+    setView((v) => ({ ...v, x: box.w / 2 - at.x * v.k, y: box.h / 2 - at.y * v.k }));
+    window.setTimeout(() => setGliding(false), 480);
+  };
 
   useEffect(() => {
     const stored = storageKey ? readStore<View>(storageKey) : null;
@@ -226,7 +240,7 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
         onDragStart={(e) => e.preventDefault()}
       >
         <div
-          className={styles.canvasWorld}
+          className={`${styles.canvasWorld} ${gliding ? styles.canvasGliding : ""}`}
           style={{ width, height, transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})` }}
         >
           <ScaleContext.Provider value={scaleRef}>{children}</ScaleContext.Provider>
@@ -250,9 +264,78 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
         {/* The hint rides in the corner of the canvas instead of taking a line under it */}
         {hint && <p className={styles.canvasHint}>{hint}</p>}
 
+        {beacons && box.w > 0 && <Beacons beacons={beacons} view={view} box={box} onGo={focusOn} />}
+
         {popover && box.w > 0 && <PopoverCard popover={popover} view={view} box={box} />}
       </div>
     </div>
+  );
+}
+
+/** How far inside the viewport edge the arrows ride, and how close to each other they may sit */
+const BEACON_INSET = 40;
+const BEACON_APART = 44;
+
+/**
+ * Arrows for the points that are off screen. Each sits where the line from the middle of the viewport
+ * to its point leaves an inner ellipse — a root below the view gets an arrow at the bottom, pointing
+ * down — and a press glides the map to it.
+ */
+function Beacons({
+  beacons,
+  view,
+  box,
+  onGo,
+}: {
+  beacons: Beacon[];
+  view: View;
+  box: { w: number; h: number };
+  onGo: (at: { x: number; y: number }) => void;
+}) {
+  const cx = box.w / 2;
+  const cy = box.h / 2;
+  const rx = Math.max(cx - BEACON_INSET, 1);
+  const ry = Math.max(cy - BEACON_INSET, 1);
+  const placed: { x: number; y: number }[] = [];
+
+  return (
+    <>
+      {beacons.map((b) => {
+        const sx = b.at.x * view.k + view.x;
+        const sy = b.at.y * view.k + view.y;
+        if (sx > 16 && sx < box.w - 16 && sy > 16 && sy < box.h - 16) return null; // on screen: the node shows itself
+
+        const dx = sx - cx;
+        const dy = sy - cy;
+        const t = 1 / Math.sqrt((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry));
+        // The label is wider than the arrow: keep the whole chip inside the viewport
+        const half = (40 + b.label.length * 6.6) / 2;
+        const x = clamp(cx + dx * t, half + 8, box.w - half - 8);
+        const y = clamp(cy + dy * t, 22, box.h - 22);
+        if (placed.some((p) => Math.hypot(p.x - x, p.y - y) < BEACON_APART)) return null;
+        placed.push({ x, y });
+
+        return (
+          <button
+            key={b.id}
+            type="button"
+            className={styles.beacon}
+            data-tone={b.tone}
+            style={{ left: x, top: y }}
+            aria-label={`Показать на карте — ${b.label}`}
+            title="Показать на карте"
+            data-canvas-chrome
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => onGo(b.at)}
+          >
+            <svg className={styles.beaconArrow} style={{ rotate: `${Math.atan2(dy, dx)}rad` }} viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M2 8h11M9 3.5 13.5 8 9 12.5" />
+            </svg>
+            {b.label}
+          </button>
+        );
+      })}
+    </>
   );
 }
 

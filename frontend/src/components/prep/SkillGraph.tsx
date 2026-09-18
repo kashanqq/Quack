@@ -317,6 +317,16 @@ export function SkillGraph({ states, recall, misconceptions, highlight, selected
           : null
       }
       onBackgroundTap={onClose}
+      beacons={[
+        // Roots first: errors higher up trace back to them. Then skills with a confirmed trap.
+        ...SKILLS.filter((s) => s.root).map((s) => ({ id: s.id, at: pos[s.id], label: `Корень: ${s.name}`, tone: "root" as const })),
+        ...SKILLS.filter((s) => misconceptions[s.id].some((m) => m.status === "confirmed")).map((s) => ({
+          id: s.id,
+          at: pos[s.id],
+          label: `Ловушка: ${s.name}`,
+          tone: "trap" as const,
+        })),
+      ]}
       tools={
         hasMoved ? (
           <button type="button" onClick={resetLayout}>
@@ -367,6 +377,7 @@ export function SkillGraph({ states, recall, misconceptions, highlight, selected
             className={[
               styles.mapNode,
               highlight.includes(s.id) && styles.mapNodeInSet,
+              s.root && styles.mapNodeRoot,
               selected === s.id && styles.mapNodeSelected,
               drag.dragging === s.id && styles.mapNodeDragging,
               selected && selected !== s.id && !related.has(s.id) && styles.mapNodeDim,

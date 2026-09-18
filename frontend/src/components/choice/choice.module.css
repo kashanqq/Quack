@@ -82,21 +82,39 @@
   gap: 10px;
 }
 
+/* Quieter than Выбор and Подготовка: an outline only, no fill and no orange,
+   but still a pill with a border so it reads as something to press */
 .topbarLogo {
   position: relative;
-  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 14px;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 24px;
+  font-size: 22px;
+  line-height: 1;
   white-space: nowrap;
-  background: none;
-  border: 0;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: background 0.25s ease, border-color 0.25s ease;
 }
 
 .topbarLogo:hover {
-  opacity: 0.8;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.topbarLogo[aria-selected="true"] {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.topbarLogo:focus-visible {
+  outline: 2px solid var(--accent-label);
+  outline-offset: 2px;
 }
 
 .logoLetters {
@@ -119,23 +137,80 @@
   }
 }
 
-/* Something happened while the student was away, or a date is close */
-.logoDot {
-  position: absolute;
-  top: 1px;
-  right: -1px;
-  width: 7px;
-  height: 7px;
-  background: #ff4d3d;
-  border: 1px solid var(--bg);
-  border-radius: 50%;
-  animation: dot-in 0.3s var(--ease-out) both;
+/* Something the student has not seen yet: a gradient runs around the border until the overview opens.
+   notice — a date this week; urgent — a conflict, a date in a day or two, falling behind. */
+@property --glow-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
 }
 
-@keyframes dot-in {
-  from {
-    opacity: 0;
-    transform: scale(0.4);
+.topbarLogo[data-alert] {
+  --glow: #ff9a2e;
+  --glow-soft: rgba(255, 154, 46, 0.22);
+  --glow-speed: 3.2s;
+  border-color: rgba(255, 154, 46, 0.25);
+}
+
+.topbarLogo[data-alert="urgent"] {
+  --glow: #ff4d3d;
+  --glow-soft: rgba(255, 77, 61, 0.3);
+  --glow-speed: 1.8s;
+  border-color: rgba(255, 77, 61, 0.3);
+}
+
+.topbarLogo[data-alert]::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--glow-angle),
+    transparent 0 50%,
+    var(--glow) 72%,
+    #ffe0b0 80%,
+    var(--glow) 88%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: glow-run var(--glow-speed) linear infinite;
+  pointer-events: none;
+}
+
+.topbarLogo[data-alert]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 18px var(--glow-soft);
+  animation: glow-breathe 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes glow-run {
+  to {
+    --glow-angle: 360deg;
+  }
+}
+
+@keyframes glow-breathe {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbarLogo[data-alert]::before,
+  .topbarLogo[data-alert]::after {
+    animation: none;
+  }
+
+  .topbarLogo[data-alert]::before {
+    background: var(--glow);
   }
 }
 
@@ -148,10 +223,10 @@
 /* Active dashboard: a duck slowly walks along the wordmark */
 .logoTrack {
   position: absolute;
-  left: 10px;
-  right: 10px;
-  /* The duck stands on top of the wordmark */
-  bottom: 23px;
+  left: 12px;
+  right: 12px;
+  /* The duck walks along the top edge of the button, feet just inside it so it never leaves the window */
+  bottom: calc(100% - 8px);
   height: 17px;
   animation: fade-in 0.5s ease both;
   pointer-events: none;
@@ -255,22 +330,41 @@
   position: relative;
 }
 
-.userButton {
+/* The avatar and the name open the student profile; the gear beside them opens the account menu */
+.userRow {
   display: flex;
   align-items: center;
+  gap: 4px;
+}
+
+.userButton {
+  display: flex;
+  flex: 1;
+  align-items: center;
   gap: 10px;
-  width: 100%;
+  min-width: 0;
   padding: 6px 8px;
+  color: var(--text);
   background: none;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 12px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .userButton:hover,
-.userButton[aria-expanded="true"] {
+.userButton:focus-visible {
   background: rgba(255, 255, 255, 0.06);
+  outline: none;
+}
+
+.userButton:focus-visible {
+  border-color: rgba(255, 166, 77, 0.6);
+}
+
+.userButton[aria-expanded="true"] {
+  background: rgba(255, 145, 0, 0.14);
+  border-color: rgba(255, 166, 77, 0.4);
 }
 
 .userAvatar {
@@ -279,8 +373,14 @@
   flex: none;
 }
 
-.userName {
+.userText {
+  display: grid;
   flex: 1;
+  gap: 6px;
+  min-width: 0;
+}
+
+.userName {
   min-width: 0;
   overflow: hidden;
   font-family: var(--font-mono);
@@ -291,15 +391,48 @@
   white-space: nowrap;
 }
 
-.userChevron {
-  width: 14px;
-  height: 8px;
-  transform: rotate(180deg);
-  transition: transform 0.3s var(--ease);
+.userMeter {
+  width: 64px;
+  height: 3px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
 }
 
-.userButton[aria-expanded="true"] .userChevron {
-  transform: none;
+.userMeter span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.9s var(--ease);
+}
+
+.userSettings {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: var(--text-dim);
+  background: none;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.userSettings:hover,
+.userSettings[aria-expanded="true"] {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.userSettings[aria-expanded="true"] > span {
+  rotate: 45deg;
+}
+
+.userSettings > span {
+  transition: rotate 0.3s var(--ease);
 }
 
 .userMenu {
@@ -321,7 +454,12 @@
 }
 
 /* In the icon rail the menu opens to the side */
+.userCompact .userRow {
+  flex-direction: column;
+}
+
 .userCompact .userButton {
+  flex: none;
   padding: 4px;
 }
 
@@ -347,71 +485,17 @@
   cursor: pointer;
 }
 
-.userMenu > *:hover,
-.userMenu > *:focus-visible {
+.userMenu > :disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.userMenu > :not(:disabled):hover,
+.userMenu > :not(:disabled):focus-visible {
   background: var(--accent-tint);
   outline: none;
 }
 
-/* ---------- Student profile toggle ---------- */
-
-.profileToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 38px;
-  padding: 0 12px 0 10px;
-  color: var(--text);
-  font-family: var(--font-text);
-  font-size: 15px;
-  white-space: nowrap;
-  border-radius: 14px;
-  cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
-}
-
-.profileToggle:hover,
-.profileToggle:focus-visible {
-  border-color: rgba(255, 166, 77, 0.6);
-  outline: none;
-}
-
-.profileToggle:active {
-  transform: scale(0.97);
-}
-
-.profileToggle[aria-expanded="true"] {
-  background: rgba(255, 145, 0, 0.18);
-  border-color: rgba(255, 166, 77, 0.45);
-}
-
-.profileToggle > span:first-child {
-  color: var(--accent-label);
-}
-
-.profileToggleMeter {
-  width: 40px;
-  height: 4px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
-}
-
-.profileToggleMeter span {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: width 0.9s var(--ease);
-}
-
-.profileToggleValue {
-  min-width: 3ch;
-  color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  text-align: right;
-}
 
 /* ---------- Layout ---------- */
 
@@ -785,6 +869,13 @@
   min-width: 0;
   overflow: hidden;
   container-type: inline-size;
+}
+
+/* Outside the chat the panel slides over the page; a click beside it closes it (dimmed on phones) */
+.profileBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 19;
 }
 
 .profileCard {
@@ -1208,8 +1299,9 @@
   }
 
   .topbarLogo {
-    padding: 0 4px;
-    font-size: 20px;
+    height: 34px;
+    padding: 0 10px;
+    font-size: 18px;
   }
 
   .modeButton {
@@ -1219,16 +1311,6 @@
 
   .modeLabel {
     display: none;
-  }
-
-  /* Only the icon and the percentage fit beside the section switch */
-  .profileToggleLabel,
-  .profileToggleMeter {
-    display: none;
-  }
-
-  .profileToggle {
-    padding: 0 10px;
   }
 
   .page {

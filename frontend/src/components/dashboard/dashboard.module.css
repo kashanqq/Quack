@@ -102,46 +102,321 @@
   animation: rise 0.24s var(--ease-out) both;
 }
 
-/* ---------- Overview tiles ---------- */
+/* ---------- Шансы: the verdict, what to do, the programs ---------- */
 
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 10px;
+.dashboard [data-pace="0"] {
+  --pace: #ff6b5b;
 }
 
-.tile {
+.dashboard [data-pace="1"] {
+  --pace: var(--warn);
+}
+
+.dashboard [data-pace="2"],
+.dashboard [data-pace="3"] {
+  --pace: var(--ok);
+}
+
+.verdict {
+  padding: 14px 16px 16px;
+  background: var(--inset-bg);
+  border-left: 3px solid var(--pace);
+  border-radius: 4px 14px 14px 4px;
+}
+
+.verdictHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+}
+
+.verdictLabel {
+  color: var(--pace);
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.verdictSummary {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.paceMeter {
   display: grid;
-  gap: 2px;
-  padding: 12px 14px;
+  grid-template-columns: repeat(4, 28px);
+  gap: 4px;
+}
+
+.paceMeter span {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+
+.paceMeter span[data-on="true"] {
+  background: var(--pace);
+}
+
+.advice {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--card-line);
+}
+
+.adviceTitle {
+  margin: 0 0 6px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.advice ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.advice li::marker {
+  color: var(--pace);
+}
+
+.examPaces {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.examPaces li {
+  display: grid;
+  gap: 3px;
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.4;
+  background: var(--inset-bg);
+  border-left: 3px solid var(--pace);
+  border-radius: 4px 12px 12px 4px;
+}
+
+.examPaceHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.examPaceHead b {
+  font-weight: 500;
+}
+
+.examPaceVerdict {
+  color: var(--pace);
+  font-size: 13px;
+}
+
+.examPaceAdvice {
+  color: var(--text-dim);
+}
+
+.chanceTitle {
+  margin: 16px 0 8px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.chanceList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chanceItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 34px;
+  padding: 0 12px;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
-  text-align: left;
+  font-size: 14px;
   background: var(--inset-bg);
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: 999px;
   cursor: pointer;
-  transition: border-color 0.2s ease, transform 0.15s ease;
+  transition: border-color 0.2s ease;
 }
 
-.tile:hover {
+.chanceItem:hover {
   border-color: rgba(255, 166, 77, 0.45);
 }
 
-.tile:active {
-  transform: scale(0.99);
+.chanceItem[data-level="realistic"] {
+  --level: #59b054;
 }
 
-.tile[data-alert="true"] .tileValue {
-  color: var(--warn);
+.chanceItem[data-level="try"] {
+  --level: #cece51;
 }
 
-.tileValue {
-  font-family: var(--font-mono);
-  font-size: 28px;
-  line-height: 1.1;
+.chanceItem[data-level="unlikely"] {
+  --level: #d9d9d9;
+}
+
+.chanceDot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  background: var(--level);
+  border-radius: 50%;
+}
+
+.chanceName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chanceLevel {
+  flex: none;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+.chanceTrend {
+  display: inline-flex;
+}
+
+.chanceTrend[data-tone="up"] {
+  color: var(--ok);
+}
+
+.chanceTrend[data-tone="down"] {
+  color: #ff6b5b;
+}
+
+.chancesFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-top: 16px;
+  font-size: 13px;
+}
+
+.inlineLink {
+  padding: 0;
   color: var(--accent-label);
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.inlineLink:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Что изменилось: why the Quack! button glowed ---------- */
+
+.feed {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feedItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--inset-bg);
+  border-left: 3px solid transparent;
+  border-radius: 4px 12px 12px 4px;
+  opacity: 0.62;
+  transition: opacity 0.3s ease;
+}
+
+/* New for this visit: full strength and a coloured edge, red when it is urgent */
+.feedItem[data-new="true"] {
+  opacity: 1;
+  border-left-color: var(--accent);
+  animation: rise 0.3s var(--ease-out) both;
+}
+
+.feedItem[data-new="true"][data-level="urgent"] {
+  border-left-color: #ff6b5b;
+}
+
+.feedIcon {
+  display: inline-flex;
+  margin-top: 2px;
+  color: var(--text-dim);
+}
+
+.feedItem[data-tone="up"] .feedIcon {
+  color: var(--ok);
+}
+
+.feedItem[data-tone="down"] .feedIcon {
+  color: #ff6b5b;
+}
+
+.feedBody {
+  min-width: 0;
+}
+
+.feedTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.feedDetail {
+  margin: 3px 0 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.feedMeta {
+  margin: 4px 0 0;
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.feedGo {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--text-dim);
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.feedGo:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* ---------- Calendar ---------- */
@@ -466,10 +741,6 @@
   animation-delay: 60ms;
 }
 
-.alert {
-  border-color: rgba(255, 196, 74, 0.4);
-}
-
 .cardHead {
   display: flex;
   flex-wrap: wrap;
@@ -637,60 +908,7 @@
   background: var(--ok);
 }
 
-/* ---------- Conflicts ---------- */
-
-.conflicts {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.conflicts li {
-  padding: 12px 14px;
-  background: rgba(255, 196, 74, 0.08);
-  border-left: 3px solid var(--warn);
-  border-radius: 4px 14px 14px 4px;
-}
-
-.conflicts p {
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.4;
-}
-
-.resolved {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 10px 0 0;
-  color: var(--ok);
-  font-size: 14px;
-}
-
-/* ---------- Facts and dates ---------- */
-
-.facts {
-  display: grid;
-  gap: 8px;
-  margin: 12px 0 16px;
-}
-
-.facts > div {
-  display: grid;
-  grid-template-columns: 104px minmax(0, 1fr);
-  gap: 12px;
-  font-size: 15px;
-}
-
-.facts dt {
-  color: var(--text-faint);
-}
-
-.facts dd {
-  margin: 0;
-}
+/* ---------- Dates ---------- */
 
 .dates {
   display: grid;

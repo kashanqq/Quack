@@ -25,9 +25,11 @@
 
 /* Header (scaled to 70% of the Figma size) */
 
+/* The header plate stays with the reader: it sticks to the top as the page scrolls. */
 .header {
-  position: relative;
-  z-index: 10;
+  position: sticky;
+  top: 16px;
+  z-index: 100;
   display: flex;
   align-items: center;
   width: min(1028px, calc(100% - 32px));
@@ -36,24 +38,41 @@
   padding: 0 9px 0 13px;
   background: var(--header-bg);
   border-radius: 34px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
   font-size: 18px;
   line-height: 1;
 }
 
 .logo,
 .navItem > a,
-.login,
 .signinText {
   display: block;
   line-height: 1;
   white-space: nowrap;
 }
 
+/* The nav spans the whole plate in three columns, so the middle item («Ресурсы»)
+   sits on the centre line of the page, not of whatever space is left between the
+   logo and the buttons. The plate itself is centred on the page. */
 .nav {
-  display: flex;
-  gap: 67px;
-  height: 100%;
-  margin-left: 176px;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 56px;
+  pointer-events: none;
+}
+
+.nav > * {
+  pointer-events: auto;
+}
+
+.nav > :first-child {
+  justify-self: end;
+}
+
+.nav > :last-child {
+  justify-self: start;
 }
 
 .navItem {
@@ -62,39 +81,180 @@
   align-items: center;
 }
 
+/* Top-level item: an accent line grows out from the middle under the hovered
+   item. Items with a menu carry a small chevron that hangs outside the text box,
+   so the words themselves stay where the grid centres them. */
+.navItem > a {
+  position: relative;
+  padding: 8px 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 16px;
+  letter-spacing: 0.01em;
+  transition: color 0.25s ease;
+}
+
+.navItem > a::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  scale: 0 1;
+  transition: scale 0.35s var(--ease-out);
+}
+
+.navItem:hover > a,
+.navItem:focus-within > a {
+  color: var(--text);
+}
+
+.navItem:hover > a::after,
+.navItem:focus-within > a::after {
+  scale: 1 1;
+}
+
+.chevron {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 6px);
+  width: 9px;
+  height: 6px;
+  margin-top: -3px;
+  color: var(--text-muted);
+  transition:
+    rotate 0.3s var(--ease-out),
+    color 0.25s ease;
+}
+
+.navItem:hover .chevron,
+.navItem:focus-within .chevron {
+  rotate: 180deg;
+  color: var(--accent);
+}
+
+.dropdown a::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--dropdown-bg);
+  border-radius: inherit;
+  opacity: 0;
+  scale: 0.82;
+  transition:
+    opacity 0.25s ease,
+    scale 0.35s var(--ease-out);
+}
+
+/* The menu drops out of the plate: it fades, slides and unfolds from the top,
+   then its links follow one after another. */
 .dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 6px);
   left: 50%;
-  display: none;
-  gap: 20px;
-  height: 99px;
-  padding: 8px 18px;
+  display: flex;
+  gap: 4px;
+  padding: 8px;
   background: var(--dropdown-bg);
   border-radius: 20px;
   font-size: 14px;
   white-space: nowrap;
-  transform: translateX(-50%);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -8px) scale(0.94);
+  transform-origin: 50% 0;
+  transition:
+    opacity 0.2s ease,
+    transform 0.3s var(--ease-out),
+    visibility 0s linear 0.3s;
 }
 
-.dropdown a:hover {
-  color: var(--accent);
-}
-
-.dropdownStacked {
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.dropdownRow {
-  width: 224px;
-  justify-content: space-between;
+/* Bridges the gap under the header so the pointer can reach the menu. */
+.dropdown::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  height: 10px;
 }
 
 .navItem:hover .dropdown,
 .navItem:focus-within .dropdown {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0) scale(1);
+  transition:
+    opacity 0.25s ease,
+    transform 0.4s var(--ease-out),
+    visibility 0s;
+}
+
+.dropdown a {
+  position: relative;
+  z-index: 0;
+  padding: 10px 16px;
+  border-radius: 12px;
+  opacity: 0;
+  translate: 0 -6px;
+  transition:
+    color 0.25s ease,
+    opacity 0.2s ease,
+    translate 0.3s var(--ease-out);
+}
+
+/* Inside the dark menu the plate is the header's own colour. */
+.dropdown a::before {
+  background: var(--header-bg);
+}
+
+.navItem:hover .dropdown a,
+.navItem:focus-within .dropdown a {
+  opacity: 1;
+  translate: 0 0;
+  transition:
+    color 0.25s ease,
+    opacity 0.3s ease 0.08s,
+    translate 0.4s var(--ease-out) 0.08s;
+}
+
+.navItem:hover .dropdown a:nth-child(2),
+.navItem:focus-within .dropdown a:nth-child(2) {
+  transition-delay: 0s, 0.16s, 0.16s;
+}
+
+.dropdown a:hover,
+.dropdown a:focus-visible {
+  color: var(--accent);
+}
+
+.dropdown a:hover::before,
+.dropdown a:focus-visible::before {
+  opacity: 1;
+  scale: 1;
+}
+
+.dropdownStacked {
+  flex-direction: column;
+  align-items: stretch;
+  text-align: center;
+}
+
+/* Without motion the menu and its links only fade. */
+@media (prefers-reduced-motion: reduce) {
+  .dropdown,
+  .navItem:hover .dropdown,
+  .navItem:focus-within .dropdown {
+    transform: translate(-50%, 0);
+  }
+  .dropdown a,
+  .dropdown a::before {
+    translate: none;
+    scale: 1;
+  }
 }
 
 .auth {
@@ -105,8 +265,27 @@
   margin-left: auto;
 }
 
+/* Log In: an outlined capsule the same height as the Sign In pill beside it, so
+   the two sit on one line. */
 .login {
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  height: 27px;
+  padding: 0 13px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 14px;
+  font-size: 15px;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
+
+.login:hover,
+.login:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* Sign In: the orange circle flows under the label, the arrow fades out */
@@ -198,11 +377,29 @@
 }
 
 .title {
+  position: relative;
   margin: 0;
   /* 70% of the Figma size */
   font-size: 90px;
   font-weight: 400;
   line-height: 103px;
+}
+
+/* Empty inline-block: its box lands on the baseline, which the duck walks from. */
+.titleProbe {
+  display: inline-block;
+  width: 0;
+  height: 0;
+}
+
+/* The duck that walks along the letters. Hidden between walks; its route is
+   played with the Web Animations API from HeroTitle. */
+.titleDuck {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .cta {
@@ -243,11 +440,12 @@
   animation-delay: 0.3s;
 }
 
-/* Sits at the bottom of the first screen and invites the scroll */
+/* Sits at the bottom of the first screen and invites the scroll, clear of the
+   pixel ground and the ducks walking along it. */
 
 .scrollHint {
   position: absolute;
-  bottom: 28px;
+  bottom: 88px;
   left: 50%;
   display: flex;
   flex-direction: column;
@@ -296,11 +494,7 @@
 
 @media (max-width: 1080px) {
   .nav {
-    gap: 40px;
-    margin: 0 auto;
-  }
-  .auth {
-    margin-left: 0;
+    gap: 36px;
   }
 }
 

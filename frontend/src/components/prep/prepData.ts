@@ -6,8 +6,33 @@ import { PROGRAMS, programById, type Program } from "../choice/programs";
 
 /* ---------- Dates ---------- */
 
+const DEMO_SHIFT_KEY = "quack-demo-shift";
+
+/**
+ * Demo only: days the clock was moved forward from the account menu, to watch deadlines come and pass.
+ * Read once on load; the server always renders day zero, and nothing dated renders before the workspace loads.
+ */
+export const DEMO_SHIFT = (() => {
+  if (typeof window === "undefined") return 0;
+  try {
+    return Math.max(0, Number(localStorage.getItem(DEMO_SHIFT_KEY)) || 0);
+  } catch {
+    return 0;
+  }
+})();
+
 // The demo "today"; all timelines are laid out around it
-export const TODAY = new Date(2026, 8, 17);
+export const TODAY = new Date(2026, 8, 17 + DEMO_SHIFT);
+
+/** Moves the demo clock (null puts it back) and reloads, so every screen reads the same day. */
+export function shiftDemoClock(days: number | null, cause?: string) {
+  try {
+    if (days === null) localStorage.removeItem(DEMO_SHIFT_KEY);
+    else localStorage.setItem(DEMO_SHIFT_KEY, String(DEMO_SHIFT + days));
+    if (cause) localStorage.setItem("quack-pending-cause", JSON.stringify(cause));
+  } catch {}
+  window.location.reload();
+}
 
 export const day = (month: number, date: number, year = 2026) => new Date(year, month - 1, date);
 
@@ -503,7 +528,7 @@ export function milestones(programs: Program[]): Milestone[] {
   const list: Milestone[] = [];
   if (programs.some((p) => p.satMin)) {
     list.push(
-      { id: "sat-reg", date: day(9, 25), title: "Регистрация на SAT", detail: "Тест 7 ноября · College Board", source: "демо", checkable: true },
+      { id: "sat-reg", date: day(10, 10), title: "Регистрация на SAT", detail: "Тест 7 ноября · College Board", source: "демо", checkable: true },
       { id: "sat-test", date: day(11, 7), title: "SAT — тест", detail: "Цель по Math выставлена по сохранённым", source: "демо", checkable: true }
     );
   }

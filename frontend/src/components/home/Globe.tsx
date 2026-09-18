@@ -9,8 +9,16 @@ import styles from "./globe.module.css";
 const RAD = Math.PI / 180;
 /** Idle spin, degrees per second. One turn takes about a minute. */
 const AUTO_SPIN = 6;
-/** How much the globe leans in once something is selected. */
-const ZOOM_SELECTED = 1.16;
+/** Share of the disc a picked country should span; below 1 leaves a margin round it. */
+const FILL = 0.72;
+/** Zoom limits for a picked country: huge ones still lean in, tiny ones stop before the outline gets coarse. */
+const ZOOM_MIN = 1.4;
+const ZOOM_MAX = 6;
+/** Used when the point is on no country in the outline file. */
+const ZOOM_FALLBACK = 3;
+/** City labels fade in between these zoom levels. */
+const LABEL_FROM = 2.6;
+const LABEL_FULL = 4;
 /** Inertia left after each frame of coasting. */
 const FRICTION = 0.93;
 /** A press that moves less than this counts as a click, not a drag. */
@@ -19,14 +27,43 @@ const CLICK_SLOP = 5;
 type RawWorld = { scale: number; countries: { n: string; r: number[][] }[] };
 /** Flat [lon, lat, lon, lat, …] in degrees. */
 type Ring = Float64Array;
-type Land = { name: string; rings: Ring[] };
+/**
+ * A ring prepared for drawing: every point as a unit vector, worked out once so
+ * spinning costs a rotation, not trigonometry, per point. The cap (centre
+ * vector and angular radius) lets a ring on the far side be skipped outright.
+ */
+type Shape = { xyz: Float32Array; cx: number; cy: number; cz: number; sinR: number };
+type Land = { name: string; rings: Ring[]; shapes: Shape[] };
+
+function toShape(ring: Ring): Shape {
+  const n = ring.length / 2;
+  const xyz = new Float32Array(n * 3);
+  let sx = 0, sy = 0, sz = 0;
+  for (let i = 0; i < n; i++) {
+    const lon = ring[i * 2] * RAD;
+    const lat = ring[i * 2 + 1] * RAD;
+    const c = Math.cos(lat);
+    xyz[i * 3] = c * Math.sin(lon);
+    xyz[i * 3 + 1] = Math.sin(lat);
+    xyz[i * 3 + 2] = c * Math.cos(lon);
+    sx += xyz[i * 3];
+    sy += xyz[i * 3 + 1];
+    sz += xyz[i * 3 + 2];
+  }
+  const len = Math.hypot(sx, sy, sz) || 1;
+  const cx = sx / len, cy = sy / len, cz = sz / len;
+  let minDot = 1;
+  for (let i = 0; i < n; i++) minDot = Math.min(minDot, xyz[i * 3] * cx + xyz[i * 3 + 1] * cy + xyz[i * 3 + 2] * cz);
+  // sin of the cap's angular radius; a cap wider than a hemisphere is never skipped.
+  const sinR = minDot > 0 ? Math.sqrt(1 - minDot * minDot) : 1;
+  return { xyz, cx, cy, cz, sinR };
+}
 
 /** The file stores delta-encoded integers; undo both to get degrees. */
 function decodeWorld(raw: RawWorld): Land[] {
   const s = raw.scale;
-  return raw.countries.map((c) => ({
-    name: c.n,
-    rings: c.r.map((flat) => {
+  return raw.countries.map((c) => {
+    const rings = c.r.map((flat) => {
       const out = new Float64Array(flat.length);
       let x = flat[0];
       let y = flat[1];
@@ -39,8 +76,9 @@ function decodeWorld(raw: RawWorld): Land[] {
         out[i + 1] = y / s;
       }
       return out;
-    }),
-  }));
+    });
+    return { name: c.n, rings, shapes: rings.map(toShape) };
+  });
 }
 
 /** Shortest way round the circle, so easing never takes the long way. */
@@ -61,19 +99,77 @@ function pointInRing(ring: Ring, lon: number, lat: number) {
   return inside;
 }
 
-type Selection = { country: string; program?: Program; at?: { lon: number; lat: number } };
+/** Great-circle distance between two lon/lat points, in degrees. */
+function arcDeg(lon1: number, lat1: number, lon2: number, lat2: number) {
+  const c =
+    Math.sin(lat1 * RAD) * Math.sin(lat2 * RAD) +
+    Math.cos(lat1 * RAD) * Math.cos(lat2 * RAD) * Math.cos((lon2 - lon1) * RAD);
+  return Math.acos(Math.max(-1, Math.min(1, c))) / RAD;
+}
+
+/**
+ * The country under a point, where to aim so the whole of it is in view, and
+ * how far to zoom so it fills the disc. The view is aimed at the middle of the
+ * country's outline rather than at the point, so no border ends up cut off at
+ * the rim. The orthographic view at zoom z shows everything within asin(1/z)
+ * of the centre, so the zoom is picked from the farthest border point.
+ */
+function frameCountry(world: Land[] | null, lon: number, lat: number) {
+  if (world) {
+    for (const land of world) {
+      const ring = land.rings.find((r) => pointInRing(r, lon, lat));
+      if (!ring) continue;
+      let minLon = 180, maxLon = -180, minLat = 90, maxLat = -90;
+      for (let i = 0; i < ring.length; i += 2) {
+        minLon = Math.min(minLon, ring[i]);
+        maxLon = Math.max(maxLon, ring[i]);
+        minLat = Math.min(minLat, ring[i + 1]);
+        maxLat = Math.max(maxLat, ring[i + 1]);
+      }
+      // An outline across the date line has a meaningless box; aim at the point instead.
+      const center: [number, number] =
+        maxLon - minLon < 180 ? [(minLon + maxLon) / 2, (minLat + maxLat) / 2] : [lon, lat];
+      let reach = 0;
+      for (let i = 0; i < ring.length; i += 2) reach = Math.max(reach, arcDeg(center[0], center[1], ring[i], ring[i + 1]));
+      const zoom = FILL / Math.sin(Math.min(reach, 80) * RAD);
+      return { country: land.name, center, zoom: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom)) };
+    }
+  }
+  return { country: "", center: [lon, lat] as [number, number], zoom: ZOOM_FALLBACK };
+}
+
+/** Countries we have universities in, by their Russian name as the programs store it. */
+const OPEN_COUNTRIES = new Set(PROGRAMS.map((p) => p.country));
+
+/** The universities to pin: only those in the picked country, and none before a pick. */
+function pinsFor(sel: Selection | null): Program[] {
+  if (!sel) return [];
+  const country = sel.program?.country ?? countryRu(sel.country);
+  return PROGRAMS.filter((p) => p.country === country && PROGRAM_COORDS[p.id]);
+}
+
+type Selection = {
+  country: string;
+  /** Where the view turns to: the middle of the country. */
+  center: [number, number];
+  zoom: number;
+  program?: Program;
+  at?: { lon: number; lat: number };
+};
 
 type GlobeProps = {
-  /** Called when a university marker is picked, so the panel can show that program. */
-  onPickProgram?: (id: string) => void;
+  /** Called with the picked university, or null once it is let go, so the panel can follow. */
+  onPickProgram?: (id: string | null) => void;
 };
 
 /**
  * A real globe: orthographic projection on a 2D canvas, drag to spin, our demo
  * universities pinned where they actually are.
  *
- * Clicking a marker or a country stops the spin, turns that spot to face the
- * viewer, leans in a little and opens a card underneath.
+ * Countries with universities in our base are tinted. Clicking a country
+ * stops the spin, turns it to face the viewer and zooms in until it fills the
+ * disc; only then do its universities appear as pins, labelled with their
+ * cities, and a card underneath says what was picked.
  */
 export function Globe({ onPickProgram }: GlobeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -101,6 +197,15 @@ export function Globe({ onPickProgram }: GlobeProps) {
     };
   }, []);
 
+  // The panel follows the pick and lets go with it.
+  // A country pick counts too when we have a university there: the panel shows the first one.
+  const pickedId =
+    selected?.program?.id ??
+    (selected ? (PROGRAMS.find((p) => p.country === countryRu(selected.country))?.id ?? null) : null);
+  useEffect(() => {
+    onPickProgram?.(pickedId);
+  }, [pickedId, onPickProgram]);
+
   useEffect(() => {
     selectedRef.current = selected;
     if (!selected) {
@@ -108,17 +213,10 @@ export function Globe({ onPickProgram }: GlobeProps) {
       spin.current.auto = true;
       return;
     }
-    // Turn the chosen spot to face the viewer, whether it was a pin or a country.
-    const coords = selected.program
-      ? PROGRAM_COORDS[selected.program.id]
-      : selected.at
-        ? ([selected.at.lon, selected.at.lat] as [number, number])
-        : null;
-    if (coords) {
-      target.current.lambda = -coords[0];
-      target.current.phi = coords[1];
-    }
-    target.current.zoom = ZOOM_SELECTED;
+    // Turn the picked country to face the viewer.
+    target.current.lambda = -selected.center[0];
+    target.current.phi = selected.center[1];
+    target.current.zoom = selected.zoom;
     spin.current.auto = false;
   }, [selected]);
 
@@ -132,6 +230,8 @@ export function Globe({ onPickProgram }: GlobeProps) {
     let size = 0;
     let frame = 0;
     let last = performance.now();
+    // Labels use the page's text face; the canvas cannot read CSS variables itself.
+    const font = getComputedStyle(canvas).fontFamily || "sans-serif";
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -163,6 +263,8 @@ export function Globe({ onPickProgram }: GlobeProps) {
     /** Screen position back to lon/lat, or null when the click missed the globe. */
     const unproject = (px: number, py: number) => {
       const { lambda, phi, zoom } = view.current;
+      // Zoomed in, the sphere overflows the disc; only what shows inside it counts.
+      if (Math.hypot(px - size / 2, py - size / 2) > radius()) return null;
       const r = radius() * zoom;
       const nx = (px - size / 2) / r;
       const ny = -(py - size / 2) / r;
@@ -176,36 +278,80 @@ export function Globe({ onPickProgram }: GlobeProps) {
       return { lon: wrapDeg((Math.atan2(nx, z) / RAD) - lambda), lat: Math.asin(Math.max(-1, Math.min(1, y))) / RAD };
     };
 
-    const drawRings = (land: Land, fill: string, stroke: string) => {
-      for (const ring of land.rings) {
-        // A ring that crosses the horizon is drawn as the pieces that face us.
-        let run: { x: number; y: number }[] = [];
-        const flush = () => {
-          if (run.length > 2) {
-            ctx.beginPath();
-            ctx.moveTo(run[0].x, run[0].y);
-            for (let i = 1; i < run.length; i++) ctx.lineTo(run[i].x, run[i].y);
-            ctx.closePath();
-            ctx.fillStyle = fill;
-            ctx.fill();
-            ctx.strokeStyle = stroke;
-            ctx.lineWidth = 0.7;
-            ctx.stroke();
+    /**
+     * Adds a country's outline to `path`. Rings on the far side are skipped; points
+     * of a ring that crosses the horizon are pushed out onto the rim, so the
+     * visible piece follows the edge of the globe instead of being closed off
+     * by a straight chord that jumps around while the globe turns.
+     */
+    const addLand = (path: Path2D, land: Land) => {
+      const { lambda, phi, zoom } = view.current;
+      const cl = Math.cos(lambda * RAD), sl = Math.sin(lambda * RAD);
+      const cp = Math.cos(phi * RAD), sp = Math.sin(phi * RAD);
+      const r = radius() * zoom;
+      const mid = size / 2;
+      for (const sh of land.shapes) {
+        // Depth of the cap's centre after rotation; behind the horizon by more than its radius → unseen.
+        const czr = sh.cz * cl - sh.cx * sl;
+        if (sh.cy * sp + czr * cp < -sh.sinR - 0.01) continue;
+        const v = sh.xyz;
+        for (let k = 0; k < v.length; k += 3) {
+          const x = v[k] * cl + v[k + 2] * sl;
+          const zr = v[k + 2] * cl - v[k] * sl;
+          let y2 = v[k + 1] * cp - zr * sp;
+          let px = x;
+          if (v[k + 1] * sp + zr * cp < 0) {
+            const d = Math.hypot(px, y2) || 1;
+            px /= d;
+            y2 /= d;
           }
-          run = [];
-        };
-        for (let i = 0; i < ring.length; i += 2) {
-          const p = project(ring[i], ring[i + 1]);
-          if (p.front) run.push(p);
-          else flush();
+          const sx = mid + px * r;
+          const sy = mid - y2 * r;
+          if (k === 0) path.moveTo(sx, sy);
+          else path.lineTo(sx, sy);
         }
-        flush();
+        path.closePath();
+      }
+    };
+
+    /** A small rounded tag to the right of a pin; the picked one gets a second line. */
+    const drawLabel = (x: number, y: number, title: string, sub: string | null, strong: boolean) => {
+      const padX = 8;
+      const lineH = 15;
+      ctx.font = `${strong ? 600 : 400} 12px ${font}`;
+      const titleW = ctx.measureText(title).width;
+      ctx.font = `400 11px ${font}`;
+      const subW = sub ? ctx.measureText(sub).width : 0;
+      const w = Math.max(titleW, subW) + padX * 2;
+      const h = sub ? lineH * 2 + 8 : lineH + 8;
+      // Flip to the left of the pin when there is no room on the right, and never past either edge.
+      const left = Math.max(4, Math.min(size - 4 - w, x + 12 + w > size - 4 ? x - 12 - w : x + 12));
+      const top = y - h / 2;
+
+      ctx.beginPath();
+      ctx.roundRect(left, top, w, h, 8);
+      ctx.fillStyle = strong ? "rgba(36,33,32,0.94)" : "rgba(36,33,32,0.78)";
+      ctx.fill();
+      ctx.strokeStyle = strong ? "rgba(255,122,0,0.55)" : "rgba(255,255,255,0.1)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.font = `${strong ? 600 : 400} 12px ${font}`;
+      ctx.fillStyle = strong ? "#fff" : "rgba(255,255,255,0.8)";
+      ctx.fillText(title, left + padX, top + 4 + lineH / 2);
+      if (sub) {
+        ctx.font = `400 11px ${font}`;
+        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.fillText(sub, left + padX, top + 4 + lineH * 1.5);
       }
     };
 
     const draw = () => {
       ctx.clearRect(0, 0, size, size);
-      const r = radius() * view.current.zoom;
+      // The disc stays the same size; zooming in scales the sphere behind it, like a lens.
+      const r = radius();
+      // Not laid out yet: a negative radius would throw and stop the loop.
+      if (r <= 0) return;
       const cx = size / 2;
       const cy = size / 2;
 
@@ -259,16 +405,35 @@ export function Globe({ onPickProgram }: GlobeProps) {
 
       const sel = selectedRef.current;
       if (world) {
-        for (const land of world) {
-          const isSel = sel?.country === land.name;
-          drawRings(land, isSel ? "rgba(255,122,0,0.5)" : "#57514c", isSel ? "#ff9a3c" : "rgba(255,255,255,0.14)");
+        // All land in one path per look, each filled and stroked once: plain land,
+        // countries we have universities in, and the picked one on top.
+        const land = new Path2D();
+        const open = new Path2D();
+        const picked = new Path2D();
+        for (const l of world) {
+          const target = sel?.country === l.name ? picked : OPEN_COUNTRIES.has(countryRu(l.name)) ? open : land;
+          addLand(target, l);
         }
+        ctx.lineWidth = 0.7;
+        ctx.fillStyle = "#57514c";
+        ctx.fill(land);
+        ctx.strokeStyle = "rgba(255,255,255,0.14)";
+        ctx.stroke(land);
+        ctx.fillStyle = "rgba(255,122,0,0.24)";
+        ctx.fill(open);
+        ctx.strokeStyle = "rgba(255,154,60,0.5)";
+        ctx.stroke(open);
+        ctx.fillStyle = "rgba(255,122,0,0.5)";
+        ctx.fill(picked);
+        ctx.strokeStyle = "#ff9a3c";
+        ctx.stroke(picked);
       }
 
-      // University markers, drawn last so they sit on top of the land.
-      for (const program of PROGRAMS) {
+      // University pins, only for the picked country, fading in as the globe zooms to it.
+      const pins = pinsFor(sel);
+      ctx.globalAlpha = Math.max(0, Math.min(1, (view.current.zoom - 1.15) / 0.6));
+      for (const program of pins) {
         const coords = PROGRAM_COORDS[program.id];
-        if (!coords) continue;
         const p = project(coords[0], coords[1]);
         if (!p.front) continue;
         const isSel = sel?.program?.id === program.id;
@@ -280,6 +445,22 @@ export function Globe({ onPickProgram }: GlobeProps) {
         ctx.arc(p.x, p.y, isSel ? 4.5 : 3.2, 0, Math.PI * 2);
         ctx.fillStyle = "#ff7a00";
         ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // Zoomed in, the pins get names: the city for each, the university for the picked one.
+      const labels = Math.max(0, Math.min(1, (view.current.zoom - LABEL_FROM) / (LABEL_FULL - LABEL_FROM)));
+      if (labels > 0) {
+        ctx.globalAlpha = labels;
+        ctx.textBaseline = "middle";
+        for (const program of pins) {
+          const coords = PROGRAM_COORDS[program.id];
+          const p = project(coords[0], coords[1]);
+          if (!p.front) continue;
+          const isSel = sel?.program?.id === program.id;
+          drawLabel(p.x, p.y, isSel ? program.university : program.city, isSel ? program.city : null, isSel);
+        }
+        ctx.globalAlpha = 1;
       }
       ctx.restore();
 
@@ -351,13 +532,14 @@ export function Globe({ onPickProgram }: GlobeProps) {
       lastX = e.clientX;
       lastY = e.clientY;
       moved += Math.abs(dx) + Math.abs(dy);
-      const k = 0.25;
+      // Slower when zoomed in, so the country under the finger moves with it.
+      const k = 0.25 / view.current.zoom;
       view.current.lambda += dx * k;
-      view.current.phi = Math.max(-80, Math.min(80, view.current.phi - dy * k));
+      view.current.phi = Math.max(-80, Math.min(80, view.current.phi + dy * k));
       target.current.lambda = view.current.lambda;
       target.current.phi = view.current.phi;
       spin.current.vx = dx * k;
-      spin.current.vy = -dy * k;
+      spin.current.vy = dy * k;
     };
 
     const onUp = (e: PointerEvent) => {
@@ -378,15 +560,14 @@ export function Globe({ onPickProgram }: GlobeProps) {
       const px = e.clientX - rect.left;
       const py = e.clientY - rect.top;
 
-      // Markers win over countries — they are the smaller, more deliberate target.
-      for (const program of PROGRAMS) {
+      // Pins (only there once a country is picked) win over countries — they are
+      // the smaller, more deliberate target.
+      for (const program of pinsFor(selectedRef.current)) {
         const coords = PROGRAM_COORDS[program.id];
-        if (!coords) continue;
         const p = project(coords[0], coords[1]);
-        if (!p.front) continue;
+        if (!p.front || Math.hypot(p.x - size / 2, p.y - size / 2) > radius()) continue;
         if (Math.hypot(p.x - px, p.y - py) < 14) {
-          setSelected({ country: "", program });
-          onPickProgram?.(program.id);
+          setSelected({ ...frameCountry(world, coords[0], coords[1]), program });
           return;
         }
       }
@@ -399,7 +580,7 @@ export function Globe({ onPickProgram }: GlobeProps) {
       }
       for (const land of world) {
         if (land.rings.some((ring) => pointInRing(ring, hit.lon, hit.lat))) {
-          setSelected({ country: land.name, at: hit });
+          setSelected({ ...frameCountry(world, hit.lon, hit.lat), at: hit });
           return;
         }
       }
@@ -441,6 +622,10 @@ export function Globe({ onPickProgram }: GlobeProps) {
                 <p className={styles.cardTitle}>{selected.program.university}</p>
                 <p className={styles.cardLine}>
                   {selected.program.city} · {selected.program.program}
+                </p>
+                <p className={styles.cardWhere}>
+                  €{selected.program.costEur.toLocaleString("ru-RU")}
+                  {copy.quack.uni.perYear} · {t.deadline} {selected.program.deadline}
                 </p>
               </>
             ) : (

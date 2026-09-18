@@ -26,6 +26,11 @@ body {
   margin: 0;
 }
 
+/* Anchor jumps stop below the sticky header instead of under it. */
+html {
+  scroll-padding-top: 80px;
+}
+
 body {
   min-height: 100dvh;
   background: var(--bg);
@@ -52,27 +57,5 @@ textarea {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-  }
-}
-
-/* Switching sections: shared elements keep their place, the rest cross-fades quickly */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 0.22s;
-  animation-timing-function: var(--ease-out);
-}
-
-::view-transition-group(sidebar),
-::view-transition-group(topbar),
-::view-transition-group(profile) {
-  animation-duration: 0.28s;
-  animation-timing-function: var(--ease-out);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation-duration: 0.01ms;
   }
 }

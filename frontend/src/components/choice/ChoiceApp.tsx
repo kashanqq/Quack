@@ -5,7 +5,7 @@
 // programs (picks, favourites, comparison) and chat history. Both side panels can be dragged
 // to resize or collapsed; the workspace is kept in localStorage.
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   CONFIRM_REPLY,
   EMPTY_PROFILE,
@@ -19,15 +19,9 @@ import {
   type Profile,
 } from "./assistant";
 import { Dashboard } from "../dashboard/Dashboard";
-import {
-  alerts as computeAlerts,
-  calendarEvents,
-  hardConflicts,
-  unionExams,
-  type DashTab,
-} from "../dashboard/dashboardRules";
-import { programById } from "./programs";
+import type { DashTab } from "../dashboard/dashboardRules";
 import { PrepView } from "../prep/PrepView";
+import { useQuack } from "../quack/source";
 import { morph } from "@/components/transition/morph";
 import type { PrepSub, PrepTab } from "../prep/prepModel";
 import { ChatMessage, type ChatMsg } from "./ChatMessage";
@@ -62,7 +56,6 @@ const CHAT_MIN = 460; // below this the profile panel turns into an overlay
 const PHONE_MAX = 760;
 const LAYOUT_KEY = "quack-choice-layout";
 const WORKSPACE_KEY = "quack-choice-workspace";
-const SEEN_KEY = "quack-seen-alerts";
 const INTRO_PLACEHOLDER = "Люблю бананы и хочу в IT...";
 
 type LeftPanel = { width: number; collapsed: boolean; lastWidth: number; userSet: boolean };
@@ -80,7 +73,8 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const [prepTab, setPrepTab] = useState<PrepTab>("overview");
   const [prepSub, setPrepSub] = useState<PrepSub>("now");
   const [dashTab, setDashTab] = useState<DashTab>("overview");
-  const [seenAlerts, setSeenAlerts] = useState<string[]>([]);
+  // The source's functions are stable, so effects can depend on them
+  const { state: quackState, report: reportToQuack, markSeen: markQuackSeen, reset: resetQuack } = useQuack();
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
   const [confirmed, setConfirmed] = useState(false);
   const [versions, setVersions] = useState<Partial<Record<FieldKey, number>>>({});
@@ -490,43 +484,27 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     try {
       localStorage.removeItem(WORKSPACE_KEY);
     } catch {}
+    resetQuack();
     onRestart();
   };
 
-  /* ---------- What the dashboard wants to tell the student ---------- */
+  /* ---------- What Quack wants to tell the student ---------- */
 
+  // Profile and saved programs are sources of truth: every change is recomputed at once,
+  // and whatever moved since the last visit makes the Quack! button glow
   useEffect(() => {
-    try {
-      setSeenAlerts(JSON.parse(localStorage.getItem(SEEN_KEY) ?? "[]"));
-    } catch {}
-  }, []);
+    if (workspaceLoaded) reportToQuack({ profile, saved });
+  }, [reportToQuack, workspaceLoaded, profile, saved]);
 
-  // Everything the dashboard would tell the student right now
-  const pending = useMemo(() => {
-    const programs = saved.map(programById).filter(Boolean);
-    if (!programs.length) return [];
-    const exams = unionExams(programs);
-    return computeAlerts(calendarEvents(programs, exams), hardConflicts(programs, exams));
-  }, [saved]);
-
-  // The dot is about what the student has not seen yet, not about time
-  const unseen = pending.filter((a) => !seenAlerts.includes(a.id));
-  const pendingKey = pending.map((a) => a.id).join("|");
-
-  // Marked as seen a moment after the dashboard opens, so the dot does not vanish before it is noticed
+  // Seen a moment after Quack opens, so the glow does not vanish before it is noticed
+  const freshKey = quackState.fresh.map((s) => `${s.id}@${s.at}`).join("|");
   useEffect(() => {
-    if (mode !== "dashboard") return;
-    const timer = setTimeout(() => {
-      const ids = pendingKey ? pendingKey.split("|") : [];
-      setSeenAlerts(ids);
-      try {
-        localStorage.setItem(SEEN_KEY, JSON.stringify(ids));
-      } catch {}
-    }, 1500);
+    if (mode !== "dashboard" || !freshKey) return;
+    const timer = setTimeout(markQuackSeen, 1500);
     return () => clearTimeout(timer);
-  }, [mode, pendingKey]);
+  }, [markQuackSeen, mode, freshKey]);
 
-  const alert = { active: unseen.length > 0, reasons: unseen.map((a) => a.text) };
+  const alert = { level: quackState.glow, reasons: quackState.fresh.map((s) => s.title) };
 
   /* ---------- Student profile ---------- */
 
@@ -554,16 +532,16 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   const phone = viewportWidth <= PHONE_MAX;
   const leftWidth = left.collapsed ? RAIL_W : left.width;
-  const rightAvailable = stage === "chat" && mode === "choice";
-  // On laptop-sized windows the panel may not fit beside the chat: then it opens over it
+  // Beside the chat the profile is a column of its own. Everywhere else — Quack, preparation, the
+  // greeting, a cramped window, a phone — it slides over the page from the button in the left column
   const roomForRight = viewportWidth - leftWidth - CHAT_MIN;
-  const rightOverlay = rightAvailable && (phone || roomForRight < RIGHT_MIN);
-  const rightWidth = !rightAvailable || right.hidden || rightOverlay ? 0 : Math.min(right.width, roomForRight);
-  const profileVisible = rightOverlay ? profileOverlayOpen : rightWidth > 0;
+  const docked = stage === "chat" && mode === "choice" && !phone && roomForRight >= RIGHT_MIN;
+  const rightWidth = docked && !right.hidden ? Math.min(right.width, roomForRight) : 0;
+  const profileVisible = docked ? rightWidth > 0 : profileOverlayOpen;
 
   useEffect(() => {
-    if (!rightOverlay) setProfileOverlayOpen(false);
-  }, [rightOverlay]);
+    if (docked) setProfileOverlayOpen(false);
+  }, [docked]);
 
   const settleLeft = (width: number) =>
     setLeft((l) =>
@@ -581,7 +559,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const toggleRight = () => setRight((r) => ({ ...r, hidden: !r.hidden, width: r.lastWidth }));
 
   const readinessValue = readiness(profile, confirmed);
-  const toggleProfile = rightOverlay ? toggleProfileOverlay : toggleRight;
+  const toggleProfile = docked ? toggleRight : toggleProfileOverlay;
 
   const gridStyle = { "--left": `${leftWidth}px`, "--right": `${rightWidth}px` } as CSSProperties;
   const sidebarCollapsed = leftWidth < LEFT_SNAP && !mobileProgramsOpen;
@@ -600,7 +578,6 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
           onMode={changeMode}
           onOpenMenu={openMobilePrograms}
           alert={alert}
-          profilePanel={rightAvailable ? { open: profileVisible, readiness: readinessValue, onToggle: toggleProfile } : undefined}
         />
 
         <aside
@@ -622,6 +599,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
             onToggle={mobileProgramsOpen ? () => setMobileProgramsOpen(false) : toggleLeft}
             onOpenCompare={openCompare}
             onRestart={restart}
+            profileToggle={{ open: profileVisible, readiness: readinessValue, onToggle: toggleProfile }}
             prepTab={prepTab}
             prepSub={prepSub}
             onPrepTab={(tab, sub) =>
@@ -664,7 +642,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
           />
         </aside>
         {mobileProgramsOpen && <div className={layout.mobileBackdrop} onClick={() => setMobileProgramsOpen(false)} />}
-        {phone && profileVisible && <div className={styles.profileBackdrop} onClick={() => setProfileOverlayOpen(false)} />}
+        {!docked && profileVisible && <div className={styles.profileBackdrop} onClick={() => setProfileOverlayOpen(false)} />}
 
         <section className={styles.chat}>
           <div className={styles.chatBody}>
@@ -786,11 +764,11 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
         </section>
 
         <aside
-          className={`${styles.profile} ${rightOverlay && profileOverlayOpen ? styles.profileOverlay : ""}`}
+          className={`${styles.profile} ${!docked && profileOverlayOpen ? styles.profileOverlay : ""}`}
           aria-label="Профиль студента"
           aria-hidden={!profileVisible}
         >
-          {rightAvailable && !rightOverlay && (
+          {docked && (
             <ResizeHandle
               side="right"
               label="Ширина профиля студента"
@@ -818,9 +796,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
             readiness={readinessValue}
             versions={versions}
             onEdit={onEditField}
-            onHide={() =>
-              rightOverlay ? setProfileOverlayOpen(false) : setRight((r) => ({ ...r, hidden: true, width: r.lastWidth }))
-            }
+            onHide={() => (docked ? setRight((r) => ({ ...r, hidden: true, width: r.lastWidth })) : setProfileOverlayOpen(false))}
           />
         </aside>
       </main>

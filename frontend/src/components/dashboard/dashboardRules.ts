@@ -10,7 +10,7 @@ import { day, daysBetween, formatDate, parseDeadline, TODAY } from "../prep/prep
 export type DashTab = "overview" | "exams" | "calendar" | "programs";
 
 export const DASH_TABS: { tab: DashTab; label: string; icon: IconName }[] = [
-  { tab: "overview", label: "Обзор", icon: "layout-dashboard" },
+  { tab: "overview", label: "Главное", icon: "layout-dashboard" },
   { tab: "exams", label: "Экзамены", icon: "book-open-check" },
   { tab: "calendar", label: "Календарь", icon: "calendar-days" },
   { tab: "programs", label: "Программы", icon: "graduation-cap" },
@@ -321,22 +321,4 @@ export function streak(days: ActivityDay[]): number {
     n++;
   }
   return n;
-}
-
-
-/* ---------- What the red dot on the logo stands for ---------- */
-
-export type Alert = { id: string; text: string };
-
-/** A date coming up or an unresolved conflict — the things worth opening Quack for. */
-export function alerts(events: CalendarEvent[], conflicts: Conflict[], withinDays = 7): Alert[] {
-  const soon = events
-    .map((e) => ({ event: e, left: daysBetween(TODAY, e.date) }))
-    .filter(({ left }) => left >= 0 && left <= withinDays)
-    .map(({ event, left }) => ({
-      id: `soon-${event.id}`,
-      text: left === 0 ? `${event.title} — сегодня` : `${event.title} — через ${left} дн.`,
-    }));
-
-  return [...conflicts.map((c) => ({ id: c.id, text: c.text })), ...soon];
 }

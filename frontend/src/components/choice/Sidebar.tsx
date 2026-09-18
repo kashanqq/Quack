@@ -36,6 +36,8 @@ type SidebarProps = {
   onToggle: () => void;
   onOpenCompare: () => void;
   onRestart: () => void;
+  /** The student profile opens from the avatar at the bottom, in every section */
+  profileToggle: { open: boolean; readiness: number; onToggle: () => void };
   prepTab: PrepTab;
   onPrepTab: (tab: PrepTab, sub?: PrepSub) => void;
   prepSub: PrepSub;
@@ -161,7 +163,7 @@ export function Sidebar(props: SidebarProps) {
           </>
         )}
         <div className={styles.railFoot}>
-          <UserMenu onRestart={props.onRestart} compact />
+          <UserMenu onRestart={props.onRestart} profile={props.profileToggle} compact />
         </div>
       </div>
     );
@@ -172,7 +174,7 @@ export function Sidebar(props: SidebarProps) {
   return (
     <div className={styles.sidebarInner}>
       <div className={styles.sidebarHead}>
-        <p className={styles.sidebarSection}>{mode === "prep" ? "Подготовка" : mode === "dashboard" ? "Дашборд" : "Выбор"}</p>
+        <p className={styles.sidebarSection}>{mode === "prep" ? "Подготовка" : mode === "dashboard" ? "Обзор" : "Выбор"}</p>
         <button type="button" className={styles.iconButton} aria-label="Свернуть левую панель" onClick={props.onToggle}>
           <Icon name="panel-left-close" />
         </button>
@@ -389,7 +391,7 @@ export function Sidebar(props: SidebarProps) {
         </div>
       )}
       <div className={styles.sidebarFoot}>
-        <UserMenu onRestart={props.onRestart} />
+        <UserMenu onRestart={props.onRestart} profile={props.profileToggle} />
       </div>
     </div>
   );
