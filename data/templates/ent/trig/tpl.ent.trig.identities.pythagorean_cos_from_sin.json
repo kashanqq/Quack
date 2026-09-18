@@ -1,0 +1,64 @@
+{
+  "id": "tpl.ent.trig.identities.pythagorean_cos_from_sin",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 2,
+  "skill_id": "ent.trig.identities",
+  "tags": [
+    "pythagorean_identity",
+    "cos",
+    "sin",
+    "quadrant"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        1,
+        4
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        5,
+        13
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "a < b",
+    "gcd(a, b) == 1"
+  ],
+  "stem": "Известно, что sin(α) = {a}/{b} и угол α принадлежит второй четверти. Найдите cos(α).",
+  "correct": "-sqrt(b**2 - a**2)/b",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "sqrt(b**2 - a**2)/b",
+      "misconception_id": "lib.trig_reduction_sign"
+    },
+    {
+      "expr": "-a/b",
+      "misconception_id": null
+    },
+    {
+      "expr": "a/b",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Основное тригонометрическое тождество: sin²(α) + cos²(α) = 1.",
+    "Выражаем cos²(α): cos²(α) = 1 − sin²(α) = 1 − ({a}/{b})².",
+    "Приводим к общему знаменателю: cos²(α) = ({b}² − {a}²)/{b}².",
+    "Так как α лежит во второй четверти, косинус отрицателен.",
+    "Так как косинус отрицателен, берём отрицательный корень: cos(α) = −√({b}² − {a}²)/{b}.",
+    "Ответ: {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

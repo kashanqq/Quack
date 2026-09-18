@@ -1,0 +1,75 @@
+{
+  "id": "tpl.ent.stereo.prism_surface_multi",
+  "exam_id": "ENT_MATH",
+  "type": "multi_select",
+  "difficulty": 2,
+  "skill_id": "ent.stereo.prism",
+  "tags": [
+    "rectangular_prism",
+    "surface_area",
+    "lateral_surface"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        8
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        3,
+        10
+      ],
+      "choices": null
+    },
+    "h": {
+      "range": [
+        4,
+        12
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "a != b"
+  ],
+  "stem": "Прямоугольный параллелепипед имеет стороны основания a = {a} см и b = {b} см, высоту h = {h} см. Выберите все верные утверждения о его площадях.",
+  "correct": [
+    "площадь боковой поверхности равна 2·(a + b)·h",
+    "площадь полной поверхности равна 2·(a·b + a·h + b·h)"
+  ],
+  "distractors": [
+    {
+      "expr": "площадь боковой поверхности равна 2·(a·b + a·h + b·h)",
+      "misconception_id": "lib.lateral_vs_total_surface"
+    },
+    {
+      "expr": "площадь полной поверхности равна 2·(a + b)·h",
+      "misconception_id": "lib.lateral_vs_total_surface"
+    },
+    {
+      "expr": "площадь боковой поверхности равна a·b·h",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": [
+    {
+      "omit": "площадь полной поверхности равна 2·(a·b + a·h + b·h)",
+      "misconception_id": "lib.lateral_vs_total_surface"
+    }
+  ],
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Боковая поверхность прямоугольного параллелепипеда состоит из четырёх прямоугольников: два со сторонами a и h, два со сторонами b и h.",
+    "Поэтому S_бок = 2·a·h + 2·b·h = 2·(a + b)·h.",
+    "Полная поверхность дополнительно содержит два основания, каждое площадью a·b.",
+    "Значит, S_полн = S_бок + 2·a·b = 2·(a·b + a·h + b·h)."
+  ],
+  "generator": null,
+  "figure": null
+}

@@ -1,0 +1,74 @@
+{
+  "id": "tpl.ent.stereo.pyramid_truncated_volume",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 4,
+  "skill_id": "ent.stereo.pyramid",
+  "tags": [
+    "truncated_pyramid",
+    "volume",
+    "square_bases"
+  ],
+  "time_reference_sec": 150,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        6,
+        12
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        2,
+        5
+      ],
+      "choices": null
+    },
+    "h": {
+      "range": [
+        3,
+        9
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "a > b",
+    "a % 2 == 0",
+    "b % 2 == 0",
+    "h % 3 == 0"
+  ],
+  "stem": "В правильной четырёхугольной усечённой пирамиде стороны оснований равны {a} и {b}, высота равна {h}. Найдите объём усечённой пирамиды.",
+  "correct": "h*(a*a + a*b + b*b)/3",
+  "distractors": [
+    {
+      "expr": "h*(a*a + b*b)/3",
+      "misconception_id": null
+    },
+    {
+      "expr": "h*(a*a + a*b + b*b)",
+      "misconception_id": "lib.volume_third_dropped"
+    },
+    {
+      "expr": "h*(a*a + b*b)/2",
+      "misconception_id": null
+    },
+    {
+      "expr": "h*(a*a - b*b)/3",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Объём усечённой пирамиды с квадратными основаниями: V = (h/3)·(S₁ + √(S₁·S₂) + S₂), где S₁ = {a}², S₂ = {b}².",
+    "√(S₁·S₂) = √({a}²·{b}²) = {a}·{b}.",
+    "Подставляем: V = ({h}/3)·({a}² + {a}·{b} + {b}²).",
+    "Ответ: вариант {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

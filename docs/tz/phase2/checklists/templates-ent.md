@@ -210,3 +210,135 @@
 
 - `validate_template` не проверяет `trap_answers` вообще: ловушка `numeric`-шаблона может совпасть с верным ответом или с другой ловушкой на части сидов, и шаблон всё равно пройдёт. Найдено на трёх своих шаблонах (исправлены ограничениями), воспроизводится и на шаблоне области alg `tpl.ent.alg.quadratic_factor_numeric` (мой файл, чиню отдельной веткой — эта ветка область alg не трогает).
 - Ранее сообщённый дефект `quadratic_conditions_multi.json` (файл B1, плейсхолдер `{q}` в тексте варианта) по-прежнему открыт.
+
+---
+
+# Область trig — «Тригонометрия» (прогон 2026-09-19)
+
+Прогон: `scripts/gen_templates.py --exam ENT_MATH --area trig --n 3 --out data/templates/ent/trig/` плюс пять доборов по навыкам, не набравшим двух проверенных шаблонов, и два диагностических вызова вне скрипта (скрипт печатает только счётчик `seed failure rate`, а причина отбраковки по нему не восстанавливается). Автоматика в чек-листе не дублируется; ниже — ручная проверка: две подстановки на шаблон, верность ответа, соответствие дистрактора своему `misconception_id`, согласованность решения с ответом.
+
+В библиотеку `ent_trig.json` добавлены два заблуждения (`lib.cosine_law_sign`, `lib.trig_root_selection`) — до потолка в 4 записи на область.
+
+## Прошли проверку
+
+| template_id | навык | тип | проверен | замечание |
+| :---- | :---- | :---- | :---- | :---- |
+| `tpl.ent.trig.identities.reduction_sign_numeric` | ent.trig.identities | numeric | да (k=1, 30°; k=3, 60°) | поправлен: `k` ограничен нечётными, иначе ловушка «забыл знак» совпадала с ответом; 45° убран из `choices` (там sin = cos, две ловушки сливались); стем переписан в градусах вместо смеси π и градусов |
+| `tpl.ent.trig.identities.pythagorean_cos_from_sin` | ent.trig.identities | numeric | да (sin = 4/5 → −3/5; sin = 4/7 → −√33/7) | `lib.trig_reduction_sign` на ловушке «положительный корень» подходит точно (знак по четверти); у двух других тегов сняты — подстановка синуса вместо косинуса заблуждением библиотеки не описана |
+| `tpl.ent.trig.equations.sine_linear_interval` | ent.trig.equations | numeric | да (sin x = 2/3 → 2 корня; sin x = 1/2 → 2 корня) | теги «0» и «4» сняты, оставлен «1» с `lib.trig_period_missing` — ровно потеря второй серии |
+| `tpl.ent.trig.equations.cos_linear_interval_count` | ent.trig.equations | numeric | да (cos x = 1/3 и 1/2 → по 2 корня) | — |
+| `tpl.ent.trig.equations.tan_linear_interval` | ent.trig.equations | numeric | да (tan x = 2/3 и 1/2 → 1 корень на [0; π]) | — |
+| `tpl.ent.trig.triangle.area_sides_angle` | ent.trig.triangle | numeric | да (10, 6, 90° → 30; 7, 8, 30° → 14) | ловушка «без множителя 1/2» перепривязана к `lib.area_half_dropped` из `ent_geo.json`; ловушка `a·b/2` убрана — при 30° и 90° она совпадала с ответом или с другой ловушкой |
+| `tpl.ent.trig.triangle.cosine_law_side` | ent.trig.triangle | mcq5 | да (4, 5, 120° → √61; 6, 12, 60° → √108) | `lib.cosine_law_sign` стоит ровно на варианте с «+2ab·cos C»; у варианта с синусом вместо косинуса тег снят |
+| `tpl.ent.trig.triangle_area_multi` | ent.trig.triangle | multi_select | да (10, 6, 90°; 7, 8, 30°) | та же перепривязка к `lib.area_half_dropped`; у варианта с косинусом и у `omission_trap` теги сняты |
+
+## Итог по навыкам области trig
+
+| skill_id | шаблонов прошло проверку |
+| :---- | :---- |
+| ent.trig.identities | 2 |
+| ent.trig.equations | 3 |
+| ent.trig.triangle | 3 |
+
+## Отброшены (удалены с диска)
+
+Автоматикой — 25 из 45 сгенерированных. Главная причина, найденная диагностическим прогоном: имена параметров в фигурных скобках внутри выражений ответа (`sqrt({a}^2 + {b}^2 - 2*{a}*{b}*cos({angle}*pi/180))`) — `sympy` читает `{a}` как множество и падает на каждом сиде. После правки промпта (п. 15) доля прошедших автоматику выросла с 1 из 9 до 6 из 9.
+
+Ручной проверкой — 12:
+
+| template_id | навык | причина |
+| :---- | :---- | :---- |
+| `tpl.ent.trig.equations_sin_linear_mcq5` (две версии) | ent.trig.equations | `correct` = π/6 при уравнении sin x = 1/{k}: верно только при k = 2; во второй версии arcsin({a}/2) = π/6 верно только при a = 1, а при a = 3 аргумент больше единицы |
+| `tpl.ent.trig.equations_tan_linear_numeric` | ent.trig.equations | `correct` = π/4 при tan x = {m}, хотя `constraints` запрещают m = 1 |
+| `tpl.ent.trig.equations_cos_quadratic_multi` | ent.trig.equations | решение объявляет корнями t² − pt + q именно p и q — при p = 3, q = 1 корни (3 ± √5)/2 |
+| `tpl.ent.trig.equations.cosine_quadratic_roots` | ent.trig.equations | та же неверная факторизация 2t² − (p+q)t + pq, плюс «0 < 3/2 < 1» в решении и расхождение решения (4π) с `correct` (2π) |
+| `tpl.ent.trig.equations.sine_quadratic_roots` | ent.trig.equations | та же факторизация; решение приходит к 2π, `correct` = 3π |
+| `tpl.ent.trig.equations.tangent_quadratic_numeric` | ent.trig.equations | `correct` = π для суммы arctan(p) + arctan(q): при p = 4, q = 2 сумма равна 2.433 |
+| `tpl.ent.trig.identities_double_angle_multi` | ent.trig.identities | стем «sin x = 3/1» — синус больше единицы; варианты через буквы a, b, которых в условии нет |
+| `tpl.ent.trig.identities_sum_to_product_numeric` | ent.trig.identities | ловушка `2*sin((m+n)*pi/4)*cos((m-n)*pi/4)` — это та же сумма синусов, то есть тождественно верный ответ в списке ловушек |
+| `tpl.ent.trig.identities_sum_to_product` | ent.trig.identities | варианты сформулированы через p и q, которых в условии нет (стем показывает sin(3x) + sin(4x)) |
+| `tpl.ent.trig.identities.pythagorean_multi_select` | ent.trig.identities | стем «Дано: sin(α) = 60°» — синус приравнен к градусной мере угла |
+| `tpl.ent.trig.identities.pythagorean_identity_numeric` | ent.trig.identities | ответ равен 1 при любых параметрах, ловушка `k` совпадает с ответом при k = 1, диагностики нет |
+
+# Область geo — «Планиметрия» (прогон 2026-09-19)
+
+Прогон: `--area geo --n 3 --out data/templates/ent/geo/` и один добор по `ent.geo.triangle`. Библиотека `data/misconceptions/ent_geo.json` заведена с нуля: `lib.pythagoras_leg_hypotenuse`, `lib.inscribed_angle_double`, `lib.area_half_dropped`, `lib.polygon_angle_sum`.
+
+## Прошли проверку
+
+| template_id | навык | тип | проверен | замечание |
+| :---- | :---- | :---- | :---- | :---- |
+| `tpl.ent.geo.triangle_angle_sum_multi` | ent.geo.triangle | multi_select | да (64° и 40°; 43° и 60°) | тег снят с варианта «угол C = 180° − угол A» — это не ошибка в формуле суммы углов многоугольника |
+| `tpl.ent.geo.triangle_median_ratio_mcq5` | ent.geo.triangle | mcq5 | да (медиана 30 → 20; медиана 21 → 14) | оба тега сняты: «делит медиану пополам» в библиотеке отсутствует, а потолок в 4 записи на область уже выбран (см. sync-log) |
+| `tpl.ent.geo.circle_inscribed_angle_mcq5` | ent.geo.circle | mcq5 | да (дуга 98° → 49°; 148° → 74°) | `lib.inscribed_angle_double` стоит на обоих «удвоенных» вариантах; последний шаг решения печатал «98° / 2 = A°» — переписан |
+| `tpl.ent.geo.circle_inscribed_polygon_multi_select` | ent.geo.circle | multi_select | да (n = 7; n = 11) | — |
+| `tpl.ent.geo.circle_tangent_radius_mcq5` | ent.geo.circle | mcq5 | да (d = 19, r = 6 → √325; d = 17, r = 5 → √264) | `lib.pythagoras_leg_hypotenuse` на «+r²» подходит точно; тег `lib.area_half_dropped` на «половине касательной» снят |
+| `tpl.ent.geo.quadrilateral_parallelogram_area_mcq5` | ent.geo.quadrilateral | mcq5 | да (12 и 8 → 96; 12 и 9 → 108) | периметр и полупериметр помечены `lib.area_perimeter_mix` из `geo.json` (файл B3) — ссылка в sync-log |
+| `tpl.ent.geo.quadrilateral_rhombus_diagonal_pythagoras_mcq5` | ent.geo.quadrilateral | mcq5 | да (10 и 8 → √41; 14 и 8 → √65) | добавлено `d1 > d2`: без него дистрактор √(d1² − d2²) давал мнимое число и показывался ученику как «12·√2·I» |
+| `tpl.ent.geo.quadrilateral_trapezoid_midline_multi` | ent.geo.quadrilateral | multi_select | да (8 и 5; 8 и 3) | — |
+| `tpl.ent.geo.polygon_angle_sum_mcq5` | ent.geo.polygon | mcq5 | да (n = 9 → 1260°; n = 7 → 900°) | `lib.polygon_angle_sum` на «180·n» — ровно описанное заблуждение |
+| `tpl.ent.geo.polygon_regular_angle_mcq5` | ent.geo.polygon | mcq5 | да (n = 9 → 140°; n = 10 → 144°) | `lib.polygon_angle_sum` на «180/n» — вторая половина того же описания; тег с «180·(n − 2)» снят |
+
+## Итог по навыкам области geo
+
+| skill_id | шаблонов прошло проверку |
+| :---- | :---- |
+| ent.geo.triangle | 2 |
+| ent.geo.circle | 3 |
+| ent.geo.quadrilateral | 3 |
+| ent.geo.polygon | 2 |
+
+## Отброшены (удалены с диска)
+
+Автоматикой — 4 из 15 (`seed failure rate`, `distractors collapse`, остаток `{` в тексте варианта `multi_select`).
+
+Ручной проверкой — 1:
+
+| template_id | навык | причина |
+| :---- | :---- | :---- |
+| `tpl.ent.geo.polygon_composite_area_multi` | ent.geo.polygon | при b = h четырёхугольник ABCD — прямоугольник, и вариант «четырёхугольник является прямоугольником» помечен дистрактором, то есть верное утверждение объявлено неверным; вдобавок решение содержит самовопрос «имеют одинаковую абсциссу? Нет, …» |
+
+# Область stereo — «Стереометрия» (прогон 2026-09-19)
+
+Прогон: `--area stereo --n 3 --out data/templates/ent/stereo/` и один добор по `ent.stereo.cylinder`. Библиотека `data/misconceptions/ent_stereo.json` заведена с нуля: `lib.volume_third_dropped`, `lib.lateral_vs_total_surface`, `lib.apothem_vs_height`, `lib.sphere_formula_swap`.
+
+## Прошли проверку
+
+| template_id | навык | тип | проверен | замечание |
+| :---- | :---- | :---- | :---- | :---- |
+| `tpl.ent.stereo.prism_rect_volume_mcq5` | ent.stereo.prism | mcq5 | да (4·12·11 = 528; 5·10·9 = 450) | ловушки перевода единиц помечены `lib.volume_units` из `geo.json` (файл B3); теги с двух «поверхностных» дистракторов сняты — путаницу объёма с поверхностью библиотека не описывает |
+| `tpl.ent.stereo.prism_surface_multi` | ent.stereo.prism | multi_select | да (2×8×12; 6×10×12) | в стем внесены обозначения a, b, h — варианты ссылались на буквы, которых в условии не было; тег с «S_бок = a·b·h» снят |
+| `tpl.ent.stereo.pyramid_regular_surface` | ent.stereo.pyramid | mcq5 | да (a = 10, апофема 6 → 220; апофема 9 → 280) | `lib.lateral_vs_total_surface` и `lib.apothem_vs_height` подходят точно; тег `lib.volume_third_dropped` на «2al/3» снят — в площади поверхности трети нет |
+| `tpl.ent.stereo.pyramid_truncated_volume` | ent.stereo.pyramid | mcq5 | да (8, 2, 6 → 168; 10, 2, 9 → 372) | `lib.volume_third_dropped` на варианте без деления на 3 |
+| `tpl.ent.stereo.cylinder_volume_numeric` | ent.stereo.cylinder | numeric | да (r = 5, h = 15 → 375π; r = 9, h = 14 → 1134π) | две ловушки «взял поверхность вместо объёма» убраны как непривязываемые, оставлены две ловушки перевода единиц с `lib.volume_units` |
+| `tpl.ent.stereo.cylinder_inscribed_sphere_multi_select` | ent.stereo.cylinder | multi_select | да (r = 8; r = 7) | в стем внесено обозначение r; `omission_trap` ссылался на текст, которого нет среди верных вариантов, — заменён на «высота равна диаметру шара» с `lib.apothem_vs_height`; тег с «V цилиндра = πr³» снят |
+| `tpl.ent.stereo.cone_surface_numeric` | ent.stereo.cone_sphere | numeric | да (r = 6, l = 8 → 48π) | `lib.lateral_vs_total_surface` на «πrl + πr²» подходит точно; тег с «πr²l» снят |
+| `tpl.ent.stereo.sphere_surface_multi` | ent.stereo.cone_sphere | multi_select | да (R = 5; R = 8) | в стем внесено обозначение R; `lib.sphere_formula_swap` стоит на обеих перепутанных формулах |
+
+## Итог по навыкам области stereo
+
+| skill_id | шаблонов прошло проверку |
+| :---- | :---- |
+| ent.stereo.prism | 2 |
+| ent.stereo.pyramid | 2 |
+| ent.stereo.cylinder | 2 |
+| ent.stereo.cone_sphere | 2 |
+
+## Отброшены (удалены с диска)
+
+Автоматикой — 7 из 15 (`seed failure rate` на «красивых» ответах с π, `distractors collapse` на совпадающих формулах поверхности). Ручной проверкой не отброшено ни одного: после правок промпта по итогам trig и geo содержательных ошибок в этой области не нашлось.
+
+# Правки промпта по итогам трёх областей
+
+Файл тот же (`app/agents/prompts/gen_template_v1.md`, без v2), правился по дефектам с тремя и более повторами. Добавлены пункты:
+
+13. `correct` — функция параметров, а не одно табличное значение (arcsin({a}/2) = π/6 верно только при a = 1); диапазоны параметров обязаны давать осмысленные условия (sin x = a/b требует a < b);
+14. π в ответе ученик видит числом (`pi/6` печатается как `0.524`), поэтому «ответ, выраженный через π» не спрашиваем;
+15. в `correct`, `distractors[].expr`, `trap_answers[].expr` имена параметров пишутся без фигурных скобок — `sympy` читает `{a}` как множество (главная причина отбраковки в trig: 4 шаблона подряд);
+16. итоговое утверждение проверяется на двух числах, а не «по формуле из памяти» (неверная факторизация 2t² − (p+q)t + pq и сумма арктангенсов — три шаблона).
+
+Плюс уточнён пункт 9 (`{answer}` вне `numeric` — буква варианта): добавлен пример с градусами, потому что в geo пять шаблонов подряд печатали «180°·(9 − 2) = B°».
+
+# Дефект движка
+
+`tpl.ent.alg.quadratic_factor_numeric` (область alg, найден на прошлом заходе) исправлен отдельным коммитом: добавлено `r1 + r2 != 0`, иначе ловушка `r1 + r2` совпадала с верным ответом `-(r1 + r2)` на противоположных корнях. Причина общая — `validate_template` не проверяет `trap_answers`; запрос к B1 в sync-log остаётся открытым, как и дефект плейсхолдера в `quadratic_conditions_multi.json` (файл B1).

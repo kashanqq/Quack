@@ -1,0 +1,53 @@
+{
+  "id": "tpl.ent.geo.polygon_angle_sum_mcq5",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 1,
+  "skill_id": "ent.geo.polygon",
+  "tags": [
+    "polygon_angle_sum",
+    "regular_polygon"
+  ],
+  "time_reference_sec": 60,
+  "kind": "template",
+  "params": {
+    "n": {
+      "range": [
+        5,
+        12
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [],
+  "stem": "Найдите сумму внутренних углов правильного {n}-угольника.",
+  "correct": "180*(n - 2)",
+  "distractors": [
+    {
+      "expr": "180*n",
+      "misconception_id": "lib.polygon_angle_sum"
+    },
+    {
+      "expr": "360*n",
+      "misconception_id": null
+    },
+    {
+      "expr": "180*(n - 1)",
+      "misconception_id": null
+    },
+    {
+      "expr": "360*(n - 2)",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Сумма внутренних углов выпуклого n-угольника вычисляется по формуле 180°·(n − 2).",
+    "Подставляем n = {n}: 180°·({n} − 2).",
+    "Ответ: вариант {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

@@ -1,0 +1,66 @@
+{
+  "id": "tpl.ent.geo.quadrilateral_trapezoid_midline_multi",
+  "exam_id": "ENT_MATH",
+  "type": "multi_select",
+  "difficulty": 3,
+  "skill_id": "ent.geo.quadrilateral",
+  "tags": [
+    "trapezoid",
+    "midline"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        5,
+        12
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        3,
+        10
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "a > b"
+  ],
+  "stem": "Основания трапеции равны {a} и {b}. Выберите все верные утверждения о средней линии трапеции.",
+  "correct": [
+    "средняя линия параллельна основаниям",
+    "длина средней линии равна полусумме оснований"
+  ],
+  "distractors": [
+    {
+      "expr": "длина средней линии равна сумме оснований",
+      "misconception_id": "lib.area_half_dropped"
+    },
+    {
+      "expr": "длина средней линии равна разности оснований",
+      "misconception_id": null
+    },
+    {
+      "expr": "средняя линия перпендикулярна основаниям",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": [
+    {
+      "omit": "длина средней линии равна полусумме оснований",
+      "misconception_id": "lib.area_half_dropped"
+    }
+  ],
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Средняя линия трапеции соединяет середины боковых сторон.",
+    "Она параллельна основаниям, а её длина равна полусумме оснований: ({a} + {b}) / 2.",
+    "Сумма оснований без деления пополам даёт удвоенную среднюю линию, поэтому утверждение о сумме оснований неверно."
+  ],
+  "generator": null,
+  "figure": null
+}

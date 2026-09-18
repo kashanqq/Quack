@@ -1,0 +1,68 @@
+{
+  "id": "tpl.ent.geo.triangle_angle_sum_multi",
+  "exam_id": "ENT_MATH",
+  "type": "multi_select",
+  "difficulty": 3,
+  "skill_id": "ent.geo.triangle",
+  "tags": [
+    "angle_sum",
+    "triangle_properties"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "angle_a": {
+      "range": [
+        30,
+        80
+      ],
+      "choices": null
+    },
+    "angle_b": {
+      "range": [
+        30,
+        80
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "angle_a + angle_b < 180",
+    "angle_a != angle_b"
+  ],
+  "stem": "В треугольнике ABC угол A равен {angle_a}°, угол B равен {angle_b}°. Выберите все верные утверждения.",
+  "correct": [
+    "угол C равен 180° − (угол A + угол B)",
+    "сумма углов треугольника равна 180°"
+  ],
+  "distractors": [
+    {
+      "expr": "угол C равен 180° − угол A",
+      "misconception_id": null
+    },
+    {
+      "expr": "сумма углов треугольника равна 360°",
+      "misconception_id": "lib.polygon_angle_sum"
+    },
+    {
+      "expr": "угол C равен 90°",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": [
+    {
+      "omit": "сумма углов треугольника равна 180°",
+      "misconception_id": "lib.polygon_angle_sum"
+    }
+  ],
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Сумма углов любого треугольника равна 180°.",
+    "Угол C = 180° − ({angle_a}° + {angle_b}°) = 180° − {angle_a}° − {angle_b}°.",
+    "Проверим, что угол C положителен: {angle_a} + {angle_b} < 180, поэтому угол C существует.",
+    "Верные утверждения: угол C равен 180° − (угол A + угол B), и сумма углов треугольника равна 180°."
+  ],
+  "generator": null,
+  "figure": null
+}
