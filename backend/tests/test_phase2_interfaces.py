@@ -61,7 +61,9 @@ from app.schemas.events import EventType
                 "finish": ["session", "deps", "student_id", "run_id"],
             },
         ),
-        (tasks, {"issue": ["session", "deps", "student_id", "req"]}),
+        # chat_id — необязательный: задачу выдаёт и форма темы, и репетитор
+        # в чате, и только во втором случае событие привязано к чату.
+        (tasks, {"issue": ["session", "deps", "student_id", "req", "chat_id"]}),
         (
             knowledge,
             {

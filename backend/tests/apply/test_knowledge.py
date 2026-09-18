@@ -122,6 +122,10 @@ async def test_states_view_with_skill_and_state(monkeypatch):
     async def fake_history(driver, student_id, skill_id, exam_id, n=3):
         return []
 
+    async def fake_p_target(session, deps, student_id, exam_id):
+        return _params().p_target_max
+
+    monkeypatch.setattr("app.apply.knowledge.p_target_for", fake_p_target)
     monkeypatch.setattr("app.apply.knowledge.canonical_q.list_exam_skills", fake_list)
     monkeypatch.setattr("app.apply.knowledge.personal_q.get_states", fake_states)
     monkeypatch.setattr("app.apply.knowledge.personal_q.list_root_causes", fake_roots)
@@ -153,6 +157,10 @@ async def test_states_view_low_data_when_no_state(monkeypatch):
     async def fake_history(driver, student_id, skill_id, exam_id, n=3):
         return []
 
+    async def fake_p_target(session, deps, student_id, exam_id):
+        return _params().p_target_max
+
+    monkeypatch.setattr("app.apply.knowledge.p_target_for", fake_p_target)
     monkeypatch.setattr("app.apply.knowledge.canonical_q.list_exam_skills", fake_list)
     monkeypatch.setattr("app.apply.knowledge.personal_q.get_states", fake_states)
     monkeypatch.setattr("app.apply.knowledge.personal_q.list_root_causes", fake_roots)
@@ -206,6 +214,10 @@ async def test_misconceptions_view_filters_visible(monkeypatch):
             ),
         ]
 
+    async def fake_p_target(session, deps, student_id, exam_id):
+        return _params().p_target_max
+
+    monkeypatch.setattr("app.apply.knowledge.p_target_for", fake_p_target)
     monkeypatch.setattr("app.apply.knowledge.canonical_q.list_exam_skills", fake_list)
     monkeypatch.setattr("app.apply.knowledge.personal_q.get_misc_states", fake_misc)
 

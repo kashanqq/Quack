@@ -399,6 +399,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/knowledge/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh
+         * @description Поставить наблюдателя на окно этого чата прямо сейчас.
+         *
+         *     Окно — необработанные события чата (`processed_at IS NULL`), не больше
+         *     `observer_window_max`; пустое окно — это не ошибка, а «нечего смотреть».
+         */
+        post: operations["refresh_knowledge_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/knowledge/misconceptions/{misconception_id}/dispute": {
         parameters: {
             query?: never;
@@ -867,6 +890,11 @@ export interface components {
             evidence_id: string;
             /** Event Id */
             event_id: number;
+            /**
+             * Ordinal
+             * @default 0
+             */
+            ordinal: number;
             /** Skill Id */
             skill_id: string;
             /** Kind */
@@ -1536,6 +1564,45 @@ export interface components {
             priorities?: components["schemas"]["Priorities"];
             pace?: components["schemas"]["Pace"];
         };
+        /**
+         * RefreshIn
+         * @description Кнопка «обновить модель знаний» (memory-architecture §6,
+         *     событие `observer.requested`).
+         */
+        RefreshIn: {
+            /**
+             * Kind
+             * @default prep
+             * @enum {string}
+             */
+            kind: "selection" | "prep";
+            /** Set Id */
+            set_id?: string | null;
+            /** Topic Skill Id */
+            topic_skill_id?: string | null;
+        };
+        /**
+         * RefreshOut
+         * @description Ответ кнопки. `failed_reason` — машинный код для фронта: без него
+         *     статус `failed` ничем не отличается от «наблюдатель ничего не нашёл»
+         *     (`empty`), а это разные сообщения для ученика.
+         */
+        RefreshOut: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "empty" | "failed";
+            /** Job Id */
+            job_id?: string | null;
+            /**
+             * Window Size
+             * @default 0
+             */
+            window_size: number;
+            /** Failed Reason */
+            failed_reason?: ("llm_unavailable" | "queue_unavailable" | "job_not_enqueued") | null;
+        };
         /** Requirement */
         Requirement: {
             /**
@@ -1812,6 +1879,8 @@ export interface components {
              * @default true
              */
             exclude_seen: boolean;
+            /** Difficulty */
+            difficulty?: number | null;
         };
         /** TaskSkipIn */
         TaskSkipIn: {
@@ -2710,6 +2779,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvidenceListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_knowledge_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefreshOut"];
                 };
             };
             /** @description Validation Error */

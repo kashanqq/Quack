@@ -64,6 +64,8 @@ class LLMLike(Protocol):
         self, messages: list[LLMMessage], schema: type[T], slot: ModelSlot
     ) -> T: ...
 
+    def last_usage(self) -> LLMUsage | None: ...
+
     async def status(self) -> LLMStatus: ...
 
 
@@ -77,6 +79,26 @@ class LLMClient:
             max_retries=0,
         )
         self._last_usage: LLMUsage | None = None
+
+    def last_usage(self) -> LLMUsage | None:
+        """Tokens of the most recent call on this client.
+
+        `structured` и `stream` возвращают разобранный результат, а не
+        `LLMResult`, поэтому расход токенов иначе был бы виден только как
+        оценка по прайсу. Значение перезаписывается каждым вызовом —
+        читать сразу после интересующего.
+        """
+        return self._last_usage
+
+    @staticmethod
+    def _usage_of(response: Any) -> LLMUsage | None:
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return None
+        return LLMUsage(
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+        )
 
     def _model_for(self, slot: ModelSlot) -> str:
         if slot == "chat":
@@ -293,12 +315,8 @@ class LLMClient:
                 ToolCallOut(call_id=call.id, name=call.function.name, args=args)
             )
 
-        usage = None
-        if response.usage is not None:
-            usage = LLMUsage(
-                prompt_tokens=response.usage.prompt_tokens,
-                completion_tokens=response.usage.completion_tokens,
-            )
+        usage = self._usage_of(response)
+        self._last_usage = usage
 
         return LLMResult(
             text=choice.message.content or "",
@@ -326,6 +344,7 @@ class LLMClient:
                 call_id=entry["call_id"],
             )
 
+        self._last_usage = None
         yielded_any = False
         retried = False
         pending: dict[int, dict[str, Any]]
@@ -448,6 +467,7 @@ class LLMClient:
                 await self._record(exc)
                 raise
             await self._record(None)
+            self._last_usage = self._usage_of(response)
 
             choice = response.choices[0]
             if mode == "tool":

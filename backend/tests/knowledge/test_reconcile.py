@@ -181,6 +181,11 @@ def test_reconcile_wrong_with_distractor_makes_two_evidences():
     assert len(result.evidence) == 2
     kinds = {e.kind for e in result.evidence}
     assert kinds == {"task", "misconception_hit"}
+    # Разные ordinal — иначе MERGE в графе схлопнул бы их в один узел
+    by_kind = {e.kind: e for e in result.evidence}
+    assert by_kind["task"].ordinal == 0
+    assert by_kind["misconception_hit"].ordinal == 1
+    assert by_kind["task"].event_id == by_kind["misconception_hit"].event_id
     assert result.misconception_change is not None
     assert result.misconception_change.from_status is None
     assert result.misconception_change.to_status == "suspected"
@@ -334,3 +339,74 @@ def test_reconcile_is_pure():
         NOW,
     )
     assert r1.model_dump() == r2.model_dump()
+
+
+def test_reconcile_task_in_chat_is_weighted_like_a_task():
+    """Ответ на задачу из чата — это разбор задачи (§4.3 «task_in_chat»),
+    а не реплика: раньше пара (source="chat", mode="chat", kind=None)
+    отсутствовала в таблице весов и свидетельство получало вес 0."""
+    inst = _instance()
+    result = reconcile_task_answer(
+        inst,
+        _correct(),
+        _payload(mode="chat"),
+        None,
+        [],
+        [],
+        0,
+        ["SAT_MATH"],
+        PARAMS,
+        NOW,
+    )
+    evidence = result.evidence[0]
+    assert evidence.kind == "task_in_chat"
+    assert evidence.weight == pytest.approx(0.8)
+    assert evidence.tier == 2
+
+
+def test_reconcile_evidence_carries_the_instance_it_came_from():
+    """Без ctx.instance_id `explain_belief` не может показать задачу,
+    на которой сложилось убеждение (§10.5)."""
+    inst = _instance()
+    result = reconcile_task_answer(
+        inst,
+        _correct(),
+        _payload(),
+        None,
+        [],
+        [],
+        0,
+        ["SAT_MATH"],
+        PARAMS,
+        NOW,
+    )
+    for evidence in result.evidence:
+        assert evidence.context is not None
+        assert evidence.context.instance_id == inst.id
+
+
+def test_reconcile_words_follow_the_exam_target(monkeypatch):
+    """p_target приходит из roadmap.requirements (цель сохранённых программ),
+    а не берётся как верхняя граница params.p_target_max."""
+    seen: list[float] = []
+
+    def fake_words(state, p_target, params):
+        seen.append(p_target)
+        return "ok"
+
+    monkeypatch.setattr("app.knowledge.reconcile.state_words", fake_words)
+    args = (
+        _instance(),
+        _correct(),
+        _payload(),
+        _state(),
+        [],
+        [],
+        0,
+        ["SAT_MATH"],
+        PARAMS,
+        NOW,
+    )
+    reconcile_task_answer(*args)
+    reconcile_task_answer(*args, p_target=0.62)
+    assert seen == [PARAMS.p_target_max, 0.62]

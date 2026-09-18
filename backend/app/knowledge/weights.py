@@ -16,6 +16,11 @@ _BASE_WEIGHTS: dict[tuple[str, str | None, str | None], float] = {
     ("mock", "mock_misconception", None): 1.0,
     ("diagnostic", "diagnostic", None): 1.0,
     ("task", "topic", None): 0.8,
+    # Задача, выданная и решённая в чате репетитора: это тот же разбор задачи
+    # («task_in_chat», §4.3), а не реплика — вес тот же, что у обычной задачи
+    # темы. Без этой строки ответ на задачу из чата получал вес 0.
+    ("task", "chat", None): 0.8,
+    ("task", "chat", "task_in_chat"): 0.8,
     ("chat", "chat", "task_in_chat"): 0.8,
     ("chat", "chat", "solution_step"): 0.7,
     ("chat", "chat", "avoided_trap"): 0.7,

@@ -15,9 +15,11 @@ import structlog
 from neo4j.exceptions import ServiceUnavailable, SessionExpired
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.apply.targets import p_target_for
 from app.db.repo import forecast as forecast_repo
 from app.db.repo import profiles as profiles_repo
 from app.db.repo import sets as sets_repo
+from app.events import store as events_store
 from app.events.dispatch import RuleDeps
 from app.events.version import bump
 from app.graph.queries import canonical as canonical_q
@@ -176,8 +178,11 @@ async def _rebuild_sets_locked(
     # 7. Effort map
     effort = {sw.skill.id: sw.skill.effort_h for sw in skill_weights}
 
-    # 8. p_target — пока params.p_target_max; TODO ждёт roadmap.requirements (B2)
-    p_target = deps.params.p_target_max
+    # 8. p_target — из целей сохранённых программ (roadmap.requirements, B2);
+    # без программ и формата экзамена остаётся params.p_target_max
+    p_target = await p_target_for(
+        session, deps, student_id, exam_id, exam_format=exam_format
+    )
 
     # 9. Current set (keep it during rebuild)
     existing_sets = await sets_repo.list_sets(session, student_id, exam_id)
@@ -230,7 +235,11 @@ async def _rebuild_sets_locked(
             now=today,
         )
         await forecast_repo.put(
-            session, student_id, exam_id, forecast_out, as_of_event_id=0
+            session,
+            student_id,
+            exam_id,
+            forecast_out,
+            as_of_event_id=await events_store.last_event_id(session, student_id),
         )
     else:
         forecast_out = None

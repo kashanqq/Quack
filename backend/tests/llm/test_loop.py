@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from app.errors import LLMUnavailable
 from app.llm.fake import FakeLLMClient
 from app.llm.loop import LoopEnd, run_tool_loop
-from app.llm.tools import ToolCtx, ToolRegistry, tool
+from app.llm.tools import ToolCtx, ToolPayload, ToolRegistry, tool
 from app.schemas.chat import StreamError, TextDelta, ToolCall, ToolResult
 from app.schemas.llm import LLMMessage
 
@@ -160,3 +160,46 @@ async def test_invalid_tool_args_yield_error_result_not_exception():
 
     tool_result = next(e for e in events if isinstance(e, ToolResult))
     assert tool_result.error is not None
+
+
+class _BigArgs(BaseModel):
+    limit: int = Field(default=5, description="how many rows")
+
+
+@tool(name="big", description="returns a large result with a compact projection")
+async def _big(args: _BigArgs, ctx: ToolCtx) -> ToolPayload:
+    return ToolPayload(
+        data={"rows": [{"id": i, "blob": "x" * 200} for i in range(args.limit)]},
+        model_data={"ids": list(range(args.limit))},
+    )
+
+
+async def test_tool_payload_sends_the_compact_projection_to_the_model():
+    """Карточки рендерит фронт, поэтому `data` полный; в контекст модели
+    идёт сжатая проекция (`run_matching` иначе — 3–4 КБ на каждый ход)."""
+    registry = ToolRegistry()
+    registry.register(_big)
+    client = FakeLLMClient(
+        [
+            [ToolCall(tool="big", args={"limit": 3}, call_id="c1")],
+            [TextDelta(text="done")],
+        ]
+    )
+
+    results = [
+        event
+        async for event in run_tool_loop(
+            client, registry, [LLMMessage(role="user", content="go")], "chat", _ctx()
+        )
+        if isinstance(event, ToolResult)
+    ]
+    assert results[0].data["rows"][0]["id"] == 0
+    assert results[0].model_data == {"ids": [0, 1, 2]}
+    # на фронт model_data не уходит
+    assert "model_data" not in results[0].model_dump_json()
+
+    tool_message = next(
+        message for message in client.tool_messages() if message.role == "tool"
+    )
+    assert '"ids"' in (tool_message.content or "")
+    assert "xxxx" not in (tool_message.content or "")

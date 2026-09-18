@@ -3,9 +3,10 @@
 I/O wrapper: при изменении ключевых полей профиля пересобирает сеты
 для всех экзаменов, где у ученика есть сохранённые программы.
 
-Приоры из анкеты (self_assessment, пробный балл) — TODO: reconcile_prior
-в knowledge/reconcile пока не реализован, оставляем для синка (см.
-docs/sync-log.md).
+Приоры из анкеты (self_assessment, пробный балл) идут через
+`knowledge.reconcile.reconcile_prior` (§4.8): слабое свидетельство
+(tier 3, вес 0.1) и стартовое состояние для навыков, о которых пока нет
+ничего сильнее.
 
 Source: 00-contracts-phase2.md §7.2, 20-B1-phase2.md §7.
 """
@@ -13,10 +14,14 @@ Source: 00-contracts-phase2.md §7.2, 20-B1-phase2.md §7.
 from __future__ import annotations
 
 import structlog
+from neo4j.exceptions import ServiceUnavailable, SessionExpired
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.apply.sets import rebuild_sets
 from app.events.dispatch import RuleDeps
+from app.graph.queries import canonical as canonical_q
+from app.graph.queries import personal as personal_q
+from app.knowledge.reconcile import reconcile_prior
 from app.schemas.common import ExamId
 from app.schemas.events import Event, EventType
 
@@ -39,6 +44,13 @@ _REBUILD_PATHS: set[str] = {
 
 _EXAMS: tuple[ExamId, ...] = ("SAT_MATH", "ENT_MATH")
 
+# Поля, из которых §4.8 делает приоры знаний
+_PRIOR_PATHS: set[str] = {
+    "academics.self_assessment",
+    "academics.ent_trial_score",
+    "academics.sat_score",
+}
+
 
 async def apply_profile_updated(
     session: AsyncSession, event: Event, deps: RuleDeps
@@ -58,6 +70,9 @@ async def apply_profile_updated(
         )
         return
 
+    if field in _PRIOR_PATHS:
+        await _write_priors(event, deps, field, payload.get("value"))
+
     for exam_id in _EXAMS:
         try:
             await rebuild_sets(session, deps, event.student_id, exam_id)
@@ -74,3 +89,46 @@ async def apply_profile_updated(
                 exam_id=exam_id,
                 field=field,
             )
+
+
+async def _write_priors(
+    event: Event, deps: RuleDeps, field: str, value: object
+) -> None:
+    """Приоры §4.8: слабое свидетельство + стартовое состояние по анкете.
+
+    Пишем только навыкам, у которых ещё нет уверенного состояния — это
+    решает сама `reconcile_prior`. Граф недоступен — молча пропускаем:
+    анкета уже сохранена, а приор не критичен.
+    """
+    if deps.graph is None:
+        return
+    now = deps.now()
+    try:
+        for exam_index, exam_id in enumerate(_EXAMS):
+            skill_weights = await canonical_q.list_exam_skills(deps.graph, exam_id)
+            if not skill_weights:
+                continue
+            areas = await canonical_q.list_areas(deps.graph, exam_id)
+            states = {
+                state.skill_id: state
+                for state in await personal_q.get_states(
+                    deps.graph, event.student_id, exam_id
+                )
+            }
+            pairs = reconcile_prior(
+                field, value, skill_weights, areas, states, deps.params, now
+            )
+            for evidence, state in pairs:
+                # Один навык может входить в оба экзамена: ordinal по экзамену
+                # разводит два приора одного события по разным узлам.
+                stamped = evidence.model_copy(
+                    update={"event_id": event.id, "ordinal": exam_index}
+                )
+                await personal_q.merge_evidence(deps.graph, event.student_id, stamped)
+                await personal_q.upsert_state(
+                    deps.graph, event.student_id, state, source_event_id=event.id
+                )
+    except (ServiceUnavailable, SessionExpired):
+        _logger.warning(
+            "profile_priors_graph_unavailable", student_id=str(event.student_id)
+        )

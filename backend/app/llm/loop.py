@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 from app.errors import LLMUnavailable
 from app.llm.client import LLMLike
-from app.llm.tools import ToolCtx, ToolRegistry
+from app.llm.tools import ToolCtx, ToolPayload, ToolRegistry
 from app.schemas.chat import StreamError, StreamEvent, TextDelta, ToolCall, ToolResult
 from app.schemas.llm import LLMMessage, ModelSlot, ToolCallOut
 
@@ -88,11 +88,15 @@ async def run_tool_loop(
         for call in step_calls:
             try:
                 data = await registry.call(call.tool, call.args, ctx)
+                model_data = None
+                if isinstance(data, ToolPayload):
+                    data, model_data = data.data, data.model_data
                 result = ToolResult(
                     type="tool_result",
                     tool=call.tool,
                     call_id=call.call_id,
                     data=data,
+                    model_data=model_data,
                     error=None,
                 )
             except Exception as exc:
@@ -108,7 +112,14 @@ async def run_tool_loop(
             local_messages.append(
                 LLMMessage(
                     role="tool",
-                    content=_safe_json({"data": result.data, "error": result.error}),
+                    content=_safe_json(
+                        {
+                            "data": result.data
+                            if result.model_data is None
+                            else result.model_data,
+                            "error": result.error,
+                        }
+                    ),
                     tool_call_id=call.call_id,
                 )
             )

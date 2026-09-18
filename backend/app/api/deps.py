@@ -31,6 +31,11 @@ def get_redis(request: Request) -> Redis:
     return request.app.state.redis
 
 
+def get_arq(request: Request) -> Any:
+    """ARQ pool for enqueuing jobs from a request, or None when unavailable."""
+    return getattr(request.app.state, "arq", None)
+
+
 def get_graph(request: Request) -> Any:
     return getattr(request.app.state, "neo4j", None)
 

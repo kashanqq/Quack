@@ -181,3 +181,66 @@ async def test_wrong_answer_marks_misconception_and_state(e2e_setup):
     assert result.grade.correct is False
     assert result.state_after is not None
     assert result.state_after.n_incorrect >= 1
+
+
+async def test_repeated_dispatch_keeps_the_same_counters(e2e_setup):
+    """Повторный dispatch одного task.answered — те же счётчики.
+
+    Проверяем всю цепочку, а не только чистую функцию: узел состояния
+    идемпотентен по source_event_id, свидетельства — по
+    (event_id, skill_id, ordinal), а `bump_seen`/`mark_answered` закрыты
+    ранним выходом по answered_at.
+    """
+    s = e2e_setup
+    inst = s["instance"]
+    correct_key = next(o.key for o in inst.options if o.correct)
+    event = _answer_event(s["student_id"], inst, correct_key)
+
+    first = await apply_task_answered(s["session"], event, s["deps"])
+    await s["session"].flush()
+    evidence_after_first = await personal_q.list_evidence(
+        s["driver"], s["student_id"], SKILL_ID
+    )
+    seen_after_first = await tasks_repo.get_seen(
+        s["session"], s["student_id"], SKILL_ID
+    )
+
+    second = await apply_task_answered(s["session"], event, s["deps"])
+    await s["session"].flush()
+
+    state = await personal_q.get_state(
+        s["driver"], s["student_id"], SKILL_ID, inst.exam_id
+    )
+    evidence_after_second = await personal_q.list_evidence(
+        s["driver"], s["student_id"], SKILL_ID
+    )
+    seen_after_second = await tasks_repo.get_seen(
+        s["session"], s["student_id"], SKILL_ID
+    )
+
+    assert second.grade.correct == first.grade.correct
+    assert state is not None
+    assert state.n_correct == first.state_after.n_correct
+    assert len(evidence_after_second) == len(evidence_after_first)
+    assert seen_after_second == seen_after_first
+
+
+async def test_issued_instance_keeps_mode_and_event(e2e_setup):
+    """Экземпляр помнит, в каком режиме и каким событием он выдан."""
+    s = e2e_setup
+    spec = _template()
+    inst = generate_instance(spec, seed=4242, student_id=s["student_id"])
+    await tasks_repo.insert_instance(
+        s["session"], s["student_id"], inst, mode="chat", issued_event_id=777
+    )
+    await s["session"].flush()
+
+    stored = await tasks_repo.get_instance(s["session"], s["student_id"], inst.id)
+    assert stored is not None
+    assert await tasks_repo.get_answered_at(s["session"], inst.id) is None
+
+    from app.db.models import TaskInstance as InstanceRow
+
+    row = await s["session"].get(InstanceRow, inst.id)
+    assert row.mode == "chat"
+    assert row.issued_event_id == 777

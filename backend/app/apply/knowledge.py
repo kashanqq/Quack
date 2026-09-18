@@ -14,6 +14,7 @@ import structlog
 from neo4j.exceptions import ServiceUnavailable, SessionExpired
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.apply.targets import p_target_for
 from app.events.dispatch import RuleDeps
 from app.graph.queries import canonical as canonical_q
 from app.graph.queries import personal as personal_q
@@ -54,8 +55,8 @@ async def states_view(
     state_by_skill = {s.skill_id: s for s in states}
     root_ids = root_boost_skills(root_causes, deps.params, deps.now())
 
-    # Целевой балл — пока максимальный; TODO ждёт roadmap.requirements (B2)
-    p_target = deps.params.p_target_max
+    # Целевой балл — из сохранённых программ (roadmap.requirements, B2)
+    p_target = await p_target_for(session, deps, student_id, exam_id)
 
     out: list[SkillStateView] = []
     for sw in skill_weights:

@@ -67,7 +67,7 @@ Quack! · фаза 2 «правила» · v0.1 · 18.09.2026. Дополняе�
 
 ### 3.3 Целевой балл и цель по навыку
 
-Цель по экзамену `target_score` = максимальный порог `Requirement{type: exam_score}` среди сохранённых (product-logic §4.1), переопределяется полем анкеты `academics.sat_target` / целевой ЕНТ, если ученик выставил вручную. `p_target` навыка = `min(p_target_max, target_score / max_raw_score)` для всех навыков экзамена (memory-architecture §4.4). Считает `roadmap.requirements` (B2), читает `sets.queue` (B1) через `RequirementOut.target_score`.
+Цель по экзамену `target_score` = максимальный порог `Requirement{type: exam_score}` среди сохранённых (product-logic §4.1), переопределяется полем анкеты `academics.sat_target` / целевой ЕНТ, если ученик выставил вручную. `p_target` навыка = `min(p_target_max, target_score / max_raw_score)` для всех навыков экзамена (memory-architecture §4.4). Считает `roadmap.requirements` (B2), читает `sets.queue` (B1) через `RequirementOut.target_score`. Связывает их `apply.targets.p_target_for(session, deps, student_id, exam_id)`: если порог назван в шкалированных баллах (SAT 700 при `max_raw_score` 58), он сперва переводится в сырые по таблице экзамена — иначе доля всегда больше единицы и цель ни на что не влияет.
 
 ### 3.4 Postgres — миграция `0002_phase2`
 
@@ -102,7 +102,7 @@ Quack! · фаза 2 «правила» · v0.1 · 18.09.2026. Дополняе�
 | `set_id`, `run_id` (замер, мок) | UUID v4 | — |
 | `milestone_key` | `<kind>:<exam_or_program_id>:<date>` | `registration:SAT_MATH:2026-10-10`, `application:nazarbayev-cs:2026-12-15` |
 | `factor_id` жёсткого фактора | `<type>[:<exam_id>]` | `exam_score:SAT_MATH`, `budget`, `grant`, `language`, `deadline` |
-| `evidence_id` | `"{event_id}:{skill_id}"` (как возвращает `merge_evidence`) | `4412:sat.alg.abs_value_eq` |
+| `evidence_id` | `"{event_id}:{skill_id}:{ordinal}"` (как возвращает `merge_evidence`; `ordinal` разводит несколько свидетельств одного события по одному навыку — ответ и попадание в заблуждение) | `4412:sat.alg.abs_value_eq:0` |
 
 ### 4.2 HTTP — новые правила
 
@@ -161,7 +161,7 @@ Quack! · фаза 2 «правила» · v0.1 · 18.09.2026. Дополняе�
     MisconceptionStateOut(misconception_id, name, status: MisconceptionStatus, occurrence_count: int, strong_count: int,
                           consecutive_avoided: int, triggers: dict, first_seen_at, updated_at, skill_ids: list[str],
                           visible_label: str)                       # «подозрение, 1 из 2» / «подтверждено, N наблюдений» / «исправлено, следим»
-    EvidenceOut(evidence_id: str, event_id: int, skill_id, kind, tier, source, weight, direction, observed_at,
+    EvidenceOut(evidence_id: str, event_id: int, ordinal: int, skill_id, kind, tier, source, weight, direction, observed_at,
                 summary: str | None, instance_id: UUID | None, message_id: UUID | None)   # раскрытие «почему так считаешь»
     RootCauseOut(from_skill_id, root_skill_id, confidence: float, source: Literal["diagnostic","observer","rule"], created_at)
     SkillStateView(skill_id, name, area_id, exam_id, weight: float, p_target: float, level: SkillLevel, p_recall, confidence,
@@ -308,7 +308,8 @@ Quack! · фаза 2 «правила» · v0.1 · 18.09.2026. Дополняе�
     apply.mocks.start(session, deps, student_id, body: MockStartIn) -> MockOut
     apply.mocks.answer(session, deps, student_id, run_id, result: AnswerResult) -> MockOut   # тот же порядок, что у замера
     apply.mocks.finish(session, deps, student_id, run_id) -> MockResultOut
-    apply.tasks.issue(session, deps, student_id, req: TaskRequestIn) -> TaskInstanceOut    # выбор шаблона, генерация, insert_instance, task.issued
+    apply.tasks.issue(session, deps, student_id, req: TaskRequestIn, chat_id: UUID | None = None) -> TaskInstanceOut
+        # выбор шаблона, генерация, task.issued (с chat_id, если задачу выдал репетитор), insert_instance с mode и issued_event_id
     apply.knowledge.states_view(session, deps, student_id, exam_id) -> list[SkillStateView]
     apply.knowledge.misconceptions_view(deps, student_id, exam_id) -> list[MisconceptionStateOut]
     apply.knowledge.explain(deps, student_id, node_id) -> list[EvidenceOut]
@@ -377,6 +378,7 @@ Quack! · фаза 2 «правила» · v0.1 · 18.09.2026. Дополняе�
 | `GET /knowledge?exam_id=` | → `{skills: list[SkillStateView], misconceptions: list[MisconceptionStateOut], roots: list[RootCauseOut]}` | `apply.knowledge.*` |
 | `GET /knowledge/explain/{node_id}` | → `{items: list[EvidenceOut]}` | `apply.knowledge.explain` |
 | `POST /knowledge/misconceptions/{id}/dispute` | `{disputed: bool}` → `MisconceptionStateOut` | append `misconception.disputed/undisputed` → dispatch |
+| `POST /knowledge/refresh` | `{kind, set_id?, topic_skill_id?}` → `RefreshOut{status: "queued"\|"empty"\|"failed", job_id, window_size, failed_reason}` | append `observer.requested`, `enqueue("interactive", "observe_chat")` |
 | `PATCH /profile` | без изменений, но теперь → dispatch `profile.updated` | `apply_profile_updated`, пересчёт подборки — `GET /matching` считает на лету |
 | `POST /saved/{id}`, `DELETE` | без изменений, но → dispatch `program.saved/removed` | пересборка сетов |
 

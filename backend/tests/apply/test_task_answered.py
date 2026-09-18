@@ -112,8 +112,14 @@ async def test_apply_with_graph_none_returns_result_without_state(monkeypatch):
     async def fake_bump_seen(session, student_id, template_id):
         called["bump_seen"] = (student_id, template_id)
 
+    async def fake_answered_at(session, instance_id):
+        return None
+
     monkeypatch.setattr(
         "app.apply.task_answered.tasks_repo.get_instance", fake_get_instance
+    )
+    monkeypatch.setattr(
+        "app.apply.task_answered.tasks_repo.get_answered_at", fake_answered_at
     )
     monkeypatch.setattr(
         "app.apply.task_answered.tasks_repo.mark_answered", fake_mark_answered
@@ -145,8 +151,14 @@ async def test_apply_missing_instance_returns_empty_result(monkeypatch):
     async def fake_get_instance(session, student_id, instance_id):
         return None
 
+    async def fake_answered_at(session, instance_id):
+        return None
+
     monkeypatch.setattr(
         "app.apply.task_answered.tasks_repo.get_instance", fake_get_instance
+    )
+    monkeypatch.setattr(
+        "app.apply.task_answered.tasks_repo.get_answered_at", fake_answered_at
     )
 
     class _Redis:
@@ -158,6 +170,58 @@ async def test_apply_missing_instance_returns_empty_result(monkeypatch):
     assert result.grade.correct is False
     assert result.state_after is None
     assert result.knowledge_version == 0
+
+
+async def test_apply_is_idempotent_on_a_repeated_dispatch(monkeypatch):
+    """Повторный dispatch того же task.answered не двигает счётчики.
+
+    `bump_seen` и `mark_answered` не идемпотентны сами по себе, поэтому
+    обработчик выходит раньше, если экземпляр уже отвечен (§8.2).
+    """
+    sid = uuid4()
+    inst = _instance()
+    event = _event(student_id=sid, instance_id=inst.id, answer="A")
+    calls: list[str] = []
+
+    async def fake_get_instance(session, student_id, instance_id):
+        return inst
+
+    async def fake_answered_at(session, instance_id):
+        return NOW  # уже отвечено
+
+    async def fake_mark_answered(session, instance_id, answered_at, correct):
+        calls.append("mark_answered")
+
+    async def fake_bump_seen(session, student_id, template_id):
+        calls.append("bump_seen")
+
+    monkeypatch.setattr(
+        "app.apply.task_answered.tasks_repo.get_instance", fake_get_instance
+    )
+    monkeypatch.setattr(
+        "app.apply.task_answered.tasks_repo.get_answered_at", fake_answered_at
+    )
+    monkeypatch.setattr(
+        "app.apply.task_answered.tasks_repo.mark_answered", fake_mark_answered
+    )
+    monkeypatch.setattr("app.apply.task_answered.tasks_repo.bump_seen", fake_bump_seen)
+
+    class _Redis:
+        async def incr(self, key):
+            return 7
+
+        async def get(self, key):
+            return b"7"
+
+    deps = RuleDeps(graph=object(), redis=_Redis(), params=_params(), now=lambda: NOW)
+    result = await apply_task_answered(None, event, deps)
+
+    assert result.grade.correct is True
+    # Версия модели знаний — текущая, а не ноль: ничего не изменилось,
+    # но и «версии нет» это не значит.
+    assert result.knowledge_version == 7
+    assert result.solution == ["шаг 1", "шаг 2"]
+    assert calls == []
 
 
 # --- task.skipped ---

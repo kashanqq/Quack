@@ -66,6 +66,16 @@ class KnowledgeStateOut(BaseModel):
 
 
 class EvidenceContext(BaseModel):
+    """What the evidence was observed in — the "до сообщения" chain of §10.5.
+
+    ``instance_id`` / ``message_id`` are what ``explain_belief`` unfolds an
+    observation back into: the task the student answered, or the chat message
+    the observer read it from. They are written to the Evidence node as
+    ``ctx_*`` properties by ``personal.merge_evidence``.
+    """
+
+    instance_id: UUID | None = None
+    message_id: UUID | None = None
     task_type: TaskType | None = None
     difficulty: int | None = None
     tags: list[str] | None = None
@@ -81,6 +91,12 @@ class EvidenceContext(BaseModel):
 class EvidenceIn(BaseModel):
     event_id: int
     skill_id: str
+    # Several pieces of evidence can come out of one event for one skill —
+    # the answer itself and the misconception it hit, or one observation per
+    # window message. ``ordinal`` separates them inside (event_id, skill_id),
+    # which is otherwise the MERGE key in the graph: without it the second
+    # one silently overwrites the first.
+    ordinal: int = 0
     exam_id: ExamId
     kind: str
     tier: Tier
@@ -174,6 +190,7 @@ class MisconceptionStateOut(BaseModel):
 class EvidenceOut(BaseModel):
     evidence_id: str
     event_id: int
+    ordinal: int = 0
     skill_id: str
     kind: str
     tier: Tier

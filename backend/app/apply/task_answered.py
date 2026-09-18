@@ -14,9 +14,11 @@ import structlog
 from neo4j.exceptions import ServiceUnavailable, SessionExpired
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.apply.targets import p_target_for
 from app.db.repo import tasks as tasks_repo
 from app.events.dispatch import RuleDeps
 from app.events.version import bump
+from app.events.version import get as version_get
 from app.graph.queries import canonical as canonical_q
 from app.graph.queries import personal as personal_q
 from app.knowledge import reconcile
@@ -38,6 +40,24 @@ async def apply_task_answered(
     instance = await tasks_repo.get_instance(
         session, event.student_id, payload.instance_id
     )
+    if instance is not None and await tasks_repo.get_answered_at(
+        session, payload.instance_id
+    ):
+        # Повторный dispatch того же события (или второй ответ на тот же
+        # экземпляр): счётчики уже учтены — пересчитывать нечего. Граф тоже
+        # идемпотентен (ключи свидетельств и source_event_id состояния), но
+        # `bump_seen` и `mark_answered` — нет, поэтому выходим здесь.
+        from app.tasks.answer import grade as grade_fn
+
+        _logger.info("task_answered_replay", event_id=event.id)
+        result = _answer_result_without_state(
+            instance, grade_fn(instance, payload.answer), deps
+        )
+        return result.model_copy(
+            update={
+                "knowledge_version": await version_get(deps.redis, event.student_id)
+            }
+        )
     if instance is None:
         # Чужой экземпляр / не найден — не падаем, но и работать не с чем.
         _logger.warning("task_instance_not_found", event_id=event.id)
@@ -80,6 +100,7 @@ async def apply_task_answered(
         seen = await tasks_repo.get_seen(session, event.student_id, instance.skill_id)
         n_seen = seen.get(instance.template_id, 0)
         exam_ids: list[ExamId] = ["SAT_MATH", "ENT_MATH"]
+        p_target = await p_target_for(session, deps, event.student_id, instance.exam_id)
 
         # 4. reconcile
         result = reconcile.reconcile_task_answer(
@@ -94,6 +115,7 @@ async def apply_task_answered(
             deps.params,
             deps.now(),
             event_id=event.id,
+            p_target=p_target,
         )
 
         # 5. evidence ×N
@@ -127,10 +149,11 @@ async def apply_task_answered(
         # 8. root causes
         for root in result.root_causes:
             primary = result.evidence[0]
-            evidence_id = f"{primary.event_id}:{primary.skill_id}"
             await personal_q.add_root_cause(
                 deps.graph,
-                evidence_id,
+                personal_q.evidence_id(
+                    primary.event_id, primary.skill_id, primary.ordinal
+                ),
                 root.root_skill_id,
                 root.confidence,
                 root.source,

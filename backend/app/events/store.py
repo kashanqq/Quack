@@ -4,9 +4,10 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+import structlog
 from pydantic import BaseModel, TypeAdapter
 from redis.asyncio import Redis
-from sqlalchemy import insert, select, update
+from sqlalchemy import func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -63,6 +64,7 @@ _PAYLOAD_MODELS: dict[EventType, type[BaseModel]] = {
     EventType.milestone_done: MilestoneDonePayload,
 }
 _json_payload = TypeAdapter(dict[str, Any])
+_logger = structlog.get_logger(__name__)
 
 
 def _validated_payload(ev: EventIn) -> dict[str, Any]:
@@ -117,6 +119,15 @@ async def append(
     )
     if dispatch_event:
         if deps is None:
+            # Без deps правила видят graph=None: событие не будет помечено
+            # processed_at, а обработчики B1 отработают вхолостую. Это всегда
+            # ошибка вызова — события окна наблюдателя пишутся с явным
+            # dispatch_event=False, остальные передают RuleDeps.
+            _logger.warning(
+                "dispatch_without_deps",
+                type=ev.type.value,
+                student_id=str(ev.student_id),
+            )
             deps = dispatcher.RuleDeps(
                 graph=None,
                 redis=redis,
@@ -137,6 +148,18 @@ async def list_unprocessed(
         .limit(limit)
     )
     return [Event.model_validate(row) for row in result]
+
+
+async def last_event_id(session: AsyncSession, student_id: UUID) -> int:
+    """Id последнего события ученика, 0 — если событий ещё нет.
+
+    Прогноз помечается этим номером (`ForecastOut.as_of_event_id`): по нему
+    видно, на каком состоянии журнала он посчитан.
+    """
+    result = await session.scalar(
+        select(func.max(EventRow.id)).where(EventRow.student_id == student_id)
+    )
+    return int(result or 0)
 
 
 async def mark_processed(session: AsyncSession, event_ids: list[int]) -> None:

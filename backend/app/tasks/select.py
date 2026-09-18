@@ -22,6 +22,7 @@ def pick_template(
     with_trap: str | None,
     other_structure_than: str | None,
     rng: random.Random,
+    difficulty: int | None = None,
 ) -> TaskTemplateSpec | None:
     """Choose one template from the pool.
 
@@ -34,6 +35,8 @@ def pick_template(
       - other_structure_than: exclude templates with the same stem skeleton
         (compare template_id without the suffix after the last '_')
       - pool exhausted → minimum n_seen (repeat with a different seed)
+      - difficulty: явно запрошенная сложность (репетитор через `get_task`)
+        заменяет расчёт по последним ответам
     """
     if not templates:
         return None
@@ -59,7 +62,11 @@ def pick_template(
             return None
 
     # 3. Целевая сложность
-    target_difficulty = _target_difficulty(pool, last_grades)
+    target_difficulty = (
+        max(1, min(5, int(difficulty)))
+        if difficulty is not None
+        else _target_difficulty(pool, last_grades)
+    )
 
     # 4. Группировка по n_seen
     unseen = [t for t in pool if seen.get(t.id, 0) == 0]

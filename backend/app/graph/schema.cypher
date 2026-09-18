@@ -31,7 +31,7 @@ FOR (s:Student) REQUIRE s.id IS UNIQUE;
 // --- Secondary indices: phase 1 ---
 
 CREATE INDEX evidence_key IF NOT EXISTS
-FOR (e:Evidence) ON (e.event_id, e.skill_id);
+FOR (e:Evidence) ON (e.event_id, e.skill_id, e.ordinal);
 
 CREATE INDEX ks_student IF NOT EXISTS
 FOR (k:KnowledgeState) ON (k.student_id, k.exam_id);
@@ -46,3 +46,12 @@ FOR (m:MisconceptionState) ON (m.student_id, m.misconception_id);
 
 CREATE INDEX evidence_recent IF NOT EXISTS
 FOR (e:Evidence) ON (e.student_id, e.observed_at);
+
+// Evidence context lookups: «какое сообщение / какой экземпляр задачи»
+// (memory-architecture §10.5, explain_belief).
+
+CREATE INDEX evidence_ctx_instance IF NOT EXISTS
+FOR (e:Evidence) ON (e.ctx_instance_id);
+
+CREATE INDEX evidence_ctx_message IF NOT EXISTS
+FOR (e:Evidence) ON (e.ctx_message_id);

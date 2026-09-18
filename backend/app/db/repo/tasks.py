@@ -57,8 +57,21 @@ async def upsert_template(session: AsyncSession, spec: TaskTemplateSpec) -> None
 
 
 async def insert_instance(
-    session: AsyncSession, student_id: UUID, inst: TaskInstance
+    session: AsyncSession,
+    student_id: UUID,
+    inst: TaskInstance,
+    *,
+    mode: str | None = None,
+    issued_event_id: int | None = None,
 ) -> None:
+    """Persist one generated instance.
+
+    ``mode`` and ``issued_event_id`` are stored here, not patched afterwards:
+    the answer route reads ``mode`` back to validate the answer against the
+    mode the task was issued in, and ``issued_event_id`` is what ties the
+    instance to its ``task.issued`` event (the observer window and
+    `explain_belief` walk that link).
+    """
     session.add(
         InstanceRow(
             **inst.model_dump(exclude={"options", "trap_answers", "solution_rendered"}),
@@ -66,9 +79,18 @@ async def insert_instance(
             options=[item.model_dump(mode="json") for item in inst.options],
             trap_answers=[item.model_dump(mode="json") for item in inst.trap_answers],
             solution_rendered=inst.solution_rendered,
+            mode=mode,
+            issued_event_id=issued_event_id,
         )
     )
     await session.flush()
+
+
+async def get_answered_at(session: AsyncSession, instance_id: UUID) -> datetime | None:
+    """When this instance was answered, or None — the replay guard of §8.2."""
+    return await session.scalar(
+        select(InstanceRow.answered_at).where(InstanceRow.id == instance_id)
+    )
 
 
 async def get_instance(
@@ -162,6 +184,26 @@ async def mark_answered(
         .values(answered_at=answered_at, correct=correct)
     )
     await session.flush()
+
+
+async def last_grades_for_skill(
+    session: AsyncSession, student_id: UUID, skill_id: str, limit: int = 2
+) -> list[bool]:
+    """Last answered grades for one skill, oldest first — input to `pick_template`."""
+    rows = (
+        await session.scalars(
+            select(InstanceRow.correct)
+            .where(
+                InstanceRow.student_id == student_id,
+                InstanceRow.skill_id == skill_id,
+                InstanceRow.answered_at.is_not(None),
+                InstanceRow.correct.is_not(None),
+            )
+            .order_by(InstanceRow.answered_at.desc())
+            .limit(limit)
+        )
+    ).all()
+    return [bool(value) for value in reversed(rows)]
 
 
 async def list_instances(

@@ -7,16 +7,24 @@ import pytest
 import structlog
 from pydantic import SecretStr
 
+from app.config import settings
 from app.errors import SearchUnavailable, ValidationFailed
 from app.schemas.programs import SearchHit
 from app.search import client as search
 from app.search.extract import extract_program
 from app.workers import main as workers
-from app.workers.registry import BULK, INTERACTIVE, ping
+from app.workers.registry import (
+    BULK,
+    INTERACTIVE,
+    JOB_QUEUES,
+    JOB_TIMEOUTS,
+    ping,
+)
 
 
 async def test_worker_registry_and_queue_settings():
-    assert INTERACTIVE == BULK == [ping]
+    assert INTERACTIVE[0] is ping
+    assert BULK[0] is ping
     assert await ping({}, "request-id") == "pong"
     assert workers.WorkerInteractive.queue_name == "interactive"
     assert workers.WorkerInteractive.max_tries == 3
@@ -24,6 +32,23 @@ async def test_worker_registry_and_queue_settings():
     assert workers.WorkerBulk.queue_name == "bulk"
     assert workers.WorkerBulk.max_tries == 3
     assert workers.WorkerBulk.job_timeout == 90
+
+
+async def test_llm_jobs_declare_their_own_timeout():
+    """Очередь interactive живёт с job_timeout=30, а наблюдатель ходит в LLM
+    на слоте bulk (LLM_TIMEOUT_BULK_S): без собственного таймаута задача
+    гарантированно не укладывалась."""
+    by_name = {
+        entry.name: entry for entry in (*INTERACTIVE, *BULK) if hasattr(entry, "name")
+    }
+    assert set(by_name) == set(JOB_TIMEOUTS)
+    assert by_name["observe_chat"].timeout_s > settings.LLM_TIMEOUT_BULK_S
+    assert JOB_QUEUES["observe_chat"] == "interactive"
+    assert by_name["observe_chat"] in INTERACTIVE
+    assert by_name["pregenerate_set"] in BULK
+    for entry in by_name.values():
+        assert entry.timeout_s <= settings.JOB_TIMEOUT_MAX_S
+        assert entry.timeout_s > settings.JOB_TIMEOUT_DEFAULT_S
 
 
 async def test_worker_startup_shutdown_reuses_factories(monkeypatch):

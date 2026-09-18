@@ -50,6 +50,7 @@ def reconcile_task_answer(
     params: KnowledgeParams,
     now: datetime,
     event_id: int | None = None,
+    p_target: float | None = None,
 ) -> ReconcileResult:
     """Apply one task answer (§8.2 steps 3–8).
 
@@ -67,24 +68,27 @@ def reconcile_task_answer(
         share = None
 
     # --- source / tier from mode ---
+    # Ответ на задачу — всегда source="task"/"mock"/"diagnostic": это решение
+    # задачи, а не реплика в чате. Режим «chat» отличается только видом
+    # свидетельства (kind="task_in_chat", §4.3) и своей строкой в таблице
+    # весов; source="chat" здесь давал бы вес 0.
     mode = payload.mode
     if mode in _MOCK_MODES:
         source = "mock"
     elif mode == "diagnostic":
         source = "diagnostic"
-    elif mode == "chat":
-        source = "chat"
     else:
         source = "task"
 
-    tier = weights.tier_for(source, mode, kind=None)
+    kind = "task_in_chat" if mode == "chat" else "task"
+    tier = weights.tier_for(source, mode, kind=kind)
 
     matched = grade.correct or grade.matched_misconception_id is not None
 
     weight = weights.evidence_weight(
         source,
         mode,
-        None,
+        None if kind == "task" else kind,
         seen_before=n_seen > 0,
         matched=matched,
         params=params,
@@ -103,13 +107,16 @@ def reconcile_task_answer(
         hint_level_before=payload.hint_level_before,
         topic_skill_id=instance.skill_id,
         session_id=None,
+        instance_id=instance.id,
+        message_id=None,
     )
 
     ev_fields: dict = dict(
         event_id=event_id or 0,
+        ordinal=0,
         skill_id=instance.skill_id,
         exam_id=instance.exam_id,
-        kind="task",
+        kind=kind,
         tier=tier,
         source=source,
         weight=weight,
@@ -126,9 +133,16 @@ def reconcile_task_answer(
 
     if grade.matched_misconception_id is not None:
         misc_name = _misc_name(misc_states, grade.matched_misconception_id)
+        # ordinal=1 — иначе MERGE в графе по (event_id, skill_id) схлопнул бы
+        # попадание в заблуждение с основным свидетельством того же события.
         evidence.append(
             EvidenceIn(
-                **{**ev_fields, "kind": "misconception_hit", "summary": misc_name}
+                **{
+                    **ev_fields,
+                    "ordinal": 1,
+                    "kind": "misconception_hit",
+                    "summary": misc_name,
+                }
             )
         )
 
@@ -159,7 +173,11 @@ def reconcile_task_answer(
         if root is not None:
             root_causes.append(root.model_copy(update={"created_at": now}))
 
-    words = state_words(state_after, params.p_target_max, params)
+    # Цель по экзамену приходит из roadmap.requirements через apply; без неё
+    # (прямые вызовы, тесты) остаётся верхняя граница params.p_target_max.
+    words = state_words(
+        state_after, params.p_target_max if p_target is None else p_target, params
+    )
 
     return ReconcileResult(
         evidence=evidence,

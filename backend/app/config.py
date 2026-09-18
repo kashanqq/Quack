@@ -37,6 +37,23 @@ class KnowledgeParams(BaseModel):
     min_templates_personal: int = 3
     observer_every_n: int = 6
     observer_min_confidence: float = 0.7
+    # Верхняя граница окна наблюдателя: сколько необработанных сообщений
+    # чата он берёт за один прогон (§8.1). Ниже — наблюдатель пропустит
+    # часть разговора, выше — окно не влезает в бюджет контекста.
+    observer_window_max: int = 30
+    # Сколько уточняющих вопросов ассистент подбора задаёт подряд, прежде
+    # чем перейти к делу (product-logic §3.1).
+    assistant_max_questions: int = 3
+    # Доля заполненности анкеты, с которой подбор считается осмысленным
+    # (`profiles.profile_readiness`).
+    assistant_readiness_threshold: float = 0.6
+    # Во сколько раз контекст сета шире окна темы при сборке контекста
+    # репетитора (§9.3, открытый вопрос §13.6 — решён в пользу «те же слоты,
+    # умноженные на множитель», а не отдельной сборки).
+    context_set_multiplier: float = 1.5
+    # После скольких подряд неверных ответов репетитор переходит к более
+    # простому уровню / предлагает вернуться к предпосылке (§9.4).
+    tutor_escalate_after_failures: int = 2
     diag_base: int = 8
     diag_reserve: int = 4
     diag_max: int = 12
@@ -105,6 +122,22 @@ class Settings(BaseSettings):
     LLM_RPM_CHAT: int = 10
     LLM_RPM_BULK: int = 10
     LLM_FORCE_DOWN: bool = False
+
+    # Таймауты задач ARQ, в секундах. Общий job_timeout очереди — потолок для
+    # коротких задач; задачи, которые ходят в LLM, объявляют свой собственный
+    # (наблюдатель на слоте bulk не укладывался в 30 с очереди interactive).
+    JOB_TIMEOUT_DEFAULT_S: float = 30
+    JOB_TIMEOUT_MAX_S: float = 300
+
+    @property
+    def job_timeout_llm_chat_s(self) -> float:
+        """Задача с одним вызовом LLM на слоте chat плюс запас на I/O."""
+        return self.LLM_TIMEOUT_CHAT_S + 15
+
+    @property
+    def job_timeout_llm_bulk_s(self) -> float:
+        """Задача с одним вызовом LLM на слоте bulk плюс запас на I/O."""
+        return self.LLM_TIMEOUT_BULK_S + 15
 
     @field_validator("LLM_REASONING_CHAT", "LLM_REASONING_BULK", mode="before")
     @classmethod
