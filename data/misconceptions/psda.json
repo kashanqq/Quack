@@ -1,0 +1,10 @@
+[
+  {
+    "id": "lib.percent_of_not_increase",
+    "name": "Процент от базы вместо прироста",
+    "description": "Ученик считает процент от исходного числа и прибавляет его один раз, теряя второй шаг при последовательных процентах.",
+    "error_class": "computational",
+    "skill_ids": ["sat.psda.percent", "ent.num.percent"],
+    "exam_specific": null
+  }
+]

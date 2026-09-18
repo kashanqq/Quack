@@ -1,0 +1,18 @@
+[
+  {
+    "id": "lib.area_perimeter_mix",
+    "name": "Путаница площади и периметра",
+    "description": "Ученик использует формулу периметра, когда спрашивают площадь (или наоборот), особенно для составных фигур.",
+    "error_class": "attention",
+    "skill_ids": ["sat.geo.area_volume", "ent.geo.polygon"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.volume_units",
+    "name": "Ошибка в единицах измерения",
+    "description": "Ученик переводит линейные единицы, но забывает возвести коэффициент в квадрат или в куб при переводе площади или объёма.",
+    "error_class": "computational",
+    "skill_ids": ["sat.geo.area_volume", "ent.stereo.prism"],
+    "exam_specific": null
+  }
+]

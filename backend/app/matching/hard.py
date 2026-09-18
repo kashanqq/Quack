@@ -17,3 +17,16 @@ class HardResult(BaseModel):
 def hard_filter(profile: Profile, programs: list[Program]) -> list[HardResult]:
     """Phase 2: score each program on requirements vs profile."""
     raise NotImplementedError("phase 2")
+
+
+def explain_empty(hard_results: list[HardResult]) -> str:
+    """Which factor cut everything and what loosening it would give.
+
+    product-logic §6.3: when no program fits, name the hard factor that is
+    `below` for every program and say what relaxing it would open up.
+
+    Returns:
+        A short phrase for the student, or a generic fallback if no single
+        factor dominates.
+    """
+    raise NotImplementedError("phase 2")

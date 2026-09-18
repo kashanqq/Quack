@@ -1,10 +1,10 @@
 # Формат данных — B1
 
-Quack! · фаза 1 · v1.0 · 18.09.2026
+Quack! · фаза 2 · v2.0 · 18.09.2026
 
-Владелец: **B1**. Читают: B1, B2, B3. Источник: `memory-architecture-quack.md §2–3`, `00-contracts.md §4.1, §6`.
+Владелец: **B1**. Читают: B1, B2, B3. Источник: `memory-architecture-quack.md §2–3`, `00-contracts.md §4.1, §6`, `00-contracts-phase2.md §3.6`.
 
-Этот файл описывает **формат** каждого JSON-файла в `data/`. По нему любой участник команды может написать новую запись без вопросов. Валидация — через Pydantic-модели из `app/schemas/knowledge.py`, `app/schemas/tasks.py` (пока временно — в `app/graph/queries/`, `app/tasks/`; перенос на синке).
+Этот файл описывает **формат** каждого JSON-файла в `data/`. По нему любой участник команды может написать новую запись без вопросов. Валидация — через Pydantic-модели из `app/schemas/knowledge.py`, `app/schemas/tasks.py`.
 
 Общие правила:
 
@@ -134,11 +134,16 @@ Quack! · фаза 1 · v1.0 · 18.09.2026
 
 ---
 
-## 3. `data/misconceptions/library.json` — библиотека заблуждений
+## 3. `data/misconceptions/<area>.json` — библиотека заблуждений
 
-Один файл, массив записей.
+**Один файл на область.** Загрузчик (`app/seed/misconceptions.py`) читает каталог `data/misconceptions/*.json`, объединяет все записи, проверяет уникальность `id` по всем файлам.
 
-### Схема
+Файлы SAT: `alg.json`, `adv.json`, `psda.json`, `geo.json`.
+Файлы ЕНТ: `ent_alg.json`, `ent_num.json`, `ent_func.json`, `ent_trig.json`, `ent_geo.json`, `ent_stereo.json`.
+
+Пустые файлы не создаются — если у области ещё нет своих заблуждений, файла нет.
+
+### Схема (пример `alg.json`)
 
 ```json
 [
@@ -147,16 +152,16 @@ Quack! · фаза 1 · v1.0 · 18.09.2026
     "name": "Раскрытие модуля только в одной ветви",
     "description": "Ученик решает |ax − b| = c как ax − b = c и теряет вторую ветвь ax − b = −c.",
     "error_class": "conceptual",
-    "skill_ids": ["sat.alg.abs_value_eq", "math.alg.abs_value_eq"],
+    "skill_ids": ["math.alg.abs_value_eq"],
     "exam_specific": null
   },
   {
-    "id": "lib.ent_rounding_percent",
-    "name": "Округление на промежуточном шаге",
-    "description": "Округляет долю до целого процента до финального ответа и получает ответ, отличающийся на 1.",
-    "error_class": "computational",
-    "skill_ids": ["ent.arith.percent"],
-    "exam_specific": "ENT_MATH"
+    "id": "lib.vieta_sign_confusion",
+    "name": "Путаница знаков в теореме Виета",
+    "description": "Ученик считает, что сумма корней равна +b/a, а произведение −c/a, забывая смену знака.",
+    "error_class": "conceptual",
+    "skill_ids": ["math.alg.quadratic_roots"],
+    "exam_specific": null
   }
 ]
 ```
@@ -165,16 +170,31 @@ Quack! · фаза 1 · v1.0 · 18.09.2026
 
 - `error_class` ∈ `{"computational", "conceptual", "attention", "procedural"}`.
 - `skill_ids` — непустой список. Все `id` должны существовать в `data/skills/*.json`.
-- `exam_specific` — `null` (общая ловушка для всех экзаменов) или `ExamId` (ловушка только этого формата).
-- Объём Ф1: **15–20 записей** по навыкам, для которых есть шаблоны.
-- `embedding` в файле **не хранится** — вычисляется при seed через `app/embeddings.py` из `name + description` и пишется в Neo4j.
+- `exam_specific` — `null` (общая ловушка) или `ExamId` (ловушка только этого формата).
+- **`id` уникален по всему каталогу**, а не только внутри файла. Загрузчик падает, если в `alg.json` и `adv.json` встретится один и тот же `id`.
+- **Область записи.** Запись лежит в файле той области, где находится её **первый `skill_id`**. Если первый `skill_id` — общий `math.*` (определён в `sat_math.json`), запись идёт в SAT-область, где этот навык впервые появляется. Ссылки на навыки чужих областей — норма, менять расположение записи из-за них не нужно.
+- **Ссылки на чужие заблуждения.** Если шаблон области A хочет использовать заблуждение из файла области B — это разрешено (по `id`), но владелец области A пишет об этом в `docs/sync-log.md`, чтобы владелец B знал.
+- `embedding` в файлах **не хранится** — вычисляется при seed через `app/embeddings.py` из `name + description` и пишется в Neo4j.
+- **Объём Ф2:** ~15 записей сейчас, расширяется вместе с шаблонами (2–4 заблуждения на область).
 
 ---
 
 ## 4. `data/templates/**/*.json` — шаблоны задач
 
 Один шаблон = один файл. Структура папок: `data/templates/<exam_lower>/<area3>/<name>.json`.
+
+**Папки по областям:**
+
+- SAT: `data/templates/sat/{alg,adv,psda,geo}/`
+- ЕНТ: `data/templates/ent/{ent_alg,ent_num,ent_func,ent_trig,ent_geo,ent_stereo}/`
+
 Пример: `data/templates/sat/alg/abs_eq_sum_roots.json`.
+
+**Квота:** 2–3 шаблона на каждый навык своей области. Целевой объём Ф2 — по 2–3 на навык обоих экзаменов (~120–170 шаблонов), распределение типов и сложности как в `ExamFormat.sections[].item_types` и `difficulty_shares`.
+
+**Покрытие.** Команда `python scripts/seed.py --coverage` печатает таблицу «навык → число шаблонов» и помечает навыки с `< 2` шаблонов. В приёмке фазы 2 — ни одного навыка в своих областях с `< 2`.
+
+**Дистракторы и заблуждения.** Дистрактор ссылается на `misconception_id` из файла **своей области** (`data/misconceptions/<area>.json`). Чужое заблуждение — только через запись в `docs/sync-log.md` владельцу той области.
 
 ### Схема — MCQ
 
@@ -224,7 +244,7 @@ Quack! · фаза 1 · v1.0 · 18.09.2026
   "exam_id": "SAT_MATH",
   "type": "numeric",
   "difficulty": 2,
-  "skill_id": "sat.arith.percent",
+  "skill_id": "sat.psda.percent",
   "tags": ["percent_change"],
   "time_reference_sec": 60,
   "kind": "template",
@@ -258,7 +278,7 @@ Quack! · фаза 1 · v1.0 · 18.09.2026
   "exam_id": "ENT_MATH",
   "type": "multi_select",
   "difficulty": 4,
-  "skill_id": "ent.alg.quadratic_conditions",
+  "skill_id": "math.alg.quadratic_roots",
   "tags": ["vieta", "sign"],
   "time_reference_sec": 120,
   "kind": "template",
@@ -290,7 +310,7 @@ Quack! · фаза 1 · v1.0 · 18.09.2026
   "exam_id": "SAT_MATH",
   "type": "mcq4",
   "difficulty": 4,
-  "skill_id": "sat.geo.circle_chord",
+  "skill_id": "sat.geo.circle",
   "tags": ["circle", "chord", "figure"],
   "time_reference_sec": 90,
   "kind": "manual",
@@ -331,7 +351,6 @@ Quack! · фаза 1 · v1.0 · 18.09.2026
   4. решение при подстановке сходится с `correct`;
   5. нет дубля по `(template_id, seed)`.
   Один `TemplateError` на seed ≤ 10% сидов — допустимо. Больше — шаблон отклоняется с ошибкой `seed failure rate`.
-- Объём Ф1: **5 шаблонов**, покрывающих все 4 `type` и хотя бы один с `generator`. Один из них — дословно шаблон из `memory-architecture-quack.md §3.1` (он же в тестах).
 
 ---
 
@@ -350,14 +369,6 @@ Quack! · фаза 1 · v1.0 · 18.09.2026
     "source": "https://satsuite.collegeboard.org/sat/whats-on-the-test/math",
     "checked_at": "2026-09-17",
     "is_demo": false
-  },
-  {
-    "id": "fact.ent.math.overview",
-    "node_id": "ENT_MATH",
-    "text": "ЕНТ по профильной математике: 35 заданий. 25 с одним ответом из пяти (1 балл каждое) и 10 с несколькими верными (2 балла, частичный зачёт). Максимум 50 баллов, без калькулятора.",
-    "source": "https://testcenter.kz",
-    "checked_at": "2026-09-17",
-    "is_demo": true
   }
 ]
 ```
@@ -396,55 +407,6 @@ Quack! · фаза 1 · v1.0 · 18.09.2026
         "source": "https://testcenter.kz",
         "checked_at": "2026-09-17",
         "is_demo": true
-      },
-      {
-        "id": "kz.paid",
-        "name": "Платное обучение",
-        "description": "Поступление на платной основе по баллам ЕНТ ниже грантового порога.",
-        "requirements": [
-          {
-            "type": "document",
-            "exam_id": null,
-            "threshold": null,
-            "comparator": "present",
-            "description": "Аттестат о среднем образовании.",
-            "source": null
-          }
-        ],
-        "source": null,
-        "checked_at": "2026-09-17",
-        "is_demo": true
-      }
-    ]
-  },
-  {
-    "country_id": "US",
-    "routes": [
-      {
-        "id": "us.commonapp",
-        "name": "Common App",
-        "description": "Основной маршрут для бакалавриата в США: единая заявка в несколько университетов.",
-        "requirements": [
-          {
-            "type": "exam_score",
-            "exam_id": "SAT_MATH",
-            "threshold": 1200,
-            "comparator": ">=",
-            "description": "Диапазон SAT у зачисленных в средние университеты (оценочно).",
-            "source": "https://www.commonapp.org"
-          },
-          {
-            "type": "language",
-            "exam_id": null,
-            "threshold": 6.5,
-            "comparator": ">=",
-            "description": "IELTS — типичный минимум для иностранных студентов.",
-            "source": null
-          }
-        ],
-        "source": "https://www.commonapp.org",
-        "checked_at": "2026-09-17",
-        "is_demo": true
       }
     ]
   }
@@ -458,7 +420,6 @@ Quack! · фаза 1 · v1.0 · 18.09.2026
 - `comparator` ∈ `{">=", "<=", "range", "present"}`. Для `range` — `threshold` = список из двух чисел; для `present` — `threshold: null`.
 - `exam_id` — `null` для не-экзаменационных требований.
 - Все `is_demo: true`, если не проверено по официальному источнику.
-- Ф1: **KZ** (грант + платное) и **US** (Common App). Остальное — позже.
 
 ---
 
@@ -478,15 +439,6 @@ Quack! · фаза 1 · v1.0 · 18.09.2026
     "source": "https://satsuite.collegeboard.org/sat/registration/dates-deadlines",
     "checked_at": "2026-09-17",
     "is_demo": false
-  },
-  {
-    "exam_id": "ENT_MATH",
-    "date": "2027-06-10",
-    "registration_deadline": "2027-05-01",
-    "late_deadline": null,
-    "source": "https://testcenter.kz",
-    "checked_at": "2026-09-17",
-    "is_demo": true
   }
 ]
 ```
@@ -500,18 +452,17 @@ Quack! · фаза 1 · v1.0 · 18.09.2026
 
 ## Как валидировать
 
-Один раз, после появления `app/schemas/knowledge.py` и `app/schemas/tasks.py` (B3, на синке):
-
 ```bash
-make seed --validate
+cd backend
+uv run python scripts/seed.py --validate --data-dir ../data
 ```
 
-Сейчас — заглушка-проверка вручную через `python -m json.tool <file>` для синтаксиса.
+Проверяет синтаксис всех JSON, уникальность `id` в каталоге заблуждений, ссылки `skill_ids` на существующие навыки, суммы весов, DAG `REQUIRES`, шаблоны через `validate_template`.
 
 ## Что дальше
 
-- **B1** пишет по этому формату: `data/skills/*.json`, `data/exam_formats/*.json`, `data/misconceptions/library.json`, `data/templates/**/*.json`, `data/knowledge_base/{exams,routes}.json`.
-- **B3** — `data/knowledge_base/calendars.json`, `data/programs_floor/programs.json`, `data/users.json`.
-- **B2** — формат наблюдений и персональных заблуждений (отдельный файл, §8 `memory-architecture-quack.md`).
+- **B1** — `data/misconceptions/*.json`, `data/skills/*.json`, `data/exam_formats/*.json`, `data/templates/sat/{alg,adv}/**`, `data/knowledge_base/{exams,routes}.json`.
+- **B3** — `data/knowledge_base/calendars.json`, `data/programs_floor/programs.json`, `data/users.json`, `data/templates/sat/{psda,geo}/**`, `data/misconceptions/{psda,geo}.json`.
+- **B2** — `data/templates/ent/**`, `data/misconceptions/ent_*.json`.
 
 Любое изменение формата — сначала в этот файл, потом в код.

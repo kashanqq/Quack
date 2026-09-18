@@ -1,0 +1,42 @@
+[
+  {
+    "id": "lib.abs_single_branch",
+    "name": "Раскрытие модуля только в одной ветви",
+    "description": "Ученик решает |ax − b| = c как ax − b = c и теряет вторую ветвь ax − b = −c.",
+    "error_class": "conceptual",
+    "skill_ids": ["math.alg.abs_value_eq"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.abs_sign_drop",
+    "name": "Потеря знака при раскрытии модуля",
+    "description": "Ученик выбирает ветвь без учёта знака: получает −2b/a вместо 2b/a.",
+    "error_class": "conceptual",
+    "skill_ids": ["math.alg.abs_value_eq"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.vieta_sign_confusion",
+    "name": "Путаница знаков в теореме Виета",
+    "description": "Ученик считает, что сумма корней равна +b/a, а произведение −c/a, забывая смену знака.",
+    "error_class": "conceptual",
+    "skill_ids": ["math.alg.quadratic_roots"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.quadratic_no_check",
+    "name": "Не проверяет дискриминант",
+    "description": "Ученик выписывает корни, не проверяя знак дискриминанта, и получает мнимые корни там, где их нет.",
+    "error_class": "procedural",
+    "skill_ids": ["math.alg.quadratic_roots", "sat.adv.quadratic_functions"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.system_parallel_misread",
+    "name": "Неверная интерпретация системы без решений",
+    "description": "Ученик считает, что если коэффициенты пропорциональны, то решений бесконечно много, путая параллельность с совпадением.",
+    "error_class": "conceptual",
+    "skill_ids": ["sat.alg.systems_linear"],
+    "exam_specific": null
+  }
+]

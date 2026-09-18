@@ -1,0 +1,10 @@
+[
+  {
+    "id": "lib.exp_base_confusion",
+    "name": "Путаница оснований в показательных уравнениях",
+    "description": "Ученик приводит степени к разным основаниям или неверно применяет свойства степеней при сложении показателей.",
+    "error_class": "conceptual",
+    "skill_ids": ["ent.func.exponential", "sat.adv.exponential"],
+    "exam_specific": null
+  }
+]
