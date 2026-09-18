@@ -1,6 +1,9 @@
 import { copy } from "@/components/home/copy";
 import { CursorAura } from "@/components/home/CursorAura";
+import { HeroLandscape } from "@/components/home/HeroLandscape";
+import { HeroTitle } from "@/components/home/HeroTitle";
 import { LayerStack } from "@/components/home/LayerStack";
+import { PageSky } from "@/components/home/PageSky";
 import { QuackSection } from "@/components/home/QuackSection";
 import { Roadmap } from "@/components/home/Roadmap";
 import { SiteFooter } from "@/components/home/SiteFooter";
@@ -13,16 +16,18 @@ export default function HomePage() {
 
   return (
     <div id="top" className={styles.page}>
-      {/* Fixed behind everything: the aura trails the cursor under the content. */}
+      {/* Fixed behind everything: one sky for the whole page, and the aura that
+          trails the cursor under the content. */}
+      <PageSky />
       <CursorAura />
 
       <div className={styles.content}>
         <SiteHeader />
 
         <main className={styles.hero}>
-          <h1 className={styles.title}>
-            Quack<span className={styles.accent}>!</span>
-          </h1>
+          <HeroLandscape />
+
+          <HeroTitle />
 
           <Roadmap />
 

@@ -13,21 +13,27 @@ export function SiteHeader() {
 
       <nav className={styles.nav} aria-label="Основная навигация">
         <div className={styles.navItem}>
-          <a href="#possibilities">{t.possibilities}</a>
+          <a href="/#possibilities">
+            {t.possibilities}
+            <Chevron />
+          </a>
           <div className={`${styles.dropdown} ${styles.dropdownStacked}`}>
-            <a href="#preparation">{t.preparation}</a>
-            <a href="#choice">{t.choice}</a>
+            <a href="/#preparation">{t.preparation}</a>
+            <a href="/#choice">{t.choice}</a>
           </div>
         </div>
         <div className={styles.navItem}>
-          <a href="#resources">{t.resources}</a>
+          <a href="/#resources">
+            {t.resources}
+            <Chevron />
+          </a>
           <div className={`${styles.dropdown} ${styles.dropdownStacked}`}>
-            <a href="#how-it-works">{t.howItWorks}</a>
-            <a href="#about">{t.about}</a>
+            <a href="/#how-it-works">{t.howItWorks}</a>
+            <a href="/#about">{t.about}</a>
           </div>
         </div>
         <div className={styles.navItem}>
-          <a href="#pricing">{t.pricing}</a>
+          <Link href="/pricing">{t.pricing}</Link>
         </div>
       </nav>
 
@@ -42,5 +48,14 @@ export function SiteHeader() {
         </a>
       </div>
     </header>
+  );
+}
+
+/** Marks the items that open a menu; it turns over while the menu is open. */
+function Chevron() {
+  return (
+    <svg className={styles.chevron} viewBox="0 0 10 6" aria-hidden="true">
+      <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }

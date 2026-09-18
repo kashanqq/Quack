@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Intel_One_Mono, Raleway } from "next/font/google";
-import { FlyingDucks } from "@/components/duck/FlyingDucks";
+import { ScrollToTopOnReload } from "@/components/ScrollToTopOnReload";
 import { TransitionProvider } from "@/components/transition/TransitionProvider";
 import "./globals.css";
 
@@ -19,9 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ru" className={fontVariables}>
       <body>
+        <ScrollToTopOnReload />
         <TransitionProvider>
           {children}
-          <FlyingDucks />
         </TransitionProvider>
       </body>
     </html>

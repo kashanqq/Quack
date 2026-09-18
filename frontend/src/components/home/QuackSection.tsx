@@ -22,7 +22,7 @@ const TABS = [copy.quack.tabs.uni, copy.quack.tabs.chat, copy.quack.tabs.tempo];
 
 /**
  * "Quack?" — the three things the product does, with a globe underneath and a
- * lane of ducks down the right.
+ * lane of ducks down each side.
  *
  * The first tab is open on arrival, so scrolling down already shows something
  * playing. Pointing at another item slides the rounded highlight onto it and
@@ -143,7 +143,8 @@ export function QuackSection() {
         </Reveal>
       </div>
 
-      <DuckLane active={onScreen} />
+      <DuckLane active={onScreen} side="left" firstDelay={4200} />
+      <DuckLane active={onScreen} side="right" />
     </section>
   );
 }

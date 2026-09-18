@@ -73,6 +73,45 @@
   user-select: none;
 }
 
+/* The builder's ladder hugs the left corner of the layer in focus and fades out
+   above and below. Its rungs are moved by script, in step with the stack. */
+.ladder {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - var(--layer-w) * 0.65 - 30px);
+  width: 24px;
+  background:
+    linear-gradient(to right, #6a6058 4px, transparent 4px 20px, #6a6058 20px),
+    repeating-linear-gradient(to bottom, #544c46 0 4px, transparent 4px 24px);
+  opacity: 0.8;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+}
+
+/* The builder stands on a rung level with the layer in focus. While the stack
+   moves, it climbs: a quick two-step hop in place. */
+.builder {
+  position: absolute;
+  bottom: 50%;
+  left: calc(50% - var(--layer-w) * 0.65 - 44px);
+  z-index: 55;
+  width: 48px;
+}
+
+.builder[data-climbing="true"] > svg {
+  animation: climb 0.22s steps(2, end) infinite;
+}
+
+@keyframes climb {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: 0 -8px;
+  }
+}
+
 /* Index of the layers along the bottom edge. */
 
 .rail {
@@ -227,6 +266,8 @@
   .section {
     --layer-w: min(420px, 70vw);
   }
+  .ladder,
+  .builder,
   .rail {
     display: none;
   }

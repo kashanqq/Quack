@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import styles from "./pixel-duck.module.css";
 
 /* The duck is a 16x14 char grid drawn as one <rect> per horizontal run of colour.
@@ -101,13 +101,21 @@ const BEAT: Record<Tempo, string> = {
 type PixelDuckProps = {
   tempo?: Tempo;
   className?: string;
+  /** Eye shut: the eye pixel becomes a short dash. */
+  asleep?: boolean;
+  /** Wing raised and waving instead of the idle flap. */
+  waving?: boolean;
+  /** Extra SVG drawn on the duck grid, above the duck (a hat, say). */
+  children?: ReactNode;
 };
+
+const SLEEPING = BODY.map((row) => row.replace("e", "b"));
 
 /**
  * Flat pixel-art duck. `tempo` only changes how fast it bobs and flaps — the same
  * duck, moving at its own speed.
  */
-export function PixelDuck({ tempo = "steady", className }: PixelDuckProps) {
+export function PixelDuck({ tempo = "steady", className, asleep, waving, children }: PixelDuckProps) {
   return (
     <svg
       className={[styles.duck, className].filter(Boolean).join(" ")}
@@ -117,8 +125,10 @@ export function PixelDuck({ tempo = "steady", className }: PixelDuckProps) {
       aria-hidden="true"
     >
       <g className={styles.bob}>
-        <g>{pixels(BODY, "b")}</g>
-        <g className={styles.wing}>{pixels(WING, "w")}</g>
+        <g>{pixels(asleep ? SLEEPING : BODY, "b")}</g>
+        {asleep && <rect x={9} y={3} width={2} height={1} fill={COLORS.o} />}
+        <g className={waving ? styles.wave : styles.wing}>{pixels(WING, "w")}</g>
+        {children}
       </g>
       <g className={styles.feet}>{pixels(FEET, "f")}</g>
     </svg>

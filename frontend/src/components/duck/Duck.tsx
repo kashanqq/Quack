@@ -6,7 +6,7 @@ type DuckProps = {
   wingClassName?: string;
 };
 
-/** Flat three-colour duck used by the page loader and the flying duck. */
+/** Flat three-colour duck used by the page loader. */
 export function Duck({ className, wingClassName }: DuckProps) {
   return (
     <svg className={[styles.duck, className].filter(Boolean).join(" ")} viewBox="0 0 64 48" aria-hidden="true">
