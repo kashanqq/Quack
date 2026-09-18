@@ -1,0 +1,697 @@
+/* "Quack! персонализация, которая работает": a tall section whose stage sticks
+   to the viewport while the scroll carries a duck from island to island. The
+   sea is a 3D plane moved by script; everything here is layout and idle motion. */
+
+/* Off screen the section's idle animations (ducks bobbing, glints, gulls, the
+   lighthouse) stop until it comes back. */
+.section {
+  position: relative;
+  z-index: 1;
+}
+
+.section[data-idle="true"] * {
+  animation-play-state: paused !important;
+}
+
+/* The stage is a fixed-size box: nothing inside it can change the page's layout
+   or paint outside it. */
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow: hidden;
+  contain: layout paint;
+}
+
+/* One line on every screen: the size follows the width. */
+.heading {
+  position: absolute;
+  top: 112px;
+  left: 50%;
+  z-index: 3;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(14px, 3.8vw, 32px);
+  font-weight: 400;
+  line-height: 1.2;
+  white-space: nowrap;
+  translate: -50% 0;
+}
+
+/* A vignette round the middle of the screen, where the main figure of each
+   step stands: whatever the camera has moved away from fades out, and so does
+   anything that would reach under the heading or the text. */
+.scene {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  perspective: 2600px;
+  -webkit-mask-image: radial-gradient(ellipse 60% 54% at 50% 50%, #000 64%, transparent 100%);
+  mask-image: radial-gradient(ellipse 60% 54% at 50% 50%, #000 64%, transparent 100%);
+}
+
+.bang {
+  color: var(--accent);
+}
+
+.world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* Every container in the world keeps its children in 3D. */
+.world,
+.world .group,
+.world .turner,
+.world .before,
+.world .after,
+.world .follower {
+  transform-style: preserve-3d;
+}
+
+.group,
+.turner,
+.before,
+.after,
+.follower {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+}
+
+.turner,
+.follower {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.turner[data-after="true"] .before,
+.turner[data-after="false"] .after {
+  display: none;
+}
+
+/* Lying flat on the plane. */
+.flat,
+.water,
+.thread {
+  position: absolute;
+}
+
+.flat > img {
+  display: block;
+}
+
+/* Standing upright on the plane, about their own bottom edge, like real
+   objects: when an island turns, its figures turn with it. */
+.stand,
+.boat {
+  position: absolute;
+  transform-origin: 50% 100%;
+}
+
+.stand {
+  transform: rotateX(-90deg) scaleY(var(--stand-lift));
+}
+
+.stand > img,
+.boat img {
+  display: block;
+}
+
+/* Sea: a soft pool of water, no hard edge anywhere. The pool is a small
+   generated gradient image stretched to size, which costs far less to draw in
+   the moving 3D scene than a gradient the size of the pool. */
+.pool {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.water > img:not(.pool) {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-image: radial-gradient(closest-side, #000 40%, transparent 80%);
+  mask-image: radial-gradient(closest-side, #000 40%, transparent 80%);
+}
+
+/* Two frames of glints swap places, so the water shimmers without moving. */
+.glintA {
+  animation: glint 1.6s steps(1, end) infinite;
+}
+
+.glintB {
+  animation: glint 1.6s steps(1, end) -0.8s infinite;
+}
+
+@keyframes glint {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* The route: a thin vector thread, redrawn every frame as it sways. */
+.thread {
+  overflow: visible;
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.threadBehind {
+  stroke: rgba(255, 255, 255, 0.14);
+}
+
+/* Boat: the duck sits behind the hull, so only its top half shows. */
+.boat {
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
+.bob {
+  position: relative;
+  animation: bob 2.4s ease-in-out infinite;
+}
+
+.boat[data-moving="true"] .bob {
+  animation-duration: 1.2s;
+}
+
+.bob > img {
+  position: relative;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(-1.5deg);
+  }
+}
+
+.duck {
+  position: absolute;
+  width: 64px;
+}
+
+.wake {
+  position: absolute;
+  top: 14px;
+  left: -42px;
+  width: 40px;
+  height: 10px;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.wake > img {
+  position: absolute;
+  inset: 0;
+}
+
+.boat[data-moving="true"] .wake {
+  opacity: 1;
+}
+
+/* Duck on the first island studying an open map, which stirs a little in the breeze. */
+.map {
+  position: absolute;
+  top: 22px;
+  left: 30px;
+  width: 48px;
+  height: 28px;
+  transform-origin: 0 100%;
+  animation: flutter 3.2s ease-in-out infinite;
+}
+
+.map > img {
+  display: block;
+}
+
+@keyframes flutter {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  50% {
+    rotate: -4deg;
+  }
+}
+
+/* Duck at work: the laptop's lid faces us, its screen lights the duck's face. */
+.laptop {
+  position: absolute;
+  top: 30px;
+  left: 34px;
+  width: 36px;
+  height: 24px;
+}
+
+.laptop > img {
+  display: block;
+}
+
+.screenGlow {
+  position: absolute;
+  top: 10px;
+  left: 40px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #8fd3ff;
+  opacity: 0.3;
+  filter: blur(6px);
+  animation: screen 2.2s ease-in-out infinite;
+}
+
+@keyframes screen {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  40% {
+    opacity: 0.45;
+  }
+  70% {
+    opacity: 0.22;
+  }
+}
+
+/* Radio mast: a blinking light and rings going out, one after another. */
+.mastLight {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+  animation: blink 1.2s steps(1, end) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.signal {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.arc {
+  position: absolute;
+  opacity: 0;
+  animation: signal 2.4s ease-out infinite;
+  animation-delay: calc(var(--i) * 0.4s);
+}
+
+.arc > img {
+  display: block;
+}
+
+@keyframes signal {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Silhouettes in the fog, upper right and lower left of the main figure: faint,
+   soft, sinking into a haze at the waterline, and drifting slowly. They come
+   and go with the step, a little slower than the text. */
+.fog {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Only opacity and position ever change on a ghost: the soft focus is a static
+   filter on its picture, so it is worked out once, not on every frame of the
+   drift. Hidden ghosts are not drawn at all. */
+.ghost {
+  position: absolute;
+  opacity: 0;
+  visibility: hidden;
+  animation: drift 7s ease-in-out infinite;
+  transition:
+    opacity 0.9s ease,
+    visibility 0s linear 0.9s;
+}
+
+.ghost[data-place="high"] {
+  top: 25%;
+  right: max(40px, 17vw);
+}
+
+.ghost[data-place="low"] {
+  bottom: 19%;
+  left: max(40px, 17vw);
+}
+
+.ghost > img:first-child {
+  display: block;
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+  filter: blur(1px);
+}
+
+.ghost[data-place="low"] {
+  animation-delay: -3.5s;
+}
+
+/* The haze they stand in. */
+.ghost::after {
+  position: absolute;
+  right: -30%;
+  bottom: -18px;
+  left: -30%;
+  height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(150, 175, 185, 0.22), transparent);
+  content: "";
+}
+
+.fog[data-active="true"] .ghost {
+  opacity: 0.5;
+  visibility: visible;
+  transition:
+    opacity 0.9s ease 0.35s,
+    visibility 0s linear 0s;
+}
+
+/* Lighthouse: a lamp that pulses and a beam sweeping out and back, as if turning. */
+.lamp {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.lamp::before {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffd98a;
+  box-shadow: 0 0 14px 4px rgba(255, 200, 110, 0.7);
+  animation: lamp 4s ease-in-out infinite;
+  content: "";
+}
+
+.beam {
+  position: absolute;
+  top: -14px;
+  left: 0;
+  width: 220px;
+  height: 28px;
+  background: linear-gradient(to right, rgba(255, 220, 150, 0.55), transparent);
+  clip-path: polygon(0 45%, 100% 0, 100% 100%, 0 55%);
+  transform-origin: 0 50%;
+  animation: sweep 4s ease-in-out infinite;
+}
+
+@keyframes lamp {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  25%,
+  75% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes sweep {
+  0% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  25% {
+    transform: scaleX(0.05);
+    opacity: 0.2;
+  }
+  50% {
+    transform: scaleX(-1);
+    opacity: 1;
+  }
+  75% {
+    transform: scaleX(0.05);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+/* Gulls circling slowly over a silhouette, each on its own beat. */
+.gull {
+  position: absolute;
+  top: -34px;
+  left: calc(30% + var(--g) * 22%);
+  animation: circle calc(9s + var(--g) * 2s) ease-in-out calc(var(--g) * -3s) infinite;
+}
+
+.gull > img {
+  display: block;
+  position: absolute;
+}
+
+.gull > img:first-child {
+  animation-duration: 0.9s;
+}
+
+.gull > img:last-child {
+  animation-duration: 0.9s;
+  animation-delay: -0.45s;
+}
+
+@keyframes circle {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: 26px -10px;
+  }
+  50% {
+    translate: 48px 2px;
+  }
+  75% {
+    translate: 20px 8px;
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -4px;
+  }
+}
+
+/* Text in two blocks: one above and left of the main figure, one to its right
+   and below. On a new step they blur in one after the other. */
+.copy {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.text {
+  position: absolute;
+  --gap: 44px;
+  width: min(420px, calc(50% - var(--half, 150px) - var(--gap) - 56px));
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-family: var(--font-text);
+  font-size: clamp(18px, 1.9vw, 29px);
+  font-weight: 500;
+  line-height: 1.32;
+  text-wrap: pretty;
+  text-shadow: 0 1px 12px rgba(20, 18, 17, 0.8);
+  opacity: 0;
+  visibility: hidden;
+  filter: blur(12px);
+  transition:
+    opacity 0.45s ease,
+    filter 0.45s ease,
+    translate 0.45s ease,
+    visibility 0s linear 0.45s;
+}
+
+/* The key phrase of each block: accent colour, heavier, so it reads first. */
+.accent {
+  color: var(--accent);
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* The blocks stand either side of the main figure, level with its middle:
+   the left one a little above, the right one a little below. --half is half
+   the figure's width on screen, kept up to date by the scene. */
+.text[data-place="lead"] {
+  top: 40%;
+  right: calc(50% + var(--half, 150px) + var(--gap));
+  text-align: right;
+  transform: translateY(-50%);
+  translate: -24px 0;
+}
+
+.text[data-place="follow"] {
+  top: 63%;
+  left: calc(50% + var(--half, 150px) + var(--gap));
+  transform: translateY(-50%);
+  translate: 24px 0;
+}
+
+.copy[data-active="true"] .text {
+  opacity: 1;
+  visibility: visible;
+  filter: none;
+  translate: 0 0;
+  transition:
+    opacity 0.7s ease 0.25s,
+    filter 0.7s var(--ease-out) 0.25s,
+    translate 0.7s var(--ease-out) 0.25s,
+    visibility 0s linear 0s;
+}
+
+.copy[data-active="true"] .text[data-place="follow"] {
+  transition-delay: 0.55s, 0.55s, 0.55s, 0s;
+}
+
+/* Step marks along the bottom: the only thing left there. */
+.nav {
+  position: absolute;
+  bottom: 36px;
+  left: 50%;
+  z-index: 3;
+  translate: -50% 0;
+}
+
+.pips {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pip {
+  display: block;
+  width: 28px;
+  height: 20px;
+  padding: 8px 0;
+  border: 0;
+  background: rgba(255, 255, 255, 0.2);
+  background-clip: content-box;
+  cursor: pointer;
+  transition:
+    width 0.35s var(--ease),
+    background-color 0.35s ease;
+}
+
+.pip[data-active="true"] {
+  width: 44px;
+  background-color: var(--accent);
+}
+
+/* Big screens: a little more room for the text. */
+@media (min-width: 1800px) {
+  .heading {
+    font-size: clamp(32px, 1.9vw, 44px);
+  }
+  .text {
+    width: min(560px, calc(50% - var(--half, 150px) - var(--gap) - 56px));
+    font-size: clamp(29px, 1.6vw, 38px);
+  }
+}
+
+/* Stacked: phones and tablets held upright. No room beside the figure, so the
+   text stands right above and right below it: --up and --down (how far the
+   figure reaches above and below the middle, from the scene) put it there. Must match
+   STACKED_QUERY in JourneySection.tsx. */
+@media (max-width: 760px), (max-aspect-ratio: 5/6) {
+  .text {
+    --gap: 18px;
+    width: min(620px, calc(100% - 32px));
+    font-size: clamp(17px, 2.9vw, 26px);
+  }
+  .text[data-place="lead"],
+  .text[data-place="follow"] {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .text[data-place="lead"] {
+    top: auto;
+    bottom: calc(50% + var(--up, 120px) + var(--gap));
+    text-align: left;
+    translate: 0 -16px;
+  }
+  .text[data-place="follow"] {
+    top: calc(50% + var(--down, 140px) + var(--gap));
+    bottom: auto;
+    text-align: right;
+    translate: 0 16px;
+  }
+  /* The corners hold text here, so the fog has nowhere to go. */
+  .fog {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .heading {
+    top: 84px;
+  }
+  .nav {
+    bottom: 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glintA,
+  .glintB,
+  .bob,
+  .map,
+  .ghost,
+  .gull,
+  .beam,
+  .lamp::before,
+  .screenGlow,
+  .mastLight,
+  .arc {
+    animation: none;
+  }
+  .text,
+  .copy[data-active="true"] .text {
+    transition: none;
+  }
+}
