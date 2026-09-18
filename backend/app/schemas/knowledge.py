@@ -157,3 +157,24 @@ class FactOut(BaseModel):
     source: str | None = None
     checked_at: date | None = None
     is_demo: bool
+
+
+# --- Temporary: phase-2 additions (B3's zone, will be merged from skeleton) ---
+
+MisconceptionStatus = Literal["suspected", "confirmed", "resolved", "disputed"]
+
+
+class MisconceptionStateOut(BaseModel):
+    """State of one misconception for one student — memory-architecture §5."""
+
+    misconception_id: str
+    name: str
+    status: MisconceptionStatus
+    occurrence_count: int
+    strong_count: int
+    consecutive_avoided: int
+    triggers: dict
+    first_seen_at: datetime
+    updated_at: datetime
+    skill_ids: list[str]
+    visible_label: str = ""
