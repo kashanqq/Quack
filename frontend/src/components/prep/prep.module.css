@@ -1324,64 +1324,53 @@
   font-size: 14px;
 }
 
-.skillTrap {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin: 0 0 12px;
-  font-size: 14px;
-}
-
-/* The way from the map into a set: the first button is the set still ahead */
-.skillSets {
-  display: grid;
-  gap: 6px;
-}
-
-.skillSetJump {
-  display: flex;
+/* The skill's name leads into its set: plain text at rest, a quiet arrow and underline tell it is a link */
+.skillTitleLink {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 9px 12px;
+  gap: 4px;
+  padding: 0;
   color: inherit;
   font: inherit;
-  font-size: 14px;
   text-align: left;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  background: none;
+  border: 0;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  text-decoration: underline dotted rgba(255, 166, 77, 0.45);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 5px;
+  transition: color 0.2s ease, text-decoration-color 0.2s ease;
 }
 
-.skillSetJump:hover,
-.skillSetJump:focus-visible {
-  background: rgba(255, 145, 0, 0.1);
-  border-color: rgba(255, 166, 77, 0.45);
-}
-
-.skillSetJump[data-main] {
-  background: rgba(255, 145, 0, 0.12);
-  border-color: rgba(255, 166, 77, 0.4);
-}
-
-.skillSetJump > svg {
+.skillTitleLink > svg {
   flex: none;
-  margin-left: auto;
   color: var(--accent-label);
+  opacity: 0.55;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.skillSetText {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
+.skillTitleLink:hover,
+.skillTitleLink:focus-visible {
+  color: var(--accent-label);
+  text-decoration-style: solid;
+  text-decoration-color: currentColor;
 }
 
-.skillSetText > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.skillTitleLink:hover > svg,
+.skillTitleLink:focus-visible > svg {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skillTitleLink > svg {
+    transition: none;
+  }
+
+  .skillTitleLink:hover > svg,
+  .skillTitleLink:focus-visible > svg {
+    transform: none;
+  }
 }
 
 .rootNote {
