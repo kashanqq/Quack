@@ -8,13 +8,17 @@ from typing import Any, Protocol, TypeVar, runtime_checkable
 import httpx
 import openai
 from openai import AsyncOpenAI
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
 from app import keys
 from app.config import Settings
 from app.errors import LLMUnavailable
+from app.llm.structured import (
+    parse_structured_output,
+    structured_validation_retry_message,
+)
 from app.schemas.chat import StreamEvent, TextDelta, ToolCall
 from app.schemas.llm import (
     LLMMessage,
@@ -403,20 +407,6 @@ class LLMClient:
             json_schema["strict"] = True
         return {"type": "json_schema", "json_schema": json_schema}
 
-    def _parse_structured(
-        self, raw_text: str, schema: type[T]
-    ) -> tuple[T | None, str | None]:
-        start = raw_text.find("{")
-        end = raw_text.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            candidate = raw_text[start : end + 1]
-        else:
-            candidate = raw_text
-        try:
-            return schema.model_validate_json(candidate), None
-        except ValidationError as exc:
-            return None, str(exc)
-
     async def structured(
         self, messages: list[LLMMessage], schema: type[T], slot: ModelSlot
     ) -> T:
@@ -440,7 +430,6 @@ class LLMClient:
 
         current_messages = list(messages)
         last_raw_text = ""
-        last_error = ""
 
         for _attempt in range(2):
             await self._check_breaker()
@@ -471,21 +460,14 @@ class LLMClient:
             else:
                 raw_text = choice.message.content or ""
 
-            parsed, error = self._parse_structured(raw_text, schema)
+            parsed, error = parse_structured_output(raw_text, schema)
             if parsed is not None:
                 return parsed
 
             last_raw_text = raw_text
-            last_error = error or ""
             current_messages = [
                 *current_messages,
-                LLMMessage(
-                    role="user",
-                    content=(
-                        f"Ответ не прошёл валидацию: {last_error}. "
-                        "Верни только JSON по схеме."
-                    ),
-                ),
+                structured_validation_retry_message(error or ""),
             ]
 
         logger.warning("structured output failed: %s", last_raw_text[:200])
