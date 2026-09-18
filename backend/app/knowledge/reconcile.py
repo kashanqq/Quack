@@ -18,6 +18,7 @@ from app.knowledge.roots import rule_root
 from app.knowledge.words import state_words
 from app.schemas.events import TaskAnsweredPayload
 from app.schemas.knowledge import (
+    AreaOut,
     EvidenceContext,
     EvidenceIn,
     ExamId,
@@ -26,6 +27,7 @@ from app.schemas.knowledge import (
     MisconceptionStateOut,
     Prerequisite,
     ReconcileResult,
+    SkillWeight,
 )
 from app.schemas.tasks import Grade, TaskInstance
 
@@ -77,7 +79,6 @@ def reconcile_task_answer(
 
     tier = weights.tier_for(source, mode, kind=None)
 
-    # --- matched (по ТЗ §8.2 п.3 — только для неверного без совпадения) ---
     matched = grade.correct or grade.matched_misconception_id is not None
 
     weight = weights.evidence_weight(
@@ -123,7 +124,6 @@ def reconcile_task_answer(
     primary_ev = EvidenceIn(**ev_fields)
     evidence: list[EvidenceIn] = [primary_ev]
 
-    # --- second evidence: misconception_hit ---
     if grade.matched_misconception_id is not None:
         misc_name = _misc_name(misc_states, grade.matched_misconception_id)
         evidence.append(
@@ -132,10 +132,8 @@ def reconcile_task_answer(
             )
         )
 
-    # --- state ---
     state_after = hlr.apply_evidence(state, primary_ev, params=params)
 
-    # --- cross-exam state for common skills (§4.6) ---
     cross_exam_state: KnowledgeStateOut | None = None
     if len(exam_ids) > 1 and instance.skill_id.startswith("math."):
         other_exam = next((e for e in exam_ids if e != instance.exam_id), None)
@@ -151,19 +149,16 @@ def reconcile_task_answer(
                 update={"exam_id": other_exam, "has_strong": False}
             )
 
-    # --- misconception change ---
     misconception_change = _apply_misconception(
         instance, grade, tier, misc_states, params
     )
 
-    # --- root causes ---
     root_causes: list[RootCauseOut] = []
     if direction == -1:
         root = rule_root(instance.skill_id, prereq_states, params)
         if root is not None:
             root_causes.append(root.model_copy(update={"created_at": now}))
 
-    # --- words ---
     words = state_words(state_after, params.p_target_max, params)
 
     return ReconcileResult(
@@ -201,10 +196,8 @@ def _apply_misconception(
     misc_states: list[MisconceptionStateOut],
     params: KnowledgeParams,
 ) -> MisconceptionChange | None:
-    """Return the change of one MisconceptionState, if any."""
     strong = weights.is_strong(tier)  # type: ignore[arg-type]
 
-    # 1) hit — новый matched, подтверждаем/создаём
     if grade.matched_misconception_id is not None:
         existing = next(
             (
@@ -251,7 +244,6 @@ def _apply_misconception(
             },
         )
 
-    # 2) avoided — верный ответ при наличии TRAPS на confirmed
     if grade.correct:
         tested = _tested_misconceptions(instance)
         for m in misc_states:
@@ -281,3 +273,159 @@ def _apply_misconception(
                 )
 
     return None
+
+
+# --- priors from profile (memory-architecture §4.8) ---
+
+
+def reconcile_prior(
+    field: str,
+    value,
+    exam_skills: list[SkillWeight],
+    areas: list[AreaOut],
+    states: dict[str, KnowledgeStateOut],
+    params: KnowledgeParams,
+    now: datetime,
+) -> list[tuple[EvidenceIn, KnowledgeStateOut]]:
+    """Convert one profile field into priors for skills without strong state."""
+    if field == "academics.self_assessment":
+        return _prior_from_self_assessment(
+            value, exam_skills, areas, states, params, now
+        )
+    if field in ("academics.ent_trial_score", "academics.sat_score"):
+        return _prior_from_trial_score(value, exam_skills, states, params, now)
+    return []
+
+
+def _prior_from_self_assessment(
+    value,
+    exam_skills: list[SkillWeight],
+    areas: list[AreaOut],
+    states: dict[str, KnowledgeStateOut],
+    params: KnowledgeParams,
+    now: datetime,
+) -> list[tuple[EvidenceIn, KnowledgeStateOut]]:
+    if not isinstance(value, dict):
+        return []
+
+    area_levels: dict[str, int] = {}
+    for area in areas:
+        for key, lvl in value.items():
+            if key == area.id or key == area.name or key in area.id:
+                try:
+                    area_levels[area.id] = int(lvl)
+                except (TypeError, ValueError):
+                    continue
+                break
+
+    out: list[tuple[EvidenceIn, KnowledgeStateOut]] = []
+    for sw in exam_skills:
+        if sw.area_id not in area_levels:
+            continue
+        existing = states.get(sw.skill.id)
+        if existing is not None and existing.confidence >= params.c_vis:
+            continue
+
+        level = area_levels[sw.area_id]
+        p_at_obs = _p_from_self_level(level)
+        exam_id = sw.skill.exam_ids[0] if sw.skill.exam_ids else "SAT_MATH"
+
+        ev = EvidenceIn(
+            event_id=0,
+            skill_id=sw.skill.id,
+            exam_id=exam_id,
+            kind="self_report",
+            tier=3,
+            source="self_report",
+            weight=0.1,
+            direction=1,
+            share=None,
+            difficulty_factor=1.0,
+            summary=f"самооценка: {level}/5",
+            context=EvidenceContext(),
+            observed_at=now,
+            extractor_version=None,
+        )
+        state = KnowledgeStateOut(
+            skill_id=sw.skill.id,
+            exam_id=exam_id,
+            p_recall=p_at_obs,
+            p_at_obs=p_at_obs,
+            half_life_h=params.h0_prior,
+            confidence=0.15,
+            evidence_mass=0.1,
+            n_correct=0,
+            n_incorrect=0,
+            n_partial=0,
+            has_strong=False,
+            last_observed_at=now,
+            created_at=now,
+        )
+        out.append((ev, state))
+    return out
+
+
+def _prior_from_trial_score(
+    value,
+    exam_skills: list[SkillWeight],
+    states: dict[str, KnowledgeStateOut],
+    params: KnowledgeParams,
+    now: datetime,
+) -> list[tuple[EvidenceIn, KnowledgeStateOut]]:
+    if not isinstance(value, (int, float)):
+        return []
+
+    total_weight = sum(sw.weight for sw in exam_skills)
+    if total_weight <= 0:
+        return []
+    p_at_obs = max(0.0, min(1.0, float(value) / total_weight))
+
+    out: list[tuple[EvidenceIn, KnowledgeStateOut]] = []
+    for sw in exam_skills:
+        existing = states.get(sw.skill.id)
+        if existing is not None and existing.confidence >= params.c_vis:
+            continue
+
+        exam_id = sw.skill.exam_ids[0] if sw.skill.exam_ids else "SAT_MATH"
+        ev = EvidenceIn(
+            event_id=0,
+            skill_id=sw.skill.id,
+            exam_id=exam_id,
+            kind="self_report",
+            tier=3,
+            source="self_report",
+            weight=0.1,
+            direction=1,
+            share=None,
+            difficulty_factor=1.0,
+            summary=f"пробный балл: {value}",
+            context=EvidenceContext(),
+            observed_at=now,
+            extractor_version=None,
+        )
+        state = KnowledgeStateOut(
+            skill_id=sw.skill.id,
+            exam_id=exam_id,
+            p_recall=p_at_obs,
+            p_at_obs=p_at_obs,
+            half_life_h=params.h0_prior,
+            confidence=0.15,
+            evidence_mass=0.1,
+            n_correct=0,
+            n_incorrect=0,
+            n_partial=0,
+            has_strong=False,
+            last_observed_at=now,
+            created_at=now,
+        )
+        out.append((ev, state))
+    return out
+
+
+def _p_from_self_level(level: int) -> float:
+    """1–5 → p_at_obs: ≥4 → 0.75, 3 → 0.5, ≤2 → 0.3."""
+    if level >= 4:
+        return 0.75
+    if level == 3:
+        return 0.5
+    return 0.3
