@@ -70,7 +70,10 @@ class Settings(BaseSettings):
     LLM_API_KEY: SecretStr = SecretStr("")
     MODEL_CHAT: str = ""
     MODEL_BULK: str = ""
-    LLM_STRUCTURED_MODE: str = "json_schema"
+    LLM_STRUCTURED_MODE: Literal["response_format", "tool"] = "response_format"
+    LLM_STRICT_SCHEMA: bool = False
+    LLM_REASONING_CHAT: str | None = "low"
+    LLM_REASONING_BULK: str | None = "high"
     LLM_TIMEOUT_CHAT_S: float = 30
     LLM_TIMEOUT_BULK_S: float = 90
     # Local starting limits; configure these for the selected provider.

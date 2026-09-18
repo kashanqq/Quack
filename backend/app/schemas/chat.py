@@ -1,7 +1,7 @@
 """Message persistence contracts from the shared Phase 1 specification."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -21,3 +21,63 @@ class MessageOut(BaseModel):
     markup: AssistantMarkup | None = None
     event_id: int
     created_at: datetime
+
+
+ChatKind = Literal["selection", "prep"]
+
+
+class ChatMessageIn(BaseModel):
+    text: str = Field(max_length=4000)
+    topic_skill_id: str | None = None
+    set_id: UUID | None = None
+
+
+class TextDelta(BaseModel):
+    type: Literal["text_delta"] = "text_delta"
+    text: str
+
+
+class ToolCall(BaseModel):
+    type: Literal["tool_call"] = "tool_call"
+    tool: str
+    args: dict
+    call_id: str
+
+
+class ToolResult(BaseModel):
+    type: Literal["tool_result"] = "tool_result"
+    tool: str
+    call_id: str
+    data: Any
+    error: str | None = None
+
+
+class Done(BaseModel):
+    type: Literal["done"] = "done"
+    event_id: int
+    mode: str | None
+    gave_task_instance_id: UUID | None
+    hint_level: int | None
+    referenced_skill_ids: list[str]
+
+
+class StreamError(BaseModel):
+    type: Literal["error"] = "error"
+    code: str
+    message: str
+
+
+StreamEvent = Annotated[
+    TextDelta | ToolCall | ToolResult | Done | StreamError,
+    Field(discriminator="type"),
+]
+
+
+class ChatCtx(BaseModel):
+    student_id: UUID
+    kind: ChatKind
+    chat_id: UUID
+    session_id: UUID
+    request_id: str
+    topic_skill_id: str | None = None
+    set_id: UUID | None = None
