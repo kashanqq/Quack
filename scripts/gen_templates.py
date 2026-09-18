@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -221,6 +222,37 @@ def _leftover_placeholder(spec: TaskTemplateSpec, n_seeds: int = 3) -> str | Non
     return None
 
 
+# render_stem (app/tasks/render.py, B1's file) only wraps a substituted
+# negative value in parentheses when the character right before its `{name}`
+# is an ASCII operator (+-*/) — the typographic operators our own solutions
+# use (−, ·, ×, ÷) aren't recognised, so e.g. "4·{q}" with q=-2 renders as
+# the unparenthesised, ambiguous "4·-2" instead of "4·(-2)" (sync-log
+# 2026-09-18, B2 -> B1). This is a string-level check on the rendered text,
+# same reasoning as `_leftover_placeholder`.
+_UNPARENTHESIZED_NEGATIVE = re.compile(r"[+\-*/−·×÷]\s*-\d")
+
+
+def _unparenthesized_negative(spec: TaskTemplateSpec, n_seeds: int = 40) -> str | None:
+    """Render several instances and check for an operator directly followed
+    by an unwrapped negative value (no parentheses in between)."""
+    for seed in range(n_seeds):
+        try:
+            instance = generate_instance(spec, seed=seed)
+        except Exception:
+            continue  # validate_template already accounts for seed failures
+        texts = [instance.stem_rendered, *instance.solution_rendered]
+        texts += [option.text for option in instance.options]
+        texts += [trap.text for trap in instance.trap_answers]
+        for text in texts:
+            match = _UNPARENTHESIZED_NEGATIVE.search(text)
+            if match:
+                return (
+                    f"unparenthesized negative in seed {seed}: "
+                    f"{match.group(0)!r} in {text!r}"
+                )
+    return None
+
+
 def _build_messages(
     exam_format_doc: dict,
     skill: dict,
@@ -350,6 +382,10 @@ async def run(argv: list[str] | None = None) -> int:
                 placeholder_issue = _leftover_placeholder(spec)
                 if placeholder_issue is not None:
                     dropped.append((spec.id, placeholder_issue))
+                    continue
+                unparenthesized_issue = _unparenthesized_negative(spec)
+                if unparenthesized_issue is not None:
+                    dropped.append((spec.id, unparenthesized_issue))
                     continue
                 out_path.write_text(
                     json.dumps(

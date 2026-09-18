@@ -56,6 +56,27 @@ _LEFTOVER_PLACEHOLDER_TEMPLATE = {
     "solution": ["x = {a}"],
 }
 
+# Passes validate_template and the leftover-`{` check (the placeholder is a
+# bare param name and does substitute) — only render_stem's parenthesize rule
+# fails, because it recognises ASCII +-*/ but not the typographic "·" used
+# here, and `a`'s range is all-negative so every seed reproduces it.
+_UNPARENTHESIZED_NEGATIVE_TEMPLATE = {
+    "id": "tpl.sat.alg.test_unparenthesized",
+    "exam_id": "SAT_MATH",
+    "type": "numeric",
+    "difficulty": 1,
+    "skill_id": "sat.alg.slope_lines",
+    "tags": ["test"],
+    "time_reference_sec": 30,
+    "kind": "template",
+    "params": {"a": {"range": [-5, -1]}},
+    "constraints": [],
+    "stem": "Чему равно 4·{a}?",
+    "correct": "4*a",
+    "distractors": [],
+    "solution": ["4·{a} = {answer}"],
+}
+
 # Invalid by construction: the first distractor is the same expression as
 # `correct`, so validate_template's symbolic check ("distractors collapse")
 # rejects it deterministically, with no dependence on seeded randomness.
@@ -208,6 +229,41 @@ async def test_generation_drops_template_with_leftover_placeholder(
     out = capsys.readouterr().out
     assert "1 отброшено" in out
     assert "leftover placeholder" in out
+
+
+async def test_generation_drops_template_with_unparenthesized_negative(
+    monkeypatch, tmp_path, capsys
+):
+    gen_templates = _load_module()
+
+    spec = TaskTemplateSpec.model_validate(_UNPARENTHESIZED_NEGATIVE_TEMPLATE)
+    script = [gen_templates.GeneratedTemplates(templates=[spec])]
+    fake_llm = FakeLLMClient(script)
+
+    monkeypatch.setattr(gen_templates, "LLMClient", lambda settings, redis: fake_llm)
+    monkeypatch.setattr(gen_templates, "Redis", _FakeRedis)
+
+    exit_code = await gen_templates.run(
+        [
+            "--exam",
+            "SAT_MATH",
+            "--area",
+            "alg",
+            "--skill",
+            "sat.alg.slope_lines",
+            "--n",
+            "1",
+            "--out",
+            str(tmp_path),
+            "--no-seed-validate",
+        ]
+    )
+
+    assert exit_code == 0
+    assert list(tmp_path.iterdir()) == []
+    out = capsys.readouterr().out
+    assert "1 отброшено" in out
+    assert "unparenthesized negative" in out
 
 
 class _DownRedis:
