@@ -51,3 +51,9 @@ class Program(BaseModel):
 class SavedProgram(BaseModel):
     program_id: str
     saved_at: datetime
+
+
+class SearchHit(BaseModel):
+    title: str
+    url: str
+    snippet: str

@@ -18,15 +18,19 @@ dependencies = [
     "httpx",
     "pyjwt",
     "passlib[bcrypt]",
+    "bcrypt<4.1",
+    "email-validator",
     "structlog",
     "sympy",
     "sentence-transformers",
     "tavily-python",
     "ddgs",
+    "selectolax>=0.4.11",
 ]
 
 [dependency-groups]
 dev = [
+    "fakeredis",
     "pytest",
     "pytest-asyncio",
     "ruff",

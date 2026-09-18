@@ -55,20 +55,18 @@ def test_request_validation_returns_400(app):
     with TestClient(app) as client:
         response = client.get("/test-validation", params={"value": "not-an-int"})
     assert response.status_code == 400
-    assert response.json() == {
-        "error": {"code": "validation_failed", "message": "Request validation failed"}
-    }
+    assert response.json()["error"]["code"] == "validation_failed"
+    assert "integer" in response.json()["error"]["message"]
     assert "X-Request-Id" in response.headers
 
 
-def test_temporary_health_and_incoming_request_id(app):
+def test_health_degraded_and_incoming_request_id(app):
     with TestClient(app) as client:
         response = client.get("/health", headers={"X-Request-Id": "existing-id"})
     assert response.status_code == 200
-    assert response.json() == {
-        "status": "temporary",
-        "message": "Service health checks are not implemented",
-    }
+    assert response.json()["status"] == "degraded"
+    assert response.json()["checks"]["search"] == "skipped"
+    assert response.json()["version"] == "dev"
     assert response.headers["X-Request-Id"] == "existing-id"
 
 
@@ -83,7 +81,8 @@ def test_unhandled_exception_hides_details_and_returns_request_id(app, request_i
         response = client.get("/test-unhandled", headers=headers)
     assert response.status_code == 500
     assert response.json() == {
-        "error": {"code": "internal", "message": "Internal server error"}
+        "error": {"code": "internal", "message": "Internal server error"},
+        "request_id": response.headers["X-Request-Id"],
     }
     if request_id:
         assert response.headers["X-Request-Id"] == request_id
