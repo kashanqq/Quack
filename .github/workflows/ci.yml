@@ -36,6 +36,9 @@ jobs:
       - name: Unit tests
         run: uv run --frozen pytest -m "not integration"
 
+      - name: Phase 2 tests
+        run: uv run --frozen pytest -m phase2
+
       - name: Validate seed data
         run: uv run --frozen python ../scripts/seed.py --validate
 
@@ -49,15 +52,22 @@ jobs:
           print(json.dumps(create_app().openapi()))'
           > "$RUNNER_TEMP/quack-openapi.json"
 
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend type generator
+        working-directory: frontend
+        run: npm ci --ignore-scripts
+
       - name: Check frontend API types
         working-directory: .
         run: |
-          if [[ ! -d frontend/src/api ]]; then
-            echo "::notice::Frontend API contract is not present yet; skipping type check"
-            exit 0
-          fi
-          if [[ ! -f scripts/gen_types.sh || ! -f frontend/src/api/schema.d.ts ]]; then
-            echo "::error::Frontend API contract is blocked: scripts/gen_types.sh or frontend/src/api/schema.d.ts is missing"
+          if [[ ! -f frontend/src/api/schema.d.ts ]]; then
+            echo "::error::Frontend API schema.d.ts is missing"
             exit 1
           fi
           make types

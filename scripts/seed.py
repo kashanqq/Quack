@@ -62,6 +62,15 @@ def validate_data(data_dir: Path) -> None:
             validator(path)
         except Exception as exc:
             raise ValueError(f"{path}: {exc}") from exc
+    misconceptions = _b1_module("misconceptions")
+    if misconceptions is not None:
+        validator = getattr(misconceptions, "_load_catalog", None)
+        if validator is not None:
+            path = data_dir / "misconceptions"
+            try:
+                validator(path)
+            except Exception as exc:
+                raise ValueError(f"{path}: {exc}") from exc
     # B1 owns task-template validation; call its validator once it is merged.
     templates = _b1_module("templates")
     if templates is not None:

@@ -39,6 +39,21 @@ def test_broken_copied_json_reports_filename(tmp_path):
     assert "programs.json" in result.stderr
 
 
+def test_validate_rejects_duplicate_misconception_across_directory(tmp_path):
+    copy = tmp_path / "data"
+    shutil.copytree(DATA, copy)
+    source = copy / "misconceptions" / "psda.json"
+    (copy / "misconceptions" / "duplicate.json").write_bytes(source.read_bytes())
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--validate", "--data-dir", str(copy)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "duplicate misconception id" in result.stderr
+
+
 async def test_users_seed_twice_preserves_id_and_hash(monkeypatch):
     rows = {}
     writes = []
