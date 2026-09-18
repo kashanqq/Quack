@@ -3,7 +3,7 @@
 // "Choice" page (front-end only). The chat is the main surface; programs arrive in it as cards
 // after the summary is confirmed. The left column holds the Выбор / Подготовка switch, the
 // programs (picks, favourites, comparison) and chat history. Both side panels can be dragged
-// to resize or collapsed; the workspace is kept in localStorage.
+// to resize or collapsed; the workspace is kept in the student's store (account/store.ts).
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
@@ -23,7 +23,8 @@ import type { DashTab } from "../dashboard/dashboardRules";
 import { PrepView } from "../prep/PrepView";
 import { useQuack } from "../quack/source";
 import { morph } from "@/components/transition/morph";
-import { FirstHint, resetHints } from "@/components/hints/FirstHint";
+import { FirstHint } from "@/components/hints/FirstHint";
+import { store } from "@/components/account/store";
 import type { PrepSub, PrepTab } from "../prep/prepModel";
 import { ChatMessage, type ChatMsg } from "./ChatMessage";
 import { CompareView } from "./CompareView";
@@ -64,6 +65,14 @@ type LeftPanel = { width: number; collapsed: boolean; lastWidth: number; userSet
 type RightPanel = { width: number; hidden: boolean; lastWidth: number };
 type ChatItem = ChatMsg & { programs?: string[] };
 type Session = ChatSummary & { messages: ChatItem[] };
+type Workspace = {
+  profile: Profile;
+  confirmed: boolean;
+  picks: string[];
+  saved: string[];
+  compare: string[];
+  sessions: Session[];
+};
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -156,7 +165,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   useEffect(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem(WORKSPACE_KEY) ?? "null");
+      const stored = store.get<Workspace>(WORKSPACE_KEY);
       if (stored) {
         profileRef.current = stored.profile ?? EMPTY_PROFILE;
         setProfile(profileRef.current);
@@ -173,12 +182,8 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   useEffect(() => {
     if (!workspaceLoaded) return;
-    try {
-      localStorage.setItem(
-        WORKSPACE_KEY,
-        JSON.stringify({ profile, confirmed, picks, saved, compare, sessions })
-      );
-    } catch {}
+    // The store gathers a burst (a reply typing out) into one write
+    store.set(WORKSPACE_KEY, { profile, confirmed, picks, saved, compare, sessions } satisfies Workspace);
   }, [workspaceLoaded, profile, confirmed, picks, saved, compare, sessions]);
 
   // Keep the active chat's stored copy in sync with what is on screen
@@ -198,19 +203,16 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   /* ---------- Layout persistence ---------- */
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? "null");
-      if (stored?.left) setLeft({ ...stored.left, collapsed: false });
-      if (stored?.right) setRight(stored.right);
-    } catch {}
+    const stored = store.get<{ left?: LeftPanel; right?: RightPanel }>(LAYOUT_KEY);
+    if (stored?.left) setLeft({ ...stored.left, collapsed: false });
+    if (stored?.right) setRight(stored.right);
     setLayoutLoaded(true);
   }, []);
 
   useEffect(() => {
+    // Widths are saved when a drag ends, never on every pixel of it
     if (!layoutLoaded || resizing) return;
-    try {
-      localStorage.setItem(LAYOUT_KEY, JSON.stringify({ left, right }));
-    } catch {}
+    store.set(LAYOUT_KEY, { left, right });
   }, [layoutLoaded, left, right, resizing]);
 
   useEffect(() => {
@@ -524,11 +526,9 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     });
   };
 
-  const restart = () => {
-    resetHints();
-    try {
-      localStorage.removeItem(WORKSPACE_KEY);
-    } catch {}
+  // Everything of this student goes (chats, programs, preparation, the map), the account stays
+  const restart = async () => {
+    await store.reset();
     resetQuack();
     onRestart();
   };

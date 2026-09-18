@@ -23,6 +23,7 @@ from app.api.prep import router as prep_router
 from app.api.profile import router as profile_router
 from app.api.programs import router as programs_router
 from app.api.saved import router as saved_router
+from app.api.tasks import router as tasks_router
 from app.config import settings
 from app.db.engine import close_engine, create_engine, create_sessionmaker
 from app.errors import AppError, UnsupportedMediaType
@@ -171,4 +172,5 @@ def create_app() -> FastAPI:
     app.include_router(programs_router)
     app.include_router(chat_router)
     app.include_router(prep_router)
+    app.include_router(tasks_router)
     return app

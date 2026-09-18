@@ -1,0 +1,227 @@
+/* Sign-in page and the pause while a student's data loads */
+
+.page {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 24px 16px;
+  font-family: var(--font-text);
+  background: radial-gradient(circle at 50% 30%, rgba(255, 145, 0, 0.08), transparent 65%), #1f1d1b;
+}
+
+.googleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 46px;
+  padding: 0 16px;
+  color: #1f1f1f;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  background: #ffffff;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.googleBtn:hover:not(:disabled) {
+  background: #f4f4f4;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+.googleBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.googleBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.googleIcon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.card {
+  display: grid;
+  gap: 14px;
+  width: min(400px, 100%);
+  padding: 28px 24px 22px;
+  background: #322e2b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  animation: rise 0.35s var(--ease-out) both;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 26px;
+  text-decoration: none;
+}
+
+.brandDuck {
+  width: 32px;
+}
+
+.accent {
+  color: var(--accent);
+}
+
+.switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+}
+
+.switch button {
+  height: 34px;
+  color: rgba(255, 255, 255, 0.6);
+  font: inherit;
+  font-size: 14px;
+  background: none;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.switch button[aria-selected="true"] {
+  color: var(--text);
+  background: rgba(255, 145, 0, 0.18);
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.field input {
+  height: 44px;
+  padding: 0 14px;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.field input:focus {
+  border-color: rgba(255, 166, 77, 0.7);
+}
+
+.field input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.error {
+  margin: 0;
+  padding: 10px 12px;
+  color: #ffb4a8;
+  font-size: 14px;
+  background: rgba(255, 107, 91, 0.1);
+  border-left: 3px solid #ff6b5b;
+  border-radius: 4px 10px 10px 4px;
+}
+
+.submit {
+  height: 46px;
+  margin-top: 4px;
+  color: #1f1d1b;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  background: var(--accent);
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.submit:hover:not(:disabled) {
+  background: #ff8f26;
+}
+
+.submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.note {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.gate {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+}
+
+.gateDuck {
+  width: 64px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+}

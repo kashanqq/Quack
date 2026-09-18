@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { GraphCanvas, readStore, useNodeDrag, useVertical, writeStore } from "./GraphCanvas";
-import { AREAS, SKILLS, STATE_LABEL, type Misconception, type Skill, type SkillState } from "./prepData";
+import { store } from "../account/store";
+import { GraphCanvas, useNodeDrag, useVertical } from "./GraphCanvas";
+import { AREAS, EXAM_IDS, SKILLS, STATE_LABEL, type ExamId, type Misconception, type Skill, type SkillState } from "./prepData";
 import styles from "./prep.module.css";
 
 type Props = {
+  /** The map shows one exam at a time */
+  exam: ExamId;
   states: Record<string, SkillState>;
   recall: Record<string, number>;
   misconceptions: Record<string, Misconception[]>;
@@ -83,7 +86,7 @@ export function StateLegend() {
 }
 
 /** The node itself: the same four shapes as the small glyph, drawn big, with recall as an outer arc. */
-function NodeMark({ state, recall }: { state: SkillState; recall: number }) {
+export function NodeMark({ state, recall }: { state: SkillState; recall: number }) {
   const c = NODE / 2;
   const track = 2 * Math.PI * (R + 5);
   return (
@@ -115,8 +118,8 @@ function NodeMark({ state, recall }: { state: SkillState; recall: number }) {
  * Each exam area keeps its own horizontal lane, so a column means "this deep into the prerequisites".
  * On a phone it reads top to bottom instead (see verticalLayout).
  */
-function autoLayout(orientation: Orientation) {
-  return orientation === "vertical" ? verticalLayout() : horizontalLayout();
+function autoLayout(orientation: Orientation, exam: ExamId) {
+  return orientation === "vertical" ? verticalLayout(exam) : horizontalLayout(exam);
 }
 
 const depthOf = (s: Skill): number =>
@@ -124,14 +127,14 @@ const depthOf = (s: Skill): number =>
 
 type Lane = { area: string; x: number; y: number; width: number; height: number };
 
-function horizontalLayout() {
+function horizontalLayout(exam: ExamId) {
   const depth = depthOf;
   const pos: Record<string, Point> = {};
   const lanes: Lane[] = [];
   let columns = 0;
   let y = TOP;
 
-  AREAS.forEach((area) => {
+  AREAS[exam].forEach((area) => {
     const byColumn = new Map<number, Skill[]>();
     SKILLS.filter((s) => s.area === area).forEach((s) => {
       const col = depth(s);
@@ -160,8 +163,8 @@ function horizontalLayout() {
   return { pos, lanes: lanes.map((l) => ({ ...l, width: width - 24 })), width, height: y };
 }
 
-function verticalLayout() {
-  const areas = AREAS.map((area) => {
+function verticalLayout(exam: ExamId) {
+  const areas = AREAS[exam].map((area) => {
     const byRow = new Map<number, Skill[]>();
     SKILLS.filter((s) => s.area === area).forEach((s) => byRow.set(depthOf(s), [...(byRow.get(depthOf(s)) ?? []), s]));
     // Rows are the depths this area actually has, so an area that starts deep does not open on a gap
@@ -190,11 +193,13 @@ function verticalLayout() {
   return { pos, lanes, width, height: y };
 }
 
-const BASE: Record<Orientation, ReturnType<typeof horizontalLayout>> = {
-  horizontal: autoLayout("horizontal"),
-  vertical: autoLayout("vertical"),
-};
-/** Each orientation keeps its own arrangement: a node dragged on the phone map says nothing about the wide one */
+const BASE = Object.fromEntries(
+  EXAM_IDS.map((exam) => [exam, { horizontal: autoLayout("horizontal", exam), vertical: autoLayout("vertical", exam) }])
+) as Record<ExamId, Record<Orientation, ReturnType<typeof horizontalLayout>>>;
+/**
+ * Each orientation keeps its own arrangement: a node dragged on the phone map says nothing about the wide one.
+ * Each exam does too; SAT keeps the keys it had before IELTS joined, so saved layouts survive.
+ */
 const NODES_KEY: Record<Orientation, string> = {
   horizontal: "lupidrupi.skillmap.nodes.v1",
   vertical: "lupidrupi.skillmap.nodes.vertical.v1",
@@ -203,6 +208,7 @@ const VIEW_KEY: Record<Orientation, string> = {
   horizontal: "lupidrupi.skillmap.view.v1",
   vertical: "lupidrupi.skillmap.view.vertical.v1",
 };
+const keyFor = (keys: Record<Orientation, string>, o: Orientation, exam: ExamId) => (exam === "sat" ? keys[o] : `${keys[o]}.${exam}`);
 
 const GAP = R + 9;
 const HEAD = 6;
@@ -251,35 +257,44 @@ function edgePathDown(a: Point, b: Point, foot: number, margin: number) {
 }
 
 /** Knowledge map: exam areas as lanes, prerequisites linked to the skill that needs them. */
-export function SkillGraph({ states, recall, misconceptions, highlight, selected, onSelect, details, onClose }: Props) {
+export function SkillGraph({ exam, states, recall, misconceptions, highlight, selected, onSelect, details, onClose }: Props) {
   const orientation: Orientation = useVertical() ? "vertical" : "horizontal";
   const vertical = orientation === "vertical";
-  const base = BASE[orientation];
+  const base = BASE[exam][orientation];
+  const skills = SKILLS.filter((s) => s.exam === exam);
   const nodeW = vertical ? V_NODE_W : NODE_W;
 
   // Only the nodes the student dragged, per orientation; everything else keeps its automatic place
   const [moved, setMoved] = useState<Record<Orientation, Record<string, Point>>>({ horizontal: {}, vertical: {} });
-  const [loaded, setLoaded] = useState(false);
+  // Saved when a node is let go (or the layout is reset), never while it is being dragged
+  const [commits, setCommits] = useState(0);
+  const movedRef = useRef(moved);
+  movedRef.current = moved;
 
   useEffect(() => {
     const load = (o: Orientation) =>
-      Object.fromEntries(Object.entries(readStore<Record<string, Point>>(NODES_KEY[o]) ?? {}).filter(([id]) => id in BASE[o].pos));
+      Object.fromEntries(Object.entries(store.get<Record<string, Point>>(keyFor(NODES_KEY, o, exam)) ?? {}).filter(([id]) => id in BASE[exam][o].pos));
     setMoved({ horizontal: load("horizontal"), vertical: load("vertical") });
-    setLoaded(true);
-  }, []);
+    // Mounted once per exam (the map is keyed by it), so the exam never changes under a loaded layout
+  }, [exam]);
 
   useEffect(() => {
-    if (!loaded) return;
-    (["horizontal", "vertical"] as const).forEach((o) =>
-      writeStore(NODES_KEY[o], Object.keys(moved[o]).length ? moved[o] : null)
-    );
-  }, [loaded, moved]);
+    if (!commits) return;
+    const o = movedRef.current[orientation];
+    store.set(keyFor(NODES_KEY, orientation, exam), Object.keys(o).length ? o : null);
+  }, [commits, orientation, exam]);
 
   const pos = { ...base.pos, ...moved[orientation] };
   const hasMoved = Object.keys(moved[orientation]).length > 0;
 
-  const drag = useNodeDrag((id, x, y) => setMoved((m) => ({ ...m, [orientation]: { ...m[orientation], [id]: { x, y } } })));
-  const resetLayout = () => setMoved((m) => ({ ...m, [orientation]: {} }));
+  const drag = useNodeDrag(
+    (id, x, y) => setMoved((m) => ({ ...m, [orientation]: { ...m[orientation], [id]: { x, y } } })),
+    () => setCommits((c) => c + 1)
+  );
+  const resetLayout = () => {
+    setMoved((m) => ({ ...m, [orientation]: {} }));
+    setCommits((c) => c + 1);
+  };
 
   // On the phone map links start under each node, so how far down a node reaches is measured, not guessed
   const nodeRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -293,19 +308,19 @@ export function SkillGraph({ states, recall, misconceptions, highlight, selected
 
   const related = new Set<string>();
   if (selected) {
-    const skill = SKILLS.find((s) => s.id === selected)!;
-    skill.requires.forEach((id) => related.add(id));
-    SKILLS.filter((s) => s.requires.includes(selected)).forEach((s) => related.add(s.id));
+    const skill = skills.find((s) => s.id === selected);
+    skill?.requires.forEach((id) => related.add(id));
+    skills.filter((s) => s.requires.includes(selected)).forEach((s) => related.add(s.id));
   }
 
-  const edges = SKILLS.flatMap((s) => s.requires.map((from) => ({ from, to: s.id })));
+  const edges = skills.flatMap((s) => s.requires.map((from) => ({ from, to: s.id })));
 
   return (
     <GraphCanvas
       width={base.width}
       height={base.height}
       label="Холст карты навыков"
-      storageKey={VIEW_KEY[orientation]}
+      storageKey={keyFor(VIEW_KEY, orientation, exam)}
       hint={
         vertical
           ? "Нажми на навык — подробности снизу. Карта листается пальцем."
@@ -313,14 +328,14 @@ export function SkillGraph({ states, recall, misconceptions, highlight, selected
       }
       popover={
         selected && details
-          ? { at: pos[selected], gap: nodeW / 2, label: SKILLS.find((s) => s.id === selected)!.name, content: details, onClose }
+          ? { at: pos[selected], gap: nodeW / 2, label: skills.find((s) => s.id === selected)?.name ?? "", content: details, onClose }
           : null
       }
       onBackgroundTap={onClose}
       beacons={[
         // Roots first: errors higher up trace back to them. Then skills with a confirmed trap.
-        ...SKILLS.filter((s) => s.root).map((s) => ({ id: s.id, at: pos[s.id], label: `Корень: ${s.name}`, tone: "root" as const })),
-        ...SKILLS.filter((s) => misconceptions[s.id].some((m) => m.status === "confirmed")).map((s) => ({
+        ...skills.filter((s) => s.root).map((s) => ({ id: s.id, at: pos[s.id], label: `Корень: ${s.name}`, tone: "root" as const })),
+        ...skills.filter((s) => misconceptions[s.id].some((m) => m.status === "confirmed")).map((s) => ({
           id: s.id,
           at: pos[s.id],
           label: `Ловушка: ${s.name}`,
@@ -363,7 +378,7 @@ export function SkillGraph({ states, recall, misconceptions, highlight, selected
         })}
       </svg>
 
-      {SKILLS.map((s) => {
+      {skills.map((s) => {
         const state = states[s.id];
         const at = pos[s.id];
         const openMisconceptions = misconceptions[s.id].filter((m) => m.status === "confirmed" || m.status === "suspected").length;

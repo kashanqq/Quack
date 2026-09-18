@@ -12,6 +12,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { store } from "../account/store";
 import styles from "./prep.module.css";
 
 /** Canvas offset in screen pixels and the zoom the content is drawn at. */
@@ -31,6 +32,8 @@ const EDGE = 12;
 const TOP_EDGE = 54;
 /** Narrower than this, the card turns into a sheet along the bottom of the canvas */
 const SHEET_BELOW = 560;
+/** A wheel gesture counts as finished after this long without another tick */
+const WHEEL_SETTLE_MS = 400;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -43,23 +46,6 @@ const dropSelection = () => window.getSelection()?.removeAllRanges();
 /** Nodes drag in screen pixels; the current zoom turns those into canvas pixels. */
 const ScaleContext = createContext<{ current: number }>({ current: 1 });
 
-export function readStore<T>(key: string): T | null {
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function writeStore(key: string, value: unknown) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Private mode: the layout just is not remembered.
-  }
-}
-
 type Props = {
   /** Size of the drawing itself; the viewport shows as much of it as fits */
   width: number;
@@ -68,7 +54,7 @@ type Props = {
   /** Extra buttons next to the zoom controls, e.g. "разложить заново" */
   tools?: ReactNode;
   hint?: string;
-  /** Where to remember the pan and zoom between visits */
+  /** Where to remember the pan and zoom between visits; saved when a gesture ends, not while it runs */
   storageKey?: string;
   /** A card pinned beside a point of the drawing; it follows the point but never scales with the zoom */
   popover?: Popover | null;
@@ -100,8 +86,14 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
   const [grabbing, setGrabbing] = useState(false);
   /** A short glide when the view jumps to a point, so the student sees where the map went */
   const [gliding, setGliding] = useState(false);
-  /** Nothing is remembered until the map has actually been moved — the first visit always gets a fresh view */
-  const [touched, setTouched] = useState(false);
+  /**
+   * The view is saved once a gesture is over — the pan released, the wheel settled, a button pressed —
+   * never on every frame of it. Until the map is moved, nothing is saved and every visit opens fresh.
+   */
+  const [commits, setCommits] = useState(0);
+  const commit = useCallback(() => setCommits((c) => c + 1), []);
+  const viewRef = useRef(view);
+  viewRef.current = view;
   const pan = useRef<{ id: number; x: number; y: number; sx: number; sy: number; moved: boolean } | null>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const scaleRef = useRef(1);
@@ -109,7 +101,6 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
 
   /** Zoom keeping the point under the cursor (or the middle of the viewport) still */
   const zoomAt = useCallback((factor: number, px: number, py: number) => {
-    setTouched(true);
     setView((v) => {
       const k = clamp(v.k * factor, MIN_K, MAX_K);
       return { k, x: px - ((px - v.x) / v.k) * k, y: py - ((py - v.y) / v.k) * k };
@@ -119,13 +110,14 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
   const zoomBy = (factor: number) => {
     const box = viewportRef.current?.getBoundingClientRect();
     zoomAt(factor, (box?.width ?? 0) / 2, (box?.height ?? 0) / 2);
+    commit();
   };
 
   /** The whole drawing at once, however small that turns out */
   const fit = () => {
     const box = viewportRef.current?.getBoundingClientRect();
     if (!box) return;
-    setTouched(true);
+    commit();
     const k = clamp(Math.min((box.width - PAD * 2) / width, (box.height - PAD * 2) / height), MIN_K, 1);
     setView({ k, x: (box.width - width * k) / 2, y: Math.max(PAD, (box.height - height * k) / 2) });
   };
@@ -141,21 +133,22 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
 
   /** Brings a point of the drawing to the middle of the viewport */
   const focusOn = (at: { x: number; y: number }) => {
-    setTouched(true);
     setGliding(true);
     setView((v) => ({ ...v, x: box.w / 2 - at.x * v.k, y: box.h / 2 - at.y * v.k }));
+    commit();
     window.setTimeout(() => setGliding(false), 480);
   };
 
   useEffect(() => {
-    const stored = storageKey ? readStore<View>(storageKey) : null;
+    const stored = storageKey ? store.get<View>(storageKey) : null;
     if (stored && Number.isFinite(stored.k)) setView(stored);
     else fitWidth();
   }, [fitWidth, storageKey]);
 
+  // Runs after the render that applied the gesture's last step, so it saves where the map came to rest
   useEffect(() => {
-    if (storageKey && touched) writeStore(storageKey, view);
-  }, [storageKey, touched, view]);
+    if (commits && storageKey) store.set(storageKey, viewRef.current);
+  }, [commits, storageKey]);
 
   // Measured before the first paint as well, not only when the observer gets round to it
   useLayoutEffect(() => {
@@ -180,6 +173,7 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
+    let settle: ReturnType<typeof setTimeout> | undefined;
     const onWheel = (e: WheelEvent) => {
       // Over the popover or the controls the wheel belongs to them, e.g. to scroll a long card
       if ((e.target as HTMLElement).closest?.("[data-canvas-chrome]")) return;
@@ -190,11 +184,19 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
       } else if (e.shiftKey) {
         e.preventDefault();
         setView((v) => ({ ...v, x: v.x - (e.deltaX || e.deltaY) }));
+      } else {
+        return;
       }
+      // A wheel has no "release": the gesture is over once the ticks stop
+      clearTimeout(settle);
+      settle = setTimeout(commit, WHEEL_SETTLE_MS);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [zoomAt]);
+    return () => {
+      clearTimeout(settle);
+      el.removeEventListener("wheel", onWheel);
+    };
+  }, [commit, zoomAt]);
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 && e.button !== 1) return;
@@ -211,7 +213,6 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
     if (!p || p.id !== e.pointerId) return;
     if (!p.moved && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) < SLOP) return;
     p.moved = true;
-    setTouched(true);
     const dx = e.clientX - p.x;
     const dy = e.clientY - p.y;
     p.x = e.clientX;
@@ -224,7 +225,8 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
     if (p?.id !== e.pointerId) return;
     pan.current = null;
     setGrabbing(false);
-    if (!p.moved && e.type === "pointerup") onBackgroundTap?.();
+    if (p.moved) commit();
+    else if (e.type === "pointerup") onBackgroundTap?.();
   };
 
   return (
@@ -418,7 +420,7 @@ type Drag = { id: string; pointer: number; px: number; py: number; ox: number; o
  * Dragging for the nodes inside a GraphCanvas. A press that does not travel still selects the node, so
  * the map keeps working for anyone who never drags anything.
  */
-export function useNodeDrag(onMove: (id: string, x: number, y: number) => void) {
+export function useNodeDrag(onMove: (id: string, x: number, y: number) => void, onDrop?: (id: string) => void) {
   const scale = useContext(ScaleContext);
   const drag = useRef<Drag | null>(null);
   const settled = useRef(false);
@@ -451,6 +453,7 @@ export function useNodeDrag(onMove: (id: string, x: number, y: number) => void) 
       drag.current = null;
       settled.current = d.moved;
       setDragging(null);
+      if (d.moved) onDrop?.(d.id);
     },
     onPointerCancel: () => {
       drag.current = null;
