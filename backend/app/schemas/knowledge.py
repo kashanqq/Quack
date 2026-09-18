@@ -188,3 +188,26 @@ class RootCauseOut(BaseModel):
     confidence: float
     source: Literal["diagnostic", "observer", "rule"]
     created_at: datetime
+
+
+# --- Temporary: phase-2 additions used by reconcile (B3's skeleton will own these) ---
+
+
+class MisconceptionChange(BaseModel):
+    """Change of one MisconceptionState after one evidence (memory-arch §5.1)."""
+
+    misconception_id: str
+    from_status: MisconceptionStatus | None
+    to_status: MisconceptionStatus
+    counters: dict
+
+
+class ReconcileResult(BaseModel):
+    """Output of reconcile_task_answer — memory-architecture §8.2 steps 3–8."""
+
+    evidence: list[EvidenceIn]
+    state_after: KnowledgeStateOut
+    cross_exam_state: KnowledgeStateOut | None = None
+    misconception_change: MisconceptionChange | None = None
+    root_causes: list[RootCauseOut] = []
+    words: str
