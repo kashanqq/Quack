@@ -1,0 +1,55 @@
+{
+  "id": "tpl.ent.trig.identities.reduction_sign_numeric",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 2,
+  "skill_id": "ent.trig.identities",
+  "tags": [
+    "reduction",
+    "sign",
+    "quadrant"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "k": {
+      "range": null,
+      "choices": [
+        1,
+        3
+      ]
+    },
+    "angle_deg": {
+      "range": null,
+      "choices": [
+        30,
+        60
+      ]
+    }
+  },
+  "constraints": [],
+  "stem": "Найдите значение выражения sin({k}·180° + {angle_deg}°) без использования калькулятора.",
+  "correct": "(-1)**k * sin(angle_deg*pi/180)",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "sin(angle_deg*pi/180)",
+      "misconception_id": "lib.trig_reduction_sign"
+    },
+    {
+      "expr": "cos(angle_deg*pi/180)",
+      "misconception_id": "lib.trig_reduction_sign"
+    }
+  ],
+  "solution": [
+    "Угол {k}·180° + {angle_deg}° получается из угла {angle_deg}° добавлением {k} полуоборотов.",
+    "При добавлении целого числа полуоборотов синус сохраняет абсолютную величину, но знак зависит от того, в какой четверти окажется угол.",
+    "Если k чётное, угол лежит в первой или второй четверти, где синус положителен; если k нечётное — в третьей или четвёртой, где синус отрицателен.",
+    "Поэтому sin({k}·180° + {angle_deg}°) = (-1)^{k} · sin({angle_deg}°).",
+    "Ответ: {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

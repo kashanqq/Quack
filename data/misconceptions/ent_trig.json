@@ -14,5 +14,21 @@
     "error_class": "conceptual",
     "skill_ids": ["ent.trig.equations"],
     "exam_specific": null
+  },
+  {
+    "id": "lib.cosine_law_sign",
+    "name": "Знак в теореме косинусов",
+    "description": "Ученик пишет c² = a² + b² + 2ab·cos C вместо c² = a² + b² − 2ab·cos C: минус перед удвоенным произведением теряется, и сторона против острого угла выходит длиннее, чем должна быть.",
+    "error_class": "conceptual",
+    "skill_ids": ["ent.trig.triangle"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.trig_root_selection",
+    "name": "Не отбирает корни на промежутке",
+    "description": "Ученик находит серию решений уравнения и берёт в ответ первый корень, не проверяя, попадает ли он в указанный в условии промежуток.",
+    "error_class": "attention",
+    "skill_ids": ["ent.trig.equations"],
+    "exam_specific": null
   }
 ]

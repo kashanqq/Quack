@@ -1,0 +1,64 @@
+{
+  "id": "tpl.ent.trig.triangle.area_sides_angle",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 2,
+  "skill_id": "ent.trig.triangle",
+  "tags": [
+    "area",
+    "sine",
+    "triangle"
+  ],
+  "time_reference_sec": 80,
+  "kind": "template",
+  "params": {
+    "side1": {
+      "range": [
+        4,
+        10
+      ],
+      "choices": null
+    },
+    "side2": {
+      "range": [
+        5,
+        12
+      ],
+      "choices": null
+    },
+    "angle_deg": {
+      "range": null,
+      "choices": [
+        30,
+        60,
+        90
+      ]
+    }
+  },
+  "constraints": [
+    "side1 != side2"
+  ],
+  "stem": "В треугольнике две стороны равны {side1} и {side2}, а угол между ними равен {angle_deg}°. Найдите площадь треугольника.",
+  "correct": "side1*side2*sin(angle_deg*pi/180)/2",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "side1*side2*sin(angle_deg*pi/180)",
+      "misconception_id": "lib.area_half_dropped"
+    },
+    {
+      "expr": "side1*side2*cos(angle_deg*pi/180)/2",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Площадь треугольника через две стороны и угол между ними: S = (1/2)·a·b·sin C.",
+    "Подставляем данные: S = (1/2)·{side1}·{side2}·sin {angle_deg}°.",
+    "Синус угла {angle_deg}° — табличное значение, поэтому площадь вычисляется точно.",
+    "Ответ: {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

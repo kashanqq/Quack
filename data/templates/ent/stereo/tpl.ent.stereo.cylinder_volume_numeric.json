@@ -1,0 +1,55 @@
+{
+  "id": "tpl.ent.stereo.cylinder_volume_numeric",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 2,
+  "skill_id": "ent.stereo.cylinder",
+  "tags": [
+    "cylinder",
+    "volume",
+    "units"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "r": {
+      "range": [
+        3,
+        10
+      ],
+      "choices": null
+    },
+    "h": {
+      "range": [
+        4,
+        15
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "r != h"
+  ],
+  "stem": "Радиус основания цилиндра равен {r} см, а высота равна {h} см. Найдите объём цилиндра. Ответ дайте в кубических сантиметрах.",
+  "correct": "pi*r**2*h",
+  "distractors": [],
+  "omission_traps": [],
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "pi*r**2*h/1000",
+      "misconception_id": "lib.volume_units"
+    },
+    {
+      "expr": "pi*r**2*h/100",
+      "misconception_id": "lib.volume_units"
+    }
+  ],
+  "solution": [
+    "Объём цилиндра равен произведению площади основания на высоту: V = π·r²·h.",
+    "Подставляем данные: V = π·{r}²·{h} см³.",
+    "Ответ: {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

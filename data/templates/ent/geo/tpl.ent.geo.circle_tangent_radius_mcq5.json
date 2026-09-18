@@ -1,0 +1,67 @@
+{
+  "id": "tpl.ent.geo.circle_tangent_radius_mcq5",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 3,
+  "skill_id": "ent.geo.circle",
+  "tags": [
+    "tangent",
+    "radius",
+    "pythagorean_theorem"
+  ],
+  "time_reference_sec": 120,
+  "kind": "template",
+  "params": {
+    "r": {
+      "range": [
+        3,
+        12
+      ],
+      "choices": null
+    },
+    "d": {
+      "range": [
+        5,
+        20
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "d > r",
+    "gcd(r, d) == 1"
+  ],
+  "stem": "Из точки M, удалённой от центра O окружности на расстояние {d}, проведена касательная MA к окружности радиуса {r}. Найдите длину отрезка касательной MA.",
+  "correct": "sqrt(d**2 - r**2)",
+  "distractors": [
+    {
+      "expr": "sqrt(d**2 + r**2)",
+      "misconception_id": "lib.pythagoras_leg_hypotenuse"
+    },
+    {
+      "expr": "d + r",
+      "misconception_id": null
+    },
+    {
+      "expr": "d - r",
+      "misconception_id": null
+    },
+    {
+      "expr": "sqrt(d**2 - r**2)/2",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Радиус OA, проведённый в точку касания, перпендикулярен касательной MA, поэтому треугольник OMA прямоугольный с прямым углом A.",
+    "Гипотенуза OM равна расстоянию от точки M до центра: OM = {d}.",
+    "Катет OA равен радиусу окружности: OA = {r}.",
+    "По теореме Пифагора: MA² = OM² − OA² = {d}² − {r}².",
+    "Следовательно, MA = √({d}² − {r}²).",
+    "Ответ: вариант {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

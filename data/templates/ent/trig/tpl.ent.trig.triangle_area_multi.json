@@ -1,0 +1,76 @@
+{
+  "id": "tpl.ent.trig.triangle_area_multi",
+  "exam_id": "ENT_MATH",
+  "type": "multi_select",
+  "difficulty": 3,
+  "skill_id": "ent.trig.triangle",
+  "tags": [
+    "area",
+    "sine",
+    "triangle"
+  ],
+  "time_reference_sec": 100,
+  "kind": "template",
+  "params": {
+    "side1": {
+      "range": [
+        4,
+        10
+      ],
+      "choices": null
+    },
+    "side2": {
+      "range": [
+        5,
+        12
+      ],
+      "choices": null
+    },
+    "angle_deg": {
+      "range": null,
+      "choices": [
+        30,
+        60,
+        90
+      ]
+    }
+  },
+  "constraints": [
+    "side1 != side2"
+  ],
+  "stem": "В треугольнике две стороны равны {side1} и {side2}, а угол между ними равен {angle_deg}°. Выберите все верные утверждения о площади S этого треугольника.",
+  "correct": [
+    "площадь равна половине произведения данных сторон на синус угла между ними",
+    "площадь положительна"
+  ],
+  "distractors": [
+    {
+      "expr": "площадь равна произведению данных сторон на синус угла между ними",
+      "misconception_id": "lib.area_half_dropped"
+    },
+    {
+      "expr": "площадь равна половине произведения данных сторон на косинус угла между ними",
+      "misconception_id": null
+    },
+    {
+      "expr": "площадь не зависит от угла между данными сторонами",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": [
+    {
+      "omit": "площадь равна половине произведения данных сторон на синус угла между ними",
+      "misconception_id": null
+    }
+  ],
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Площадь треугольника через две стороны и угол между ними: S = (1/2)·a·b·sin C.",
+    "Здесь a = {side1}, b = {side2}, C = {angle_deg}°, поэтому S = (1/2)·{side1}·{side2}·sin {angle_deg}°.",
+    "Синус угла 30°, 60° или 90° положителен, значит площадь положительна.",
+    "Площадь зависит от синуса угла, а не от косинуса, и не равна произведению сторон без множителя 1/2."
+  ],
+  "generator": null,
+  "figure": null
+}

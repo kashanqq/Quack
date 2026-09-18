@@ -1,0 +1,72 @@
+{
+  "id": "tpl.ent.trig.triangle.cosine_law_side",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 2,
+  "skill_id": "ent.trig.triangle",
+  "tags": [
+    "cosine",
+    "law of cosines",
+    "side"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        4,
+        10
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        5,
+        12
+      ],
+      "choices": null
+    },
+    "angle_deg": {
+      "range": null,
+      "choices": [
+        60,
+        120
+      ]
+    }
+  },
+  "constraints": [
+    "a != b"
+  ],
+  "stem": "В треугольнике две стороны равны {a} и {b}, а угол между ними равен {angle_deg}°. Найдите длину третьей стороны.",
+  "correct": "sqrt(a**2 + b**2 - 2*a*b*cos(angle_deg*pi/180))",
+  "distractors": [
+    {
+      "expr": "sqrt(a**2 + b**2 + 2*a*b*cos(angle_deg*pi/180))",
+      "misconception_id": "lib.cosine_law_sign"
+    },
+    {
+      "expr": "sqrt(a**2 + b**2 - 2*a*b*sin(angle_deg*pi/180))",
+      "misconception_id": null
+    },
+    {
+      "expr": "a + b",
+      "misconception_id": null
+    },
+    {
+      "expr": "Abs(a - b)",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "По теореме косинусов для стороны c, противолежащей углу C между сторонами a и b: c² = a² + b² − 2·a·b·cos C.",
+    "Подставляем данные: c² = {a}² + {b}² − 2·{a}·{b}·cos {angle_deg}°.",
+    "Угол {angle_deg}° имеет табличное значение косинуса, поэтому выражение вычисляется точно.",
+    "Длина стороны положительна, поэтому c = √(a² + b² − 2·a·b·cos C).",
+    "Ответ: {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}
