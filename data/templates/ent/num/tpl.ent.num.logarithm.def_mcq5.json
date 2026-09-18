@@ -1,0 +1,60 @@
+{
+  "id": "tpl.ent.num.logarithm.def_mcq5",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 1,
+  "skill_id": "ent.num.logarithm",
+  "tags": [
+    "logarithm",
+    "definition"
+  ],
+  "time_reference_sec": 60,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        5
+      ],
+      "choices": null
+    },
+    "k": {
+      "range": [
+        2,
+        5
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [],
+  "stem": "Найдите значение выражения: log_{a}({a}^{k})",
+  "correct": "k",
+  "distractors": [
+    {
+      "expr": "a*k",
+      "misconception_id": null
+    },
+    {
+      "expr": "a**k",
+      "misconception_id": null
+    },
+    {
+      "expr": "k/a",
+      "misconception_id": null
+    },
+    {
+      "expr": "a + k",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "По определению логарифма log_{a}({a}^{k}) — это показатель степени, в которую нужно возвести основание {a}, чтобы получить {a}^{k}.",
+    "Так как {a}^{k} = {a}^{k}, показатель равен {k}.",
+    "Ответ: вариант {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

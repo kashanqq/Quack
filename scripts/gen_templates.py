@@ -150,10 +150,20 @@ def _misconceptions_for_area(
     ]
 
 
-def _example_templates(area_dir: Path, skill_id: str, limit: int = 2) -> list[dict]:
-    if not area_dir.exists():
-        return []
-    files = sorted(area_dir.glob("*.json"))
+def _example_templates(
+    area_dir: Path,
+    skill_id: str,
+    limit: int = 2,
+    fallback_dir: Path | None = None,
+) -> list[dict]:
+    """Up to ``limit`` existing templates as a format sample (§3.1).
+
+    An area generated for the first time has no files of its own, and the
+    model still needs to see the shape of a real template — so fall back to
+    the same exam's other areas rather than sending it none."""
+    files = sorted(area_dir.glob("*.json")) if area_dir.exists() else []
+    if not files and fallback_dir is not None and fallback_dir.exists():
+        files = sorted(fallback_dir.glob("*/*.json"))
     matching = [f for f in files if _load_json(f).get("skill_id") == skill_id]
     rest = [f for f in files if f not in matching]
     return [_load_json(f) for f in (matching + rest)[:limit]]
@@ -320,7 +330,11 @@ async def run(argv: list[str] | None = None) -> int:
 
     per_skill_messages: list[tuple[dict, list[LLMMessage]]] = []
     for skill in skills:
-        examples = _example_templates(area_dir, skill["id"])
+        examples = _example_templates(
+            area_dir,
+            skill["id"],
+            fallback_dir=data_dir / "templates" / exam_dir_name,
+        )
         messages = _build_messages(
             exam_format_doc, skill, area_misconceptions, examples, args.n
         )

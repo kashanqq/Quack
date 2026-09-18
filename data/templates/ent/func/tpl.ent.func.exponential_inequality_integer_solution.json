@@ -1,0 +1,71 @@
+{
+  "id": "tpl.ent.func.exponential_inequality_integer_solution",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 2,
+  "skill_id": "ent.func.exponential",
+  "tags": [
+    "exponential_inequality",
+    "same_base",
+    "integer_solution",
+    "monotonicity"
+  ],
+  "time_reference_sec": 150,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        4
+      ],
+      "choices": null
+    },
+    "m": {
+      "range": [
+        1,
+        3
+      ],
+      "choices": null
+    },
+    "n": {
+      "range": [
+        1,
+        3
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "m != n",
+    "n - m >= 2"
+  ],
+  "stem": "Решите неравенство {a}^(x + {m}) < {a}^{n}. В ответе укажите наибольшее целое число, удовлетворяющее неравенству.",
+  "correct": "n - m - 1",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "n - m",
+      "misconception_id": "lib.inequality_endpoint"
+    },
+    {
+      "expr": "m - n - 1",
+      "misconception_id": null
+    },
+    {
+      "expr": "n + m - 1",
+      "misconception_id": "lib.exp_base_confusion"
+    }
+  ],
+  "solution": [
+    "Основания степеней в левой и правой частях неравенства одинаковы и равны {a}.",
+    "Показательная функция с основанием {a} > 1 строго возрастает, поэтому знак неравенства сохраняется при переходе к показателям.",
+    "Переходим к неравенству для показателей: x + {m} < {n}.",
+    "Выражаем x: x < {n} − {m}.",
+    "Наибольшее целое число, меньшее {n} − {m}, равно {n} − {m} − 1.",
+    "Ответ: {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

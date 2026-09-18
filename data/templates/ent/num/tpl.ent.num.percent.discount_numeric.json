@@ -1,0 +1,58 @@
+{
+  "id": "tpl.ent.num.percent.discount_numeric",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 1,
+  "skill_id": "ent.num.percent",
+  "tags": [
+    "percent",
+    "discount",
+    "price"
+  ],
+  "time_reference_sec": 60,
+  "kind": "template",
+  "params": {
+    "price": {
+      "range": [
+        400,
+        1200
+      ],
+      "choices": null
+    },
+    "discount": {
+      "range": [
+        10,
+        40
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "price % 10 == 0",
+    "discount % 5 == 0",
+    "price * discount % 100 == 0"
+  ],
+  "stem": "Товар стоил {price} тенге. На распродаже его цену снизили на {discount}%. Сколько тенге стал стоить товар?",
+  "correct": "price * (100 - discount) / 100",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "price * discount / 100",
+      "misconception_id": "lib.percent_of_not_increase"
+    },
+    {
+      "expr": "price * (100 + discount) / 100",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Скидка составляет {discount}% от первоначальной цены {price} тенге, то есть {price} · {discount}/100 тенге.",
+    "Новая цена равна первоначальной цене за вычетом скидки: {price} − {price} · {discount}/100 = {price} · (1 − {discount}/100).",
+    "Это равно {price} · (100 − {discount})/100 тенге.",
+    "Ответ: {answer} тенге."
+  ],
+  "generator": null,
+  "figure": null
+}

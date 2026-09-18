@@ -1,0 +1,71 @@
+{
+  "id": "tpl.ent.func.logarithm_properties_multi_select",
+  "exam_id": "ENT_MATH",
+  "type": "multi_select",
+  "difficulty": 2,
+  "skill_id": "ent.func.logarithm",
+  "tags": [
+    "log_properties",
+    "true_false",
+    "conceptual"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        5
+      ],
+      "choices": null
+    },
+    "m": {
+      "range": [
+        2,
+        6
+      ],
+      "choices": null
+    },
+    "n": {
+      "range": [
+        2,
+        6
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "m != n"
+  ],
+  "stem": "Выберите все верные утверждения о логарифмах с положительным основанием a ≠ 1 и положительными аргументами M и N.",
+  "correct": [
+    "log_a(M·N) = log_a(M) + log_a(N)",
+    "log_a(M/N) = log_a(M) − log_a(N)",
+    "log_a(M^n) = n·log_a(M)"
+  ],
+  "distractors": [
+    {
+      "expr": "log_a(M + N) = log_a(M) + log_a(N)",
+      "misconception_id": null
+    },
+    {
+      "expr": "log_a(M − N) = log_a(M) / log_a(N)",
+      "misconception_id": null
+    },
+    {
+      "expr": "log_a(M) · log_a(N) = log_a(M·N)",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Логарифм произведения равен сумме логарифмов: log_a(M·N) = log_a(M) + log_a(N).",
+    "Логарифм частного равен разности логарифмов: log_a(M/N) = log_a(M) − log_a(N).",
+    "Логарифм степени равен произведению показателя на логарифм основания: log_a(M^n) = n·log_a(M).",
+    "Логарифм суммы не равен сумме логарифмов, логарифм разности не равен частному логарифмов, а произведение логарифмов не равно логарифму произведения."
+  ],
+  "generator": null,
+  "figure": null
+}
