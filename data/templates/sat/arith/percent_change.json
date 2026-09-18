@@ -1,0 +1,29 @@
+{
+  "id": "tpl.sat.arith.percent_change",
+  "exam_id": "SAT_MATH",
+  "type": "numeric",
+  "difficulty": 2,
+  "skill_id": "sat.adv.exponential",
+  "tags": ["percent_change"],
+  "time_reference_sec": 60,
+  "kind": "template",
+  "params": {
+    "base": { "range": [50, 200] },
+    "pct":  { "range": [5, 40] }
+  },
+  "constraints": ["base * pct % 100 == 0"],
+  "stem": "Число {base} увеличили на {pct}%. Какое число получилось?",
+  "correct": "base * (100 + pct) / 100",
+  "distractors": [],
+  "answer_forms": ["integer", "fraction", "decimal:2"],
+  "trap_answers": [
+    { "expr": "base * pct / 100", "misconception_id": "lib.percent_of_not_increase" },
+    { "expr": "base * (100 - pct) / 100", "misconception_id": null }
+  ],
+  "solution": [
+    "{base} × (1 + {pct}/100)",
+    "= {answer}"
+  ],
+  "generator": null,
+  "figure": null
+}

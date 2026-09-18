@@ -1,0 +1,106 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quack-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check deployment configuration
+        id: config
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          DOMAIN: ${{ secrets.DOMAIN }}
+        run: |
+          set -euo pipefail
+          required=(VPS_HOST VPS_USER VPS_SSH_KEY VPS_KNOWN_HOSTS DOMAIN)
+          missing=()
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              missing+=("$name")
+            fi
+          done
+          if (( ${#missing[@]} == ${#required[@]} )); then
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+            echo '::notice::Deployment skipped: VPS secrets are not configured yet'
+            echo 'Deployment skipped. Configure VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_KNOWN_HOSTS and DOMAIN in repository secrets to enable deployment.' >> "$GITHUB_STEP_SUMMARY"
+          elif (( ${#missing[@]} > 0 )); then
+            echo "::error::Incomplete deployment configuration. Missing secrets: ${missing[*]}"
+            exit 1
+          else
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy exact main commit over SSH
+        if: steps.config.outputs.configured == 'true'
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          : "${VPS_HOST:?VPS_HOST is required}"
+          : "${VPS_USER:?VPS_USER is required}"
+          : "${VPS_SSH_KEY:?VPS_SSH_KEY is required}"
+          : "${VPS_KNOWN_HOSTS:?VPS_KNOWN_HOSTS is required}"
+          printf '%s\n' "$VPS_SSH_KEY" > "$RUNNER_TEMP/quack-deploy-key"
+          chmod 600 "$RUNNER_TEMP/quack-deploy-key"
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > "$RUNNER_TEMP/quack-known-hosts"
+          ssh -i "$RUNNER_TEMP/quack-deploy-key" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/quack-known-hosts" \
+            -o StrictHostKeyChecking=yes \
+            "$VPS_USER@$VPS_HOST" "bash -s -- '$GITHUB_SHA'" <<'REMOTE'
+          set -euo pipefail
+          expected="$1"
+          cd /opt/quack
+          test "$(git branch --show-current)" = main
+          test -z "$(git status --porcelain)"
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$expected"
+          git pull --ff-only origin main
+          test "$(git rev-parse HEAD)" = "$expected"
+          test -f deploy/.env
+          if grep -Eq '^(JWT_SECRET=change-me|POSTGRES_PASSWORD=quack-local-postgres|NEO4J_PASSWORD=quack-local-neo4j|DOMAIN=example\.invalid)$' deploy/.env; then
+            echo 'Production environment still contains example values' >&2
+            exit 1
+          fi
+          if grep -Eq '^(DATABASE_URL|NEO4J_URI|REDIS_URL)=.*(127\.0\.0\.1|localhost)' deploy/.env; then
+            echo 'Production service URLs must use Compose hostnames' >&2
+            exit 1
+          fi
+          export GIT_SHA="$expected"
+          compose=(docker compose --env-file deploy/.env -f deploy/docker-compose.yml -f deploy/docker-compose.prod.yml --profile prod)
+          "${compose[@]}" config --quiet
+          "${compose[@]}" up -d --build
+          "${compose[@]}" exec -T api alembic upgrade head
+          REMOTE
+
+      - name: Verify HTTPS health
+        if: steps.config.outputs.configured == 'true'
+        env:
+          DOMAIN: ${{ secrets.DOMAIN }}
+        run: |
+          set -euo pipefail
+          test -n "$DOMAIN"
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error --max-time 10 "https://${DOMAIN}/health" |
+              python3 -c 'import json,sys; data=json.load(sys.stdin); sys.exit(0 if data.get("status") == "ok" else 1)'; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'HTTPS health did not become ok' >&2
+          exit 1

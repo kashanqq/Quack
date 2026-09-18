@@ -1,0 +1,401 @@
+{
+  "exam": {
+    "id": "SAT_MATH",
+    "name": "SAT Math",
+    "max_raw_score": 44
+  },
+  "areas": [
+    {
+      "id": "area.sat.algebra",
+      "name": "Algebra",
+      "score_share": 0.35,
+      "skills": [
+        { "id": "math.alg.linear_eq", "weight": 2.0 },
+        { "id": "math.alg.linear_ineq", "weight": 1.5 },
+        { "id": "sat.alg.slope_lines", "weight": 1.5 },
+        { "id": "sat.alg.systems_linear", "weight": 1.6 },
+        { "id": "math.alg.quadratic_roots", "weight": 2.0 },
+        { "id": "sat.alg.quadratic_forms", "weight": 1.5 },
+        { "id": "math.alg.abs_value_eq", "weight": 1.4 },
+        { "id": "sat.alg.rational_eq", "weight": 1.0 },
+        { "id": "sat.alg.word_problems", "weight": 1.5 },
+        { "id": "sat.alg.linear_functions", "weight": 1.4 }
+      ]
+    },
+    {
+      "id": "area.sat.advanced",
+      "name": "Advanced Math",
+      "score_share": 0.35,
+      "skills": [
+        { "id": "sat.adv.functions", "weight": 1.5 },
+        { "id": "sat.adv.quadratic_functions", "weight": 1.5 },
+        { "id": "sat.adv.exponential", "weight": 1.5 },
+        { "id": "sat.adv.polynomials", "weight": 1.5 },
+        { "id": "sat.adv.rational_functions", "weight": 1.3 },
+        { "id": "sat.adv.radical_eq", "weight": 1.2 },
+        { "id": "sat.adv.systems_nonlinear", "weight": 1.3 },
+        { "id": "sat.adv.absolute_functions", "weight": 1.0 },
+        { "id": "sat.adv.function_notation", "weight": 1.5 },
+        { "id": "sat.adv.transformations", "weight": 1.5 },
+        { "id": "sat.adv.equivalent_expr", "weight": 1.6 }
+      ]
+    },
+    {
+      "id": "area.sat.psda",
+      "name": "Problem-Solving & Data Analysis",
+      "score_share": 0.15,
+      "skills": [
+        { "id": "sat.psda.ratios_rates", "weight": 1.4 },
+        { "id": "sat.psda.percent", "weight": 1.4 },
+        { "id": "sat.psda.one_var_data", "weight": 1.3 },
+        { "id": "sat.psda.two_var_data", "weight": 1.3 },
+        { "id": "sat.psda.probability", "weight": 1.2 }
+      ]
+    },
+    {
+      "id": "area.sat.geo",
+      "name": "Geometry & Trigonometry",
+      "score_share": 0.15,
+      "skills": [
+        { "id": "sat.geo.area_volume", "weight": 1.2 },
+        { "id": "sat.geo.lines_angles", "weight": 1.0 },
+        { "id": "sat.geo.triangles", "weight": 1.2 },
+        { "id": "sat.geo.circle", "weight": 1.2 },
+        { "id": "sat.geo.trig_right", "weight": 1.0 },
+        { "id": "sat.geo.trig_unit_circle", "weight": 1.0 }
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "id": "math.alg.linear_eq",
+      "name": "Линейные уравнения",
+      "description": "Решение уравнений вида ax + b = c с одной переменной: перенос членов, деление на коэффициент, работа с дробями.",
+      "effort_h": 4,
+      "base_half_life_h": null,
+      "requires": []
+    },
+    {
+      "id": "math.alg.linear_ineq",
+      "name": "Линейные неравенства",
+      "description": "Решение линейных неравенств, смена знака при умножении на отрицательное число, запись ответа в виде промежутка.",
+      "effort_h": 4,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_eq", "strength": 0.9 }
+      ]
+    },
+    {
+      "id": "sat.alg.slope_lines",
+      "name": "Прямые и угловой коэффициент",
+      "description": "Уравнение прямой y = kx + b, нахождение углового коэффициента по двум точкам, параллельные и перпендикулярные прямые.",
+      "effort_h": 5,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_eq", "strength": 0.8 }
+      ]
+    },
+    {
+      "id": "sat.alg.systems_linear",
+      "name": "Системы линейных уравнений",
+      "description": "Решение систем двух линейных уравнений: подстановка, сложение, графический метод; разбор случаев «нет решений» и «бесконечно много».",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_eq", "strength": 0.9 },
+        { "skill_id": "sat.alg.slope_lines", "strength": 0.6 }
+      ]
+    },
+    {
+      "id": "math.alg.quadratic_roots",
+      "name": "Квадратные уравнения",
+      "description": "Нахождение корней квадратного уравнения через дискриминант, теорема Виета, разложение на множители.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_eq", "strength": 0.8 }
+      ]
+    },
+    {
+      "id": "sat.alg.quadratic_forms",
+      "name": "Разные формы квадратичной функции",
+      "description": "Переход между стандартной, вершинной и факторизованной формами, выделение полного квадрата, чтение параметров из формы.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.quadratic_roots", "strength": 0.8 }
+      ]
+    },
+    {
+      "id": "math.alg.abs_value_eq",
+      "name": "Уравнения с модулем",
+      "description": "Решение уравнений вида |ax + b| = c с раскрытием обеих ветвей и проверкой знака.",
+      "effort_h": 5,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_eq", "strength": 0.9 },
+        { "skill_id": "math.alg.linear_ineq", "strength": 0.5 }
+      ]
+    },
+    {
+      "id": "sat.alg.rational_eq",
+      "name": "Рациональные уравнения",
+      "description": "Решение уравнений с алгебраическими дробями, нахождение ОДЗ, проверка на посторонние корни.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_eq", "strength": 0.7 },
+        { "skill_id": "math.alg.quadratic_roots", "strength": 0.6 }
+      ]
+    },
+    {
+      "id": "sat.alg.word_problems",
+      "name": "Текстовые задачи на линейные модели",
+      "description": "Перевод условия на язык уравнений, задачи на движение, работу, смеси, возраст.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_eq", "strength": 0.8 },
+        { "skill_id": "sat.alg.slope_lines", "strength": 0.5 }
+      ]
+    },
+    {
+      "id": "sat.alg.linear_functions",
+      "name": "Линейные функции и их графики",
+      "description": "Чтение и построение графика линейной функции, нахождение значения по графику, интерпретация параметров в контексте.",
+      "effort_h": 5,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_eq", "strength": 0.8 },
+        { "skill_id": "sat.alg.slope_lines", "strength": 0.8 }
+      ]
+    },
+    {
+      "id": "sat.adv.functions",
+      "name": "Функции и их свойства",
+      "description": "Определение функции, область определения и область значений, чётность, чтение графика, композиция.",
+      "effort_h": 7,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.alg.linear_functions", "strength": 0.8 }
+      ]
+    },
+    {
+      "id": "sat.adv.quadratic_functions",
+      "name": "Квадратичные функции",
+      "description": "График параболы, вершина, ось симметрии, максимум и минимум, связь с квадратным уравнением.",
+      "effort_h": 7,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.quadratic_roots", "strength": 0.9 },
+        { "skill_id": "sat.adv.functions", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "sat.adv.exponential",
+      "name": "Показательные функции",
+      "description": "Экспоненциальный рост и убывание, свойства степени, решение простых показательных уравнений, моделирование процентов.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.adv.functions", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "sat.adv.polynomials",
+      "name": "Многочлены",
+      "description": "Сложение, вычитание и умножение многочленов, формулы сокращённого умножения, деление с остатком.",
+      "effort_h": 7,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.quadratic_roots", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "sat.adv.rational_functions",
+      "name": "Рациональные функции",
+      "description": "Асимптоты, устранимые разрывы, преобразование выражений с дробями, свойства графика.",
+      "effort_h": 7,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.alg.rational_eq", "strength": 0.8 },
+        { "skill_id": "sat.adv.functions", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "sat.adv.radical_eq",
+      "name": "Уравнения с корнями",
+      "description": "Решение уравнений с квадратным корнем, возведение в квадрат, проверка на посторонние корни.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.quadratic_roots", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "sat.adv.systems_nonlinear",
+      "name": "Нелинейные системы",
+      "description": "Система из линейного и квадратного уравнения, число решений, графическая интерпретация.",
+      "effort_h": 7,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.alg.systems_linear", "strength": 0.8 },
+        { "skill_id": "sat.adv.quadratic_functions", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "sat.adv.absolute_functions",
+      "name": "Функции с модулем",
+      "description": "График y = |f(x)|, сдвиги и отражения, решение уравнений с модулем в функциональной форме.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.abs_value_eq", "strength": 0.9 },
+        { "skill_id": "sat.adv.functions", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "sat.adv.function_notation",
+      "name": "Обозначения функций",
+      "description": "Работа с записью f(x), f(g(x)), f⁻¹(x), таблицами значений и функциональными зависимостями в задачах.",
+      "effort_h": 5,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.adv.functions", "strength": 0.9 }
+      ]
+    },
+    {
+      "id": "sat.adv.transformations",
+      "name": "Преобразования графиков",
+      "description": "Сдвиги, растяжения и отражения графиков функций, влияние параметров a, h, k на положение графика.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.adv.functions", "strength": 0.9 }
+      ]
+    },
+    {
+      "id": "sat.adv.equivalent_expr",
+      "name": "Тождественные преобразования",
+      "description": "Упрощение и приведение выражений к эквивалентному виду, работа с дробями и многочленами, поиск эквивалентной формы.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.adv.polynomials", "strength": 0.8 },
+        { "skill_id": "sat.alg.rational_eq", "strength": 0.6 }
+      ]
+    },
+    {
+      "id": "sat.psda.ratios_rates",
+      "name": "Отношения и скорости",
+      "description": "Пропорции, единичные ставки, задачи на совместную работу и движение, перевод единиц.",
+      "effort_h": 4,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_eq", "strength": 0.6 }
+      ]
+    },
+    {
+      "id": "sat.psda.percent",
+      "name": "Проценты",
+      "description": "Проценты от числа, процентное изменение, последовательные проценты, простой и сложный процент.",
+      "effort_h": 4,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.psda.ratios_rates", "strength": 0.8 }
+      ]
+    },
+    {
+      "id": "sat.psda.one_var_data",
+      "name": "Одномерные данные",
+      "description": "Среднее, медиана, мода, размах, стандартное отклонение; чтение таблиц и диаграмм; влияние выбросов.",
+      "effort_h": 5,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.psda.percent", "strength": 0.6 }
+      ]
+    },
+    {
+      "id": "sat.psda.two_var_data",
+      "name": "Двумерные данные",
+      "description": "Диаграммы рассеяния, линия тренда, корреляция, линейная и экспоненциальная модели по данным.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.psda.one_var_data", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "sat.psda.probability",
+      "name": "Вероятность",
+      "description": "Вероятность события, дополнительная вероятность, условная вероятность, таблицы сопряжённости.",
+      "effort_h": 5,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.psda.ratios_rates", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "sat.geo.area_volume",
+      "name": "Площадь и объём",
+      "description": "Площади плоских фигур, объёмы тел, применение формул к составным фигурам, задачи на подобие и масштаб.",
+      "effort_h": 5,
+      "base_half_life_h": null,
+      "requires": []
+    },
+    {
+      "id": "sat.geo.lines_angles",
+      "name": "Прямые и углы",
+      "description": "Смежные и вертикальные углы, параллельные прямые и секущая, сумма углов многоугольника.",
+      "effort_h": 4,
+      "base_half_life_h": null,
+      "requires": []
+    },
+    {
+      "id": "sat.geo.triangles",
+      "name": "Треугольники",
+      "description": "Сумма углов, неравенство треугольника, подобие, теорема Пифагора, специальные прямоугольные треугольники.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.geo.lines_angles", "strength": 0.8 }
+      ]
+    },
+    {
+      "id": "sat.geo.circle",
+      "name": "Окружность",
+      "description": "Радиус, диаметр, длина окружности, площадь круга, хорды, касательные, вписанные углы, дуги и секторы.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.geo.area_volume", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "sat.geo.trig_right",
+      "name": "Тригонометрия прямоугольного треугольника",
+      "description": "Определения sin, cos, tg через стороны, нахождение неизвестных сторон и углов, типовые значения углов.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.geo.triangles", "strength": 0.9 }
+      ]
+    },
+    {
+      "id": "sat.geo.trig_unit_circle",
+      "name": "Тригонометрическая окружность",
+      "description": "Радианы, единичная окружность, значения sin и cos в ключевых точках, связь с прямоугольным треугольником.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "sat.geo.trig_right", "strength": 0.8 }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://satsuite.collegeboard.org/sat/whats-on-the-test/math",
+      "checked_at": "2026-09-17"
+    }
+  ]
+}

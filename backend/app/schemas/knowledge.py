@@ -1,0 +1,159 @@
+"""Pydantic models for the knowledge layer.
+
+TEMPORARY: this file is B3's zone (see 00-contracts.md §6), but B3 hasn't
+shipped it yet and pure modules (app.knowledge.*, app.tasks.*) may not
+import from app.graph.* (00-contracts.md §4.4). B1 placed it here as a
+stopgap so tests and pure code can run — see docs/sync-log.md.
+
+On sync: merge with B3's version and delete this note.
+"""
+
+from __future__ import annotations
+
+from datetime import date, datetime
+from typing import Any, Literal
+
+from pydantic import BaseModel
+
+ExamId = Literal["SAT_MATH", "ENT_MATH"]
+Tier = Literal[1, 2, 3]
+TaskMode = Literal[
+    "topic", "mock_set", "mock_topic", "mock_misconception", "diagnostic", "chat"
+]
+TaskType = Literal["mcq4", "mcq5", "multi_select", "numeric"]
+ErrorClass = Literal["computational", "conceptual", "attention", "procedural"]
+Direction = Literal[1, -1, 0]
+EvidenceSource = Literal["task", "mock", "diagnostic", "chat", "self_report"]
+
+
+class SkillRef(BaseModel):
+    id: str
+    name: str
+    description: str
+    exam_ids: list[ExamId]
+    effort_h: float
+    base_half_life_h: float | None = None
+
+
+class SkillWeight(BaseModel):
+    skill: SkillRef
+    area_id: str
+    weight: float
+
+
+class AreaOut(BaseModel):
+    id: str
+    name: str
+    score_share: float
+
+
+class Prerequisite(BaseModel):
+    skill_id: str
+    strength: float
+    depth: int
+
+
+class KnowledgeStateOut(BaseModel):
+    skill_id: str
+    exam_id: ExamId
+    p_recall: float
+    p_at_obs: float
+    half_life_h: float
+    confidence: float
+    evidence_mass: float
+    n_correct: int
+    n_incorrect: int
+    n_partial: int
+    has_strong: bool
+    last_observed_at: datetime
+    created_at: datetime
+
+
+class EvidenceContext(BaseModel):
+    task_type: TaskType | None = None
+    difficulty: int | None = None
+    tags: list[str] | None = None
+    mode: TaskMode | None = None
+    time_ratio: float | None = None
+    session_minute: int | None = None
+    after_guideline: bool | None = None
+    hint_level_before: int | None = None
+    topic_skill_id: str | None = None
+    session_id: Any | None = None
+
+
+class EvidenceIn(BaseModel):
+    event_id: int
+    skill_id: str
+    exam_id: ExamId
+    kind: str
+    tier: Tier
+    source: EvidenceSource
+    weight: float
+    direction: Direction
+    share: float | None = None
+    difficulty_factor: float = 1.0
+    summary: str | None = None
+    context: EvidenceContext | None = None
+    observed_at: datetime
+    extractor_version: str | None = None
+
+
+class MisconceptionRef(BaseModel):
+    id: str
+    name: str
+    description: str
+    error_class: ErrorClass
+    skill_ids: list[str]
+
+
+class Section(BaseModel):
+    name: str
+    n_items: int
+    minutes: int
+    item_types: dict[str, int]
+    scoring_rule: str
+    calculator: bool
+    adaptive: bool
+    area_shares: dict[str, float]
+    difficulty_shares: dict[str, float]
+    answer_forms: list[str]
+
+
+class ExamFormat(BaseModel):
+    exam_id: ExamId
+    name: str
+    max_raw_score: float
+    sections: list[Section]
+    scale_table: dict[str, Any] | None = None
+    scale_note: str | None = None
+    source: str
+    checked_at: date
+    is_demo: bool
+
+
+class TestDate(BaseModel):
+    exam_id: ExamId
+    date: date
+    registration_deadline: date
+    late_deadline: date | None = None
+    source: str
+    checked_at: date
+    is_demo: bool
+
+
+class AdmissionRouteOut(BaseModel):
+    id: str
+    name: str
+    description: str
+    country_id: str
+    requirements: list[dict[str, Any]]
+    source: str | None = None
+    is_demo: bool
+
+
+class FactOut(BaseModel):
+    text: str
+    source: str | None = None
+    checked_at: date | None = None
+    is_demo: bool

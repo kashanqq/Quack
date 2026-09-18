@@ -1,7 +1,7 @@
 ## Repository layout
 
 - `frontend/` — Next.js app (see frontend/README.md). Run npm commands from this folder.
-- `backend/` — server side, not started yet (see backend/README.md).
+- `backend/` — FastAPI app (see backend/README.md). Run `uv run --frozen ...` from this folder; unit tests: `uv run --frozen pytest -m "not integration"`.
 - Keep frontend and backend changes in their own folders; shared docs (product-logic.md, arch-logic.md, DESIGN.md) live in the root.
 
 ## graphify

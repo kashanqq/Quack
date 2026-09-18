@@ -1,0 +1,26 @@
+{
+  "exam_id": "ENT_MATH",
+  "name": "ЕНТ, профильная математика",
+  "max_raw_score": 50,
+  "sections": [
+    {
+      "name": "Основной блок",
+      "n_items": 35,
+      "minutes": 90,
+      "item_types": { "mcq5": 25, "multi_select": 10 },
+      "scoring_rule": "mcq5: 1 балл за верный; multi_select: 2 балла при всех верных и отсутствии неверных, 1 балл при частично верном без неверных",
+      "calculator": false,
+      "adaptive": false,
+      "area_shares": {
+        "area.ent.algebra": 1.0
+      },
+      "difficulty_shares": { "1": 0.2, "2": 0.3, "3": 0.3, "4": 0.2 },
+      "answer_forms": ["integer", "fraction"]
+    }
+  ],
+  "scale_table": null,
+  "scale_note": null,
+  "source": "https://testcenter.kz",
+  "checked_at": "2026-09-17",
+  "is_demo": true
+}
