@@ -1,0 +1,51 @@
+{
+  "id": "tpl.sat.geo.area_volume.rectangle_area",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 2,
+  "skill_id": "sat.geo.area_volume",
+  "tags": [
+    "geo",
+    "area_volume",
+    "rectangle_area"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {
+    "a": {
+      "choices": [
+        5,
+        6
+      ]
+    },
+    "b": {
+      "choices": [
+        8,
+        9
+      ]
+    }
+  },
+  "constraints": [],
+  "stem": "A rectangle is {a} by {b}. What is its area?",
+  "correct": "a*b",
+  "distractors": [
+    {
+      "expr": "2*(a+b)",
+      "misconception_id": "lib.geo.perimeter_area"
+    },
+    {
+      "expr": "a+b",
+      "misconception_id": null
+    },
+    {
+      "expr": "2*a*b",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the area volume rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

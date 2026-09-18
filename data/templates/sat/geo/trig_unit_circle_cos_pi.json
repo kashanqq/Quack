@@ -1,0 +1,38 @@
+{
+  "id": "tpl.sat.geo.trig_unit_circle.cos_pi",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 4,
+  "skill_id": "sat.geo.trig_unit_circle",
+  "tags": [
+    "geo",
+    "trig_unit_circle",
+    "cos_pi"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "On the unit circle, what is cos(pi)?",
+  "correct": "-1",
+  "distractors": [
+    {
+      "expr": "1",
+      "misconception_id": "lib.geo.unit_circle_sign"
+    },
+    {
+      "expr": "0",
+      "misconception_id": null
+    },
+    {
+      "expr": "1/2",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the trig unit circle rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

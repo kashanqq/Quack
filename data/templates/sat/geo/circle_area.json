@@ -1,0 +1,38 @@
+{
+  "id": "tpl.sat.geo.circle.area",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 3,
+  "skill_id": "sat.geo.circle",
+  "tags": [
+    "geo",
+    "circle",
+    "area"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "A circle has radius 3. What is its area?",
+  "correct": "9*pi",
+  "distractors": [
+    {
+      "expr": "6*pi",
+      "misconception_id": "lib.geo.circle_radius"
+    },
+    {
+      "expr": "3*pi",
+      "misconception_id": null
+    },
+    {
+      "expr": "18*pi",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the circle rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

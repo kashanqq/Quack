@@ -4,7 +4,120 @@
     "name": "Процент от базы вместо прироста",
     "description": "Ученик считает процент от исходного числа и прибавляет его один раз, теряя второй шаг при последовательных процентах.",
     "error_class": "computational",
-    "skill_ids": ["sat.psda.percent", "ent.num.percent"],
+    "skill_ids": [
+      "sat.psda.percent",
+      "ent.num.percent"
+    ],
     "exam_specific": null
+  },
+  {
+    "id": "lib.psda.ratio_parts",
+    "name": "Treat one ratio part as the whole",
+    "description": "Treat one ratio part as the whole when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.psda.ratios_rates"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.psda.ratio_invert",
+    "name": "Invert or omit a unit-rate denominator",
+    "description": "Invert or omit a unit-rate denominator when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.psda.ratios_rates"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.psda.percent_base",
+    "name": "Apply a percent to the wrong base",
+    "description": "Apply a percent to the wrong base when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.psda.percent"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.psda.range_min",
+    "name": "Omit the minimum when finding a range",
+    "description": "Omit the minimum when finding a range when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.psda.one_var_data"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.psda.median_mean",
+    "name": "Confuse median with arithmetic mean",
+    "description": "Confuse median with arithmetic mean when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.psda.one_var_data"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.psda.mean_sum",
+    "name": "Report a sum instead of dividing by the count",
+    "description": "Report a sum instead of dividing by the count when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.psda.one_var_data"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.psda.intercept_first",
+    "name": "Treat the first observed y as the intercept",
+    "description": "Treat the first observed y as the intercept when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.psda.two_var_data"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.psda.slope_swap",
+    "name": "Invert rise and run",
+    "description": "Invert rise and run when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.psda.two_var_data"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.psda.prob_denominator",
+    "name": "Use only favorable outcomes as denominator",
+    "description": "Use only favorable outcomes as denominator when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.psda.probability"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.psda.prob_count",
+    "name": "Count only one ordering of a two-step outcome",
+    "description": "Count only one ordering of a two-step outcome when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.psda.probability"
+    ],
+    "exam_specific": "SAT_MATH"
+  },
+  {
+    "id": "lib.psda.prob_replacement",
+    "name": "Keep the original denominator without replacement",
+    "description": "Keep the original denominator without replacement when solving this skill's tasks.",
+    "error_class": "conceptual",
+    "skill_ids": [
+      "sat.psda.probability"
+    ],
+    "exam_specific": "SAT_MATH"
   }
 ]

@@ -1,0 +1,51 @@
+{
+  "id": "tpl.sat.geo.triangles.angle_sum",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 2,
+  "skill_id": "sat.geo.triangles",
+  "tags": [
+    "geo",
+    "triangles",
+    "angle_sum"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {
+    "a": {
+      "choices": [
+        40,
+        50
+      ]
+    },
+    "b": {
+      "choices": [
+        60,
+        70
+      ]
+    }
+  },
+  "constraints": [],
+  "stem": "Two angles of a triangle are {a} and {b} degrees. What is the third?",
+  "correct": "180-a-b",
+  "distractors": [
+    {
+      "expr": "a+b",
+      "misconception_id": "lib.geo.triangle_sum"
+    },
+    {
+      "expr": "90-a-b",
+      "misconception_id": null
+    },
+    {
+      "expr": "360-a-b",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the triangles rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

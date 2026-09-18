@@ -1,0 +1,50 @@
+{
+  "id": "tpl.sat.psda.two_var_data.slope",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 2,
+  "skill_id": "sat.psda.two_var_data",
+  "tags": [
+    "psda",
+    "two_var_data",
+    "slope"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {
+    "rise": {
+      "choices": [
+        6,
+        9
+      ]
+    },
+    "run": {
+      "choices": [
+        3
+      ]
+    }
+  },
+  "constraints": [],
+  "stem": "A line rises {rise} units for a run of {run} units. What is its slope?",
+  "correct": "rise/run",
+  "distractors": [
+    {
+      "expr": "run/rise",
+      "misconception_id": "lib.psda.slope_swap"
+    },
+    {
+      "expr": "rise",
+      "misconception_id": null
+    },
+    {
+      "expr": "rise-run",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the two var data rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.api import health as health_module
 from app.errors import NotFound
+from app.events import dispatch as dispatcher
 from app.main import create_app
 
 
@@ -25,6 +26,41 @@ def test_openapi_title(app):
         response = client.get("/openapi.json")
     assert response.status_code == 200
     assert response.json()["info"]["title"] == "Quack API"
+
+
+@pytest.mark.phase2
+def test_openapi_contains_phase2_routes(app):
+    paths = app.openapi()["paths"]
+    for path in (
+        "/tasks",
+        "/sets",
+        "/knowledge",
+        "/matching",
+        "/matching/compare",
+        "/overview",
+        "/overview/milestones/{key}",
+        "/diagnostic",
+        "/diagnostic/active",
+        "/diagnostic/{run_id}/answer",
+        "/diagnostic/{run_id}/finish",
+        "/mocks",
+        "/mocks/{run_id}",
+        "/mocks/{run_id}/answer",
+        "/mocks/{run_id}/finish",
+    ):
+        assert path in paths
+
+
+@pytest.mark.phase2
+def test_multiple_app_factories_do_not_register_handlers_again():
+    before = {
+        event: tuple(handlers) for event, handlers in dispatcher._handlers.items()
+    }
+    create_app()
+    create_app()
+    assert {
+        event: tuple(handlers) for event, handlers in dispatcher._handlers.items()
+    } == before
 
 
 def test_unknown_route(app):
