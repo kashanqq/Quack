@@ -19,7 +19,7 @@ const MONTHS = "января|февраля|марта|апреля|мая|ию�
 
 export const ASSISTANT_PROMPTS = [
   "Составь план до теста",
-  "У меня IELTS 12 декабря, как успеть?",
+  "У меня ЕНТ 20 января, как успеть?",
   "Сколько заниматься в день?",
   "С чего начать?",
 ];
@@ -38,8 +38,8 @@ function findDeadline(t: string): Date | null {
 }
 
 function examOf(t: string, fallback: ExamId): ExamId {
-  if (/ielts|айлтс|английск|listening|reading|writing|speaking|эссе/.test(t)) return "ielts";
-  if (/\bsat\b|сат|матем/.test(t)) return "sat";
+  if (/ент|унт|\bent\b/.test(t)) return "ent";
+  if (/\bsat\b|сат/.test(t)) return "sat";
   return fallback;
 }
 
@@ -56,7 +56,7 @@ function priorities(model: PrepModel, exam: ExamId) {
     const s = skillById(id);
     if (s.root) return "корень: от него ошибки выше по карте";
     if (model.misconceptions[id].some((m) => m.status === "confirmed")) return "подтверждённая ловушка";
-    return `вес ${s.weight}%`;
+    return s.weight >= 8 ? "большой вес на экзамене" : "ещё не держится";
   };
   const rank = (id: string) => {
     const s = skillById(id);
@@ -151,7 +151,7 @@ export function assistantReply(text: string, model: PrepModel, fallback: ExamId)
     return [`${EXAMS[exam].name}, по порядку:`, ...list.map((p, i) => `${i + 1}. ${p.name} — ${p.why}`)].join("\n");
   }
 
-  return "Я собираю план подготовки. Напиши экзамен и срок — например, «IELTS 12 декабря, как успеть?» — или спроси, сколько заниматься в день и с чего начать.";
+  return "Я собираю план подготовки. Напиши экзамен и срок — например, «ЕНТ 20 января, как успеть?» — или спроси, сколько заниматься в день и с чего начать.";
 }
 
 /* ---------- The assistant inside a topic ---------- */

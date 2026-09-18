@@ -73,7 +73,8 @@ async def test_append_fills_session_and_utc_time_then_dispatches_once():
     assert before <= event.occurred_at <= datetime.now(UTC)
     assert event.ingested_at.tzinfo is not None
     assert handled.await_count == 1
-    assert handled.await_args.args == (session, event)
+    assert handled.await_args.args[:2] == (session, event)
+    assert isinstance(handled.await_args.args[2], dispatcher.RuleDeps)
     values = session.statements[0].compile().params
     assert values["session_id"] == event.session_id
     assert values["occurred_at"] == event.occurred_at
@@ -143,7 +144,7 @@ async def test_handler_failure_propagates_without_store_commit():
     session = FakeSession()
 
     @dispatcher.on(EventType.profile_updated)
-    async def fail(db, event):
+    async def fail(db, event, deps):
         raise RuntimeError("handler failed")
 
     with pytest.raises(RuntimeError, match="handler failed"):

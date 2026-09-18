@@ -2,14 +2,11 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { Icon } from "../choice/Icon";
-import { EXAM_IDS, EXAMS, formatDate, formatShort, SET_STATUS_LABEL, SETS, skillById, SKILLS, STATE_LABEL, TODAY, type ExamId, type StudySet } from "./prepData";
+import { EXAM_IDS, EXAMS, formatDate, formatShort, SET_STATUS_LABEL, SETS, skillById, SKILLS, STATE_LABEL, type ExamId, type StudySet } from "./prepData";
 import {
   closed,
   disputeMisconception,
   MISCONCEPTION_LABEL,
-  planFor,
-  proposedSet,
-  rankSets,
   setStatus,
   type PrepModel,
   type PrepSub,
@@ -29,7 +26,7 @@ type Props = {
   /** Takes a set into work, replacing the one in work */
   onMakeCurrent: (setId: string) => void;
   onModel: (model: PrepModel) => void;
-  /** The set opened from the market (or from «Обзор»), with the topic to show first */
+  /** The set opened from the route (or from «Обзор»), with the topic to show first */
   openSet: { id: string; topic?: string } | null;
   onOpenSet: (setId: string | null, topic?: string) => void;
   onToast: (text: string) => void;
@@ -38,9 +35,8 @@ type Props = {
 const STATUS_TEXT = { ...SET_STATUS_LABEL, proposed: "предложен" };
 
 /**
- * §4.3 — sets. «Все сеты» is a market: the assistant suggests sets, the student works on one and can
- * swap it for another at any time. «Маршрут» is the student's own optional plan. «Карта навыков» shows
- * the same sets as a compact map.
+ * §4.3 — sets. «Маршрут» holds the sets the assistant built for the student, in order; the student works
+ * on one and can swap it for another at any time. «Карта навыков» shows the same sets as a compact map.
  */
 export function SetsView({ model, sub, exam, onExam, onMakeCurrent, onModel, openSet, onOpenSet, onToast }: Props) {
   const switcher = <ExamSwitch exam={exam} onExam={onExam} />;
@@ -58,19 +54,6 @@ export function SetsView({ model, sub, exam, onExam, onMakeCurrent, onModel, ope
     );
   }
   const set = openSet ? SETS.find((s) => s.id === openSet.id) : undefined;
-  if (sub === "route" && !set) {
-    return (
-      <RouteView
-        exam={exam}
-        switcher={switcher}
-        model={model}
-        onModel={onModel}
-        onOpen={(id) => onOpenSet(id)}
-        onTake={onMakeCurrent}
-        onToast={onToast}
-      />
-    );
-  }
   if (set) {
     return (
       <SetDetail
@@ -85,10 +68,10 @@ export function SetsView({ model, sub, exam, onExam, onMakeCurrent, onModel, ope
       />
     );
   }
-  return <SetMarket exam={exam} switcher={switcher} model={model} onOpen={(id) => onOpenSet(id)} onTake={onMakeCurrent} />;
+  return <RouteView exam={exam} switcher={switcher} model={model} onOpen={(id) => onOpenSet(id)} onTake={onMakeCurrent} />;
 }
 
-/** SAT Math or IELTS: each has its own sets and map. */
+/** SAT Math or ЕНТ: each has its own sets and map. */
 function ExamSwitch({ exam, onExam }: { exam: ExamId; onExam: (exam: ExamId) => void }) {
   return (
     <div className={styles.segmented} role="tablist" aria-label="Экзамен">
@@ -101,7 +84,6 @@ function ExamSwitch({ exam, onExam }: { exam: ExamId; onExam: (exam: ExamId) => 
   );
 }
 
-const daysLeft = (set: StudySet) => Math.round((set.deadline.getTime() - TODAY.getTime()) / 86_400_000);
 
 /** Topic states of a set as a row of small bars */
 function Segments({ model, set }: { model: PrepModel; set: StudySet }) {
@@ -111,203 +93,6 @@ function Segments({ model, set }: { model: PrepModel; set: StudySet }) {
         <span key={id} data-state={model.states[id]} title={`${skillById(id).name}: ${STATE_LABEL[model.states[id]]}`} />
       ))}
     </span>
-  );
-}
-
-/* ---------- Все сеты: a market of sets the assistant suggests; one is in work ---------- */
-
-const RECOMMENDED = 3;
-
-function SetMarket({
-  exam,
-  switcher,
-  model,
-  onOpen,
-  onTake,
-}: {
-  exam: ExamId;
-  switcher: React.ReactNode;
-  model: PrepModel;
-  onOpen: (setId: string) => void;
-  onTake: (setId: string) => void;
-}) {
-  const inWork = SETS.find((s) => s.id === model.currentSet);
-  const current = inWork?.exam === exam ? inWork : undefined;
-  // With nothing in work the assistant has one ready to start
-  const suggested = !inWork ? proposedSet(model) : undefined;
-  const lead = current ?? (suggested?.exam === exam ? suggested : undefined);
-  const offers = rankSets(model, exam).filter((r) => r.set.id !== lead?.id);
-  const done = SETS.filter((s) => s.exam === exam && model.doneSets.includes(s.id));
-
-  return (
-    <div className={styles.setList}>
-      <header className={styles.setListHead}>
-        <div>
-          <h3>Все сеты</h3>
-          <p className={styles.muted}>Сеты подбирает ассистент по твоим ошибкам и срокам. Работаешь над одним — сменить можно в любой момент.</p>
-        </div>
-        {switcher}
-      </header>
-
-      {inWork && inWork.exam !== exam && (
-        <p className={styles.marketNote}>
-          В работе сет по {EXAMS[inWork.exam].name}: «{inWork.title}». Возьмёшь сет здесь — он заменит его.
-        </p>
-      )}
-
-      {lead ? (
-        <section className={styles.marketLead} data-status={current ? "current" : "proposed"} aria-label="Сет в работе">
-          <div className={styles.marketLeadHead}>
-            <p className={styles.eyebrow}>{current ? "В работе" : "Ассистент предлагает начать с него"}</p>
-            <span className={styles.muted}>
-              {formatShort(lead.start)} – {formatShort(lead.deadline)}
-              {daysLeft(lead) >= 0 && ` · осталось ${daysLeft(lead)} дн.`}
-            </span>
-          </div>
-          <h3 className={styles.marketLeadTitle}>
-            Сет {lead.number} · {lead.title}
-          </h3>
-          <p className={styles.why}>{lead.why}</p>
-          <ul className={styles.skillChips}>
-            {lead.skills.map((id) => (
-              <li key={id}>
-                <StateGlyph state={model.states[id]} size={12} />
-                {skillById(id).name}
-              </li>
-            ))}
-          </ul>
-          <div className={styles.marketLeadFoot}>
-            <span className={styles.setProgress}>
-              доказано {closed(model, lead)} из {lead.skills.length}
-              <Segments model={model} set={lead} />
-            </span>
-            <div className={styles.actions}>
-              {current ? (
-                <button type="button" className={styles.primary} onClick={() => onOpen(lead.id)}>
-                  Продолжить <Icon name="chevron-right" size={16} />
-                </button>
-              ) : (
-                <>
-                  <button type="button" className={styles.primary} onClick={() => onTake(lead.id)}>
-                    <Icon name="target" size={16} /> Взять в работу
-                  </button>
-                  <button type="button" className={styles.secondary} onClick={() => onOpen(lead.id)}>
-                    Посмотреть
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </section>
-      ) : (
-        !inWork && <p className={styles.muted}>Сет не выбран — возьми любой из предложенных ниже.</p>
-      )}
-
-      {offers.length > 0 && (
-        <>
-          <p className={styles.eyebrow}>{current ? "Можно сменить на" : "Ещё предложения"}</p>
-          <div className={styles.marketGrid}>
-            {offers.map(({ set, reasons }, i) => (
-              <MarketCard
-                key={set.id}
-                model={model}
-                set={set}
-                fits={i < RECOMMENDED}
-                reasons={reasons}
-                swap={Boolean(inWork)}
-                onOpen={onOpen}
-                onTake={onTake}
-              />
-            ))}
-          </div>
-        </>
-      )}
-
-      {done.length > 0 && (
-        <>
-          <p className={styles.eyebrow}>Пройденные</p>
-          <div className={styles.marketGrid}>
-            {done.map((set) => (
-              <MarketCard key={set.id} model={model} set={set} swap={false} onOpen={onOpen} onTake={onTake} />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function MarketCard({
-  model,
-  set,
-  fits,
-  reasons,
-  swap,
-  onOpen,
-  onTake,
-}: {
-  model: PrepModel;
-  set: StudySet;
-  /** Among the few the assistant thinks fit best right now */
-  fits?: boolean;
-  reasons?: string[];
-  /** Something is in work already, so taking this one replaces it */
-  swap: boolean;
-  onOpen: (setId: string) => void;
-  onTake: (setId: string) => void;
-}) {
-  const status = setStatus(model, set);
-  const left = daysLeft(set);
-  const step = planFor(model, set.exam).findIndex((s) => s.id === set.id);
-  return (
-    <article className={`${styles.setCard} ${fits ? styles.setCardRec : ""}`} data-status={status}>
-      <div className={styles.setHead}>
-        <strong className={styles.setCardTitle}>
-          Сет {set.number} · {set.title}
-        </strong>
-        {fits ? (
-          <span className={styles.fitTag}>
-            <Icon name="sparkles" size={12} /> подходит сейчас
-          </span>
-        ) : (
-          <span className={styles.statusPill} data-status={status}>
-            {STATUS_TEXT[status]}
-          </span>
-        )}
-      </div>
-      <span className={styles.muted}>
-        {formatShort(set.start)} – {formatShort(set.deadline)}
-        {status !== "done" && left >= 0 && ` · осталось ${left} дн.`} · доказано {closed(model, set)} из {set.skills.length}
-        {step >= 0 && ` · в маршруте шагом ${step + 1}`}
-      </span>
-      <ul className={styles.skillChips}>
-        {set.skills.map((id) => (
-          <li key={id}>
-            <StateGlyph state={model.states[id]} size={12} />
-            {skillById(id).name}
-          </li>
-        ))}
-      </ul>
-      {reasons?.length ? (
-        <ul className={styles.recReasons}>
-          {reasons.slice(0, 3).map((r) => (
-            <li key={r}>{r}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className={styles.why}>{set.why}</p>
-      )}
-      <div className={styles.actions}>
-        {status !== "done" && (
-          <button type="button" className={fits ? styles.primary : styles.secondary} onClick={() => onTake(set.id)}>
-            {swap ? "Сменить на этот" : "Взять в работу"}
-          </button>
-        )}
-        <button type="button" className={styles.link} onClick={() => onOpen(set.id)}>
-          Посмотреть →
-        </button>
-      </div>
-    </article>
   );
 }
 

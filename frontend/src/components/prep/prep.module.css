@@ -1549,62 +1549,14 @@
   border-radius: 12px;
 }
 
-.marketLead {
-  display: grid;
-  gap: 10px;
-  padding: 18px 20px;
-  background: var(--canvas-bg);
-  border: 1px solid rgba(255, 122, 0, 0.45);
-  border-radius: var(--radius);
-  box-shadow: 0 0 0 4px rgba(255, 122, 0, 0.06);
-  animation: rise 0.3s var(--ease-out) both;
-}
 
-.marketLead[data-status="proposed"] {
-  border-style: dashed;
-}
 
-.marketLeadHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 16px;
-  font-size: 13px;
-}
 
-.marketLeadHead .eyebrow {
-  margin: 0;
-  color: var(--accent-label);
-}
 
-.marketLeadTitle {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 500;
-}
 
-.marketLead .why {
-  margin: 0;
-}
 
-.marketLeadFoot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px 20px;
-}
 
-.marketLeadFoot .actions {
-  margin: 0;
-}
 
-.marketGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
-}
 
 .setCard .actions {
   align-items: center;
@@ -1678,49 +1630,12 @@
 
 /* ---------- Маршрут: the student's own plan, optional ---------- */
 
-.routeEmpty {
-  display: grid;
-  justify-items: center;
-  gap: 10px;
-  padding: 36px 20px;
-  text-align: center;
-  background: var(--canvas-bg);
-  border: 1px dashed rgba(255, 255, 255, 0.16);
-  border-radius: var(--radius);
-}
 
-.routeEmpty h4 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 500;
-}
 
-.routeEmpty p {
-  max-width: 460px;
-  margin: 0 0 6px;
-  line-height: 1.45;
-}
 
-.routeEmptyIcon {
-  color: var(--accent);
-}
 
-.routeBar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-}
 
-.routeBar .actions {
-  align-items: center;
-  margin: 0;
-}
 
-.routeBar .secondary {
-  margin-top: 0;
-}
 
 .routeSteps {
   display: grid;
@@ -1848,128 +1763,22 @@
   margin-top: 0;
 }
 
-.routeEditor {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
 
-.routeColumn {
-  display: grid;
-  align-content: start;
-  gap: 10px;
-  padding: 14px;
-  background: var(--canvas-bg);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-}
 
-.routeColumn .eyebrow {
-  margin: 0;
-}
 
-.routeColumnHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
-}
 
-.routeHint {
-  margin: 0;
-  color: var(--text-faint);
-  font-size: 14px;
-}
 
-.routeDraft {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
 
-.routeDraft > li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 6px 6px 8px;
-  background: var(--inset-bg);
-  border-radius: 10px;
-  animation: rise 0.2s var(--ease-out) both;
-}
 
-.routeDraft .routeMark {
-  width: 24px;
-  height: 24px;
-  font-size: 12px;
-}
 
-.routeDraftTitle {
-  flex: 1;
-  min-width: 0;
-  font-size: 14px;
-}
 
-.routeTools {
-  display: flex;
-  flex: none;
-  gap: 2px;
-}
 
-.routeTools button,
-.routeAdd {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-width: 30px;
-  height: 30px;
-  padding: 0 6px;
-  color: var(--text-dim);
-  font: inherit;
-  font-size: 13px;
-  background: none;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  cursor: pointer;
-}
 
-.routeTools button:hover:not(:disabled),
-.routeAdd:hover {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.06);
-}
 
-.routeTools button:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
 
-.routeAdd {
-  flex: none;
-  padding: 0 10px;
-  color: var(--accent-label);
-  border-color: rgba(255, 122, 0, 0.3);
-}
 
-.routeEditorFoot {
-  display: flex;
-  flex-wrap: wrap;
-  grid-column: 1 / -1;
-  gap: 10px;
-}
 
-.routeEditorFoot .primary,
-.routeEditorFoot .secondary {
-  margin-top: 0;
-}
 
-.routeEditorFoot .primary:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
 
 /* ---------- Карта навыков по сетам: cards in columns by what they rest on ---------- */
 
@@ -3191,10 +3000,6 @@
 
   .setMapNodeTitle {
     font-size: 12px;
-  }
-
-  .routeEditor {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .setGraphScroll {

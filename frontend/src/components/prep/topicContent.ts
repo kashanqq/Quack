@@ -3,6 +3,7 @@
 // generates it per student (product-logic §4.4: material is generated on request, not stored as a course).
 
 import { CHECKS, type Task } from "./prepData";
+import { ENT_CHECKS, ENT_TOPICS } from "./entContent";
 
 export type TopicContent = {
   /** Two or three sentences: what the topic is and what the exam asks */
@@ -94,74 +95,7 @@ export const TOPICS: Record<string, TopicContent> = {
     example: { q: "sin(180° − 30°)", a: "Вторая четверть, синус там положительный, функция не меняется: sin 30° = 1/2" },
     trap: "Поменять функцию при 180°, где она остаётся той же.",
   },
-
-  /* ---------- IELTS ---------- */
-  "l-detail": {
-    summary: "Детали — имена, числа, даты, которые нужно записать точно. Часто звучат с поправкой: сначала одно, потом «sorry, I mean…».",
-    points: ["Читать вопрос до записи и знать, что ждёшь", "Дослушивать поправки", "Проверять лимит слов в ответе"],
-    example: { q: "«The room is 14… no, sorry, 40 B». Что записать?", a: "40 B — последняя поправка" },
-    trap: "Записать первое прозвучавшее число и не дослушать исправление.",
-  },
-  "l-maps": {
-    summary: "Нужно отметить места на плане по описанию маршрута. Важны предлоги места и направления.",
-    points: ["Знать opposite, next to, behind, in front of, across from", "Держать палец на точке, откуда идёт описание", "Смотреть на план до начала записи"],
-    example: { q: "«The café is opposite the library»", a: "Через проход, лицом к библиотеке, а не рядом" },
-    trap: "Путать opposite и next to.",
-  },
-  "l-lecture": {
-    summary: "Section 4 — монолог без пауз. Нужна главная мысль и структура: лектор сам объявляет части словами firstly, however, to sum up.",
-    points: ["Ловить сигнальные слова структуры", "Записывать ключевое слово, а не всю фразу", "Следить за порядком вопросов — он совпадает с порядком речи"],
-    example: { q: "«However, the main reason was…»", a: "После however — то, что важно для ответа" },
-    trap: "Застрять на пропущенном ответе и потерять следующие два.",
-  },
-  "r-scan": {
-    summary: "Поиск конкретной информации в тексте без чтения целиком: глазами по ключевым словам — именам, числам, датам.",
-    points: ["Выбирать в вопросе слово, которое легко найти", "Читать внимательно только нужное предложение", "Искать синонимы, а не точное совпадение"],
-    example: { q: "Когда музей переехал? В тексте: «founded in 1872, moved in 1905»", a: "1905 — дочитать предложение до конца" },
-    trap: "Взять первую найденную дату, не дочитав предложение.",
-  },
-  "r-tfng": {
-    summary: "True — текст говорит то же. False — текст говорит обратное. Not Given — в тексте об этом нет ничего.",
-    points: ["False только при прямом противоречии", "Not Given, если информации нет, даже если «логично»", "Не домысливать из общих знаний"],
-    example: { q: "Текст: «Most visitors come by train». Утверждение: «The museum is free»", a: "Not Given — о цене в тексте ничего нет" },
-    trap: "Ставить False там, где информации просто нет.",
-  },
-  "r-headings": {
-    summary: "Подобрать заголовок к абзацу — значит найти его главную мысль, а не совпавшее слово.",
-    points: ["Читать первое и последнее предложение абзаца", "Отличать главную мысль от примера", "Отбрасывать заголовки с совпавшими словами, но другой мыслью"],
-    example: { q: "Абзац про тень и чистый воздух от городских деревьев", a: "«Practical benefits of urban trees», а не «History of parks»" },
-    trap: "Выбирать заголовок по одному совпавшему слову.",
-  },
-  "w-task1": {
-    summary: "Описание графика или таблицы за 20 минут, минимум 150 слов. Нужен обзор главных тенденций — без него балл не выше 5.5.",
-    points: ["Писать overview: 2 главные тенденции", "Группировать данные, а не перечислять все числа", "Не давать своего мнения"],
-    example: { q: "С чего начать абзац overview?", a: "«Overall, … rose sharply, while … remained stable»" },
-    trap: "Перечислить все числа и не написать общий вывод.",
-  },
-  "w-coherence": {
-    summary: "Связность — чтобы текст читался как рассуждение: одна мысль на абзац и связки, которые показывают отношение между идеями.",
-    points: ["Добавление: moreover, in addition", "Контраст: however, although", "Причина и следствие: therefore, as a result"],
-    example: { q: "«Prices rose. ___, demand stayed the same»", a: "However — нужен контраст, а не добавление" },
-    trap: "Ставить связку по привычке, не глядя на смысл: moreover там, где нужен контраст.",
-  },
-  "w-task2": {
-    summary: "Эссе 250+ слов за 40 минут. Чёткая позиция во вступлении, по одной идее в каждом абзаце с примером, вывод без новых мыслей.",
-    points: ["Вступление: перефразировать тему и дать позицию", "Абзац: мысль → объяснение → пример", "Отвечать на все части вопроса"],
-    example: { q: "Тема про учёбу за границей. Первая фраза?", a: "Перефраз темы и сразу своя позиция, без истории вопроса" },
-    trap: "Уходить от вопроса во вступлении.",
-  },
-  "s-part1": {
-    summary: "Короткие вопросы о тебе: учёба, дом, хобби. Ответ на 2–3 предложения: ответ, причина, деталь.",
-    points: ["Не отвечать одним словом", "Добавлять причину и пример", "Говорить естественно, не заучивать"],
-    example: { q: "Do you like reading?", a: "«Yes, mostly on weekends — I'm into science fiction because…»" },
-    trap: "Отвечать «yes» и замолкать.",
-  },
-  "s-part2": {
-    summary: "Монолог на 2 минуты по карточке. Минута на подготовку: план по пунктам карточки и ключевые слова, не полные фразы.",
-    points: ["За минуту записать 3–4 ключевых слова на пункт", "Идти по пунктам карточки по порядку", "Добивать 2 минуты историей или деталями"],
-    example: { q: "Describe a place you like to visit", a: "Где → как часто → что там делаешь → почему нравится" },
-    trap: "Остановиться через минуту, потому что пункты карточки кончились.",
-  },
+  ...ENT_TOPICS,
 };
 
 /** Checks for topics that had none in the demo pool, so every node in a set can be tested. */
@@ -195,18 +129,6 @@ const MORE_CHECKS: Record<string, Task[]> = {
   ],
   reduction: [
     { id: "rd1", text: "cos(180° − 60°) = ?", options: [{ label: "1/2", trap: "Не учёл знак косинуса во второй четверти" }, { label: "−1/2", correct: true }, { label: "√3/2" }] },
-  ],
-  "l-detail": [
-    { id: "ld1", text: "На записи: «It's 15 pounds… sorry, 50 pounds». Что записать?", options: [{ label: "15", trap: "Записал первое число, не дослушав" }, { label: "50", correct: true }, { label: "65" }] },
-  ],
-  "l-lecture": [
-    { id: "ll1", text: "Лектор говорит: «Many think it was cost. However, the real reason was time». Главная причина?", options: [{ label: "Cost", trap: "Взял то, что сказано до however" }, { label: "Time", correct: true }, { label: "Обе" }] },
-  ],
-  "s-part1": [
-    { id: "sp1", text: "Examiner: «Do you enjoy cooking?» Какой ответ лучше по критериям?", options: [{ label: "Yes.", trap: "Односложный ответ без развития" }, { label: "Yes, especially on weekends — it helps me relax after school.", correct: true }] },
-  ],
-  "s-part2": [
-    { id: "sp2", text: "Что делать в минуту подготовки к Part 2?", options: [{ label: "Написать полный текст", trap: "Полные фразы не успеть ни написать, ни прочесть" }, { label: "Ключевые слова по каждому пункту карточки", correct: true }, { label: "Молчать и думать" }] },
   ],
 };
 
@@ -262,33 +184,6 @@ const MOCK_CHECKS: Record<string, Task[]> = {
   reduction: [
     { id: "rd2", text: "sin(90° + 30°) = ?", options: [{ label: "cos 30°", correct: true }, { label: "sin 30°", trap: "Не сменил функцию при 90°" }, { label: "−cos 30°", trap: "Поставил знак, как для косинуса во II четверти" }] },
     { id: "rd3", text: "tan(180° + 45°) = ?", options: [{ label: "1", correct: true }, { label: "−1", trap: "Не учёл, что тангенс в III четверти положителен" }, { label: "0" }] },
-  ],
-  "l-detail": [
-    { id: "ld2", text: "Слышно: «My surname is Grey — G-R-E-Y». Что записать?", options: [{ label: "Grey", correct: true }, { label: "Gray", trap: "Записал привычное написание, не по буквам" }, { label: "Grei" }] },
-  ],
-  "l-lecture": [
-    { id: "ll2", text: "Лектор: «Firstly… Secondly… Finally…». О чём это говорит?", options: [{ label: "Идёт перечисление по пунктам", correct: true }, { label: "Лектор меняет тему", trap: "Не узнал сигнальные слова структуры" }, { label: "Это вывод лекции" }] },
-  ],
-  "r-scan": [
-    { id: "rs2", text: "Вопрос: «In which year did the bridge open?» Что искать в тексте глазами?", options: [{ label: "Числа-годы рядом со словом bridge", correct: true }, { label: "Читать всё подряд с начала", trap: "Читает целиком вместо сканирования" }, { label: "Первое предложение каждого абзаца" }] },
-  ],
-  "r-headings": [
-    { id: "rh2", text: "Заголовок совпадает по словам с одной фразой абзаца, но абзац про другое. Брать?", options: [{ label: "Нет, заголовок — про главную мысль абзаца", correct: true }, { label: "Да, слова совпали", trap: "Совпадение слов вместо общей мысли" }] },
-  ],
-  "w-task1": [
-    { id: "wt2", text: "Что обязательно в Task 1?", options: [{ label: "Обзор главных тенденций (overview)", correct: true }, { label: "Своё мнение о данных", trap: "Мнение в Task 1 не нужно" }, { label: "Все числа из графика" }] },
-  ],
-  "w-coherence": [
-    { id: "wc2", text: "Как лучше связать абзацы?", options: [{ label: "Первая фраза абзаца продолжает мысль прошлого", correct: true }, { label: "Начинать каждый с Moreover", trap: "Механические связки вместо логики" }, { label: "Никак, абзацы независимы" }] },
-  ],
-  "w-task2": [
-    { id: "w22", text: "Тема: «Discuss both views and give your opinion». Что должно быть?", options: [{ label: "Оба взгляда и своё мнение", correct: true }, { label: "Только своё мнение", trap: "Не раскрыл одну из частей задания" }, { label: "Только два взгляда" }] },
-  ],
-  "s-part1": [
-    { id: "sp3", text: "Не знаешь слово во время ответа. Что лучше?", options: [{ label: "Объяснить другими словами", correct: true }, { label: "Замолчать и вспоминать", trap: "Паузы бьют по беглости" }, { label: "Сказать слово на русском" }] },
-  ],
-  "s-part2": [
-    { id: "sp4", text: "Сколько говорить в Part 2?", options: [{ label: "До двух минут, пока не остановят", correct: true }, { label: "30 секунд — и хватит", trap: "Слишком короткий ответ" }, { label: "Пять минут" }] },
   ],
 };
 
@@ -359,73 +254,6 @@ const MOCK_MORE: Record<string, Task[]> = {
     { id: "m-rd5", text: "cos(360° − 60°) = ?", options: [{ label: "1/2", correct: true }, { label: "−1/2", trap: "Косинус в IV четверти положителен" }, { label: "−√3/2" }] },
     { id: "m-rd6", text: "Когда функция меняется на «ко-функцию»?", options: [{ label: "При 90° и 270°", correct: true }, { label: "При 180° и 360°", trap: "Перепутал правило смены функции" }, { label: "Всегда" }] },
   ],
-  "l-detail": [
-    { id: "m-ld3", text: "Слышно: «The meeting is on the thirteenth… no, the thirtieth». Что записать?", options: [{ label: "30th", correct: true }, { label: "13th", trap: "Записал первое число, не дослушав" }, { label: "3rd" }] },
-    { id: "m-ld4", text: "Лимит — NO MORE THAN TWO WORDS. Слышно «a large red suitcase». Что писать?", options: [{ label: "red suitcase", correct: true }, { label: "large red suitcase", trap: "Превысил лимит слов" }, { label: "suitcase red" }] },
-    { id: "m-ld5", text: "Телефон: «oh-seven-double-four-nine». Что записать?", options: [{ label: "07449", correct: true }, { label: "0749", trap: "Пропустил «double»" }, { label: "7449" }] },
-    { id: "m-ld6", text: "Вопрос про цену, в записи звучат три суммы. Какую брать?", options: [{ label: "Ту, что подтвердили в конце", correct: true }, { label: "Первую прозвучавшую", trap: "Не дождался исправления" }, { label: "Самую большую" }] },
-  ],
-  "l-maps": [
-    { id: "m-lm5", text: "«Walk past the library and turn left». Где объект относительно библиотеки?", options: [{ label: "Дальше библиотеки, после поворота налево", correct: true }, { label: "Напротив библиотеки", trap: "Не проследил маршрут до конца" }, { label: "Перед библиотекой" }] },
-    { id: "m-lm6", text: "Что сделать до начала записи в задании с картой?", options: [{ label: "Найти точку «You are here» и стороны света", correct: true }, { label: "Выучить подписи наизусть", trap: "Тратит время не на ориентирование" }, { label: "Ничего" }] },
-    { id: "m-lm7", text: "«It's opposite the car park». Где объект?", options: [{ label: "Через дорогу от парковки, лицом к ней", correct: true }, { label: "Рядом с парковкой", trap: "Перепутал opposite и next to" }, { label: "За парковкой" }] },
-    { id: "m-lm8", text: "«Go straight on until you reach the roundabout». Что это за место?", options: [{ label: "Круговое движение", correct: true }, { label: "Перекрёсток со светофором", trap: "Не знает слово roundabout" }, { label: "Мост" }] },
-    { id: "m-lm9", text: "Говорящий называет объекты по часовой стрелке от входа. Как это использовать?", options: [{ label: "Вести пальцем по карте в том же порядке", correct: true }, { label: "Отвечать по алфавиту подписей", trap: "Не следит за порядком описания" }] },
-  ],
-  "l-lecture": [
-    { id: "m-ll3", text: "Лектор: «This is a common misconception». Что будет дальше?", options: [{ label: "Правильная версия", correct: true }, { label: "Подтверждение сказанного", trap: "Не узнал сигнал опровержения" }, { label: "Новая тема" }] },
-    { id: "m-ll4", text: "Как лучше конспектировать лекцию в Part 4?", options: [{ label: "Ключевые слова рядом с пропусками", correct: true }, { label: "Записывать всё подряд", trap: "Не успевает за речью" }, { label: "Не писать, запоминать" }] },
-    { id: "m-ll5", text: "В задании «notes completion» слово в записи звучит во множественном числе. Как писать?", options: [{ label: "Как прозвучало, во множественном", correct: true }, { label: "В единственном, так короче", trap: "Искажает форму слова — ответ не засчитают" }] },
-    { id: "m-ll6", text: "Лектор: «To sum up…». Что это за часть?", options: [{ label: "Вывод", correct: true }, { label: "Пример", trap: "Не узнал сигнальную фразу" }, { label: "Введение" }] },
-  ],
-  "r-scan": [
-    { id: "m-rs3", text: "Вопрос с именем собственным «Dr Patel». Как быстрее найти место?", options: [{ label: "Искать заглавные буквы Patel", correct: true }, { label: "Читать абзацы по порядку", trap: "Читает вместо сканирования" }] },
-    { id: "m-rs4", text: "Сколько времени в среднем на один текст Reading?", options: [{ label: "Около 20 минут", correct: true }, { label: "40 минут на первый", trap: "Не распределил время на три текста" }, { label: "10 минут" }] },
-    { id: "m-rs5", text: "В вопросе «expensive», в тексте «cost a fortune». Это совпадение?", options: [{ label: "Да, это перефраз", correct: true }, { label: "Нет, слова разные", trap: "Ищет точные слова, а не смысл" }] },
-    { id: "m-rs6", text: "Ответы в заданиях на заполнение обычно идут…", options: [{ label: "По порядку текста", correct: true }, { label: "Вразброс", trap: "Не использует порядок, чтобы искать быстрее" }] },
-  ],
-  "r-tfng": [
-    { id: "m-rt3", text: "Текст: «Most students passed». Утверждение: «All students passed».", options: [{ label: "FALSE", correct: true }, { label: "TRUE", trap: "Не заметил разницу most / all" }, { label: "NOT GIVEN" }] },
-    { id: "m-rt4", text: "Текст не говорит о цене. Утверждение: «The course is cheap».", options: [{ label: "NOT GIVEN", correct: true }, { label: "FALSE", trap: "Путает «не сказано» с «сказано обратное»" }, { label: "TRUE" }] },
-    { id: "m-rt5", text: "Текст: «The bridge opened in 1990». Утверждение: «The bridge opened before 2000».", options: [{ label: "TRUE", correct: true }, { label: "NOT GIVEN", trap: "Ищет точное совпадение, а не смысл" }, { label: "FALSE" }] },
-    { id: "m-rt6", text: "Можно ли для TRUE опираться на свои знания о мире?", options: [{ label: "Нет, только на текст", correct: true }, { label: "Да, если уверен", trap: "Отвечает по знаниям, а не по тексту" }] },
-  ],
-  "r-headings": [
-    { id: "m-rh3", text: "Где обычно главная мысль абзаца?", options: [{ label: "В первом-втором предложении", correct: true }, { label: "Всегда в последнем", trap: "Читает только конец абзаца" }, { label: "В середине" }] },
-    { id: "m-rh4", text: "Абзац про плюсы и минусы машин. Какой заголовок?", options: [{ label: "Pros and cons of cars", correct: true }, { label: "Why cars are dangerous", trap: "Заголовок по одной детали" }, { label: "History of cars" }] },
-    { id: "m-rh5", text: "Заголовков больше, чем абзацев. Что делать?", options: [{ label: "Лишние просто не использовать", correct: true }, { label: "Два на один абзац", trap: "Один абзац — один заголовок" }] },
-    { id: "m-rh6", text: "Трудный абзац не подходит ни под один заголовок. Как быть?", options: [{ label: "Отложить и вернуться после остальных", correct: true }, { label: "Сидеть над ним до конца", trap: "Теряет время на одном абзаце" }] },
-  ],
-  "w-task1": [
-    { id: "m-wt3", text: "Минимум слов в Task 1?", options: [{ label: "150", correct: true }, { label: "250", trap: "Перепутал с Task 2" }, { label: "100" }] },
-    { id: "m-wt4", text: "Что лучше для графика с долями?", options: [{ label: "Сравнить крупные и мелкие доли", correct: true }, { label: "Перечислить каждую цифру по порядку", trap: "Список цифр вместо сравнения" }] },
-    { id: "m-wt5", text: "Как начать Task 1?", options: [{ label: "Перефразировать задание", correct: true }, { label: "Переписать задание слово в слово", trap: "Скопированный текст не засчитывают" }, { label: "Сразу с цифр" }] },
-    { id: "m-wt6", text: "Где лучше поставить overview?", options: [{ label: "После вступления или в конце, отдельным абзацем", correct: true }, { label: "Можно не писать", trap: "Без overview балл ограничен" }] },
-  ],
-  "w-coherence": [
-    { id: "m-wc3", text: "Сколько основных идей в одном абзаце?", options: [{ label: "Одна", correct: true }, { label: "Сколько поместится", trap: "Смешивает идеи в одном абзаце" }] },
-    { id: "m-wc4", text: "Что делать с повторами одного слова?", options: [{ label: "Местоимения и синонимы", correct: true }, { label: "Повторять для ясности", trap: "Однообразие снижает оценку" }] },
-    { id: "m-wc5", text: "«However» ставится, когда…", options: [{ label: "Следующая мысль противоречит прошлой", correct: true }, { label: "Добавляется ещё один пример", trap: "Связка не по смыслу" }] },
-    { id: "m-wc6", text: "Нужен ли вывод в Task 2?", options: [{ label: "Да, коротко и без новых идей", correct: true }, { label: "Нет, если закончились слова", trap: "Эссе без завершения теряет балл" }, { label: "Да, с новым аргументом" }] },
-  ],
-  "w-task2": [
-    { id: "m-w23", text: "Минимум слов в Task 2?", options: [{ label: "250", correct: true }, { label: "150", trap: "Перепутал с Task 1" }, { label: "300" }] },
-    { id: "m-w24", text: "Сколько времени отдать Task 2 из 60 минут?", options: [{ label: "Около 40", correct: true }, { label: "20", trap: "Task 2 весит вдвое больше" }, { label: "30" }] },
-    { id: "m-w25", text: "Нужно ли спорить с самим вопросом эссе?", options: [{ label: "Нет, отвечать на заданный вопрос", correct: true }, { label: "Да, если он кажется неверным", trap: "Уход от темы" }] },
-    { id: "m-w26", text: "Как лучше поддержать аргумент?", options: [{ label: "Объяснение и конкретный пример", correct: true }, { label: "Выдуманная статистика", trap: "Недостоверные цифры не усиливают эссе" }] },
-  ],
-  "s-part1": [
-    { id: "m-sp5", text: "Сколько длится Part 1?", options: [{ label: "4–5 минут", correct: true }, { label: "2 минуты", trap: "Перепутал с монологом Part 2" }, { label: "15 минут" }] },
-    { id: "m-sp6", text: "Examiner: «Where are you from?» Что лучше?", options: [{ label: "Город и одна деталь о нём", correct: true }, { label: "Выученный рассказ на минуту", trap: "Заученный текст заметен и не засчитывается" }] },
-    { id: "m-sp7", text: "Не понял вопрос. Что можно сделать?", options: [{ label: "Попросить повторить", correct: true }, { label: "Ответить наугад", trap: "Ответ не по вопросу" }] },
-    { id: "m-sp8", text: "Время в ответах Part 1 чаще всего…", options: [{ label: "Present Simple, про себя сейчас", correct: true }, { label: "Только Past", trap: "Вопросы Part 1 — про настоящее" }] },
-  ],
-  "s-part2": [
-    { id: "m-sp9", text: "Закончил говорить за минуту. Что делать?", options: [{ label: "Добавить пример или чувство по пункту карточки", correct: true }, { label: "Замолчать", trap: "Слишком короткий монолог" }] },
-    { id: "m-sp10", text: "Нужно ли раскрыть все пункты карточки?", options: [{ label: "Желательно да", correct: true }, { label: "Хватит одного", trap: "Не раскрывает тему целиком" }] },
-    { id: "m-sp11", text: "Что будет после монолога Part 2?", options: [{ label: "Пара коротких вопросов", correct: true }, { label: "Сразу оценка", trap: "Не готов к уточняющим вопросам" }] },
-    { id: "m-sp12", text: "Как связать части монолога?", options: [{ label: "Сначала, потом, в итоге", correct: true }, { label: "Никак, по пунктам карточки", trap: "Монолог звучит как список" }] },
-  ],
 };
 
 /** Every check for a topic: the original pool first, then the added ones; a mock test takes them all */
@@ -434,4 +262,5 @@ export const checksFor = (skillId: string): Task[] => [
   ...(MORE_CHECKS[skillId] ?? []),
   ...(MOCK_CHECKS[skillId] ?? []),
   ...(MOCK_MORE[skillId] ?? []),
+  ...(ENT_CHECKS[skillId] ?? []),
 ];

@@ -37,15 +37,10 @@ const INTROS: Record<PrepSub | "set", { id: string; title: string; text: string 
     title: "Что такое «Требования»",
     text: "Какие экзамены и на какой балл нужны сохранённым программам, и когда ты, по прогнозу, будешь готов. Цели пересчитываются, когда меняется список программ.",
   },
-  list: {
-    id: "prep-list",
-    title: "Что такое сет",
-    text: "Сет — несколько связанных тем с общим дедлайном. Сеты подбирает ассистент по твоим ошибкам. Работаешь над одним, сверху — он. Хочешь другой — нажми «Сменить на этот»: прогресс по темам не теряется.",
-  },
   route: {
-    id: "prep-route",
-    title: "Маршрут — по желанию",
-    text: "Над чем работать, решаешь ты: любой сет можно взять в «Все сеты». Если удобнее идти по плану — нажми «Составить маршрут», поставь нужные сеты вперёд по порядку и дальше просто следуй им.",
+    id: "prep-route-v2",
+    title: "Что такое маршрут",
+    text: "Сет — несколько связанных тем с общим дедлайном. Ассистент собирает сеты под тебя по твоим ошибкам и пересобирает их, пока ты продвигаешься. Работаешь над одним — сменить можно в любой момент кнопкой «Сменить на этот», прогресс по темам не теряется.",
   },
   map: {
     id: "prep-map",
@@ -99,7 +94,7 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
 
   const programs = savedPrograms(saved, model.demo);
   // An open set and the map are drawings: they take all the height left
-  const setOpen = programs.length > 0 && tab === "sets" && current === "list" && !!openSet;
+  const setOpen = programs.length > 0 && tab === "sets" && current === "route" && !!openSet;
   const fill = setOpen || (programs.length > 0 && tab === "sets" && current === "map");
 
   const intro = INTROS[setOpen ? "set" : current];
@@ -118,7 +113,7 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
       setOpenSet(id ? { id, topic } : null);
       if (!id) return;
       onTab("sets");
-      onSub("list");
+      onSub("route");
       setExam(setById(id).exam);
     });
 

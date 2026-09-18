@@ -1,9 +1,11 @@
 """Load the misconception library into Neo4j — memory-architecture §5.4.
 
-Each library misconception gets an embedding from Embedder and connects to
-its skills via ABOUT. Validates that every skill_id exists.
+Phase 2: reads the whole catalog data/misconceptions/*.json — one file per
+area (alg, adv, psda, geo, ent_*). Merges entries, checks unique ids across
+files, validates skill_ids against the graph. Each entry gets an embedding
+and connects to its skills via ABOUT.
 
-Source: 20-B1.md §6.3.
+Source: 20-B1.md §6.3, 20-B1-phase2.md §0.1 п.2.
 """
 
 from __future__ import annotations
@@ -28,26 +30,66 @@ class MisconceptionFileEntry(BaseModel):
     exam_specific: str | None = None
 
 
+def _load_catalog(
+    path: Path,
+) -> tuple[list[MisconceptionFileEntry], dict[str, list[str]]]:
+    """Read all .json files under path. Return (entries, per_file_ids).
+
+    Raises SeedError on parse errors, duplicate ids, or empty catalog.
+    """
+    if path.is_file():
+        files = [path]
+    elif path.is_dir():
+        files = sorted(p for p in path.glob("*.json"))
+    else:
+        raise SeedError(str(path), "path does not exist")
+    if not files:
+        raise SeedError(str(path), "no misconception files found")
+
+    entries: list[MisconceptionFileEntry] = []
+    per_file: dict[str, list[str]] = {}
+    for f in files:
+        raw = json.loads(f.read_text(encoding="utf-8"))
+        try:
+            file_entries = [MisconceptionFileEntry.model_validate(r) for r in raw]
+        except Exception as exc:  # noqa: BLE001
+            raise SeedError(str(f), str(exc)) from exc
+        per_file[f.name] = [e.id for e in file_entries]
+        entries.extend(file_entries)
+
+    if not entries:
+        raise SeedError(str(path), "catalog is empty")
+
+    # unique id across all files
+    seen: dict[str, str] = {}
+    for fname, ids in per_file.items():
+        for mid in ids:
+            if mid in seen:
+                raise SeedError(
+                    str(path),
+                    f"duplicate misconception id {mid!r} in {fname} "
+                    f"(also in {seen[mid]})",
+                )
+            seen[mid] = fname
+
+    return entries, per_file
+
+
 async def seed_misconceptions(
     driver: AsyncDriver,
     path: Path,
     embedder: Embedder | None = None,
 ) -> SeedReport:
-    """Load data/misconceptions/library.json into Neo4j."""
-    if path.is_dir():
-        path = path / "library.json"
+    """Load data/misconceptions/*.json into Neo4j.
+
+    path may be a directory (all *.json merged) or a single file.
+    """
+    entries, per_file = _load_catalog(path)
+
     if embedder is None:
         from app.config import settings
 
         embedder = Embedder(settings.EMBEDDING_MODEL, settings.EMBEDDING_DIM)
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    try:
-        entries = [MisconceptionFileEntry.model_validate(r) for r in raw]
-    except Exception as exc:  # noqa: BLE001
-        raise SeedError(str(path), str(exc)) from exc
-
-    if not entries:
-        raise SeedError(str(path), "library is empty")
 
     # check all skills exist
     async with driver.session() as session:
@@ -100,5 +142,9 @@ async def seed_misconceptions(
                     sid=sid,
                 )
                 report.rels += 1
+
+    # per-file summary
+    for fname, ids in per_file.items():
+        print(f"  {fname}: {len(ids)} entries")
 
     return report

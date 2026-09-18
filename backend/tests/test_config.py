@@ -68,3 +68,38 @@ def test_secret_not_exposed_in_repr_or_validation_message():
     with pytest.raises(ValidationError) as error:
         Settings(ENV="prod", JWT_SECRET=secret)
     assert secret not in str(error.value)
+
+
+def test_phase2_knowledge_defaults():
+    config = Settings()
+    params = config.knowledge
+
+    assert params is config.KNOWLEDGE
+    assert params.check_size == 3
+    assert params.review_window_days == 7
+    assert params.consolidation_days == 7
+    assert (params.mock_set_min, params.mock_set_max) == (8, 12)
+    assert (params.mock_topic_min, params.mock_topic_max) == (5, 7)
+    assert params.mock_misc_n == 3
+    assert params.diag_reask_after == 3
+    assert params.min_candidates == 3
+    assert params.matching_priority_weights == {
+        "realism": 3,
+        "cost": 2,
+        "ranking": 1,
+        "location": 1,
+        "program": 2,
+        "research": 1,
+        "mobility": 1,
+    }
+
+
+def test_phase2_knowledge_nested_environment_overrides(monkeypatch):
+    monkeypatch.setenv("KNOWLEDGE__CHECK_SIZE", "4")
+    monkeypatch.setenv("KNOWLEDGE__MIN_CANDIDATES", "5")
+
+    params = Settings().knowledge
+
+    assert params.check_size == 4
+    assert params.min_candidates == 5
+    assert params.review_window_days == 7

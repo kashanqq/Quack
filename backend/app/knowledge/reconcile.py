@@ -1,28 +1,431 @@
-"""Event → graph reconciliation (phase 2).
+"""Reconcile a task answer — memory-architecture-quack.md §8.2, steps 2–8.
 
-Source: memory-architecture-quack.md §8.2, 20-B1.md §3.4.
-The 11-step handler for task.answered. Registered via events.dispatch.on
-in phase 2 — see 00-contracts.md §7.
+Pure function: takes the instance, the grade, the current state and returns
+the new evidence, state, misconception change and root causes. No I/O.
+
+Source: 20-B1-phase2.md §2.1.
 """
 
 from __future__ import annotations
 
-from app.events.store import Event
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from app.config import KnowledgeParams
+from app.knowledge import hlr, weights
+from app.knowledge.misconceptions import next_status
+from app.knowledge.roots import rule_root
+from app.knowledge.words import state_words
+from app.schemas.events import TaskAnsweredPayload
+from app.schemas.knowledge import (
+    AreaOut,
+    EvidenceContext,
+    EvidenceIn,
+    ExamId,
+    KnowledgeStateOut,
+    MisconceptionChange,
+    MisconceptionStateOut,
+    Prerequisite,
+    ReconcileResult,
+    SkillWeight,
+)
+from app.schemas.tasks import Grade, TaskInstance
+
+if TYPE_CHECKING:
+    from app.schemas.knowledge import RootCauseOut
 
 
-async def on_task_answered(session, event: Event) -> None:
-    """Phase 2: apply task.answered (11 steps of §8.2).
+_MOCK_MODES = {"mock_set", "mock_topic", "mock_misconception"}
 
-    1. Write event → event_id (already done by store.append).
-    2. Read the TaskInstance, grade the answer.
-    3. Compute weight (tier, mode, seen_template, matched).
-    4. Create Evidence with context.
-    5. Update KnowledgeState (new node, PREVIOUS link).
-    6. Update MisconceptionState (occurrence/strong/avoided).
-    7. Recompute triggers.
-    8. Root rule: prerequisite gap → ROOT_CAUSE.
-    9. seen_templates += 1.
-    10. Rebuild set queue and forecast.
-    11. Return result, solution, new state, misconception change.
+
+def reconcile_task_answer(
+    instance: TaskInstance,
+    grade: Grade,
+    payload: TaskAnsweredPayload,
+    state: KnowledgeStateOut | None,
+    prereq_states: list[tuple[Prerequisite, KnowledgeStateOut | None]],
+    misc_states: list[MisconceptionStateOut],
+    n_seen: int,
+    exam_ids: list[ExamId],
+    params: KnowledgeParams,
+    now: datetime,
+    event_id: int | None = None,
+) -> ReconcileResult:
+    """Apply one task answer (§8.2 steps 3–8).
+
+    Steps 1 (event) and 9–10 (persistence, rebuild) are done by apply/*.
     """
-    raise NotImplementedError("phase 2")
+    # --- direction / share ---
+    if grade.correct:
+        direction: int = 1
+        share: float | None = None
+    elif grade.partial is not None:
+        direction = 0
+        share = grade.partial
+    else:
+        direction = -1
+        share = None
+
+    # --- source / tier from mode ---
+    mode = payload.mode
+    if mode in _MOCK_MODES:
+        source = "mock"
+    elif mode == "diagnostic":
+        source = "diagnostic"
+    elif mode == "chat":
+        source = "chat"
+    else:
+        source = "task"
+
+    tier = weights.tier_for(source, mode, kind=None)
+
+    matched = grade.correct or grade.matched_misconception_id is not None
+
+    weight = weights.evidence_weight(
+        source,
+        mode,
+        None,
+        seen_before=n_seen > 0,
+        matched=matched,
+        params=params,
+    )
+
+    df = hlr.difficulty_factor(instance.difficulty)
+
+    ctx = EvidenceContext(
+        task_type=instance.type,
+        difficulty=instance.difficulty,
+        tags=instance.tags or None,
+        mode=payload.mode,
+        time_ratio=payload.time_spent_sec / max(1, instance.time_reference_sec),
+        session_minute=payload.session_minute,
+        after_guideline=payload.after_guideline,
+        hint_level_before=payload.hint_level_before,
+        topic_skill_id=instance.skill_id,
+        session_id=None,
+    )
+
+    ev_fields: dict = dict(
+        event_id=event_id or 0,
+        skill_id=instance.skill_id,
+        exam_id=instance.exam_id,
+        kind="task",
+        tier=tier,
+        source=source,
+        weight=weight,
+        direction=direction,
+        share=share,
+        difficulty_factor=df,
+        summary=None,
+        context=ctx,
+        observed_at=now,
+        extractor_version=None,
+    )
+    primary_ev = EvidenceIn(**ev_fields)
+    evidence: list[EvidenceIn] = [primary_ev]
+
+    if grade.matched_misconception_id is not None:
+        misc_name = _misc_name(misc_states, grade.matched_misconception_id)
+        evidence.append(
+            EvidenceIn(
+                **{**ev_fields, "kind": "misconception_hit", "summary": misc_name}
+            )
+        )
+
+    state_after = hlr.apply_evidence(state, primary_ev, params=params)
+
+    cross_exam_state: KnowledgeStateOut | None = None
+    if len(exam_ids) > 1 and instance.skill_id.startswith("math."):
+        other_exam = next((e for e in exam_ids if e != instance.exam_id), None)
+        if other_exam is not None:
+            cross_ev = primary_ev.model_copy(
+                update={
+                    "exam_id": other_exam,
+                    "weight": primary_ev.weight * params.transfer_cross_exam,
+                }
+            )
+            cross = hlr.apply_evidence(None, cross_ev, params=params)
+            cross_exam_state = cross.model_copy(
+                update={"exam_id": other_exam, "has_strong": False}
+            )
+
+    misconception_change = _apply_misconception(
+        instance, grade, tier, misc_states, params
+    )
+
+    root_causes: list[RootCauseOut] = []
+    if direction == -1:
+        root = rule_root(instance.skill_id, prereq_states, params)
+        if root is not None:
+            root_causes.append(root.model_copy(update={"created_at": now}))
+
+    words = state_words(state_after, params.p_target_max, params)
+
+    return ReconcileResult(
+        evidence=evidence,
+        state_after=state_after,
+        cross_exam_state=cross_exam_state,
+        misconception_change=misconception_change,
+        root_causes=root_causes,
+        words=words,
+    )
+
+
+def _misc_name(states: list[MisconceptionStateOut], misc_id: str) -> str:
+    for m in states:
+        if m.misconception_id == misc_id:
+            return m.name
+    return misc_id
+
+
+def _tested_misconceptions(instance: TaskInstance) -> set[str]:
+    ids: set[str] = set()
+    for opt in instance.options:
+        if opt.misconception_id:
+            ids.add(opt.misconception_id)
+    for t in instance.trap_answers:
+        if t.misconception_id:
+            ids.add(t.misconception_id)
+    return ids
+
+
+def _apply_misconception(
+    instance: TaskInstance,
+    grade: Grade,
+    tier: int,
+    misc_states: list[MisconceptionStateOut],
+    params: KnowledgeParams,
+) -> MisconceptionChange | None:
+    strong = weights.is_strong(tier)  # type: ignore[arg-type]
+
+    if grade.matched_misconception_id is not None:
+        existing = next(
+            (
+                m
+                for m in misc_states
+                if m.misconception_id == grade.matched_misconception_id
+            ),
+            None,
+        )
+        if existing is None:
+            return MisconceptionChange(
+                misconception_id=grade.matched_misconception_id,
+                from_status=None,
+                to_status="suspected",
+                counters={
+                    "occurrence_count": 1,
+                    "strong_count": int(strong),
+                    "consecutive_avoided": 0,
+                },
+            )
+
+        occ = existing.occurrence_count + 1
+        strong_count = existing.strong_count + (1 if strong else 0)
+        new_status = next_status(
+            existing.status,
+            event="hit",
+            strong=strong,
+            occurrence_count=occ,
+            strong_count=strong_count,
+            consecutive_avoided=0,
+            strong_at_dispute=existing.strong_count,
+            disputed_at=None,
+            previous_status=existing.status,
+            params=params,
+        )
+        return MisconceptionChange(
+            misconception_id=existing.misconception_id,
+            from_status=existing.status,
+            to_status=new_status,
+            counters={
+                "occurrence_count": occ,
+                "strong_count": strong_count,
+                "consecutive_avoided": 0,
+            },
+        )
+
+    if grade.correct:
+        tested = _tested_misconceptions(instance)
+        for m in misc_states:
+            if m.status == "confirmed" and m.misconception_id in tested:
+                avoided = m.consecutive_avoided + 1
+                new_status = next_status(
+                    "confirmed",
+                    event="avoided",
+                    strong=False,
+                    occurrence_count=m.occurrence_count,
+                    strong_count=m.strong_count,
+                    consecutive_avoided=avoided,
+                    strong_at_dispute=m.strong_count,
+                    disputed_at=None,
+                    previous_status="confirmed",
+                    params=params,
+                )
+                return MisconceptionChange(
+                    misconception_id=m.misconception_id,
+                    from_status="confirmed",
+                    to_status=new_status,
+                    counters={
+                        "occurrence_count": m.occurrence_count,
+                        "strong_count": m.strong_count,
+                        "consecutive_avoided": avoided,
+                    },
+                )
+
+    return None
+
+
+# --- priors from profile (memory-architecture §4.8) ---
+
+
+def reconcile_prior(
+    field: str,
+    value,
+    exam_skills: list[SkillWeight],
+    areas: list[AreaOut],
+    states: dict[str, KnowledgeStateOut],
+    params: KnowledgeParams,
+    now: datetime,
+) -> list[tuple[EvidenceIn, KnowledgeStateOut]]:
+    """Convert one profile field into priors for skills without strong state."""
+    if field == "academics.self_assessment":
+        return _prior_from_self_assessment(
+            value, exam_skills, areas, states, params, now
+        )
+    if field in ("academics.ent_trial_score", "academics.sat_score"):
+        return _prior_from_trial_score(value, exam_skills, states, params, now)
+    return []
+
+
+def _prior_from_self_assessment(
+    value,
+    exam_skills: list[SkillWeight],
+    areas: list[AreaOut],
+    states: dict[str, KnowledgeStateOut],
+    params: KnowledgeParams,
+    now: datetime,
+) -> list[tuple[EvidenceIn, KnowledgeStateOut]]:
+    if not isinstance(value, dict):
+        return []
+
+    area_levels: dict[str, int] = {}
+    for area in areas:
+        for key, lvl in value.items():
+            if key == area.id or key == area.name or key in area.id:
+                try:
+                    area_levels[area.id] = int(lvl)
+                except (TypeError, ValueError):
+                    continue
+                break
+
+    out: list[tuple[EvidenceIn, KnowledgeStateOut]] = []
+    for sw in exam_skills:
+        if sw.area_id not in area_levels:
+            continue
+        existing = states.get(sw.skill.id)
+        if existing is not None and existing.confidence >= params.c_vis:
+            continue
+
+        level = area_levels[sw.area_id]
+        p_at_obs = _p_from_self_level(level)
+        exam_id = sw.skill.exam_ids[0] if sw.skill.exam_ids else "SAT_MATH"
+
+        ev = EvidenceIn(
+            event_id=0,
+            skill_id=sw.skill.id,
+            exam_id=exam_id,
+            kind="self_report",
+            tier=3,
+            source="self_report",
+            weight=0.1,
+            direction=1,
+            share=None,
+            difficulty_factor=1.0,
+            summary=f"самооценка: {level}/5",
+            context=EvidenceContext(),
+            observed_at=now,
+            extractor_version=None,
+        )
+        state = KnowledgeStateOut(
+            skill_id=sw.skill.id,
+            exam_id=exam_id,
+            p_recall=p_at_obs,
+            p_at_obs=p_at_obs,
+            half_life_h=params.h0_prior,
+            confidence=0.15,
+            evidence_mass=0.1,
+            n_correct=0,
+            n_incorrect=0,
+            n_partial=0,
+            has_strong=False,
+            last_observed_at=now,
+            created_at=now,
+        )
+        out.append((ev, state))
+    return out
+
+
+def _prior_from_trial_score(
+    value,
+    exam_skills: list[SkillWeight],
+    states: dict[str, KnowledgeStateOut],
+    params: KnowledgeParams,
+    now: datetime,
+) -> list[tuple[EvidenceIn, KnowledgeStateOut]]:
+    if not isinstance(value, (int, float)):
+        return []
+
+    total_weight = sum(sw.weight for sw in exam_skills)
+    if total_weight <= 0:
+        return []
+    p_at_obs = max(0.0, min(1.0, float(value) / total_weight))
+
+    out: list[tuple[EvidenceIn, KnowledgeStateOut]] = []
+    for sw in exam_skills:
+        existing = states.get(sw.skill.id)
+        if existing is not None and existing.confidence >= params.c_vis:
+            continue
+
+        exam_id = sw.skill.exam_ids[0] if sw.skill.exam_ids else "SAT_MATH"
+        ev = EvidenceIn(
+            event_id=0,
+            skill_id=sw.skill.id,
+            exam_id=exam_id,
+            kind="self_report",
+            tier=3,
+            source="self_report",
+            weight=0.1,
+            direction=1,
+            share=None,
+            difficulty_factor=1.0,
+            summary=f"пробный балл: {value}",
+            context=EvidenceContext(),
+            observed_at=now,
+            extractor_version=None,
+        )
+        state = KnowledgeStateOut(
+            skill_id=sw.skill.id,
+            exam_id=exam_id,
+            p_recall=p_at_obs,
+            p_at_obs=p_at_obs,
+            half_life_h=params.h0_prior,
+            confidence=0.15,
+            evidence_mass=0.1,
+            n_correct=0,
+            n_incorrect=0,
+            n_partial=0,
+            has_strong=False,
+            last_observed_at=now,
+            created_at=now,
+        )
+        out.append((ev, state))
+    return out
+
+
+def _p_from_self_level(level: int) -> float:
+    """1–5 → p_at_obs: ≥4 → 0.75, 3 → 0.5, ≤2 → 0.3."""
+    if level >= 4:
+        return 0.75
+    if level == 3:
+        return 0.5
+    return 0.3

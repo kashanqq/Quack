@@ -51,7 +51,7 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept }: Pr
   ) as Record<ExamId, { readiness: number } & ReturnType<typeof forecastSeries>>;
   const outlook: ExamOutlook = {
     sat: { readiness: series.sat.readiness, forecast: series.sat.forecast },
-    ielts: { readiness: series.ielts.readiness, forecast: series.ielts.forecast },
+    ent: { readiness: series.ent.readiness, forecast: series.ent.forecast },
   };
   const exams = requirements(programs, outlook);
   const list = milestones(programs);
@@ -62,7 +62,7 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept }: Pr
         <Important model={model} milestoneList={list} onGo={onGo} onOpenSet={onOpenSet} />
       </Requirements>
     );
-  return <Now model={model} forecasts={{ sat: series.sat.forecast, ielts: series.ielts.forecast }} onOpenSet={onOpenSet} onAccept={onAccept} />;
+  return <Now model={model} forecasts={{ sat: series.sat.forecast, ent: series.ent.forecast }} onOpenSet={onOpenSet} onAccept={onAccept} />;
 }
 
 /* ---------- Сейчас: one calm screen — the set and topic in work, the pace per exam, one button ---------- */
@@ -132,7 +132,7 @@ function Now({
             className={styles.nowButton}
             aria-label={current ? "Продолжить" : "Начать"}
             title={current ? "Продолжить" : "Начать"}
-            onClick={() => (current ? onOpenSet(set.id, topic.id) : onAccept(set.id))}
+            onClick={() => (current ? onOpenSet(set.id) : onAccept(set.id))}
           >
             <Icon name="play" size={26} />
           </button>
@@ -268,11 +268,15 @@ function Requirements({ exams, children }: { exams: ReturnType<typeof requiremen
               </div>
               <div>
                 <dt>Нужен для</dt>
-                <dd className={styles.chips}>
-                  {exam.programs.map((p) => (
-                    <span key={p.id}>{p.university}</span>
-                  ))}
-                </dd>
+                {exam.programs.length ? (
+                  <dd className={styles.chips}>
+                    {exam.programs.map((p) => (
+                      <span key={p.id}>{p.university}</span>
+                    ))}
+                  </dd>
+                ) : (
+                  <dd>гранта в Казахстане — по нему твой план</dd>
+                )}
               </div>
             </dl>
             {exam.hasModel ? (
