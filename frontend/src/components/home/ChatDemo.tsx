@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { copy, DIALOGUES, type ChatTurn } from "./copy";
-import { PixelDuck } from "./PixelDuck";
+import { PixelDuck } from "@/components/duck/PixelDuck";
 import styles from "./quack.module.css";
 import { useRotator } from "./useRotator";
 

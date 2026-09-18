@@ -227,7 +227,7 @@
   right: 12px;
   /* The duck walks along the top edge of the button, feet just inside it so it never leaves the window */
   bottom: calc(100% - 8px);
-  height: 17px;
+  height: 14px;
   animation: fade-in 0.5s ease both;
   pointer-events: none;
 }
@@ -235,13 +235,9 @@
 .logoDuck {
   position: absolute;
   left: 0;
-  width: 17px;
+  /* One screen pixel per grid cell, the same pixel duck as on the landing page */
+  width: 16px;
   animation: duck-walk 14s ease-in-out infinite;
-}
-
-.logoDuck span {
-  display: block;
-  animation: duck-waddle 0.9s ease-in-out infinite;
 }
 
 .logoDuck svg {
@@ -256,11 +252,11 @@
     transform: scaleX(1);
   }
   46% {
-    left: calc(100% - 17px);
+    left: calc(100% - 16px);
     transform: scaleX(1);
   }
   50% {
-    left: calc(100% - 17px);
+    left: calc(100% - 16px);
     transform: scaleX(-1);
   }
   96% {
@@ -273,19 +269,8 @@
   }
 }
 
-@keyframes duck-waddle {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-3deg);
-  }
-  50% {
-    transform: translateY(-2px) rotate(3deg);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .logoDuck,
-  .logoDuck span {
+  .logoDuck {
     animation: none;
   }
 }
@@ -1120,6 +1105,46 @@
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 16px;
   transition: width 0.4s var(--ease), opacity 0.25s ease, transform 0.3s var(--ease), border-color 0.2s ease;
+}
+
+/* Above the composer: the way to skip the questions, later a one-time note on what to do next */
+.composerNote {
+  flex: none;
+  width: min(820px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+.composerNote:empty {
+  display: none;
+}
+
+.composerNote > aside {
+  margin-bottom: 10px;
+}
+
+.skipButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  margin: 0 0 8px 6px;
+  padding: 0 12px;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.skipButton:hover,
+.skipButton:focus-visible {
+  color: var(--text);
+  background: rgba(255, 145, 0, 0.1);
+  border-color: rgba(255, 166, 77, 0.5);
+  outline: none;
 }
 
 .composer:focus-within {

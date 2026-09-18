@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SCENE_PALETTE } from "./HeroLandscape";
-import { PixelDuck } from "./PixelDuck";
+import { PixelDuck } from "@/components/duck/PixelDuck";
 import { PixelSprite } from "./PixelSprite";
 import styles from "./footer.module.css";
 

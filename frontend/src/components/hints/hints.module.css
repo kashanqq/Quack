@@ -1,0 +1,89 @@
+/* First-visit note: a quiet card with the pixel duck, never a modal */
+
+.hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  background: rgba(255, 145, 0, 0.07);
+  border: 1px solid rgba(255, 166, 77, 0.3);
+  border-radius: 16px;
+  animation: hint-in 0.35s var(--ease-out, ease-out) both;
+}
+
+.duck {
+  flex: none;
+  width: 32px;
+  margin-top: 2px;
+}
+
+.body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.body strong {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.body p {
+  margin: 0;
+  color: var(--text-dim, rgba(255, 255, 255, 0.68));
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.action,
+.dismiss {
+  height: 30px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.action {
+  color: #1f1b18;
+  background: var(--accent);
+  border: 0;
+}
+
+.action:hover {
+  background: #ff9124;
+}
+
+.dismiss {
+  color: var(--text-dim, rgba(255, 255, 255, 0.68));
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.dismiss:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+@keyframes hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hint {
+    animation: none;
+  }
+}

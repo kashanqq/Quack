@@ -2,8 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Duck } from "@/components/duck/Duck";
-import duckStyles from "@/components/duck/duck.module.css";
+import { PixelDuck } from "@/components/duck/PixelDuck";
 import styles from "./transition.module.css";
 
 type TransitionApi = {
@@ -73,7 +72,7 @@ export function TransitionProvider({ children }: { children: React.ReactNode }) 
       <div className={`${styles.loader} ${visible ? styles.visible : ""}`} role="status" aria-live="polite" aria-hidden={!visible}>
         {visible && <span className={styles.srOnly}>Загрузка</span>}
         <div className={styles.duck}>
-          <Duck wingClassName={duckStyles.flap} />
+          <PixelDuck tempo="fast" />
         </div>
         <div className={styles.shadow} />
         <div className={styles.text}>

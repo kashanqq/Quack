@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { copy } from "./copy";
-import { PixelDuck } from "./PixelDuck";
+import { PixelDuck } from "@/components/duck/PixelDuck";
 import styles from "./layers.module.css";
 
 const LAYERS = copy.layers.items;

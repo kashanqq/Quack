@@ -1,6 +1,6 @@
 "use client";
 
-import { Duck } from "@/components/duck/Duck";
+import { PixelDuck } from "@/components/duck/PixelDuck";
 import { Icon, type IconName } from "./Icon";
 import type { SignalLevel } from "../quack/contract";
 import type { Mode } from "./Sidebar";
@@ -77,9 +77,7 @@ export function Topbar({ mode, onMode, onOpenMenu, alert }: TopbarProps) {
           {mode === "dashboard" && (
             <span className={styles.logoTrack} aria-hidden="true">
               <span className={styles.logoDuck}>
-                <span>
-                  <Duck />
-                </span>
+                <PixelDuck tempo="steady" />
               </span>
             </span>
           )}

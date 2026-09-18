@@ -23,6 +23,7 @@ import type { DashTab } from "../dashboard/dashboardRules";
 import { PrepView } from "../prep/PrepView";
 import { useQuack } from "../quack/source";
 import { morph } from "@/components/transition/morph";
+import { FirstHint, resetHints } from "@/components/hints/FirstHint";
 import type { PrepSub, PrepTab } from "../prep/prepModel";
 import { ChatMessage, type ChatMsg } from "./ChatMessage";
 import { CompareView } from "./CompareView";
@@ -32,6 +33,7 @@ import { ProgramCards, ProgramDrawer, type ProgramActions } from "./ProgramUi";
 import { recommend } from "./programs";
 import { ResizeHandle } from "./ResizeHandle";
 import { Sidebar, type ChatSummary, type Mode, type SidebarTab } from "./Sidebar";
+import { Icon } from "./Icon";
 import { Topbar } from "./Topbar";
 import styles from "./choice.module.css";
 import layout from "./layout.module.css";
@@ -66,6 +68,17 @@ type Session = ChatSummary & { messages: ChatItem[] };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+
+/** What the assistant says when the questions are skipped: what it knows and what it has to guess. */
+function skipReply(profile: Profile) {
+  const guesses: string[] = [];
+  if (!profile.direction) guesses.push("направление любое");
+  if (!profile.location) guesses.push("страна любая");
+  if (!profile.sat && !profile.ielts && !profile.ent) guesses.push("IELTS около 6.0");
+  if (!profile.budget && !profile.grant) guesses.push("грант желательно");
+  if (!guesses.length) return "Хорошо, вот программы по тому, что ты уже рассказал.";
+  return `Хорошо, без вопросов. Где не знаю, предполагаю: ${guesses.join(", ")}. Поправить можно в профиле или просто напиши мне, и подборка обновится.`;
+}
 
 export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const [stage, setStage] = useState<"intro" | "chat">("intro");
@@ -317,7 +330,13 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const programActions: ProgramActions = {
     saved,
     compare,
-    onToggleSave: (id) => setSaved((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id])),
+    onToggleSave: (id) =>
+      setSaved((list) => {
+        if (list.includes(id)) return list.filter((x) => x !== id);
+        // The first save is when the other sections start to matter: say so once, briefly
+        if (!list.length) setToast("Сохранено. Под неё уже собирается «Подготовка»");
+        return [...list, id];
+      }),
     onToggleCompare: (id) =>
       setCompare((list) => {
         if (list.includes(id)) return list.filter((x) => x !== id);
@@ -364,15 +383,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   /* ---------- Composer ---------- */
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const text = input.trim();
-    if (!text || busyRef.current) return;
-
-    setInput("");
-    setSentTick((t) => t + 1);
-    setBusyState(true);
-
+  async function openChat(text: string) {
     if (!activeChatRef.current) {
       const id = `chat-${Date.now()}`;
       const title = text.length > 42 ? `${text.slice(0, 40)}…` : text;
@@ -387,7 +398,18 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
       setLeft((l) => (l.userSet ? l : { ...l, collapsed: true }));
       await sleep(prefersReducedMotion() ? 0 : 450);
     }
+  }
 
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || busyRef.current) return;
+
+    setInput("");
+    setSentTick((t) => t + 1);
+    setBusyState(true);
+
+    await openChat(text);
     addUserMessage(text);
     if (!(await handleIntent(text))) await respond(text);
     if (!mounted.current) return;
@@ -406,6 +428,11 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     await assistantSay(CONFIRM_REPLY);
     if (!mounted.current) return;
 
+    showPicks();
+    setBusyState(false);
+  }
+
+  function showPicks() {
     const ids = recommend(profileRef.current);
     setPicks(ids);
     setSidebarTab("picks");
@@ -414,7 +441,24 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
       { id: ++idRef.current, role: "assistant", text: "", confirm: "none", editable: false, programs: ids },
     ]);
     setPlaceholder("Сравни программы или спроси что угодно...");
+  }
+
+  /**
+   * The questions are optional: programs right away from what the student has said, with the gaps
+   * filled by plain guesses that are named out loud and can be corrected later.
+   */
+  async function skipQuestions() {
+    if (busyRef.current) return;
+    setBusyState(true);
+    const ask = "Покажи программы по тому, что уже знаешь";
+    await openChat(ask);
+    addUserMessage(ask);
+
+    await assistantSay(skipReply(profileRef.current));
+    if (!mounted.current) return;
+    showPicks();
     setBusyState(false);
+    inputRef.current?.focus();
   }
 
   function onEditStart(id: number) {
@@ -481,6 +525,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   };
 
   const restart = () => {
+    resetHints();
     try {
       localStorage.removeItem(WORKSPACE_KEY);
     } catch {}
@@ -559,6 +604,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const toggleRight = () => setRight((r) => ({ ...r, hidden: !r.hidden, width: r.lastWidth }));
 
   const readinessValue = readiness(profile, confirmed);
+  const canSkip = !picks.length && !busy && !messages.some((m) => m.confirm === "shown");
   const toggleProfile = docked ? toggleRight : toggleProfileOverlay;
 
   const gridStyle = { "--left": `${leftWidth}px`, "--right": `${rightWidth}px` } as CSSProperties;
@@ -739,6 +785,21 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
               </div>
             )}
           </div>
+
+          {mode === "choice" && view === "chat" && (
+            <div className={styles.composerNote}>
+              {canSkip ? (
+                <button type="button" className={styles.skipButton} onClick={skipQuestions}>
+                  Пропустить вопросы и показать программы <Icon name="chevron-right" size={14} />
+                </button>
+              ) : picks.length > 0 ? (
+                <FirstHint id="choice-picks" title="Что дальше">
+                  Нажимай ☆ на программах, которые нравятся. Из избранного Quack соберёт подготовку к экзаменам и будет следить за
+                  сроками в «Обзоре».
+                </FirstHint>
+              ) : null}
+            </div>
+          )}
 
           <form className={styles.composer} autoComplete="off" onSubmit={onSubmit}>
             <input

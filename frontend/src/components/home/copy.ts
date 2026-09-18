@@ -5,7 +5,7 @@
 // Tone follows product-logic.md: "ты", no pressure, no scolding. Wordings are kept
 // gender-neutral, because we never ask the student for a gender.
 
-import type { Tempo } from "./PixelDuck";
+import type { Tempo } from "@/components/duck/PixelDuck";
 
 export const copy = {
   nav: {

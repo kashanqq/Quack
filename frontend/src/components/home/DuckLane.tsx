@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { PixelDuck, type Tempo } from "./PixelDuck";
+import { PixelDuck, type Tempo } from "@/components/duck/PixelDuck";
 import { pixelRects } from "./PixelSprite";
 import styles from "./duck-lane.module.css";
 

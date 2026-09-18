@@ -3,6 +3,7 @@
 // "Подготовка" (product-logic §4). Input of the section is the saved programs; with none saved the
 // student can look at it on demo programs. Its state lives in localStorage until there is a backend.
 
+import { FirstHint } from "@/components/hints/FirstHint";
 import { useEffect, useRef, useState } from "react";
 import { morph } from "@/components/transition/morph";
 import { CurrentSet } from "./CurrentSet";
@@ -94,7 +95,7 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
           <h2 className={styles.prepTitle}>Подготовка</h2>
           <p className={styles.muted}>
             {programs.length
-              ? `По ${saved.length ? "сохранённым" : "демо-"}программам: ${programs.map((p) => p.university).join(", ")}`
+              ? `По ${saved.length ? "сохранённым " : "демо-"}программам: ${programs.map((p) => p.university).join(", ")}`
               : "Вход раздела — сохранённые программы"}
           </p>
         </div>
@@ -118,6 +119,16 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
           </div>
         ) : (
           <>
+            {saved.length ? (
+              <FirstHint id="prep" title="Зачем «Подготовка»">
+                Здесь план подготовки к экзаменам, которые требуют твои программы. Начни с «Сейчас»: там темп и что сделать первым.
+                Потом открывай «Текущий сет» и решай задачи, план подстроится под результаты. Разделы слева.
+              </FirstHint>
+            ) : (
+              <FirstHint id="prep-demo" title="Это пример" action={{ label: "Перейти к выбору", onClick: onGoToChoice }}>
+                План собран на демо-программах. Сохрани свои в «Выборе», и подготовка пересоберётся под их экзамены и сроки.
+              </FirstHint>
+            )}
             {/* Tabs and their parts are picked only in the left column — on phones it is the menu drawer */}
             <div key={`${tab}-${current}`} className={styles.tabBody}>
               {tab === "overview" && (

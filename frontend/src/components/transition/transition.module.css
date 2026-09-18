@@ -18,9 +18,9 @@
   transition: opacity 0.35s ease;
 }
 
+/* Same pixel duck as the landing page: 16 grid cells at 6px each stays crisp */
 .duck {
   width: 96px;
-  height: 72px;
   animation: bob 0.9s ease-in-out infinite;
 }
 

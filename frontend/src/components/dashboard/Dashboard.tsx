@@ -4,6 +4,7 @@
 // The saved programs are its input; the work is split across GitHub-style tabs so the screen
 // says where to look: the main numbers and activity, the merged exams, the calendar and the programs.
 
+import { FirstHint } from "@/components/hints/FirstHint";
 import { useEffect, useMemo, useState } from "react";
 import type { Profile } from "../choice/assistant";
 import { Icon } from "../choice/Icon";
@@ -114,6 +115,11 @@ export function Dashboard({ tab, onTab, saved, profile, chatDays, onUnsave, onOp
           <Icon name="graduation-cap" size={16} /> Добавить программы
         </button>
       </header>
+
+      <FirstHint id="dashboard" title="Зачем «Обзор»">
+        Quack следит за сохранёнными программами: какие экзамены сдавать, какие сроки близко и как меняются шансы. Когда что-то
+        меняется, кнопка Quack! наверху начинает светиться. Заходи сюда, чтобы узнать, что случилось.
+      </FirstHint>
 
       <nav className={styles.tabs} role="tablist" aria-label="Разделы обзора">
         {DASH_TABS.map((t) => (
