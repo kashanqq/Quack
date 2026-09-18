@@ -6,26 +6,277 @@
   },
   "areas": [
     {
-      "id": "area.ent.algebra",
-      "name": "Алгебра",
-      "score_share": 1.0,
+      "id": "area.ent.num",
+      "name": "Числа и вычисления",
+      "score_share": 0.16,
       "skills": [
-        { "id": "math.alg.linear_eq", "weight": 10.0 },
-        { "id": "math.alg.abs_value_eq", "weight": 12.0 },
-        { "id": "math.alg.quadratic_roots", "weight": 14.0 },
-        { "id": "ent.alg.inequalities", "weight": 14.0 }
+        { "id": "ent.num.percent", "weight": 2.0 },
+        { "id": "ent.num.powers", "weight": 2.0 },
+        { "id": "ent.num.logarithm", "weight": 2.0 },
+        { "id": "ent.num.progression", "weight": 2.0 }
+      ]
+    },
+    {
+      "id": "area.ent.alg",
+      "name": "Уравнения и неравенства",
+      "score_share": 0.20,
+      "skills": [
+        { "id": "math.alg.linear_eq", "weight": 2.0 },
+        { "id": "math.alg.linear_ineq", "weight": 2.0 },
+        { "id": "math.alg.quadratic_roots", "weight": 2.0 },
+        { "id": "math.alg.abs_value_eq", "weight": 2.0 },
+        { "id": "ent.alg.inequalities", "weight": 2.0 }
+      ]
+    },
+    {
+      "id": "area.ent.func",
+      "name": "Функции",
+      "score_share": 0.20,
+      "skills": [
+        { "id": "ent.func.linear", "weight": 2.0 },
+        { "id": "ent.func.quadratic", "weight": 2.0 },
+        { "id": "ent.func.exponential", "weight": 2.0 },
+        { "id": "ent.func.logarithm", "weight": 2.0 },
+        { "id": "ent.func.derivative", "weight": 2.0 }
+      ]
+    },
+    {
+      "id": "area.ent.trig",
+      "name": "Тригонометрия",
+      "score_share": 0.12,
+      "skills": [
+        { "id": "ent.trig.identities", "weight": 2.0 },
+        { "id": "ent.trig.equations", "weight": 2.0 },
+        { "id": "ent.trig.triangle", "weight": 2.0 }
+      ]
+    },
+    {
+      "id": "area.ent.geo",
+      "name": "Планиметрия",
+      "score_share": 0.16,
+      "skills": [
+        { "id": "ent.geo.triangle", "weight": 2.0 },
+        { "id": "ent.geo.circle", "weight": 2.0 },
+        { "id": "ent.geo.quadrilateral", "weight": 2.0 },
+        { "id": "ent.geo.polygon", "weight": 2.0 }
+      ]
+    },
+    {
+      "id": "area.ent.stereo",
+      "name": "Стереометрия",
+      "score_share": 0.16,
+      "skills": [
+        { "id": "ent.stereo.prism", "weight": 2.0 },
+        { "id": "ent.stereo.pyramid", "weight": 2.0 },
+        { "id": "ent.stereo.cylinder", "weight": 2.0 },
+        { "id": "ent.stereo.cone_sphere", "weight": 2.0 }
       ]
     }
   ],
   "skills": [
     {
-      "id": "ent.alg.inequalities",
-      "name": "Неравенства",
-      "description": "Решение линейных и квадратных неравенств, метод интервалов, системы неравенств.",
+      "id": "ent.num.percent",
+      "name": "Проценты и доли",
+      "description": "Проценты от числа, процентное изменение, последовательные проценты, доли и пропорции в задачах.",
+      "effort_h": 4,
+      "base_half_life_h": null,
+      "requires": []
+    },
+    {
+      "id": "ent.num.powers",
+      "name": "Степени и корни",
+      "description": "Свойства степеней с целым и рациональным показателем, преобразование выражений с корнями.",
+      "effort_h": 5,
+      "base_half_life_h": null,
+      "requires": []
+    },
+    {
+      "id": "ent.num.logarithm",
+      "name": "Логарифмы",
+      "description": "Определение логарифма, свойства, переход к новому основанию, простейшие логарифмические выражения.",
       "effort_h": 6,
       "base_half_life_h": null,
       "requires": [
-        { "skill_id": "math.alg.linear_eq", "strength": 0.8 }
+        { "skill_id": "ent.num.powers", "strength": 0.9 }
+      ]
+    },
+    {
+      "id": "ent.num.progression",
+      "name": "Прогрессии",
+      "description": "Арифметическая и геометрическая прогрессии: формулы n-го члена, суммы, задачи на последовательности.",
+      "effort_h": 5,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "ent.num.powers", "strength": 0.6 }
+      ]
+    },
+    {
+      "id": "ent.alg.inequalities",
+      "name": "Квадратные и рациональные неравенства",
+      "description": "Метод интервалов, системы неравенств, дробно-рациональные неравенства, отбор решений с учётом ОДЗ.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_ineq", "strength": 0.9 },
+        { "skill_id": "math.alg.quadratic_roots", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "ent.func.linear",
+      "name": "Линейная функция",
+      "description": "График линейной функции, угловой коэффициент, взаимное расположение прямых, задачи на чтение графика.",
+      "effort_h": 4,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.linear_eq", "strength": 0.9 }
+      ]
+    },
+    {
+      "id": "ent.func.quadratic",
+      "name": "Квадратичная функция",
+      "description": "Парабола, вершина, ось симметрии, промежутки возрастания и убывания, наибольшее и наименьшее значение.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "math.alg.quadratic_roots", "strength": 0.9 }
+      ]
+    },
+    {
+      "id": "ent.func.exponential",
+      "name": "Показательная функция",
+      "description": "Свойства показательной функции, показательные уравнения и неравенства, замена переменной.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "ent.num.powers", "strength": 0.8 }
+      ]
+    },
+    {
+      "id": "ent.func.logarithm",
+      "name": "Логарифмическая функция",
+      "description": "Свойства логарифмической функции, логарифмические уравнения и неравенства, ОДЗ.",
+      "effort_h": 7,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "ent.num.logarithm", "strength": 0.9 },
+        { "skill_id": "ent.func.exponential", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "ent.func.derivative",
+      "name": "Производная",
+      "description": "Определение производной, таблица производных, правила дифференцирования, применение к исследованию функций.",
+      "effort_h": 8,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "ent.func.quadratic", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "ent.trig.identities",
+      "name": "Тригонометрические тождества",
+      "description": "Основное тригонометрическое тождество, формулы приведения, сложения, двойного угла; упрощение выражений.",
+      "effort_h": 7,
+      "base_half_life_h": null,
+      "requires": []
+    },
+    {
+      "id": "ent.trig.equations",
+      "name": "Тригонометрические уравнения",
+      "description": "Простейшие тригонометрические уравнения, отбор корней на промежутке, замена переменной.",
+      "effort_h": 8,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "ent.trig.identities", "strength": 0.9 }
+      ]
+    },
+    {
+      "id": "ent.trig.triangle",
+      "name": "Тригонометрия в треугольнике",
+      "description": "Теорема синусов и косинусов, площадь через стороны и углы, решение треугольников.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "ent.geo.triangle", "strength": 0.7 },
+        { "skill_id": "ent.trig.identities", "strength": 0.6 }
+      ]
+    },
+    {
+      "id": "ent.geo.triangle",
+      "name": "Треугольники",
+      "description": "Виды треугольников, признаки равенства и подобия, медианы, биссектрисы, высоты, теорема Пифагора.",
+      "effort_h": 5,
+      "base_half_life_h": null,
+      "requires": []
+    },
+    {
+      "id": "ent.geo.circle",
+      "name": "Окружность и круг",
+      "description": "Хорды, касательные, секущие, вписанные и центральные углы, вписанные и описанные окружности.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "ent.geo.triangle", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "ent.geo.quadrilateral",
+      "name": "Четырёхугольники",
+      "description": "Параллелограмм, прямоугольник, ромб, трапеция: свойства, площади, средняя линия.",
+      "effort_h": 5,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "ent.geo.triangle", "strength": 0.8 }
+      ]
+    },
+    {
+      "id": "ent.geo.polygon",
+      "name": "Многоугольники и площади",
+      "description": "Правильные многоугольники, сумма углов, площади составных фигур, координатный метод.",
+      "effort_h": 5,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "ent.geo.quadrilateral", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "ent.stereo.prism",
+      "name": "Призма и параллелепипед",
+      "description": "Объём и площадь поверхности призмы и параллелепипеда, диагонали, сечения.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "ent.geo.polygon", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "ent.stereo.pyramid",
+      "name": "Пирамида",
+      "description": "Объём и площадь поверхности пирамиды, правильная пирамида, апофема, усечённая пирамида.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "ent.stereo.prism", "strength": 0.7 }
+      ]
+    },
+    {
+      "id": "ent.stereo.cylinder",
+      "name": "Цилиндр",
+      "description": "Объём и площадь поверхности цилиндра, сечения, развёртка, задачи на вписанные тела.",
+      "effort_h": 5,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "ent.geo.circle", "strength": 0.8 }
+      ]
+    },
+    {
+      "id": "ent.stereo.cone_sphere",
+      "name": "Конус и шар",
+      "description": "Объём и площадь поверхности конуса и шара, усечённый конус, сечения шара плоскостью.",
+      "effort_h": 6,
+      "base_half_life_h": null,
+      "requires": [
+        { "skill_id": "ent.stereo.cylinder", "strength": 0.8 }
       ]
     }
   ],
