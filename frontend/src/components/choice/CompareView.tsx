@@ -1,5 +1,6 @@
 "use client";
 
+import { FirstHint } from "@/components/hints/FirstHint";
 import type { Profile } from "./assistant";
 import { Icon } from "./Icon";
 import { compareRows, compareSummary, programById } from "./programs";
@@ -26,6 +27,11 @@ export function CompareView({ ids, profile, onBack, onRemove, onOpen }: CompareV
         </button>
         <h2 className={styles.compareTitle}>Сравнение</h2>
       </div>
+
+      <FirstHint id="choice-compare" title="Как сравнивать">
+        Программы стоят рядом по одним и тем же строкам: реалистичность, стоимость, баллы, сроки подачи и город. Нажми на название, чтобы открыть
+        программу целиком, а крестик уберёт её из сравнения.
+      </FirstHint>
 
       <div className={styles.tableWrap}>
         <table className={styles.table}>

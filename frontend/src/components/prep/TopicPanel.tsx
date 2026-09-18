@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "../choice/Icon";
 import { formatShort, skillById, STATE_LABEL, TODAY, type StudySet } from "./prepData";
 import { TOPIC_PROMPTS, topicReply } from "./prepAssistant";
-import { answerTask, MISCONCEPTION_LABEL, type AnswerResult, type PrepModel } from "./prepModel";
+import { answerTask, disputeMisconception, MISCONCEPTION_LABEL, type AnswerResult, type PrepModel } from "./prepModel";
 import { StateGlyph } from "./SkillGraph";
 import { checksFor, TOPICS } from "./topicContent";
 import styles from "./prep.module.css";
@@ -69,7 +69,7 @@ export function TopicPanel({ model, set, skillId, plannedBy, onModel, onToast, o
       </div>
 
       <div className={styles.topicBody} key={tab}>
-        {tab === "material" && <Material model={model} skillId={skillId} onCheck={() => setTab("check")} />}
+        {tab === "material" && <Material model={model} skillId={skillId} onModel={onModel} onCheck={() => setTab("check")} />}
         {tab === "check" && <Check model={model} skillId={skillId} onModel={onModel} onToast={onToast} />}
         {tab === "chat" && <TopicChat model={model} set={set} skillId={skillId} />}
       </div>
@@ -79,7 +79,17 @@ export function TopicPanel({ model, set, skillId, plannedBy, onModel, onToast, o
 
 /* ---------- Материал: just enough to know what the topic is ---------- */
 
-function Material({ model, skillId, onCheck }: { model: PrepModel; skillId: string; onCheck: () => void }) {
+function Material({
+  model,
+  skillId,
+  onModel,
+  onCheck,
+}: {
+  model: PrepModel;
+  skillId: string;
+  onModel: (model: PrepModel) => void;
+  onCheck: () => void;
+}) {
   const content = TOPICS[skillId];
   const [shown, setShown] = useState(false);
   const own = model.misconceptions[skillId].filter((m) => m.status !== "disputed");
@@ -115,6 +125,11 @@ function Material({ model, skillId, onCheck }: { model: PrepModel; skillId: stri
           <li key={m.id} className={styles.misconception} data-status={m.status}>
             <span>{m.text}</span>
             <span className={styles.muted}>у тебя: {MISCONCEPTION_LABEL(m)}</span>
+            {(m.status === "confirmed" || m.status === "suspected") && (
+              <button type="button" className={styles.link} onClick={() => onModel(disputeMisconception(model, skillId, m.id))}>
+                Не согласен
+              </button>
+            )}
           </li>
         ))}
         <li className={styles.misconception}>
@@ -122,6 +137,21 @@ function Material({ model, skillId, onCheck }: { model: PrepModel; skillId: stri
           <span className={styles.muted}>частая у всех</span>
         </li>
       </ul>
+
+      <p className={styles.eyebrow}>Откуда мы это знаем</p>
+      {model.evidence[skillId].length ? (
+        <ul className={styles.evidence}>
+          {model.evidence[skillId].map((e, i) => (
+            <li key={i}>
+              <span className={styles.sourceTag}>{e.source}</span>
+              <span>{e.text}</span>
+              <span className={styles.muted}>{formatShort(e.date)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className={styles.muted}>Свидетельств пока нет — их даст проверка по этой теме.</p>
+      )}
 
       <div className={styles.actions}>
         <button type="button" className={styles.primary} onClick={onCheck}>

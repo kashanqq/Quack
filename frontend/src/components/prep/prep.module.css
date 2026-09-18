@@ -1324,6 +1324,66 @@
   font-size: 14px;
 }
 
+.skillTrap {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+/* The way from the map into a set: the first button is the set still ahead */
+.skillSets {
+  display: grid;
+  gap: 6px;
+}
+
+.skillSetJump {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.skillSetJump:hover,
+.skillSetJump:focus-visible {
+  background: rgba(255, 145, 0, 0.1);
+  border-color: rgba(255, 166, 77, 0.45);
+}
+
+.skillSetJump[data-main] {
+  background: rgba(255, 145, 0, 0.12);
+  border-color: rgba(255, 166, 77, 0.4);
+}
+
+.skillSetJump > svg {
+  flex: none;
+  margin-left: auto;
+  color: var(--accent-label);
+}
+
+.skillSetText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.skillSetText > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .rootNote {
   margin: 0 0 12px;
   padding: 8px 10px;

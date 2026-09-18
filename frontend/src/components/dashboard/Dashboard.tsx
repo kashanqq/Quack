@@ -144,8 +144,30 @@ export function Dashboard({ tab, onTab, saved, profile, chatDays, onUnsave, onOp
           </div>
         )}
 
-        {tab === "exams" && <ExamsTab exams={exams} programCount={programs.length} />}
-        {tab === "calendar" && <CalendarTab events={events} />}
+        {tab === "exams" && (
+          <>
+            <FirstHint id="dashboard-exams" title="Что во «Экзаменах»">
+              Требования всех сохранённых программ сведены в один список: какой экзамен сдавать, на какой балл и каким программам
+              он нужен. Один экзамен часто закрывает сразу несколько программ.
+            </FirstHint>
+            <ExamsTab exams={exams} programCount={programs.length} />
+          </>
+        )}
+        {tab === "calendar" && (
+          <>
+            <FirstHint id="dashboard-calendar" title="Что в «Календаре»">
+              Даты экзаменов и дедлайны подачи твоих программ на одной сетке. Нажми на день, чтобы увидеть события, и добавь нужные
+              в Google Календарь.
+            </FirstHint>
+            <CalendarTab events={events} />
+          </>
+        )}
+        {tab === "programs" && (
+          <FirstHint id="dashboard-programs" title="Что в «Программах»">
+            Сохранённые программы и то, что изменится, если убрать одну из них: какие экзамены и сроки уйдут. Прогноз из подготовки
+            показывает, хватает ли балла.
+          </FirstHint>
+        )}
         {tab === "programs" && (
           <ProgramsTab
             effects={removalEffects(programs, exams)}

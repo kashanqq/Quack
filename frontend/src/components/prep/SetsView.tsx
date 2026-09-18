@@ -17,7 +17,7 @@ import {
   TODAY,
   type ExamId,
 } from "./prepData";
-import { closed, disputeMisconception, MISCONCEPTION_LABEL, rankSets, readiness, setStatus, type PrepModel, type PrepSub } from "./prepModel";
+import { closed, rankSets, readiness, setStatus, type PrepModel, type PrepSub } from "./prepModel";
 import { SetDetail } from "./SetDetail";
 import { useVertical } from "./GraphCanvas";
 import { SkillGraph, StateGlyph, StateLegend } from "./SkillGraph";
@@ -46,7 +46,7 @@ const STATUS_TEXT = { ...SET_STATUS_LABEL, proposed: "предложен" };
 export function SetsView({ model, sub, exam, onExam, onMakeCurrent, onModel, openSet, onOpenSet, onToast }: Props) {
   const switcher = <ExamSwitch exam={exam} onExam={onExam} />;
   // Keyed by exam: the map keeps a layout and a selection per exam, and switching starts clean
-  if (sub === "map") return <KnowledgeMap key={exam} exam={exam} switcher={switcher} model={model} onModel={onModel} />;
+  if (sub === "map") return <KnowledgeMap key={exam} exam={exam} switcher={switcher} model={model} onOpen={(id, topic) => onOpenSet(id, topic)} />;
   if (sub === "route") return <Route exam={exam} switcher={switcher} model={model} onOpen={(id) => onOpenSet(id)} />;
   const set = openSet ? SETS.find((s) => s.id === openSet.id) : undefined;
   if (set) {
@@ -433,18 +433,19 @@ function SetMark({ status }: { status: keyof typeof STATUS_TEXT }) {
   );
 }
 
-/* ---------- Карта навыков: the graph, and why each skill is in that state ---------- */
+/* ---------- Карта навыков: the graph, and a short card with a way into the sets ---------- */
 
 function KnowledgeMap({
   exam,
   switcher,
   model,
-  onModel,
+  onOpen,
 }: {
   exam: ExamId;
   switcher: React.ReactNode;
   model: PrepModel;
-  onModel: (model: PrepModel) => void;
+  /** Into the set's graph, with this skill's topic open first */
+  onOpen: (setId: string, topic: string) => void;
 }) {
   // Nothing open at first: the card would cover the map before the student has looked at it
   const [selected, setSelected] = useState<string | null>(null);
@@ -468,93 +469,78 @@ function KnowledgeMap({
           selected={selected}
           onSelect={(id) => setSelected((s) => (s === id ? null : id))}
           onClose={() => setSelected(null)}
-          details={
-            skill && (
-              <div className={styles.skillPanel}>
-                <p className={styles.eyebrow}>{skill.area}</p>
-                <h4>{skill.name}</h4>
-                <p className={styles.skillState}>
-                  <StateGlyph state={model.states[skill.id]} size={16} />
-                  {STATE_LABEL[model.states[skill.id]]} · вспомнит сейчас ~{Math.round(model.recall[skill.id] * 100)}% · вес{" "}
-                  {skill.weight}%
-                </p>
-                {skill.root && (
-                  <p className={styles.rootNote}>
-                    Корень: ошибки в «
-                    {SKILLS.filter((s) => s.requires.includes(skill.id))
-                      .map((s) => s.name)
-                      .join(", ")}
-                    » идут отсюда.
-                  </p>
-                )}
-                <dl className={styles.facts}>
-                  <div>
-                    <dt>Опирается на</dt>
-                    <dd>{skill.requires.map((id) => skillById(id).name).join(", ") || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>Нужен для</dt>
-                    <dd>
-                      {SKILLS.filter((s) => s.requires.includes(skill.id))
-                        .map((s) => s.name)
-                        .join(", ") || "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>В сетах</dt>
-                    <dd>
-                      {SETS.filter((s) => s.skills.includes(skill.id))
-                        .map((s) => `сет ${s.number}`)
-                        .join(", ") || "—"}
-                    </dd>
-                  </div>
-                </dl>
-
-                {model.misconceptions[skill.id].length > 0 && (
-                  <>
-                    <p className={styles.eyebrow}>Ловушки</p>
-                    <ul className={styles.plainList}>
-                      {model.misconceptions[skill.id].map((m) => (
-                        <li key={m.id} className={styles.misconception} data-status={m.status}>
-                          <span>
-                            {m.text}
-                            {m.trigger && <span className={styles.muted}> · {m.trigger}</span>}
-                          </span>
-                          <span className={styles.muted}>{MISCONCEPTION_LABEL(m)}</span>
-                          {(m.status === "confirmed" || m.status === "suspected") && (
-                            <button
-                              type="button"
-                              className={styles.link}
-                              onClick={() => onModel(disputeMisconception(model, skill.id, m.id))}
-                            >
-                              Не согласен
-                            </button>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-
-                <p className={styles.eyebrow}>Откуда мы это знаем</p>
-                {model.evidence[skill.id].length ? (
-                  <ul className={styles.evidence}>
-                    {model.evidence[skill.id].map((e, i) => (
-                      <li key={i}>
-                        <span className={styles.sourceTag}>{e.source}</span>
-                        <span>{e.text}</span>
-                        <span className={styles.muted}>{formatShort(e.date)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className={styles.muted}>Свидетельств пока нет — навык проверится короткой серией внутри сета.</p>
-                )}
-              </div>
-            )
-          }
+          details={skill && <SkillCard model={model} skillId={skill.id} onOpen={onOpen} />}
         />
       </section>
+    </div>
+  );
+}
+
+/**
+ * The popover on the map: only what tells the skill apart at a glance. Material, the check, the traps
+ * and the evidence live in the set, one button away.
+ */
+function SkillCard({ model, skillId, onOpen }: { model: PrepModel; skillId: string; onOpen: (setId: string, topic: string) => void }) {
+  const skill = skillById(skillId);
+  const state = model.states[skillId];
+  const dependents = SKILLS.filter((s) => s.requires.includes(skillId));
+  const trap = model.misconceptions[skillId].find((m) => m.status === "confirmed" || m.status === "suspected");
+  // Sets still ahead first: the button on top is the one worth pressing
+  const sets = SETS.filter((s) => s.skills.includes(skillId)).sort(
+    (a, b) => Number(model.doneSets.includes(a.id)) - Number(model.doneSets.includes(b.id))
+  );
+
+  return (
+    <div className={styles.skillPanel}>
+      <p className={styles.eyebrow}>{skill.area}</p>
+      <h4>{skill.name}</h4>
+      <p className={styles.skillState}>
+        <StateGlyph state={state} size={16} />
+        {STATE_LABEL[state]} · вспомнит сейчас ~{Math.round(model.recall[skillId] * 100)}% · вес {skill.weight}%
+      </p>
+      {skill.root && <p className={styles.rootNote}>Корень: ошибки в «{dependents.map((s) => s.name).join(", ")}» идут отсюда.</p>}
+      {trap && (
+        <p className={styles.skillTrap}>
+          <span className={styles.trapTag}>ловушка</span> {trap.text}
+        </p>
+      )}
+      <dl className={styles.facts}>
+        <div>
+          <dt>Опирается на</dt>
+          <dd>{skill.requires.map((id) => skillById(id).name).join(", ") || "—"}</dd>
+        </div>
+        <div>
+          <dt>Нужен для</dt>
+          <dd>{dependents.map((s) => s.name).join(", ") || "—"}</dd>
+        </div>
+      </dl>
+
+      <p className={styles.eyebrow}>Подробнее — в сете</p>
+      {sets.length ? (
+        <div className={styles.skillSets}>
+          {sets.map((set, i) => (
+            <button
+              key={set.id}
+              type="button"
+              className={styles.skillSetJump}
+              data-main={i === 0 || undefined}
+              onClick={() => onOpen(set.id, skillId)}
+            >
+              <span className={styles.skillSetText}>
+                <span>
+                  Сет {set.number} · {set.title}
+                </span>
+                <span className={styles.muted}>
+                  {STATUS_TEXT[setStatus(model, set)]} · до {formatShort(set.deadline)}
+                </span>
+              </span>
+              <Icon name="chevron-right" size={16} />
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className={styles.muted}>Пока не входит ни в один сет.</p>
+      )}
     </div>
   );
 }
