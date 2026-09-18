@@ -101,7 +101,7 @@ function modelPace(u: UnionExam, { today, prep, forecast, delay }: Ctx): ExamPac
   const advice: string[] = [];
   if (level <= 1) {
     if (margin < 0) {
-      advice.push(`Нужно поднять готовность ещё на ${Math.ceil(-margin / DAYS_PER_POINT)}%, чтобы прогноз встал на ${formatDate(planned)}`);
+      advice.push(`Нужно нагнать ${-margin} дн., чтобы прогноз встал на ${formatDate(planned)}`);
     }
     const gain = closingGain(prep, today);
     if (gain && gain.days > 0) {

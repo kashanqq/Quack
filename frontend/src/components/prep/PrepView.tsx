@@ -40,17 +40,17 @@ const INTROS: Record<PrepSub | "set", { id: string; title: string; text: string 
   list: {
     id: "prep-list",
     title: "Что такое сет",
-    text: "Сет — несколько связанных тем с общим дедлайном. Сверху три, которые мы советуем сейчас по твоим ошибкам. Нажми на карточку — откроется граф тем сета.",
+    text: "Сет — несколько связанных тем с общим дедлайном. Сеты подбирает ассистент по твоим ошибкам. Работаешь над одним, сверху — он. Хочешь другой — нажми «Сменить на этот»: прогресс по темам не теряется.",
   },
   route: {
     id: "prep-route",
-    title: "Как читать маршрут",
-    text: "Сеты по порядку на шкале времени до теста: отметка «сегодня», прогноз готовности и дата экзамена. Нажми на сет, чтобы открыть его.",
+    title: "Маршрут — по желанию",
+    text: "Над чем работать, решаешь ты: любой сет можно взять в «Все сеты». Если удобнее идти по плану — нажми «Составить маршрут», поставь нужные сеты вперёд по порядку и дальше просто следуй им.",
   },
   map: {
     id: "prep-map",
     title: "Как читать карту навыков",
-    text: "Все темы экзамена и связи между ними: стрелка ведёт к теме, которая опирается на предыдущую. Нажми на навык — рядом откроется карточка. Её заголовок — ссылка: он откроет сет с этой темой.",
+    text: "Каждая карточка — сет, внутри его темы и как они держатся. Стрелка ведёт к сету, который опирается на предыдущий. Нажми на сет — справа его темы, а по теме — почему она в таком состоянии.",
   },
   set: {
     id: "prep-set",
@@ -98,9 +98,9 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
   }, [tab, current, openSet?.id]);
 
   const programs = savedPrograms(saved, model.demo);
-  // An open set, the route and the map are drawings: they take all the height left
+  // An open set and the map are drawings: they take all the height left
   const setOpen = programs.length > 0 && tab === "sets" && current === "list" && !!openSet;
-  const fill = setOpen || (programs.length > 0 && tab === "sets" && (current === "route" || current === "map"));
+  const fill = setOpen || (programs.length > 0 && tab === "sets" && current === "map");
 
   const intro = INTROS[setOpen ? "set" : current];
 
@@ -129,9 +129,8 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
   };
 
   const choose = (id: string) => {
-    const { model: next, shift } = makeCurrent(model, id);
-    setModel(next);
-    setToast(shift ? `Сет выбран не по порядку маршрута — прогноз сдвинулся на ${shift} дн.` : "Текущий сет сменён");
+    setModel((m) => makeCurrent(m, id));
+    setToast(`Сет ${setById(id).number} в работе`);
   };
 
   return (

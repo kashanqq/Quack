@@ -35,9 +35,9 @@ export const PREP_SUBS: Record<PrepTab, { sub: PrepSub; label: string; icon: Ico
     { sub: "requirements", label: "Требования", icon: "gauge", hint: "цели экзаменов и прогноз" },
   ],
   sets: [
-    { sub: "list", label: "Все сеты", icon: "layers", hint: "три рекомендованных сверху" },
-    { sub: "route", label: "Маршрут", icon: "route", hint: "сеты по датам" },
-    { sub: "map", label: "Карта навыков", icon: "network", hint: "все темы экзамена" },
+    { sub: "list", label: "Все сеты", icon: "layers", hint: "подбирает ассистент" },
+    { sub: "route", label: "Маршрут", icon: "route", hint: "свой план, если нужен" },
+    { sub: "map", label: "Карта навыков", icon: "network", hint: "сеты и их темы" },
   ],
 };
 
@@ -63,6 +63,11 @@ export type PrepModel = {
   reportFor: string | null;
   /** What the student asked the assistant to make for a topic: notes and flashcards */
   materials: Record<string, Material[]>;
+  /**
+   * The student's own route: sets put ahead in the order they want to go, of both exams. Empty until
+   * they make one — the route is an option, sets can be taken in any order without it.
+   */
+  plan: string[];
 };
 
 /**
@@ -83,13 +88,14 @@ export function initialModel(): PrepModel {
     misconceptions: Object.fromEntries(SKILLS.map((s) => [s.id, s.misconceptions])),
     evidence: Object.fromEntries(SKILLS.map((s) => [s.id, s.evidence])),
     doneSets: ["s1"],
-    currentSet: null,
+    currentSet: "s2",
     extraDays: 0,
     milestonesDone: [],
     resolvedConflicts: {},
     demo: false,
     reportFor: "s1",
     materials: {},
+    plan: [],
   };
 }
 
@@ -195,12 +201,20 @@ export function acceptSet(model: PrepModel, id: string): PrepModel {
   return { ...model, currentSet: id, reportFor: null };
 }
 
-/** Choosing a set out of the recommended order costs a few days of forecast. */
-export function makeCurrent(model: PrepModel, id: string): { model: PrepModel; shift: number } {
-  const recommended = proposedSet({ ...model, currentSet: null });
-  const shift = recommended && recommended.id !== id ? 3 : 0;
+/** The student takes any set they like: no order is imposed, so no penalty for leaving one. */
+export function makeCurrent(model: PrepModel, id: string): PrepModel {
   const doneSets = model.doneSets.filter((s) => s !== id);
-  return { model: { ...model, currentSet: id, doneSets, extraDays: model.extraDays + shift, reportFor: null }, shift };
+  return { ...model, currentSet: id, doneSets, reportFor: null };
+}
+
+/** One exam's route, as the student ordered it */
+export const planFor = (model: PrepModel, exam: ExamId): StudySet[] =>
+  model.plan.map((id) => SETS.find((s) => s.id === id)).filter((s): s is StudySet => !!s && s.exam === exam);
+
+/** Replaces one exam's route and keeps the other exam's */
+export function setPlan(model: PrepModel, exam: ExamId, ids: string[]): PrepModel {
+  const other = model.plan.filter((id) => SETS.find((s) => s.id === id)?.exam !== exam);
+  return { ...model, plan: [...other, ...ids] };
 }
 
 const UP: Record<SkillState, SkillState> = { weak: "shaky", lowData: "shaky", shaky: "solid", solid: "solid" };

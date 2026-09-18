@@ -23,7 +23,7 @@ import type { DashTab } from "../dashboard/dashboardRules";
 import { PrepView } from "../prep/PrepView";
 import { useQuack } from "../quack/source";
 import { morph } from "@/components/transition/morph";
-import { FirstHint } from "@/components/hints/FirstHint";
+import { FirstHint, HelpDialog } from "@/components/hints/FirstHint";
 import { store } from "@/components/account/store";
 import type { PrepSub, PrepTab } from "../prep/prepModel";
 import { ChatMessage, type ChatMsg } from "./ChatMessage";
@@ -691,6 +691,8 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
         {!docked && profileVisible && <div className={styles.profileBackdrop} onClick={() => setProfileOverlayOpen(false)} />}
 
         <section className={styles.chat}>
+          {/* What the screen on display is for: opened by the duck in the left column */}
+          <HelpDialog />
           <div className={styles.chatBody}>
             <div className={`${styles.view} ${styles.viewChoice}`}>
               <div className={styles.greeting} aria-live="polite">
