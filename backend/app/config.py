@@ -2,7 +2,7 @@
 
 from typing import Literal, Self
 
-from pydantic import BaseModel, Field, SecretStr, model_validator
+from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -83,6 +83,16 @@ class Settings(BaseSettings):
     LLM_RPM_CHAT: int = 10
     LLM_RPM_BULK: int = 10
     LLM_FORCE_DOWN: bool = False
+
+    @field_validator("LLM_REASONING_CHAT", "LLM_REASONING_BULK", mode="before")
+    @classmethod
+    def _empty_reasoning_means_unset(cls, value: object) -> object:
+        """An empty env value means "don't pass reasoning_effort at all",
+        not the literal string "" (docs/decisions/llm-provider.md, TTFT
+        matrix) — ``LLMClient`` already treats ``None`` this way."""
+        if value == "":
+            return None
+        return value
 
     TAVILY_API_KEY: SecretStr = SecretStr("")
     EMBEDDING_MODEL: str = "intfloat/multilingual-e5-small"

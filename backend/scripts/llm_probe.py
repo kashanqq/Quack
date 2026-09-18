@@ -15,11 +15,29 @@ the order-of-magnitude estimate.
 Usage:
     uv run python scripts/llm_probe.py
     LLM_STRUCTURED_MODE=tool uv run python scripts/llm_probe.py   # §6 checklist item 3
+
+Echo-path TTFT matrix (docs/decisions/llm-provider.md, "Результаты пробы"
+п.2b): the structured() and stream()-with-tool sections above cost real
+provider credits and measure a scenario Ф1 doesn't use (tools). To sweep
+TTFT configurations for the actual Ф1 path — ``stream()`` on slot ``chat``,
+the full system prompt from ``load_prompt``, no tools — without re-paying
+for those two sections every time, use ``--only echo``:
+
+    uv run python scripts/llm_probe.py --only echo --echo-runs 3
+    LLM_REASONING_CHAT= uv run python scripts/llm_probe.py --only echo
+    MODEL_CHAT=<other> LLM_REASONING_CHAT= \
+        uv run python scripts/llm_probe.py --only echo
+
+Each invocation reads its configuration from the environment the same way
+the app does (``Settings()`` / ``backend/.env``), so sweeping configurations
+means re-invoking the script with different env vars, not new CLI flags.
 """
 
 from __future__ import annotations
 
+import argparse
 import asyncio
+import statistics
 import sys
 import time
 from dataclasses import dataclass, field
@@ -259,6 +277,97 @@ async def run_stream_probe(client: LLMClient) -> StreamProbeResult:
     return result
 
 
+ECHO_USER_MESSAGE = (
+    "Привет! Заканчиваю бакалавриат по информатике в этом году и хочу "
+    "продолжить учиться за границей в магистратуре, пока не знаю точно, "
+    "куда и на что смотреть."
+)
+ECHO_TTFT_MEDIAN_MAX_S = 5.0
+ECHO_TTFT_ABSOLUTE_MAX_S = 6.0
+
+
+@dataclass
+class EchoProbeRun:
+    ttft_s: float | None = None
+    total_s: float | None = None
+    n_deltas: int = 0
+    error: str | None = None
+
+
+async def run_echo_probe(
+    client: LLMClient,
+    prompt_name: str,
+    n_runs: int,
+) -> list[EchoProbeRun]:
+    """TTFT on the Ф1 echo path (docs/tz/30-B2.md §5.1): ``stream()`` on slot
+    ``chat``, the full versioned system prompt, no ``tools`` — the same call
+    shape as ``agents.router.run_chat``. Distinct from ``run_stream_probe``
+    above, which measures a tool-calling round trip on slot ``chat`` with a
+    one-line system prompt; that scenario is not what Ф1 sends."""
+    prompt = load_prompt(prompt_name)
+    runs: list[EchoProbeRun] = []
+    for _ in range(n_runs):
+        messages = [
+            LLMMessage(role="system", content=prompt.text),
+            LLMMessage(role="user", content=ECHO_USER_MESSAGE),
+        ]
+        run = EchoProbeRun()
+        start = time.monotonic()
+        try:
+            async for event in client.stream(messages, "chat"):
+                if isinstance(event, TextDelta):
+                    run.n_deltas += 1
+                    if run.ttft_s is None:
+                        run.ttft_s = time.monotonic() - start
+        except LLMUnavailable as exc:
+            run.error = str(exc)
+        run.total_s = time.monotonic() - start
+        runs.append(run)
+    return runs
+
+
+def print_echo_probe(
+    settings: Settings, prompt_name: str, runs: list[EchoProbeRun]
+) -> None:
+    prompt = load_prompt(prompt_name)
+    print()
+    print("=== §2 item 2b: TTFT на эхо-пути (stream(), полный системный промпт) ===")
+    print(f"MODEL_CHAT: {settings.MODEL_CHAT}")
+    print(f"LLM_REASONING_CHAT: {settings.LLM_REASONING_CHAT!r}")
+    print(f"системный промпт: {prompt.extractor_version}, {len(prompt.text)} символов")
+    for i, run in enumerate(runs, start=1):
+        if run.error is not None:
+            print(f"- прогон {i}: ОШИБКА: {run.error}")
+            continue
+        print(
+            f"- прогон {i}: TTFT={run.ttft_s:.2f}с total={run.total_s:.2f}с "
+            f"deltas={run.n_deltas}"
+        )
+
+    ttfts = [run.ttft_s for run in runs if run.ttft_s is not None]
+    if not ttfts:
+        print("Ни один прогон не отдал text_delta — граница не проверяется.")
+        return
+
+    ttft_min = min(ttfts)
+    ttft_median = statistics.median(ttfts)
+    ttft_max = max(ttfts)
+    print(
+        f"TTFT: мин={ttft_min:.2f}с медиана={ttft_median:.2f}с "
+        f"макс={ttft_max:.2f}с (n={len(ttfts)})"
+    )
+    passes = (
+        len(ttfts) == len(runs)
+        and ttft_median <= ECHO_TTFT_MEDIAN_MAX_S
+        and ttft_max <= ECHO_TTFT_ABSOLUTE_MAX_S
+    )
+    verdict = "ПРОХОДИТ" if passes else "НЕ ПРОХОДИТ"
+    print(
+        f"Граница: медиана <= {ECHO_TTFT_MEDIAN_MAX_S:.0f}с и "
+        f"макс <= {ECHO_TTFT_ABSOLUTE_MAX_S:.0f}с -> {verdict}"
+    )
+
+
 def print_limits_reminder(settings: Settings) -> None:
     print()
     print("=== §2 item 3: лимиты аккаунта ===")
@@ -279,7 +388,30 @@ def print_limits_reminder(settings: Settings) -> None:
     )
 
 
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--only",
+        choices=["all", "structured", "stream_tool", "echo"],
+        default="all",
+        help="какие разделы прогонять (по умолчанию — все, как раньше)",
+    )
+    parser.add_argument(
+        "--echo-runs",
+        type=int,
+        default=3,
+        help="число прогонов раздела echo для медианы/максимума (по умолчанию 3)",
+    )
+    parser.add_argument(
+        "--echo-prompt",
+        default="selection",
+        help="имя промпта для раздела echo (по умолчанию selection)",
+    )
+    return parser.parse_args()
+
+
 async def _main() -> int:
+    args = _parse_args()
     settings = Settings()
     if not settings.LLM_API_KEY.get_secret_value():
         print(
@@ -298,36 +430,47 @@ async def _main() -> int:
     print(f"LLM_STRUCTURED_MODE: {settings.LLM_STRUCTURED_MODE}")
     print()
 
-    print("=== §2 item 1: structured(ObservationOut) на трёх фрагментах ===")
-    structured_results = await run_structured_probe(client, settings)
-    valid_count = 0
-    for res in structured_results:
-        print(f"- фрагмент {res.skill_id}:")
-        if res.error is not None:
-            print(f"    ОШИБКА: {res.error}")
-            continue
-        print(f"    валиден с первого раза: {res.valid_first_try}")
-        print(f"    наблюдений: {res.n_observations}")
-        print(f"    skill_id в наблюдениях: {res.skill_ids_seen}")
-        print(f"    все skill_id из списка: {res.skill_ids_in_list}")
-        if res.valid_first_try:
-            valid_count += 1
-    print(f"Итого валидны с первого раза: {valid_count} из {len(structured_results)}")
-
-    print()
-    print("=== §2 item 2: stream() с инструментом get_time ===")
-    stream_result = await run_stream_probe(client)
-    if stream_result.error is not None:
-        print(f"ОШИБКА: {stream_result.error}")
-    else:
-        print(f"инструмент вызван: {stream_result.tool_called}")
-        print(f"текст до вызова: {stream_result.text_before_call}")
-        print(f"текст после вызова: {stream_result.text_after_call}")
+    if args.only in ("all", "structured"):
+        print("=== §2 item 1: structured(ObservationOut) на трёх фрагментах ===")
+        structured_results = await run_structured_probe(client, settings)
+        valid_count = 0
+        for res in structured_results:
+            print(f"- фрагмент {res.skill_id}:")
+            if res.error is not None:
+                print(f"    ОШИБКА: {res.error}")
+                continue
+            print(f"    валиден с первого раза: {res.valid_first_try}")
+            print(f"    наблюдений: {res.n_observations}")
+            print(f"    skill_id в наблюдениях: {res.skill_ids_seen}")
+            print(f"    все skill_id из списка: {res.skill_ids_in_list}")
+            if res.valid_first_try:
+                valid_count += 1
         print(
-            f"время до первого text_delta: {stream_result.time_to_first_text_delta_s}"
+            f"Итого валидны с первого раза: {valid_count} из {len(structured_results)}"
         )
+        print()
 
-    print_limits_reminder(settings)
+    if args.only in ("all", "stream_tool"):
+        print("=== §2 item 2: stream() с инструментом get_time ===")
+        stream_result = await run_stream_probe(client)
+        if stream_result.error is not None:
+            print(f"ОШИБКА: {stream_result.error}")
+        else:
+            print(f"инструмент вызван: {stream_result.tool_called}")
+            print(f"текст до вызова: {stream_result.text_before_call}")
+            print(f"текст после вызова: {stream_result.text_after_call}")
+            print(
+                "время до первого text_delta: "
+                f"{stream_result.time_to_first_text_delta_s}"
+            )
+        print()
+
+    if args.only in ("all", "echo"):
+        echo_runs = await run_echo_probe(client, args.echo_prompt, args.echo_runs)
+        print_echo_probe(settings, args.echo_prompt, echo_runs)
+
+    if args.only == "all":
+        print_limits_reminder(settings)
 
     if redis is not None:
         await redis.aclose()
