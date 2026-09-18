@@ -210,5 +210,91 @@ const MORE_CHECKS: Record<string, Task[]> = {
   ],
 };
 
-/** Every check for a topic: the original pool first, then the added ones */
-export const checksFor = (skillId: string): Task[] => [...(CHECKS[skillId] ?? []), ...(MORE_CHECKS[skillId] ?? [])];
+/** Extra questions so a topic's mock test is a few questions long, not one */
+const MOCK_CHECKS: Record<string, Task[]> = {
+  linear: [
+    { id: "ln2", text: "Реши: 3(x − 2) = 12", options: [{ label: "x = 6", correct: true }, { label: "x = 4", trap: "Не раскрыл скобки: разделил 12 на 3 и забыл про −2" }, { label: "x = 2" }, { label: "x = 14/3" }] },
+    { id: "ln3", text: "Прямая проходит через (0; 2) и (2; 6). Её угловой коэффициент?", options: [{ label: "2", correct: true }, { label: "4", trap: "Взял разность y без деления на разность x" }, { label: "1/2", trap: "Поделил Δx на Δy" }, { label: "3" }] },
+  ],
+  systems: [
+    { id: "sy2", text: "2x + y = 7, x = 2. Чему равен y?", options: [{ label: "3", correct: true }, { label: "5", trap: "Подставил x, но не умножил на 2" }, { label: "2" }, { label: "11" }] },
+    { id: "sy3", text: "Сколько решений у системы y = 2x + 1 и y = 2x − 3?", options: [{ label: "Ни одного", correct: true }, { label: "Одно", trap: "Не заметил, что прямые параллельны" }, { label: "Бесконечно много" }] },
+  ],
+  abs: [
+    { id: "ab2", text: "Реши: |x + 1| = 4", options: [{ label: "x = 3 или x = −5", correct: true }, { label: "x = 3", trap: "Потерял отрицательную ветвь" }, { label: "x = −3 или x = 5", trap: "Перепутал знаки при раскрытии" }, { label: "x = 5" }] },
+    { id: "ab3", text: "Сколько решений у |2x − 1| = −3?", options: [{ label: "Ни одного", correct: true }, { label: "Два", trap: "Раскрыл модуль, не проверив, что правая часть отрицательна" }, { label: "Одно" }] },
+  ],
+  inequalities: [
+    { id: "iq2", text: "Реши: 2x − 5 < 3", options: [{ label: "x < 4", correct: true }, { label: "x > 4", trap: "Перевернул знак без деления на отрицательное" }, { label: "x < −1" }, { label: "x < 1" }] },
+    { id: "iq3", text: "Какие x подходят под |x| < 3?", options: [{ label: "−3 < x < 3", correct: true }, { label: "x < 3", trap: "Забыл нижнюю границу" }, { label: "x < −3 или x > 3", trap: "Перепутал «меньше» и «больше» для модуля" }] },
+  ],
+  quadratics: [
+    { id: "qd2", text: "Корни уравнения x² − 5x + 6 = 0?", options: [{ label: "2 и 3", correct: true }, { label: "−2 и −3", trap: "Перепутал знаки по теореме Виета" }, { label: "1 и 6" }, { label: "−1 и 6" }] },
+    { id: "qd3", text: "Сколько корней у x² + 4x + 5 = 0?", options: [{ label: "Ни одного", correct: true }, { label: "Два", trap: "Не посчитал дискриминант: 16 − 20 < 0" }, { label: "Один" }] },
+  ],
+  polynomials: [
+    { id: "pl2", text: "Остаток от деления p(x) = x³ − 2x + 1 на (x − 1)?", options: [{ label: "0", correct: true }, { label: "2", trap: "Подставил x = −1 вместо x = 1" }, { label: "1" }, { label: "−1" }] },
+    { id: "pl3", text: "Упрости: (x² − 9) / (x − 3)", options: [{ label: "x + 3", correct: true }, { label: "x − 3", trap: "Неверно разложил разность квадратов" }, { label: "x² − 3" }, { label: "x + 9" }] },
+  ],
+  exponential: [
+    { id: "ex2", text: "Население 1000, каждый год уменьшается на 10%. Какое через 2 года?", options: [{ label: "810", correct: true }, { label: "800", trap: "Посчитал как линейное убывание" }, { label: "900" }, { label: "819" }] },
+    { id: "ex3", text: "В формуле y = 50 · (1,08)ᵗ что означает 1,08?", options: [{ label: "Рост на 8% за период", correct: true }, { label: "Рост на 108%", trap: "Принял множитель за процент роста" }, { label: "Начальное значение" }] },
+  ],
+  statistics: [
+    { id: "st2", text: "Медиана набора 3, 9, 1, 7, 5?", options: [{ label: "5", correct: true }, { label: "1", trap: "Взял середину, не отсортировав" }, { label: "7" }, { label: "25" }] },
+    { id: "st3", text: "У двух наборов одинаковое среднее, у первого разброс больше. Что это значит?", options: [{ label: "Значения первого дальше от среднего", correct: true }, { label: "У первого больше среднее", trap: "Перепутал разброс и среднее" }, { label: "Медианы равны" }] },
+  ],
+  probability: [
+    { id: "pr2", text: "Бросают монету дважды. Вероятность двух орлов?", options: [{ label: "1/4", correct: true }, { label: "1/2", trap: "Не перемножил вероятности двух бросков" }, { label: "1/3" }, { label: "2/4" }] },
+    { id: "pr3", text: "В мешке 3 красных и 5 синих. Вероятность достать синий?", options: [{ label: "5/8", correct: true }, { label: "5/3", trap: "Поделил на число красных, а не на все шары" }, { label: "3/8" }, { label: "1/2" }] },
+  ],
+  triangles: [
+    { id: "tg2", text: "Треугольники подобны с коэффициентом 2. Во сколько раз отличаются площади?", options: [{ label: "В 4 раза", correct: true }, { label: "В 2 раза", trap: "Перенёс коэффициент сторон на площадь" }, { label: "В 8 раз" }] },
+    { id: "tg3", text: "Катеты 6 и 8. Гипотенуза?", options: [{ label: "10", correct: true }, { label: "14", trap: "Сложил катеты вместо теоремы Пифагора" }, { label: "√28" }, { label: "48" }] },
+  ],
+  circle: [
+    { id: "c3", text: "Уравнение (x − 2)² + (y + 1)² = 9. Центр и радиус?", options: [{ label: "(2; −1), r = 3", correct: true }, { label: "(−2; 1), r = 3", trap: "Взял знаки из скобок как есть" }, { label: "(2; −1), r = 9", trap: "Забыл извлечь корень из 9" }] },
+  ],
+  trig: [
+    { id: "tr2", text: "В прямоугольном треугольнике катет против угла 3, гипотенуза 5. sin угла?", options: [{ label: "3/5", correct: true }, { label: "4/5", trap: "Перепутал синус и косинус" }, { label: "3/4" }, { label: "5/3" }] },
+    { id: "tr3", text: "Сколько радиан в 180°?", options: [{ label: "π", correct: true }, { label: "2π", trap: "Перепутал с полным оборотом" }, { label: "π/2" }] },
+  ],
+  reduction: [
+    { id: "rd2", text: "sin(90° + 30°) = ?", options: [{ label: "cos 30°", correct: true }, { label: "sin 30°", trap: "Не сменил функцию при 90°" }, { label: "−cos 30°", trap: "Поставил знак, как для косинуса во II четверти" }] },
+    { id: "rd3", text: "tan(180° + 45°) = ?", options: [{ label: "1", correct: true }, { label: "−1", trap: "Не учёл, что тангенс в III четверти положителен" }, { label: "0" }] },
+  ],
+  "l-detail": [
+    { id: "ld2", text: "Слышно: «My surname is Grey — G-R-E-Y». Что записать?", options: [{ label: "Grey", correct: true }, { label: "Gray", trap: "Записал привычное написание, не по буквам" }, { label: "Grei" }] },
+  ],
+  "l-lecture": [
+    { id: "ll2", text: "Лектор: «Firstly… Secondly… Finally…». О чём это говорит?", options: [{ label: "Идёт перечисление по пунктам", correct: true }, { label: "Лектор меняет тему", trap: "Не узнал сигнальные слова структуры" }, { label: "Это вывод лекции" }] },
+  ],
+  "r-scan": [
+    { id: "rs2", text: "Вопрос: «In which year did the bridge open?» Что искать в тексте глазами?", options: [{ label: "Числа-годы рядом со словом bridge", correct: true }, { label: "Читать всё подряд с начала", trap: "Читает целиком вместо сканирования" }, { label: "Первое предложение каждого абзаца" }] },
+  ],
+  "r-headings": [
+    { id: "rh2", text: "Заголовок совпадает по словам с одной фразой абзаца, но абзац про другое. Брать?", options: [{ label: "Нет, заголовок — про главную мысль абзаца", correct: true }, { label: "Да, слова совпали", trap: "Совпадение слов вместо общей мысли" }] },
+  ],
+  "w-task1": [
+    { id: "wt2", text: "Что обязательно в Task 1?", options: [{ label: "Обзор главных тенденций (overview)", correct: true }, { label: "Своё мнение о данных", trap: "Мнение в Task 1 не нужно" }, { label: "Все числа из графика" }] },
+  ],
+  "w-coherence": [
+    { id: "wc2", text: "Как лучше связать абзацы?", options: [{ label: "Первая фраза абзаца продолжает мысль прошлого", correct: true }, { label: "Начинать каждый с Moreover", trap: "Механические связки вместо логики" }, { label: "Никак, абзацы независимы" }] },
+  ],
+  "w-task2": [
+    { id: "w22", text: "Тема: «Discuss both views and give your opinion». Что должно быть?", options: [{ label: "Оба взгляда и своё мнение", correct: true }, { label: "Только своё мнение", trap: "Не раскрыл одну из частей задания" }, { label: "Только два взгляда" }] },
+  ],
+  "s-part1": [
+    { id: "sp3", text: "Не знаешь слово во время ответа. Что лучше?", options: [{ label: "Объяснить другими словами", correct: true }, { label: "Замолчать и вспоминать", trap: "Паузы бьют по беглости" }, { label: "Сказать слово на русском" }] },
+  ],
+  "s-part2": [
+    { id: "sp4", text: "Сколько говорить в Part 2?", options: [{ label: "До двух минут, пока не остановят", correct: true }, { label: "30 секунд — и хватит", trap: "Слишком короткий ответ" }, { label: "Пять минут" }] },
+  ],
+};
+
+/** Every check for a topic: the original pool first, then the added ones; a mock test takes them all */
+export const checksFor = (skillId: string): Task[] => [
+  ...(CHECKS[skillId] ?? []),
+  ...(MORE_CHECKS[skillId] ?? []),
+  ...(MOCK_CHECKS[skillId] ?? []),
+];

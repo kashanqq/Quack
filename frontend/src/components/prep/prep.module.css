@@ -1514,11 +1514,6 @@
   color: var(--low);
 }
 
-.assistantEmpty {
-  display: grid;
-  gap: 12px;
-}
-
 .promptChips {
   display: flex;
   flex-wrap: wrap;
@@ -2155,10 +2150,6 @@
   min-height: 0;
 }
 
-.setStage[data-panel] {
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
-}
-
 .setGraphCard {
   display: flex;
   flex-direction: column;
@@ -2335,120 +2326,209 @@
   text-transform: none;
 }
 
-/* ---------- A topic: material, check, assistant ---------- */
+/* ---------- A topic opened: the chat and the mock test instead of the graph ---------- */
 
-.topicPanel {
+.topicWork {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  animation: rise 0.26s var(--ease-out) both;
+}
+
+/* The set's topics under the title: move between them without the graph */
+.topicSteps {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-left: 52px;
+}
+
+.topicSteps button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px 4px 9px;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--canvas-line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.topicSteps button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.topicSteps button[aria-current="true"] {
+  color: var(--text);
+  border-color: rgba(255, 122, 0, 0.6);
+  background: rgba(255, 122, 0, 0.12);
+}
+
+.topicWorkStage {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
+  gap: 16px;
+  min-height: 0;
+}
+
+.chatPane {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+}
+
+.chatPane .chatLines {
+  padding-right: 6px;
+}
+
+.chatPane .chatLine {
+  max-width: min(90%, 720px);
+}
+
+.chatPane .promptChips {
+  margin-top: 12px;
+}
+
+/* The assistant's first message: the topic's minimum */
+.topicBrief {
+  max-width: 760px;
+  padding: 14px 18px;
+  font-size: 15px;
+  line-height: 1.5;
+  background: var(--inset-bg);
+  border-radius: 16px 16px 16px 4px;
+}
+
+.topicBrief > p {
+  margin: 0 0 8px;
+}
+
+.topicBrief .eyebrow {
+  margin: 10px 0 4px;
+}
+
+.topicBrief .eyebrow:first-child {
+  margin-top: 0;
+}
+
+.mockPane {
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #57524e transparent;
-  animation: rise 0.26s var(--ease-out) both;
 }
 
-.topicHeadSide {
+.mockTest {
+  display: grid;
+  gap: 14px;
+  animation: fade 0.2s ease both;
+}
+
+.mockHead {
   display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 6px;
-}
-
-.topicClose {
-  display: inline-grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  color: var(--text-faint);
-  background: none;
-  border: 0;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.topicClose:hover {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.topicHead {
-  display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
 }
 
-.topicHead .eyebrow {
-  display: flex;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.topicTitle {
+.mockHead h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 500;
 }
 
-.topicTabs {
+.mockHead .eyebrow {
+  margin-bottom: 4px;
+}
+
+.mockDots {
   display: flex;
-  gap: 2px;
-  margin: 14px -20px 0;
-  padding: 0 14px;
-  border-bottom: 1px solid var(--canvas-line);
+  gap: 5px;
+  padding-bottom: 5px;
 }
 
-.topicTabs button {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px 10px 11px;
-  color: var(--text-dim);
-  font: inherit;
-  font-size: 14px;
-  background: none;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease;
+.mockDots span {
+  width: 8px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+  transition: background 0.2s ease;
 }
 
-.topicTabs button:hover {
-  color: var(--text);
+.mockDots span[data-result="current"] {
+  background: var(--accent);
 }
 
-.topicTabs button[aria-selected="true"] {
-  color: var(--text);
-  border-bottom-color: var(--accent);
+.mockDots span[data-result="correct"] {
+  background: var(--solid);
 }
 
-.topicBody {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-  padding-top: 16px;
-  animation: fade 0.2s ease both;
+.mockDots span[data-result="wrong"] {
+  background: var(--weak);
 }
 
-.topicBody > .task {
+.mockTest > .task {
   margin-top: 0;
 }
 
-.material {
+.mockResult {
   display: grid;
-  gap: 4px;
-  font-size: 15px;
-  line-height: 1.5;
+  gap: 10px;
 }
 
-.material > p {
-  margin: 0 0 8px;
+.mockScore {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 18px;
 }
 
-.material .eyebrow {
-  margin: 8px 0 4px;
+.mockScore strong {
+  color: var(--text);
+  font-size: 34px;
+  font-weight: 500;
+}
+
+.mockReview {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mockReview li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  background: var(--inset-bg);
+  border-radius: 10px;
+}
+
+.mockReview li > svg {
+  margin-top: 2px;
+  color: var(--weak);
+}
+
+.mockReview li[data-correct="true"] > svg {
+  color: var(--solid);
+}
+
+/* Only phones and narrow windows switch between the chat and the test */
+.paneSwitch {
+  display: none;
 }
 
 .materialPoints {
@@ -2483,7 +2563,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  min-height: 320px;
+  min-height: 0;
 }
 
 @keyframes fade {
@@ -2503,8 +2583,7 @@
     overflow-y: auto;
   }
 
-  .setStage,
-  .setStage[data-panel] {
+  .setStage {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -2513,21 +2592,59 @@
     flex: none;
   }
 
-  .topicPanel {
+  .paneSwitch {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--canvas-line);
+    border-radius: 12px;
+  }
+
+  .paneSwitch button {
+    display: inline-flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 34px;
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 14px;
+    background: none;
+    border: 0;
+    border-radius: 9px;
+    cursor: pointer;
+  }
+
+  .paneSwitch button[aria-selected="true"] {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .topicWorkStage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .topicWorkStage[data-pane="chat"] > .mockPane,
+  .topicWorkStage[data-pane="test"] > .chatPane {
+    display: none;
+  }
+
+  .chatPane {
+    height: min(720px, calc(100dvh - 190px));
+  }
+
+  .mockPane {
     overflow: visible;
+  }
+
+  .topicSteps {
+    padding-left: 0;
   }
 }
 
 @media (max-width: 760px) {
-  .topicTabs {
-    margin: 12px -14px 0;
-    padding: 0 6px;
-  }
-
-  .topicTabs button {
-    padding: 9px 8px 11px;
-    font-size: 13px;
-  }
 
   .setGraphScroll {
     height: auto;

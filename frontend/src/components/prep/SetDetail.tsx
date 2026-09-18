@@ -6,7 +6,7 @@ import { daysBetween, EXAMS, formatDate, formatShort, SET_STATUS_LABEL, skillByI
 import { closed, setStatus, type PrepModel } from "./prepModel";
 import { useVertical } from "./GraphCanvas";
 import { NodeMark, StateGlyph } from "./SkillGraph";
-import { TopicPanel } from "./TopicPanel";
+import { TopicWorkspace } from "./TopicWorkspace";
 import styles from "./prep.module.css";
 
 type Props = {
@@ -24,14 +24,14 @@ const STATUS_TEXT = { ...SET_STATUS_LABEL, proposed: "предложен" };
 
 /**
  * One set opened: the screen belongs to its topics, laid out as a graph on the set's own timeline, each
- * with its own deadline. A topic opens on the right with its material, a check and an assistant; the
- * first topic that does not hold yet is open from the start.
+ * with its own deadline. A topic opens in place of the graph: a chat with the assistant and a mock test.
  */
 export function SetDetail({ model, set, topic, onBack, onMakeCurrent, onModel, onToast }: Props) {
   const order = topicOrder(set);
   const plan = plannedDates(set, order);
-  const firstOpen = order.find((id) => model.states[id] !== "solid") ?? order[0];
-  const [selected, setSelected] = useState<string | null>(topic && set.skills.includes(topic) ? topic : firstOpen);
+  // A topic asked for from outside (e.g. a trap in «Важно сейчас») opens straight away
+  const [open, setOpen] = useState<string | null>(topic && set.skills.includes(topic) ? topic : null);
+  const next = order.find((id) => model.states[id] !== "solid");
 
   const status = setStatus(model, set);
   const left = daysBetween(TODAY, set.deadline);
@@ -44,6 +44,23 @@ export function SetDetail({ model, set, topic, onBack, onMakeCurrent, onModel, o
         : left >= 0
           ? `до ${formatDate(set.deadline)} · осталось ${left} дн.`
           : `дедлайн был ${formatDate(set.deadline)} — прогноз уже пересчитан`;
+
+  if (open) {
+    return (
+      <TopicWorkspace
+        key={open}
+        model={model}
+        set={set}
+        skillId={open}
+        order={order}
+        plannedBy={plan[open]}
+        onBack={() => setOpen(null)}
+        onTopic={setOpen}
+        onModel={onModel}
+        onToast={onToast}
+      />
+    );
+  }
 
   return (
     <div className={styles.setDetail}>
@@ -80,30 +97,10 @@ export function SetDetail({ model, set, topic, onBack, onMakeCurrent, onModel, o
         </div>
       </header>
 
-      <div className={styles.setStage} data-panel={selected ? "" : undefined}>
+      <div className={styles.setStage}>
         <section className={`${styles.canvas} ${styles.setGraphCard}`} aria-label="Темы сета">
-          <SetGraph
-            model={model}
-            set={set}
-            order={order}
-            plan={plan}
-            selected={selected}
-            onSelect={(id) => setSelected((s) => (s === id ? null : id))}
-          />
+          <SetGraph model={model} set={set} order={order} plan={plan} next={next} onSelect={setOpen} />
         </section>
-
-        {selected && (
-          <TopicPanel
-            key={selected}
-            model={model}
-            set={set}
-            skillId={selected}
-            plannedBy={plan[selected]}
-            onModel={onModel}
-            onToast={onToast}
-            onClose={() => setSelected(null)}
-          />
-        )}
       </div>
     </div>
   );
@@ -168,14 +165,15 @@ function SetGraph({
   set,
   order,
   plan,
-  selected,
+  next,
   onSelect,
 }: {
   model: PrepModel;
   set: StudySet;
   order: string[];
   plan: Record<string, Date>;
-  selected: string | null;
+  /** The first topic that does not hold yet: where to start */
+  next?: string;
   onSelect: (id: string) => void;
 }) {
   const vertical = useVertical();
@@ -344,7 +342,6 @@ function SetGraph({
               className={[
                 styles.mapNode,
                 styles.setNode,
-                selected === id && styles.mapNodeSelected,
                 skill.root && styles.mapNodeRoot,
                 due === "now" && styles.setNodeNow,
               ]
@@ -352,8 +349,7 @@ function SetGraph({
                 .join(" ")}
               data-state={state}
               style={{ left: at.x - NODE_W / 2, top: at.y - NODE / 2, width: NODE_W }}
-              aria-pressed={selected === id}
-              aria-label={`${i + 1}. ${skill.name}: ${STATE_LABEL[state]}, до ${formatShort(plan[id])}`}
+              aria-label={`Открыть тему ${i + 1}. ${skill.name}: ${STATE_LABEL[state]}, до ${formatShort(plan[id])}`}
               onClick={() => onSelect(id)}
             >
               <span className={styles.mapShapeBox}>
@@ -366,6 +362,7 @@ function SetGraph({
               <span className={styles.mapFlags}>
                 {due === "late" && <span className={styles.behindTag}>отстаёт</span>}
                 {due === "now" && <span className={styles.nowTag}>сейчас</span>}
+                {id === next && due !== "now" && <span className={styles.nowTag}>начни здесь</span>}
                 {skill.root && <span className={styles.rootTag}>корень</span>}
                 {trap && <span className={styles.trapTag}>ловушка</span>}
               </span>
