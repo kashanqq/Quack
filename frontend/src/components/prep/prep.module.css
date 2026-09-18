@@ -897,12 +897,10 @@
   border-color: rgba(255, 166, 77, 0.4);
 }
 
-.graphScroll {
+/* The route shrinks to its card on narrow screens rather than scrolling sideways */
+.fitToWidth {
   min-width: 0;
-  overflow-x: auto;
-  padding-bottom: 6px;
-  scrollbar-color: #57524e transparent;
-  scrollbar-width: thin;
+  overflow: hidden;
 }
 
 /* ---------- Canvas ----------
@@ -911,6 +909,17 @@
 
 .canvasFrame {
   min-width: 0;
+  /* Phone mode is decided by the width the canvas actually gets (COMPACT_BELOW in GraphCanvas) */
+  container-type: inline-size;
+}
+
+@container (max-width: 559px) {
+  /* Declared before the base rule below, so it needs the extra class to win */
+  .canvasFrame .canvasViewport {
+    height: auto;
+    max-height: calc(100vh - 200px);
+    aspect-ratio: var(--canvas-ratio);
+  }
 }
 
 .canvasViewport {

@@ -17,9 +17,12 @@ import styles from "./prep.module.css";
 /** Canvas offset in screen pixels and the zoom the content is drawn at. */
 type View = { x: number; y: number; k: number };
 
-const MIN_K = 0.45;
+/** Low enough that a whole map fits on a phone; labels are unreadable there, a tap opens the card */
+const MIN_K = 0.2;
 const MAX_K = 1.8;
 const PAD = 28;
+/** On a phone every pixel goes to the drawing */
+const PAD_COMPACT = 8;
 /** Below this the pointer counts as a click on the node, not a drag of it */
 const SLOP = 3;
 /** The popover card: its width, and how close it may come to the canvas edge */
@@ -27,8 +30,11 @@ const POP_W = 320;
 const EDGE = 12;
 /** The card starts below the zoom controls, so it never covers them */
 const TOP_EDGE = 54;
-/** Narrower than this, the card turns into a sheet along the bottom of the canvas */
-const SHEET_BELOW = 560;
+/**
+ * Narrower than this the canvas is in phone mode: it opens on the whole drawing instead of full width,
+ * takes the drawing's proportions instead of a tall fixed box, and the card is a sheet along its bottom
+ */
+const COMPACT_BELOW = 560;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -113,37 +119,43 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
     zoomAt(factor, (box?.width ?? 0) / 2, (box?.height ?? 0) / 2);
   };
 
-  /** The whole drawing at once, however small that turns out */
-  const fit = () => {
-    const box = viewportRef.current?.getBoundingClientRect();
-    if (!box) return;
-    setTouched(true);
-    const k = clamp(Math.min((box.width - PAD * 2) / width, (box.height - PAD * 2) / height), MIN_K, 1);
-    setView({ k, x: (box.width - width * k) / 2, y: Math.max(PAD, (box.height - height * k) / 2) });
-  };
+  /**
+   * The whole drawing at once, however small that turns out; or, on a large screen when the canvas
+   * first opens, just its full width, so labels stay readable and the rest is a drag away.
+   */
+  const fitView = useCallback(
+    (whole: boolean) => {
+      const rect = viewportRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const pad = rect.width < COMPACT_BELOW ? PAD_COMPACT : PAD;
+      const byWidth = (rect.width - pad * 2) / width;
+      const k = clamp(whole ? Math.min(byWidth, (rect.height - pad * 2) / height) : byWidth, MIN_K, 1);
+      setView({ k, x: (rect.width - width * k) / 2, y: whole ? Math.max(pad, (rect.height - height * k) / 2) : pad });
+    },
+    [width, height]
+  );
 
-  /** What the map opens on: full width, labels still readable, the rest a drag away */
-  const fitWidth = useCallback(() => {
-    const box = viewportRef.current?.getBoundingClientRect();
-    if (!box) return;
-    const k = clamp((box.width - PAD * 2) / width, MIN_K, 1);
-    setView({ k, x: (box.width - width * k) / 2, y: PAD });
-  }, [width]);
+  const fit = () => {
+    setTouched(true);
+    fitView(true);
+  };
 
   useEffect(() => {
     const stored = storageKey ? readStore<View>(storageKey) : null;
     if (stored && Number.isFinite(stored.k)) setView(stored);
-    else fitWidth();
-  }, [fitWidth, storageKey]);
+    else fitView((viewportRef.current?.getBoundingClientRect().width ?? 0) < COMPACT_BELOW);
+  }, [fitView, storageKey]);
 
   useEffect(() => {
     if (storageKey && touched) writeStore(storageKey, view);
   }, [storageKey, touched, view]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
-    const observer = new ResizeObserver(([entry]) => setBox({ w: entry.contentRect.width, h: entry.contentRect.height }));
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
@@ -212,6 +224,9 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
       <div
         ref={viewportRef}
         className={`${styles.canvasViewport} ${grabbing ? styles.canvasGrabbing : ""}`}
+        // In phone mode the CSS gives the box the drawing's proportions, so the fitted map has no empty
+        // band under it; it is CSS rather than state so the very first fit already sees the final size
+        style={{ "--canvas-ratio": `${width + PAD_COMPACT * 2} / ${height + PAD_COMPACT * 2}` } as CSSProperties}
         aria-label={label}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -265,7 +280,7 @@ function PopoverCard({ popover, view, box }: { popover: Popover; view: View; box
   });
 
   let style: CSSProperties;
-  if (box.w < SHEET_BELOW) {
+  if (box.w < COMPACT_BELOW) {
     style = { left: EDGE, right: EDGE, bottom: EDGE, maxHeight: box.h * 0.62 };
   } else {
     const px = popover.at.x * view.k + view.x;
@@ -295,6 +310,32 @@ function PopoverCard({ popover, view, box }: { popover: Popover; view: View; box
         ×
       </button>
       {popover.content}
+    </div>
+  );
+}
+
+/**
+ * For drawings that are not on a canvas yet (the route): on a narrow screen the whole drawing scales
+ * down to the width it has instead of scrolling sideways; on a wide one it stays at its own size.
+ */
+export function FitToWidth({ width, height, children }: { width: number; height: number; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [k, setK] = useState(1);
+
+  // Measured before the first paint, so a phone never sees the full-size drawing flash by
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setK(Math.min(1, el.clientWidth / width));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [width]);
+
+  return (
+    <div ref={ref} className={styles.fitToWidth} style={{ height: height * k }}>
+      <div style={{ width, height, margin: "0 auto", transform: `scale(${k})`, transformOrigin: "0 0" }}>{children}</div>
     </div>
   );
 }
