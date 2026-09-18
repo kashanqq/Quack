@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Icon } from "../choice/Icon";
 import {
-  AREAS,
-  day,
+  EXAM_IDS,
+  EXAMS,
+  monthStarts,
   formatDate,
   formatShort,
   forecastSeries,
@@ -14,8 +15,10 @@ import {
   SKILLS,
   STATE_LABEL,
   TODAY,
+  type ExamId,
 } from "./prepData";
-import { closed, disputeMisconception, MISCONCEPTION_LABEL, readiness, setStatus, type PrepModel, type PrepSub } from "./prepModel";
+import { closed, disputeMisconception, MISCONCEPTION_LABEL, rankSets, readiness, setStatus, type PrepModel, type PrepSub } from "./prepModel";
+import { SetDetail } from "./SetDetail";
 import { useVertical } from "./GraphCanvas";
 import { SkillGraph, StateGlyph, StateLegend } from "./SkillGraph";
 import styles from "./prep.module.css";
@@ -23,8 +26,15 @@ import styles from "./prep.module.css";
 type Props = {
   model: PrepModel;
   sub: PrepSub;
+  /** Which exam the route, the map and the set list show */
+  exam: ExamId;
+  onExam: (exam: ExamId) => void;
   onMakeCurrent: (setId: string) => void;
   onModel: (model: PrepModel) => void;
+  /** The set opened from the list (or from «Обзор»), with the topic to show first */
+  openSet: { id: string; topic?: string } | null;
+  onOpenSet: (setId: string | null, topic?: string) => void;
+  onToast: (text: string) => void;
 };
 
 const STATUS_TEXT = { ...SET_STATUS_LABEL, proposed: "предложен" };
@@ -33,42 +43,106 @@ const STATUS_TEXT = { ...SET_STATUS_LABEL, proposed: "предложен" };
  * §4.3 — the route of sets and the knowledge map they are built from. Three sub-tabs: the route on a
  * timeline, the map of skills with its evidence, and the full list of sets grouped by area.
  */
-export function SetsView({ model, sub, onMakeCurrent, onModel }: Props) {
-  if (sub === "map") return <KnowledgeMap model={model} onModel={onModel} />;
-  if (sub === "all") return <AllSets model={model} onMakeCurrent={onMakeCurrent} />;
-  return <Route model={model} />;
+export function SetsView({ model, sub, exam, onExam, onMakeCurrent, onModel, openSet, onOpenSet, onToast }: Props) {
+  const switcher = <ExamSwitch exam={exam} onExam={onExam} />;
+  // Keyed by exam: the map keeps a layout and a selection per exam, and switching starts clean
+  if (sub === "map") return <KnowledgeMap key={exam} exam={exam} switcher={switcher} model={model} onModel={onModel} />;
+  if (sub === "route") return <Route exam={exam} switcher={switcher} model={model} onOpen={(id) => onOpenSet(id)} />;
+  const set = openSet ? SETS.find((s) => s.id === openSet.id) : undefined;
+  if (set) {
+    return (
+      <SetDetail
+        key={set.id}
+        model={model}
+        set={set}
+        topic={openSet?.topic}
+        onBack={() => onOpenSet(null)}
+        onMakeCurrent={onMakeCurrent}
+        onModel={onModel}
+        onToast={onToast}
+      />
+    );
+  }
+  return <SetList exam={exam} switcher={switcher} model={model} onOpen={(id) => onOpenSet(id)} />;
+}
+
+/** SAT Math or IELTS: each has its own route, map and sets. */
+function ExamSwitch({ exam, onExam }: { exam: ExamId; onExam: (exam: ExamId) => void }) {
+  return (
+    <div className={styles.segmented} role="tablist" aria-label="Экзамен">
+      {EXAM_IDS.map((id) => (
+        <button key={id} type="button" role="tab" aria-selected={exam === id} onClick={() => onExam(id)}>
+          {EXAMS[id].name}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 /* ---------- Маршрут: the sets on a timeline against the test date ---------- */
 
-const CANVAS_W = 1020;
-const CANVAS_H = 286;
+/** The least the route needs; on a big screen it grows to the whole card */
+const MIN_W = 1020;
+const MIN_H = 286;
 const PAD = 54;
-const AXIS_Y = 244;
-const MID = 140;
 const SET_R = 22;
 
 /** Where a set sits on the route: the middle of its window, swaying above and below the line. */
-function routeLayout(forecast: Date, testDate: Date) {
-  const from = day(9, 1).getTime();
-  const to = day(11, 12).getTime();
-  const x = (d: Date) => PAD + ((d.getTime() - from) / (to - from)) * (CANVAS_W - PAD * 2);
+function routeLayout(exam: ExamId, forecast: Date, testDate: Date, width: number, height: number) {
+  const from = EXAMS[exam].routeFrom.getTime();
+  const to = EXAMS[exam].routeTo.getTime();
+  const x = (d: Date) => PAD + ((d.getTime() - from) / (to - from)) * (width - PAD * 2);
+  const axisY = height - 42;
+  // Sets hang in the middle of the room above the axis; the taller it is, the wider they sway
+  const mid = 26 + (axisY - 26) / 2 + 12;
+  const sway = Math.min(110, 30 + (height - MIN_H) * 0.2);
 
-  const stops = SETS.map((set, i) => ({
+  const stops = SETS.filter((s) => s.exam === exam).map((set, i) => ({
     set,
     x: x(new Date((set.start.getTime() + set.deadline.getTime()) / 2)),
-    y: MID + (i % 2 ? 30 : -30),
+    y: mid + (i % 2 ? sway : -sway),
     below: i % 2 === 1,
   }));
 
-  return { x, stops, forecastX: x(forecast), testX: x(testDate) };
+  return { x, stops, forecastX: x(forecast), testX: x(testDate), axisY, mid };
+}
+
+/** The size of a box the drawing should fill */
+function useBoxSize() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: MIN_W, h: MIN_H });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, box] as const;
 }
 
 /** The route as a chain of circles: the same marks as the knowledge map, laid out on real dates. */
-function Route({ model }: { model: PrepModel }) {
-  const { forecast } = forecastSeries(readiness(model), model.extraDays);
-  const testDate = day(11, 7);
-  const { x, stops, forecastX, testX } = routeLayout(forecast, testDate);
+function Route({
+  exam,
+  switcher,
+  model,
+  onOpen,
+}: {
+  exam: ExamId;
+  switcher: React.ReactNode;
+  model: PrepModel;
+  onOpen: (setId: string) => void;
+}) {
+  const { forecast } = forecastSeries(readiness(model, exam), model.extraDays, exam);
+  const testDate = EXAMS[exam].test;
+  const [boxRef, box] = useBoxSize();
+  // The scroll box has a little padding and maybe a scrollbar: stay inside it, never push it to grow
+  const width = Math.max(MIN_W, box.w);
+  const height = Math.max(MIN_H, box.h - 12);
+  const { x, stops, forecastX, testX, axisY: AXIS_Y, mid: MID } = routeLayout(exam, forecast, testDate, width, height);
+  const months = monthStarts(EXAMS[exam].routeFrom, EXAMS[exam].routeTo);
   const inTime = forecast <= testDate;
   const vertical = useVertical();
 
@@ -76,21 +150,22 @@ function Route({ model }: { model: PrepModel }) {
     <div className={styles.canvasGrid}>
       <section className={`${styles.canvas} ${styles.full}`} aria-label="Маршрут">
         <header className={styles.canvasHead}>
-          <h3>SAT Math · маршрут</h3>
+          <h3>{EXAMS[exam].name} · маршрут</h3>
+          {switcher}
           <span className={inTime ? styles.ok : styles.warn}>
             прогноз готовности {formatDate(forecast)} · тест {formatDate(testDate)}
           </span>
         </header>
 
         {vertical ? (
-          <RouteColumn model={model} forecast={forecast} testDate={testDate} inTime={inTime} />
+          <RouteColumn exam={exam} model={model} forecast={forecast} testDate={testDate} inTime={inTime} onOpen={onOpen} />
         ) : (
-          <div className={styles.graphScroll}>
-            <div className={styles.routeMap} style={{ width: CANVAS_W, height: CANVAS_H }}>
-              <svg className={styles.graphEdges} width={CANVAS_W} height={CANVAS_H} aria-hidden="true">
+          <div className={`${styles.graphScroll} ${styles.routeScroll}`} ref={boxRef}>
+            <div className={styles.routeMap} style={{ width, height }}>
+              <svg className={styles.graphEdges} width={width} height={height} aria-hidden="true">
                 {/* The line the whole route runs along */}
-                <line x1={PAD - 20} y1={AXIS_Y} x2={CANVAS_W - PAD + 20} y2={AXIS_Y} className={styles.routeAxisLine} />
-                {[day(9, 1), day(10, 1), day(11, 1)].map((m) => (
+                <line x1={PAD - 20} y1={AXIS_Y} x2={width - PAD + 20} y2={AXIS_Y} className={styles.routeAxisLine} />
+                {months.map((m) => (
                   <line key={m.getTime()} x1={x(m)} y1={AXIS_Y - 5} x2={x(m)} y2={AXIS_Y + 5} className={styles.routeAxisLine} />
                 ))}
 
@@ -131,7 +206,7 @@ function Route({ model }: { model: PrepModel }) {
                 ))}
               </svg>
 
-              {[day(9, 1), day(10, 1), day(11, 1)].map((m) => (
+              {months.map((m) => (
                 <span key={m.getTime()} className={styles.routeMonth} style={{ left: x(m), top: AXIS_Y + 10 }}>
                   {formatShort(m).replace(/^\d+ /, "")}
                 </span>
@@ -150,14 +225,16 @@ function Route({ model }: { model: PrepModel }) {
               {stops.map((stop) => {
                 const status = setStatus(model, stop.set);
                 return (
-                  <span
+                  <button
+                    type="button"
                     key={stop.set.id}
-                    className={styles.routeStop}
+                    className={`${styles.routeStop} ${styles.routeStopOpen}`}
                     data-status={status}
                     style={{ left: stop.x, top: stop.y }}
-                    title={`Сет ${stop.set.number} · ${stop.set.title}: ${formatShort(stop.set.start)} – ${formatShort(
+                    title={`Открыть сет ${stop.set.number} · ${stop.set.title}: ${formatShort(stop.set.start)} – ${formatShort(
                       stop.set.deadline
                     )}, ${STATUS_TEXT[status]}`}
+                    onClick={() => onOpen(stop.set.id)}
                   >
                     <SetMark status={status} />
                     <span className={`${styles.routeChip} ${stop.below ? styles.routeChipBelow : ""}`}>
@@ -169,7 +246,7 @@ function Route({ model }: { model: PrepModel }) {
                         {STATUS_TEXT[status]} · до {formatShort(stop.set.deadline)}
                       </span>
                     </span>
-                  </span>
+                  </button>
                 );
               })}
 
@@ -185,7 +262,7 @@ function Route({ model }: { model: PrepModel }) {
         )}
 
         <p className={styles.muted}>
-          Кружок — сет на своих датах: {STATUS_TEXT.done} — залит, текущий — оранжевый и пульсирует, предстоит — контур, закрепление — пунктир.
+          Нажми на сет, чтобы открыть его. Кружок — сет на своих датах: {STATUS_TEXT.done} — залит, текущий — оранжевый и пульсирует, предстоит — контур, закрепление — пунктир.
         </p>
       </section>
     </div>
@@ -231,15 +308,29 @@ function columnScale(marks: number[], from: number, to: number) {
   };
 }
 
-function RouteColumn({ model, forecast, testDate, inTime }: { model: PrepModel; forecast: Date; testDate: Date; inTime: boolean }) {
-  const from = day(9, 1).getTime();
-  const to = day(11, 12).getTime();
-  const stops = SETS.map((set) => ({ set, at: (set.start.getTime() + set.deadline.getTime()) / 2 }));
+function RouteColumn({
+  exam,
+  model,
+  forecast,
+  testDate,
+  inTime,
+  onOpen,
+}: {
+  exam: ExamId;
+  model: PrepModel;
+  forecast: Date;
+  testDate: Date;
+  inTime: boolean;
+  onOpen: (setId: string) => void;
+}) {
+  const from = EXAMS[exam].routeFrom.getTime();
+  const to = EXAMS[exam].routeTo.getTime();
+  const stops = SETS.filter((s) => s.exam === exam).map((set) => ({ set, at: (set.start.getTime() + set.deadline.getTime()) / 2 }));
 
   const marks = [...stops.map((stop) => stop.at), testDate.getTime()].sort((a, b) => a - b);
   const y = columnScale(marks, from, to);
   const height = Math.max(y(to), y(forecast) + 16) + V_BOTTOM;
-  const months = [day(9, 1), day(10, 1), day(11, 1)];
+  const months = monthStarts(EXAMS[exam].routeFrom, EXAMS[exam].routeTo);
 
   return (
     <div className={`${styles.routeMap} ${styles.routeColumn}`} style={{ height, ["--axis-x" as string]: `${V_AXIS_X}px` }}>
@@ -270,12 +361,14 @@ function RouteColumn({ model, forecast, testDate, inTime }: { model: PrepModel; 
       {stops.map(({ set, at }) => {
         const status = setStatus(model, set);
         return (
-          <div
+          <button
+            type="button"
             key={set.id}
-            className={`${styles.routeStop} ${styles.routeRow}`}
+            className={`${styles.routeStop} ${styles.routeRow} ${styles.routeStopOpen}`}
             data-status={status}
             style={{ top: y(at) }}
-            title={`Сет ${set.number} · ${set.title}: ${formatShort(set.start)} – ${formatShort(set.deadline)}, ${STATUS_TEXT[status]}`}
+            title={`Открыть сет ${set.number} · ${set.title}: ${formatShort(set.start)} – ${formatShort(set.deadline)}, ${STATUS_TEXT[status]}`}
+            onClick={() => onOpen(set.id)}
           >
             <span className={styles.routeAnchor}>
               <SetMark status={status} />
@@ -289,7 +382,7 @@ function RouteColumn({ model, forecast, testDate, inTime }: { model: PrepModel; 
                 {STATUS_TEXT[status]} · до {formatShort(set.deadline)}
               </span>
             </span>
-          </div>
+          </button>
         );
       })}
 
@@ -342,7 +435,17 @@ function SetMark({ status }: { status: keyof typeof STATUS_TEXT }) {
 
 /* ---------- Карта навыков: the graph, and why each skill is in that state ---------- */
 
-function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: PrepModel) => void }) {
+function KnowledgeMap({
+  exam,
+  switcher,
+  model,
+  onModel,
+}: {
+  exam: ExamId;
+  switcher: React.ReactNode;
+  model: PrepModel;
+  onModel: (model: PrepModel) => void;
+}) {
   // Nothing open at first: the card would cover the map before the student has looked at it
   const [selected, setSelected] = useState<string | null>(null);
   const current = SETS.find((s) => s.id === model.currentSet);
@@ -352,10 +455,12 @@ function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: P
     <div className={styles.canvasGrid}>
       <section className={`${styles.canvas} ${styles.full}`} aria-label="Карта навыков">
         <header className={styles.canvasHead}>
-          <h3>Карта навыков</h3>
+          <h3>Карта навыков · {EXAMS[exam].name}</h3>
+          {switcher}
           <StateLegend />
         </header>
         <SkillGraph
+          exam={exam}
           states={model.states}
           recall={model.recall}
           misconceptions={model.misconceptions}
@@ -454,61 +559,137 @@ function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: P
   );
 }
 
-/* ---------- Все сеты: the whole route grouped by area ---------- */
+/* ---------- Сеты: three recommended first, then the rest ---------- */
 
-function AllSets({ model, onMakeCurrent }: { model: PrepModel; onMakeCurrent: (setId: string) => void }) {
+const RECOMMENDED = 3;
+
+function SetList({
+  exam,
+  switcher,
+  model,
+  onOpen,
+}: {
+  exam: ExamId;
+  switcher: React.ReactNode;
+  model: PrepModel;
+  onOpen: (setId: string) => void;
+}) {
+  const ranked = rankSets(model, exam);
+  const top = ranked.slice(0, RECOMMENDED);
+  const topIds = new Set(top.map((r) => r.set.id));
+  // The rest keep the route's order, so they read as the plan they are part of
+  const rest = SETS.filter((s) => s.exam === exam && !topIds.has(s.id) && !model.doneSets.includes(s.id));
+  const done = SETS.filter((s) => s.exam === exam && model.doneSets.includes(s.id));
+
   return (
-    <div className={styles.canvasGrid}>
-      <section className={`${styles.canvas} ${styles.full}`} aria-label="Все сеты">
-        <header className={styles.canvasHead}>
-          <h3>Все сеты по областям</h3>
-          <span className={styles.muted}>текущий можно сменить — прогноз пересчитается</span>
-        </header>
-        <div className={styles.areaGroups}>
-          {AREAS.map((area) => {
-            const sets = SETS.filter((s) => s.area === area);
-            if (!sets.length) return null;
-            return (
-              <div key={area} className={styles.areaGroup}>
-                <p className={styles.eyebrow}>{area}</p>
-                {sets.map((set) => {
-                  const status = setStatus(model, set);
-                  return (
-                    <article key={set.id} className={styles.setCard} data-status={status}>
-                      <div className={styles.setHead}>
-                        <strong>
-                          Сет {set.number} · {set.title}
-                        </strong>
-                        <span className={styles.statusPill} data-status={status}>
-                          {STATUS_TEXT[status]}
-                        </span>
-                      </div>
-                      <span className={styles.muted}>
-                        {formatShort(set.start)} – {formatShort(set.deadline)} · закрыто {closed(model, set)} из {set.skills.length}
-                      </span>
-                      <ul className={styles.skillChips}>
-                        {set.skills.map((id) => (
-                          <li key={id}>
-                            <StateGlyph state={model.states[id]} size={12} />
-                            {skillById(id).name}
-                          </li>
-                        ))}
-                      </ul>
-                      <p className={styles.why}>Почему в маршруте: {set.why}</p>
-                      {status !== "current" && (
-                        <button type="button" className={styles.secondary} onClick={() => onMakeCurrent(set.id)}>
-                          <Icon name="target" size={16} />
-                          {status === "done" ? "Вернуться к сету" : "Сделать текущим"}
-                        </button>
-                      )}
-                    </article>
-                  );
-                })}
-              </div>
-            );
-          })}
+    <div className={styles.setList}>
+      <header className={styles.setListHead}>
+        <div>
+          <h3>Рекомендуем сейчас</h3>
+          <p className={styles.muted}>по твоим ошибкам и темам, которые ещё не держатся</p>
         </div>
-      </section>
+        {switcher}
+      </header>
+
+      {top.length ? (
+        <div className={styles.recGrid}>
+          {top.map(({ set, reasons }, i) => (
+            <SetCard key={set.id} model={model} set={set} rank={i + 1} reasons={reasons} onOpen={onOpen} />
+          ))}
+        </div>
+      ) : (
+        <p className={styles.muted}>Все сеты по {EXAMS[exam].name} пройдены — осталось закрепление и тест.</p>
+      )}
+
+      {rest.length > 0 && (
+        <>
+          <p className={styles.eyebrow}>Остальные сеты</p>
+          <div className={styles.setGridSmall}>
+            {rest.map((set) => (
+              <SetCard key={set.id} model={model} set={set} onOpen={onOpen} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {done.length > 0 && (
+        <>
+          <p className={styles.eyebrow}>Пройденные</p>
+          <div className={styles.setGridSmall}>
+            {done.map((set) => (
+              <SetCard key={set.id} model={model} set={set} onOpen={onOpen} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
+  );
+}
+
+function SetCard({
+  model,
+  set,
+  rank,
+  reasons,
+  onOpen,
+}: {
+  model: PrepModel;
+  set: (typeof SETS)[number];
+  /** Place among the recommended; absent for the rest */
+  rank?: number;
+  reasons?: string[];
+  onOpen: (setId: string) => void;
+}) {
+  const status = setStatus(model, set);
+  const left = Math.round((set.deadline.getTime() - TODAY.getTime()) / 86_400_000);
+  return (
+    <article
+      className={`${styles.setCard} ${rank ? styles.setCardRec : ""}`}
+      data-status={status}
+      onClick={() => onOpen(set.id)}
+    >
+      <div className={styles.setHead}>
+        <span className={styles.setCardTitle}>
+          {rank && <b className={styles.recRank}>{rank}</b>}
+          <strong>
+            Сет {set.number} · {set.title}
+          </strong>
+        </span>
+        <span className={styles.statusPill} data-status={status}>
+          {STATUS_TEXT[status]}
+        </span>
+      </div>
+      <span className={styles.muted}>
+        {formatShort(set.start)} – {formatShort(set.deadline)}
+        {status !== "done" && left >= 0 && ` · осталось ${left} дн.`} · доказано {closed(model, set)} из {set.skills.length}
+      </span>
+      <ul className={styles.skillChips}>
+        {set.skills.map((id) => (
+          <li key={id}>
+            <StateGlyph state={model.states[id]} size={12} />
+            {skillById(id).name}
+          </li>
+        ))}
+      </ul>
+      {reasons ? (
+        <ul className={styles.recReasons}>
+          {reasons.slice(0, 3).map((r) => (
+            <li key={r}>{r}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className={styles.why}>{set.why}</p>
+      )}
+      <button
+        type="button"
+        className={rank ? styles.primary : styles.secondary}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpen(set.id);
+        }}
+      >
+        Открыть сет <Icon name="chevron-right" size={16} />
+      </button>
+    </article>
   );
 }

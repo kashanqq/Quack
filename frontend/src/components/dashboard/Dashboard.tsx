@@ -29,6 +29,7 @@ import {
 import { ExamsTab } from "./ExamsTab";
 import { ProgramsTab } from "./ProgramsTab";
 import styles from "./dashboard.module.css";
+import { store } from "../account/store";
 
 const WATCH_KEY = "quack-dashboard-watch";
 const PREP_KEY = "quack-prep";
@@ -58,28 +59,16 @@ export function Dashboard({ tab, onTab, saved, profile, chatDays, onUnsave, onOp
     if (freshKey) setVisitNew((seen) => new Set([...seen, ...freshKey.split("|")]));
   }, [freshKey]);
 
-  useEffect(() => {
-    try {
-      setWatched(JSON.parse(localStorage.getItem(WATCH_KEY) ?? "[]"));
-    } catch {}
-  }, []);
+  useEffect(() => setWatched(store.get<string[]>(WATCH_KEY) ?? []), []);
 
   const keepWatching = (id: string) => {
     const next = watched.includes(id) ? watched : [...watched, id];
     setWatched(next);
-    try {
-      localStorage.setItem(WATCH_KEY, JSON.stringify(next));
-    } catch {}
+    store.set(WATCH_KEY, next);
   };
 
   // Preparation is a separate screen with its own storage; here we only read it
-  const prep = useMemo(() => {
-    try {
-      return reviveModel(JSON.parse(localStorage.getItem(PREP_KEY) ?? "null")) ?? initialModel();
-    } catch {
-      return initialModel();
-    }
-  }, []);
+  const prep = useMemo(() => reviveModel(store.get(PREP_KEY)) ?? initialModel(), []);
 
   const programs = saved.map(programById).filter(Boolean);
   const exams = unionExams(programs);

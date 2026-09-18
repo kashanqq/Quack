@@ -38,10 +38,10 @@ export function SiteHeader() {
       </nav>
 
       <div className={styles.auth}>
-        <a className={styles.login} href="#login">
+        <a className={styles.login} href="/login">
           {t.login}
         </a>
-        <a className={styles.signin} href="#signup" data-aura>
+        <a className={styles.signin} href="/login?mode=signup" data-aura>
           <span className={styles.signinBg} aria-hidden="true" />
           <span className={styles.signinText}>{t.signup}</span>
           <img className={styles.signinArrow} src="/assets/arrow.svg" alt="" />
