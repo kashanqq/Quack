@@ -4,7 +4,9 @@ import { useState } from "react";
 import { Icon } from "../choice/Icon";
 import {
   AREAS,
-  day,
+  EXAM_IDS,
+  EXAMS,
+  monthStarts,
   formatDate,
   formatShort,
   forecastSeries,
@@ -14,6 +16,7 @@ import {
   SKILLS,
   STATE_LABEL,
   TODAY,
+  type ExamId,
 } from "./prepData";
 import { closed, disputeMisconception, MISCONCEPTION_LABEL, readiness, setStatus, type PrepModel, type PrepSub } from "./prepModel";
 import { useVertical } from "./GraphCanvas";
@@ -23,6 +26,9 @@ import styles from "./prep.module.css";
 type Props = {
   model: PrepModel;
   sub: PrepSub;
+  /** Which exam the route, the map and the set list show */
+  exam: ExamId;
+  onExam: (exam: ExamId) => void;
   onMakeCurrent: (setId: string) => void;
   onModel: (model: PrepModel) => void;
 };
@@ -33,10 +39,25 @@ const STATUS_TEXT = { ...SET_STATUS_LABEL, proposed: "предложен" };
  * §4.3 — the route of sets and the knowledge map they are built from. Three sub-tabs: the route on a
  * timeline, the map of skills with its evidence, and the full list of sets grouped by area.
  */
-export function SetsView({ model, sub, onMakeCurrent, onModel }: Props) {
-  if (sub === "map") return <KnowledgeMap model={model} onModel={onModel} />;
-  if (sub === "all") return <AllSets model={model} onMakeCurrent={onMakeCurrent} />;
-  return <Route model={model} />;
+export function SetsView({ model, sub, exam, onExam, onMakeCurrent, onModel }: Props) {
+  const switcher = <ExamSwitch exam={exam} onExam={onExam} />;
+  // Keyed by exam: the map keeps a layout and a selection per exam, and switching starts clean
+  if (sub === "map") return <KnowledgeMap key={exam} exam={exam} switcher={switcher} model={model} onModel={onModel} />;
+  if (sub === "all") return <AllSets exam={exam} switcher={switcher} model={model} onMakeCurrent={onMakeCurrent} />;
+  return <Route exam={exam} switcher={switcher} model={model} />;
+}
+
+/** SAT Math or IELTS: each has its own route, map and sets. */
+function ExamSwitch({ exam, onExam }: { exam: ExamId; onExam: (exam: ExamId) => void }) {
+  return (
+    <div className={styles.segmented} role="tablist" aria-label="Экзамен">
+      {EXAM_IDS.map((id) => (
+        <button key={id} type="button" role="tab" aria-selected={exam === id} onClick={() => onExam(id)}>
+          {EXAMS[id].name}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 /* ---------- Маршрут: the sets on a timeline against the test date ---------- */
@@ -49,12 +70,12 @@ const MID = 140;
 const SET_R = 22;
 
 /** Where a set sits on the route: the middle of its window, swaying above and below the line. */
-function routeLayout(forecast: Date, testDate: Date) {
-  const from = day(9, 1).getTime();
-  const to = day(11, 12).getTime();
+function routeLayout(exam: ExamId, forecast: Date, testDate: Date) {
+  const from = EXAMS[exam].routeFrom.getTime();
+  const to = EXAMS[exam].routeTo.getTime();
   const x = (d: Date) => PAD + ((d.getTime() - from) / (to - from)) * (CANVAS_W - PAD * 2);
 
-  const stops = SETS.map((set, i) => ({
+  const stops = SETS.filter((s) => s.exam === exam).map((set, i) => ({
     set,
     x: x(new Date((set.start.getTime() + set.deadline.getTime()) / 2)),
     y: MID + (i % 2 ? 30 : -30),
@@ -65,10 +86,11 @@ function routeLayout(forecast: Date, testDate: Date) {
 }
 
 /** The route as a chain of circles: the same marks as the knowledge map, laid out on real dates. */
-function Route({ model }: { model: PrepModel }) {
-  const { forecast } = forecastSeries(readiness(model), model.extraDays);
-  const testDate = day(11, 7);
-  const { x, stops, forecastX, testX } = routeLayout(forecast, testDate);
+function Route({ exam, switcher, model }: { exam: ExamId; switcher: React.ReactNode; model: PrepModel }) {
+  const { forecast } = forecastSeries(readiness(model, exam), model.extraDays, exam);
+  const testDate = EXAMS[exam].test;
+  const { x, stops, forecastX, testX } = routeLayout(exam, forecast, testDate);
+  const months = monthStarts(EXAMS[exam].routeFrom, EXAMS[exam].routeTo);
   const inTime = forecast <= testDate;
   const vertical = useVertical();
 
@@ -76,21 +98,22 @@ function Route({ model }: { model: PrepModel }) {
     <div className={styles.canvasGrid}>
       <section className={`${styles.canvas} ${styles.full}`} aria-label="Маршрут">
         <header className={styles.canvasHead}>
-          <h3>SAT Math · маршрут</h3>
+          <h3>{EXAMS[exam].name} · маршрут</h3>
+          {switcher}
           <span className={inTime ? styles.ok : styles.warn}>
             прогноз готовности {formatDate(forecast)} · тест {formatDate(testDate)}
           </span>
         </header>
 
         {vertical ? (
-          <RouteColumn model={model} forecast={forecast} testDate={testDate} inTime={inTime} />
+          <RouteColumn exam={exam} model={model} forecast={forecast} testDate={testDate} inTime={inTime} />
         ) : (
           <div className={styles.graphScroll}>
             <div className={styles.routeMap} style={{ width: CANVAS_W, height: CANVAS_H }}>
               <svg className={styles.graphEdges} width={CANVAS_W} height={CANVAS_H} aria-hidden="true">
                 {/* The line the whole route runs along */}
                 <line x1={PAD - 20} y1={AXIS_Y} x2={CANVAS_W - PAD + 20} y2={AXIS_Y} className={styles.routeAxisLine} />
-                {[day(9, 1), day(10, 1), day(11, 1)].map((m) => (
+                {months.map((m) => (
                   <line key={m.getTime()} x1={x(m)} y1={AXIS_Y - 5} x2={x(m)} y2={AXIS_Y + 5} className={styles.routeAxisLine} />
                 ))}
 
@@ -131,7 +154,7 @@ function Route({ model }: { model: PrepModel }) {
                 ))}
               </svg>
 
-              {[day(9, 1), day(10, 1), day(11, 1)].map((m) => (
+              {months.map((m) => (
                 <span key={m.getTime()} className={styles.routeMonth} style={{ left: x(m), top: AXIS_Y + 10 }}>
                   {formatShort(m).replace(/^\d+ /, "")}
                 </span>
@@ -231,15 +254,27 @@ function columnScale(marks: number[], from: number, to: number) {
   };
 }
 
-function RouteColumn({ model, forecast, testDate, inTime }: { model: PrepModel; forecast: Date; testDate: Date; inTime: boolean }) {
-  const from = day(9, 1).getTime();
-  const to = day(11, 12).getTime();
-  const stops = SETS.map((set) => ({ set, at: (set.start.getTime() + set.deadline.getTime()) / 2 }));
+function RouteColumn({
+  exam,
+  model,
+  forecast,
+  testDate,
+  inTime,
+}: {
+  exam: ExamId;
+  model: PrepModel;
+  forecast: Date;
+  testDate: Date;
+  inTime: boolean;
+}) {
+  const from = EXAMS[exam].routeFrom.getTime();
+  const to = EXAMS[exam].routeTo.getTime();
+  const stops = SETS.filter((s) => s.exam === exam).map((set) => ({ set, at: (set.start.getTime() + set.deadline.getTime()) / 2 }));
 
   const marks = [...stops.map((stop) => stop.at), testDate.getTime()].sort((a, b) => a - b);
   const y = columnScale(marks, from, to);
   const height = Math.max(y(to), y(forecast) + 16) + V_BOTTOM;
-  const months = [day(9, 1), day(10, 1), day(11, 1)];
+  const months = monthStarts(EXAMS[exam].routeFrom, EXAMS[exam].routeTo);
 
   return (
     <div className={`${styles.routeMap} ${styles.routeColumn}`} style={{ height, ["--axis-x" as string]: `${V_AXIS_X}px` }}>
@@ -342,7 +377,17 @@ function SetMark({ status }: { status: keyof typeof STATUS_TEXT }) {
 
 /* ---------- Карта навыков: the graph, and why each skill is in that state ---------- */
 
-function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: PrepModel) => void }) {
+function KnowledgeMap({
+  exam,
+  switcher,
+  model,
+  onModel,
+}: {
+  exam: ExamId;
+  switcher: React.ReactNode;
+  model: PrepModel;
+  onModel: (model: PrepModel) => void;
+}) {
   // Nothing open at first: the card would cover the map before the student has looked at it
   const [selected, setSelected] = useState<string | null>(null);
   const current = SETS.find((s) => s.id === model.currentSet);
@@ -352,10 +397,12 @@ function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: P
     <div className={styles.canvasGrid}>
       <section className={`${styles.canvas} ${styles.full}`} aria-label="Карта навыков">
         <header className={styles.canvasHead}>
-          <h3>Карта навыков</h3>
+          <h3>Карта навыков · {EXAMS[exam].name}</h3>
+          {switcher}
           <StateLegend />
         </header>
         <SkillGraph
+          exam={exam}
           states={model.states}
           recall={model.recall}
           misconceptions={model.misconceptions}
@@ -456,17 +503,28 @@ function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: P
 
 /* ---------- Все сеты: the whole route grouped by area ---------- */
 
-function AllSets({ model, onMakeCurrent }: { model: PrepModel; onMakeCurrent: (setId: string) => void }) {
+function AllSets({
+  exam,
+  switcher,
+  model,
+  onMakeCurrent,
+}: {
+  exam: ExamId;
+  switcher: React.ReactNode;
+  model: PrepModel;
+  onMakeCurrent: (setId: string) => void;
+}) {
   return (
     <div className={styles.canvasGrid}>
       <section className={`${styles.canvas} ${styles.full}`} aria-label="Все сеты">
         <header className={styles.canvasHead}>
-          <h3>Все сеты по областям</h3>
+          <h3>Все сеты · {EXAMS[exam].name}</h3>
+          {switcher}
           <span className={styles.muted}>текущий можно сменить — прогноз пересчитается</span>
         </header>
         <div className={styles.areaGroups}>
-          {AREAS.map((area) => {
-            const sets = SETS.filter((s) => s.area === area);
+          {AREAS[exam].map((area) => {
+            const sets = SETS.filter((s) => s.exam === exam && s.area === area);
             if (!sets.length) return null;
             return (
               <div key={area} className={styles.areaGroup}>

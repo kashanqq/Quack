@@ -19,6 +19,10 @@ import {
   SKILLS,
   STATE_LABEL,
   TODAY,
+  EXAM_IDS,
+  EXAMS,
+  type ExamId,
+  type ExamOutlook,
 } from "./prepData";
 import { closed, MISCONCEPTION_LABEL, proposedSet, readiness, type PrepModel, type PrepSub, type PrepTab } from "./prepModel";
 import { StateGlyph } from "./SkillGraph";
@@ -29,7 +33,7 @@ type Props = {
   programs: Program[];
   sub: PrepSub;
   /** Jump to another tab, optionally straight to one of its sub-tabs */
-  onGo: (tab: PrepTab, sub?: PrepSub) => void;
+  onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
   onAccept: (setId: string) => void;
   onToggleMilestone: (id: string) => void;
   onResolveConflict: (id: string, option: string) => void;
@@ -40,12 +44,22 @@ type Props = {
  * what to do now, what the programs demand, which dates are coming, how the programs are changing.
  */
 export function Overview({ model, programs, sub, onGo, onAccept, onToggleMilestone, onResolveConflict }: Props) {
-  const now = readiness(model);
-  const { points, forecast } = forecastSeries(now, model.extraDays);
-  const exams = requirements(programs, forecast, now);
+  // Each exam with a knowledge model has its own readiness, history and forecast
+  const series = Object.fromEntries(
+    EXAM_IDS.map((id) => {
+      const now = readiness(model, id);
+      return [id, { readiness: now, ...forecastSeries(now, model.extraDays, id) }];
+    })
+  ) as Record<ExamId, { readiness: number } & ReturnType<typeof forecastSeries>>;
+  const outlook: ExamOutlook = {
+    sat: { readiness: series.sat.readiness, forecast: series.sat.forecast },
+    ielts: { readiness: series.ielts.readiness, forecast: series.ielts.forecast },
+  };
+  const forecast = series.sat.forecast;
+  const exams = requirements(programs, outlook);
   const list = milestones(programs);
 
-  if (sub === "requirements") return <Requirements exams={exams} points={points} forecast={forecast} />;
+  if (sub === "requirements") return <Requirements exams={exams} series={series} />;
   if (sub === "milestones")
     return (
       <Milestones
@@ -72,7 +86,7 @@ function Now({
   model: PrepModel;
   forecast: Date;
   milestoneList: ReturnType<typeof milestones>;
-  onGo: (tab: PrepTab, sub?: PrepSub) => void;
+  onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
   onAccept: (setId: string) => void;
 }) {
   const proposed = proposedSet(model);
@@ -198,7 +212,7 @@ function Important({
 }: {
   model: PrepModel;
   milestoneList: ReturnType<typeof milestones>;
-  onGo: (tab: PrepTab, sub?: PrepSub) => void;
+  onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
 }) {
   const items: { key: string; tone: "root" | "trap" | "late" | "date"; title: string; text: string; go: () => void; action: string }[] = [];
 
@@ -209,7 +223,7 @@ function Important({
       tone: "root",
       title: `Корень: ${root.name}`,
       text: above.length ? `из-за него ошибки в теме «${above.join("», «")}»` : "из-за него ошибки выше по карте",
-      go: () => onGo("sets", "map"),
+      go: () => onGo("sets", "map", root.exam),
       action: "На карте",
     });
   }
@@ -222,8 +236,8 @@ function Important({
       tone: "trap",
       title: `Ловушка: ${skill.name}`,
       text: trap.text,
-      go: () => onGo("current", "tasks"),
-      action: "Задачи",
+      go: () => onGo("current", "check"),
+      action: "Проверь себя",
     });
   }
 
@@ -282,14 +296,13 @@ function Important({
 
 function Requirements({
   exams,
-  points,
-  forecast,
+  series,
 }: {
   exams: ReturnType<typeof requirements>;
-  points: ReturnType<typeof forecastSeries>["points"];
-  forecast: Date;
+  series: Record<ExamId, ReturnType<typeof forecastSeries>>;
 }) {
-  const sat = exams.find((e) => e.id === "sat");
+  // A chart for every exam the knowledge model covers and the programs ask for
+  const charted = EXAM_IDS.filter((id) => exams.some((e) => e.id === id && e.hasModel));
 
   return (
     <div className={styles.canvasGrid}>
@@ -336,15 +349,15 @@ function Requirements({
         );
       })}
 
-      {sat && (
-        <section className={`${styles.canvas} ${styles.full}`} aria-label="Прогноз готовности">
+      {charted.map((id) => (
+        <section key={id} className={`${styles.canvas} ${styles.full}`} aria-label={`Прогноз готовности ${EXAMS[id].name}`}>
           <header className={styles.canvasHead}>
-            <h3>Готовность SAT Math и прогноз</h3>
+            <h3>Готовность {EXAMS[id].name} и прогноз</h3>
             <span className={styles.muted}>факт — сплошная, прогноз — пунктир</span>
           </header>
-          <ForecastChart points={points} testDate={sat.testDate!} forecast={forecast} />
+          <ForecastChart points={series[id].points} testDate={EXAMS[id].test} forecast={series[id].forecast} />
         </section>
-      )}
+      ))}
     </div>
   );
 }

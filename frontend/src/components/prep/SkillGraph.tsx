@@ -3,10 +3,12 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { store } from "../account/store";
 import { GraphCanvas, useNodeDrag, useVertical } from "./GraphCanvas";
-import { AREAS, SKILLS, STATE_LABEL, type Misconception, type Skill, type SkillState } from "./prepData";
+import { AREAS, EXAM_IDS, SKILLS, STATE_LABEL, type ExamId, type Misconception, type Skill, type SkillState } from "./prepData";
 import styles from "./prep.module.css";
 
 type Props = {
+  /** The map shows one exam at a time */
+  exam: ExamId;
   states: Record<string, SkillState>;
   recall: Record<string, number>;
   misconceptions: Record<string, Misconception[]>;
@@ -116,8 +118,8 @@ function NodeMark({ state, recall }: { state: SkillState; recall: number }) {
  * Each exam area keeps its own horizontal lane, so a column means "this deep into the prerequisites".
  * On a phone it reads top to bottom instead (see verticalLayout).
  */
-function autoLayout(orientation: Orientation) {
-  return orientation === "vertical" ? verticalLayout() : horizontalLayout();
+function autoLayout(orientation: Orientation, exam: ExamId) {
+  return orientation === "vertical" ? verticalLayout(exam) : horizontalLayout(exam);
 }
 
 const depthOf = (s: Skill): number =>
@@ -125,14 +127,14 @@ const depthOf = (s: Skill): number =>
 
 type Lane = { area: string; x: number; y: number; width: number; height: number };
 
-function horizontalLayout() {
+function horizontalLayout(exam: ExamId) {
   const depth = depthOf;
   const pos: Record<string, Point> = {};
   const lanes: Lane[] = [];
   let columns = 0;
   let y = TOP;
 
-  AREAS.forEach((area) => {
+  AREAS[exam].forEach((area) => {
     const byColumn = new Map<number, Skill[]>();
     SKILLS.filter((s) => s.area === area).forEach((s) => {
       const col = depth(s);
@@ -161,8 +163,8 @@ function horizontalLayout() {
   return { pos, lanes: lanes.map((l) => ({ ...l, width: width - 24 })), width, height: y };
 }
 
-function verticalLayout() {
-  const areas = AREAS.map((area) => {
+function verticalLayout(exam: ExamId) {
+  const areas = AREAS[exam].map((area) => {
     const byRow = new Map<number, Skill[]>();
     SKILLS.filter((s) => s.area === area).forEach((s) => byRow.set(depthOf(s), [...(byRow.get(depthOf(s)) ?? []), s]));
     // Rows are the depths this area actually has, so an area that starts deep does not open on a gap
@@ -191,11 +193,13 @@ function verticalLayout() {
   return { pos, lanes, width, height: y };
 }
 
-const BASE: Record<Orientation, ReturnType<typeof horizontalLayout>> = {
-  horizontal: autoLayout("horizontal"),
-  vertical: autoLayout("vertical"),
-};
-/** Each orientation keeps its own arrangement: a node dragged on the phone map says nothing about the wide one */
+const BASE = Object.fromEntries(
+  EXAM_IDS.map((exam) => [exam, { horizontal: autoLayout("horizontal", exam), vertical: autoLayout("vertical", exam) }])
+) as Record<ExamId, Record<Orientation, ReturnType<typeof horizontalLayout>>>;
+/**
+ * Each orientation keeps its own arrangement: a node dragged on the phone map says nothing about the wide one.
+ * Each exam does too; SAT keeps the keys it had before IELTS joined, so saved layouts survive.
+ */
 const NODES_KEY: Record<Orientation, string> = {
   horizontal: "lupidrupi.skillmap.nodes.v1",
   vertical: "lupidrupi.skillmap.nodes.vertical.v1",
@@ -204,6 +208,7 @@ const VIEW_KEY: Record<Orientation, string> = {
   horizontal: "lupidrupi.skillmap.view.v1",
   vertical: "lupidrupi.skillmap.view.vertical.v1",
 };
+const keyFor = (keys: Record<Orientation, string>, o: Orientation, exam: ExamId) => (exam === "sat" ? keys[o] : `${keys[o]}.${exam}`);
 
 const GAP = R + 9;
 const HEAD = 6;
@@ -252,10 +257,11 @@ function edgePathDown(a: Point, b: Point, foot: number, margin: number) {
 }
 
 /** Knowledge map: exam areas as lanes, prerequisites linked to the skill that needs them. */
-export function SkillGraph({ states, recall, misconceptions, highlight, selected, onSelect, details, onClose }: Props) {
+export function SkillGraph({ exam, states, recall, misconceptions, highlight, selected, onSelect, details, onClose }: Props) {
   const orientation: Orientation = useVertical() ? "vertical" : "horizontal";
   const vertical = orientation === "vertical";
-  const base = BASE[orientation];
+  const base = BASE[exam][orientation];
+  const skills = SKILLS.filter((s) => s.exam === exam);
   const nodeW = vertical ? V_NODE_W : NODE_W;
 
   // Only the nodes the student dragged, per orientation; everything else keeps its automatic place
@@ -267,15 +273,16 @@ export function SkillGraph({ states, recall, misconceptions, highlight, selected
 
   useEffect(() => {
     const load = (o: Orientation) =>
-      Object.fromEntries(Object.entries(store.get<Record<string, Point>>(NODES_KEY[o]) ?? {}).filter(([id]) => id in BASE[o].pos));
+      Object.fromEntries(Object.entries(store.get<Record<string, Point>>(keyFor(NODES_KEY, o, exam)) ?? {}).filter(([id]) => id in BASE[exam][o].pos));
     setMoved({ horizontal: load("horizontal"), vertical: load("vertical") });
-  }, []);
+    // Mounted once per exam (the map is keyed by it), so the exam never changes under a loaded layout
+  }, [exam]);
 
   useEffect(() => {
     if (!commits) return;
     const o = movedRef.current[orientation];
-    store.set(NODES_KEY[orientation], Object.keys(o).length ? o : null);
-  }, [commits, orientation]);
+    store.set(keyFor(NODES_KEY, orientation, exam), Object.keys(o).length ? o : null);
+  }, [commits, orientation, exam]);
 
   const pos = { ...base.pos, ...moved[orientation] };
   const hasMoved = Object.keys(moved[orientation]).length > 0;
@@ -301,19 +308,19 @@ export function SkillGraph({ states, recall, misconceptions, highlight, selected
 
   const related = new Set<string>();
   if (selected) {
-    const skill = SKILLS.find((s) => s.id === selected)!;
-    skill.requires.forEach((id) => related.add(id));
-    SKILLS.filter((s) => s.requires.includes(selected)).forEach((s) => related.add(s.id));
+    const skill = skills.find((s) => s.id === selected);
+    skill?.requires.forEach((id) => related.add(id));
+    skills.filter((s) => s.requires.includes(selected)).forEach((s) => related.add(s.id));
   }
 
-  const edges = SKILLS.flatMap((s) => s.requires.map((from) => ({ from, to: s.id })));
+  const edges = skills.flatMap((s) => s.requires.map((from) => ({ from, to: s.id })));
 
   return (
     <GraphCanvas
       width={base.width}
       height={base.height}
       label="Холст карты навыков"
-      storageKey={VIEW_KEY[orientation]}
+      storageKey={keyFor(VIEW_KEY, orientation, exam)}
       hint={
         vertical
           ? "Нажми на навык — подробности снизу. Карта листается пальцем."
@@ -321,14 +328,14 @@ export function SkillGraph({ states, recall, misconceptions, highlight, selected
       }
       popover={
         selected && details
-          ? { at: pos[selected], gap: nodeW / 2, label: SKILLS.find((s) => s.id === selected)!.name, content: details, onClose }
+          ? { at: pos[selected], gap: nodeW / 2, label: skills.find((s) => s.id === selected)?.name ?? "", content: details, onClose }
           : null
       }
       onBackgroundTap={onClose}
       beacons={[
         // Roots first: errors higher up trace back to them. Then skills with a confirmed trap.
-        ...SKILLS.filter((s) => s.root).map((s) => ({ id: s.id, at: pos[s.id], label: `Корень: ${s.name}`, tone: "root" as const })),
-        ...SKILLS.filter((s) => misconceptions[s.id].some((m) => m.status === "confirmed")).map((s) => ({
+        ...skills.filter((s) => s.root).map((s) => ({ id: s.id, at: pos[s.id], label: `Корень: ${s.name}`, tone: "root" as const })),
+        ...skills.filter((s) => misconceptions[s.id].some((m) => m.status === "confirmed")).map((s) => ({
           id: s.id,
           at: pos[s.id],
           label: `Ловушка: ${s.name}`,
@@ -371,7 +378,7 @@ export function SkillGraph({ states, recall, misconceptions, highlight, selected
         })}
       </svg>
 
-      {SKILLS.map((s) => {
+      {skills.map((s) => {
         const state = states[s.id];
         const at = pos[s.id];
         const openMisconceptions = misconceptions[s.id].filter((m) => m.status === "confirmed" || m.status === "suspected").length;

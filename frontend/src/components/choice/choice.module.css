@@ -890,24 +890,201 @@
   border-radius: 28px 28px 0 0;
 }
 
-.profileTitle {
-  height: 72px;
-  margin: 0;
-  padding: 0 52px;
-  overflow: hidden;
-  font-size: clamp(22px, 6.5cqi, 36px);
-  font-weight: 400;
-  line-height: 72px;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-dim);
-}
-
 .profileHide {
   position: absolute;
   top: 18px;
   right: 12px;
+}
+
+/* ---------- Passport head: readiness ring, title, summary, the duck on the edge ---------- */
+
+.passHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 96px;
+  /* Room on the right for the hide button and the duck under it */
+  padding: 16px 72px 16px 22px;
+}
+
+.passRing {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+}
+
+.passRing svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  rotate: -90deg;
+}
+
+.passRing span {
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.passRingTrack {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 5;
+}
+
+.passRingFill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.9s var(--ease);
+}
+
+.passTitleBox {
+  min-width: 0;
+}
+
+.passTitle {
+  margin: 0;
+  font-size: clamp(22px, 6cqi, 30px);
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.passSummary {
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The duck sits on the line between the head and the body, feet on the edge. */
+.passDuck {
+  position: absolute;
+  right: 22px;
+  bottom: -1px;
+  width: 42px;
+  pointer-events: none;
+}
+
+/* ---------- Passport blocks ---------- */
+
+.passGroup + .passGroup {
+  margin-top: 22px;
+}
+
+.passGroupTitle {
+  margin: 0 0 8px 2px;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.profileRow[data-status="empty"] {
+  --status: rgba(255, 255, 255, 0.18);
+  background: none;
+  border-left-style: dashed;
+}
+
+.passValueCell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.passValueCell .profileValue {
+  /* Never narrower than its text: when there is no room, «верно» wraps to the next line instead */
+  flex: 1 1 auto;
+  width: auto;
+  min-width: max-content;
+}
+
+.passSlot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 0.85em;
+  background: none;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.passSlot:hover,
+.passSlot:focus-visible {
+  color: var(--accent-label);
+  border-color: var(--accent-label);
+}
+
+/* One press turns a guess into something the student said. */
+.passConfirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  color: #ffd88a;
+  font: inherit;
+  font-size: 0.78em;
+  background: rgba(255, 196, 74, 0.1);
+  border: 1px solid rgba(255, 196, 74, 0.35);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.passConfirm:hover,
+.passConfirm:focus-visible {
+  color: #1f1d1b;
+  background: #7ccf6b;
+  border-color: #7ccf6b;
+}
+
+.passLegend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  margin: 0;
+  padding: 12px 24px 22px 39px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+.passLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.passLegend span::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.passLegend [data-status="said"]::before {
+  background: #7ccf6b;
+}
+
+.passLegend [data-status="assumed"]::before {
+  background: #ffc44a;
 }
 
 .profileBody {
@@ -1045,36 +1222,6 @@
 
 .profileHideMobile.profileHideMobile {
   display: none;
-}
-
-.profileFooter {
-  flex: none;
-  padding: 12px 24px 24px 39px;
-  text-align: center;
-}
-
-.profileReadinessLabel {
-  display: block;
-  color: var(--text-faint);
-  font-size: clamp(16px, 4cqi, 22px);
-  line-height: 1.3;
-}
-
-.progress {
-  width: min(415px, 100%);
-  height: 14px;
-  margin: 0 auto;
-  overflow: hidden;
-  background: var(--control);
-  border-radius: 7px;
-}
-
-.progressFill {
-  width: 0;
-  height: 100%;
-  background: var(--accent);
-  border-radius: 7px;
-  transition: width 0.9s var(--ease);
 }
 
 .scrollbarPanel {
@@ -1436,10 +1583,9 @@
     border-radius: 0;
   }
 
-  .profileTitle {
-    height: 56px;
-    font-size: 22px;
-    line-height: 56px;
+  .passHead {
+    min-height: 76px;
+    padding: 12px 68px 12px 16px;
   }
 
   .profileHide {
@@ -1466,8 +1612,8 @@
     font-size: 17px;
   }
 
-  .profileFooter {
-    padding: 8px 16px 18px;
+  .passLegend {
+    padding: 8px 16px 16px;
   }
 
   .profileBackdrop {

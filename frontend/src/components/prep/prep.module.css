@@ -1603,6 +1603,71 @@
   gap: 16px;
 }
 
+/* The assistant plans the whole preparation, not a topic: it takes the full width. */
+.setWork[data-mode="assistant"] {
+  grid-template-areas:
+    "head head"
+    "topic topic";
+}
+
+/* Where the skill stands on the map right now, in the map's own colours. */
+.checkState {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 13px;
+}
+
+.checkState[data-state="solid"] {
+  color: var(--solid);
+}
+
+.checkState[data-state="shaky"] {
+  color: var(--shaky);
+}
+
+.checkState[data-state="weak"] {
+  color: var(--weak);
+}
+
+.checkState[data-state="lowData"] {
+  color: var(--low);
+}
+
+.assistantEmpty {
+  display: grid;
+  gap: 12px;
+}
+
+.promptChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.promptChips button {
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.promptChips button:hover,
+.promptChips button:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .setHeader {
   grid-area: head;
   display: flex;
@@ -1705,18 +1770,6 @@
 
 .topicCanvas {
   grid-area: topic;
-}
-
-.guide {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 20px;
-  font-size: 15px;
-  line-height: 1.45;
-}
-
-.guide p {
-  margin: 0;
 }
 
 .task {
@@ -1840,6 +1893,8 @@
   margin: 0;
   padding: 8px 12px;
   line-height: 1.4;
+  /* A plan comes as one line per stretch of days */
+  white-space: pre-line;
   background: var(--inset-bg);
   border-radius: 14px 14px 14px 4px;
   animation: rise 0.3s var(--ease-out) both;
@@ -1963,7 +2018,8 @@
     font-size: 12px;
   }
 
-  .setWork {
+  .setWork,
+  .setWork[data-mode="assistant"] {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "head"
@@ -1971,7 +2027,6 @@
       "topic";
   }
 
-  .guide,
   .options {
     grid-template-columns: minmax(0, 1fr);
   }

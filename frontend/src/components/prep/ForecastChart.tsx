@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
-import { day, formatShort, TODAY, type ForecastPoint } from "./prepData";
+import { day, formatShort, monthStarts, TODAY, type ForecastPoint } from "./prepData";
 import styles from "./prep.module.css";
 
 type Props = { points: ForecastPoint[]; testDate: Date; forecast: Date };
@@ -38,7 +38,7 @@ export function ForecastChart({ points, testDate, forecast }: Props) {
   const line = (list: ForecastPoint[]) => list.map((p, i) => `${i ? "L" : "M"}${x(p.date).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
   const area = `${line(actual)} L${x(todayPoint.date)},${y(0)} L${x(actual[0].date)},${y(0)} Z`;
 
-  const months = [day(9, 1), day(10, 1), day(11, 1)];
+  const months = monthStarts(new Date(start), new Date(end));
   const late = forecast > testDate;
 
   const onMove = (e: React.PointerEvent<SVGSVGElement>) => {

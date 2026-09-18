@@ -2,17 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../choice/Icon";
-import { daysBetween, formatDate, GUIDELINES, setById, skillById, STATE_LABEL, TODAY } from "./prepData";
-import {
-  answerTask,
-  closed,
-  MISCONCEPTION_LABEL,
-  proposedSet,
-  type AnswerResult,
-  type PrepModel,
-  type PrepSub,
-  type PrepTab,
-} from "./prepModel";
+import { CHECKS, daysBetween, EXAMS, formatDate, setById, skillById, STATE_LABEL, TODAY, type ExamId } from "./prepData";
+import { ASSISTANT_PROMPTS, assistantReply } from "./prepAssistant";
+import { answerTask, closed, proposedSet, type AnswerResult, type PrepModel, type PrepSub, type PrepTab } from "./prepModel";
 import { StateGlyph } from "./SkillGraph";
 import styles from "./prep.module.css";
 
@@ -22,15 +14,16 @@ type Props = {
   onModel: (model: PrepModel) => void;
   onAccept: (setId: string) => void;
   /** Jump to another tab, optionally straight to one of its sub-tabs */
-  onGo: (tab: PrepTab, sub?: PrepSub) => void;
+  onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
   onToast: (text: string) => void;
 };
 
-type ChatLine = { id: number; role: "student" | "tutor" | "system"; text: string; detail?: string };
+type ChatLine = { id: number; role: "student" | "assistant"; text: string };
 
 /**
- * §4.4–4.5 — work on the current set. The set and its topics stay on screen as context; the
- * sub-tabs decide what fills the right pane: the guideline, the tasks, or the tutor.
+ * §4.4–4.5 — work on the current set. The set stays on screen as context; the sub-tab decides what fills
+ * the rest: «Проверь себя», where answers prove a skill and colour it on the map, or the assistant,
+ * which plans the preparation around the student's dates.
  */
 export function CurrentSet({ model, sub, onModel, onAccept, onGo, onToast }: Props) {
   const set = model.currentSet ? setById(model.currentSet) : null;
@@ -40,7 +33,10 @@ export function CurrentSet({ model, sub, onModel, onAccept, onGo, onToast }: Pro
     if (set && (!topic || !set.skills.includes(topic))) setTopic(set.skills[0]);
   }, [set, topic]);
 
-  if (!set) {
+  // The assistant plans the whole preparation, so it does not need a set to be in work
+  const assistant = sub === "assistant";
+
+  if (!set && !assistant) {
     const next = proposedSet(model);
     return (
       <div className={styles.emptyCanvas}>
@@ -48,7 +44,7 @@ export function CurrentSet({ model, sub, onModel, onAccept, onGo, onToast }: Pro
         {next ? (
           <>
             <p className={styles.muted}>
-              Система предлагает сет {next.number} «{next.title}» до {formatDate(next.deadline)}. {next.why}.
+              Система предлагает сет {next.number} «{next.title}» ({EXAMS[next.exam].name}) до {formatDate(next.deadline)}. {next.why}.
             </p>
             <div className={styles.actions}>
               <button type="button" className={styles.primary} onClick={() => onAccept(next.id)}>
@@ -66,175 +62,115 @@ export function CurrentSet({ model, sub, onModel, onAccept, onGo, onToast }: Pro
     );
   }
 
-  const left = daysBetween(TODAY, set.deadline);
+  const left = set ? daysBetween(TODAY, set.deadline) : 0;
   const skill = topic ? skillById(topic) : null;
 
   return (
-    <div className={styles.setWork}>
-      <section className={`${styles.canvas} ${styles.setHeader}`} aria-label="Текущий сет">
-        <div>
-          <p className={styles.eyebrow}>Сет {set.number} · SAT Math</p>
-          <h3 className={styles.setTitle}>{set.title}</h3>
-          <p className={styles.muted}>
-            до {formatDate(set.deadline)} · {left >= 0 ? `осталось ${left} дн.` : `просрочен на ${-left} дн. — прогноз пересчитан`} · порядок
-            свободный
-          </p>
-        </div>
-        <div className={styles.setProgress}>
-          <span>
-            закрыто <strong>{closed(model, set)}</strong> из {set.skills.length}
-          </span>
-          <div className={styles.segments}>
-            {set.skills.map((id) => (
-              <span key={id} data-state={model.states[id]} title={`${skillById(id).name}: ${STATE_LABEL[model.states[id]]}`} />
-            ))}
+    <div className={styles.setWork} data-mode={assistant ? "assistant" : "check"}>
+      {set && (
+        <section className={`${styles.canvas} ${styles.setHeader}`} aria-label="Текущий сет">
+          <div>
+            <p className={styles.eyebrow}>
+              Сет {set.number} · {EXAMS[set.exam].name}
+            </p>
+            <h3 className={styles.setTitle}>{set.title}</h3>
+            <p className={styles.muted}>
+              до {formatDate(set.deadline)} · {left >= 0 ? `осталось ${left} дн.` : `просрочен на ${-left} дн. — прогноз пересчитан`} · порядок
+              свободный
+            </p>
           </div>
-          <button
-            type="button"
-            className={styles.secondary}
-            onClick={() => onToast(`Соберём мок по сету: 8–12 заданий по ${set.skills.length} топикам, которых ты не видел`)}
-          >
-            <Icon name="play" size={16} /> Мок по сету
-          </button>
-        </div>
-      </section>
-
-      <nav className={`${styles.canvas} ${styles.topics}`} aria-label="Топики">
-        <p className={styles.eyebrow}>Топики</p>
-        {set.skills.map((id) => {
-          const s = skillById(id);
-          const active = model.misconceptions[id].filter((m) => m.status === "confirmed" || m.status === "suspected");
-          return (
-            <button key={id} type="button" className={styles.topic} aria-current={topic === id} onClick={() => setTopic(id)}>
-              <StateGlyph state={model.states[id]} />
-              <span className={styles.topicText}>
-                <span>{s.name}</span>
-                <span className={styles.muted}>
-                  {STATE_LABEL[model.states[id]]}
-                  {s.root && " · корень"}
-                  {active.length > 0 && " · ловушка"}
-                </span>
-              </span>
+          <div className={styles.setProgress}>
+            <span>
+              доказано <strong>{closed(model, set)}</strong> из {set.skills.length}
+            </span>
+            <div className={styles.segments}>
+              {set.skills.map((id) => (
+                <span key={id} data-state={model.states[id]} title={`${skillById(id).name}: ${STATE_LABEL[model.states[id]]}`} />
+              ))}
+            </div>
+            <button type="button" className={styles.secondary} onClick={() => onGo("sets", "map", set.exam)}>
+              <Icon name="network" size={16} /> На карте навыков
             </button>
-          );
-        })}
-      </nav>
+          </div>
+        </section>
+      )}
 
-      {skill &&
-        (sub === "tutor" ? (
-          <PrepChat key={`chat-${set.id}`} topicName={skill.name} topicId={skill.id} setTitle={set.title} model={model} />
-        ) : sub === "tasks" ? (
-          <TaskCanvas key={`task-${skill.id}`} skillId={skill.id} model={model} onModel={onModel} onToast={onToast} />
-        ) : (
-          <GuideCanvas key={`guide-${skill.id}`} skillId={skill.id} model={model} onGo={onGo} />
-        ))}
+      {!assistant && set && (
+        <nav className={`${styles.canvas} ${styles.topics}`} aria-label="Топики">
+          <p className={styles.eyebrow}>Топики</p>
+          {set.skills.map((id) => {
+            const s = skillById(id);
+            const active = model.misconceptions[id].filter((m) => m.status === "confirmed" || m.status === "suspected");
+            return (
+              <button key={id} type="button" className={styles.topic} aria-current={topic === id} onClick={() => setTopic(id)}>
+                <StateGlyph state={model.states[id]} />
+                <span className={styles.topicText}>
+                  <span>{s.name}</span>
+                  <span className={styles.muted}>
+                    {STATE_LABEL[model.states[id]]}
+                    {s.root && " · корень"}
+                    {active.length > 0 && " · ловушка"}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
+
+      {assistant ? (
+        <AssistantChat model={model} fallbackExam={set?.exam ?? "sat"} />
+      ) : (
+        skill && <CheckCanvas key={skill.id} skillId={skill.id} model={model} onModel={onModel} onGo={onGo} onToast={onToast} />
+      )}
     </div>
   );
 }
 
-/* ---------- Гайдлайн: what this topic asks of you ---------- */
+/* ---------- Проверь себя: prove a skill, one question at a time ---------- */
 
-function GuideCanvas({ skillId, model, onGo }: { skillId: string; model: PrepModel; onGo: (tab: PrepTab, sub?: PrepSub) => void }) {
-  const skill = skillById(skillId);
-  const guide = GUIDELINES[skillId];
-  const traps = model.misconceptions[skillId].filter((m) => m.status !== "disputed");
-
-  return (
-    <section className={`${styles.canvas} ${styles.topicCanvas}`} aria-label={`Гайдлайн · ${skill.name}`}>
-      <header className={styles.canvasHead}>
-        <h3>{skill.name}</h3>
-        <span className={styles.muted}>гайдлайн собран для тебя сейчас</span>
-      </header>
-
-      {guide ? (
-        <>
-          <div className={styles.guide}>
-            <div>
-              <p className={styles.eyebrow}>Как готовиться</p>
-              <p>{guide.prepare}</p>
-            </div>
-            <div>
-              <p className={styles.eyebrow}>Что нужно уметь</p>
-              <ul className={styles.dotList}>
-                {guide.mustKnow.map((k) => (
-                  <li key={k}>{k}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className={styles.eyebrow}>Ловушки у тебя</p>
-              {traps.length || guide.traps.length ? (
-                <ul className={styles.dotList}>
-                  {traps.map((m) => (
-                    <li key={m.id}>
-                      {m.text} <span className={styles.muted}>({MISCONCEPTION_LABEL(m)})</span>
-                    </li>
-                  ))}
-                  {traps.length === 0 && guide.traps.map((t) => <li key={t}>{t}</li>)}
-                </ul>
-              ) : (
-                <p className={styles.muted}>Пока не замечено</p>
-              )}
-            </div>
-            <div>
-              <p className={styles.eyebrow}>Что решать</p>
-              <p>{guide.practice}</p>
-            </div>
-          </div>
-          <div className={styles.actions}>
-            <button type="button" className={styles.primary} onClick={() => onGo("current", "tasks")}>
-              <Icon name="play" size={16} /> К задачам
-            </button>
-            <button type="button" className={styles.secondary} onClick={() => onGo("current", "tutor")}>
-              <Icon name="message-circle" size={16} /> Спросить репетитора
-            </button>
-          </div>
-        </>
-      ) : (
-        <p className={styles.muted}>Гайдлайн соберётся, когда подойдёшь к этому топику.</p>
-      )}
-    </section>
-  );
-}
-
-/* ---------- Задачи: one task at a time, each answer moves the model ---------- */
-
-function TaskCanvas({
+function CheckCanvas({
   skillId,
   model,
   onModel,
+  onGo,
   onToast,
 }: {
   skillId: string;
   model: PrepModel;
   onModel: (m: PrepModel) => void;
+  onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
   onToast: (t: string) => void;
 }) {
   const skill = skillById(skillId);
-  const guide = GUIDELINES[skillId];
-  const [taskIndex, setTaskIndex] = useState(0);
+  const pool = CHECKS[skillId] ?? [];
+  const [index, setIndex] = useState(0);
   const [result, setResult] = useState<(AnswerResult & { choice: number }) | null>(null);
 
-  const task = guide?.tasks[taskIndex % guide.tasks.length];
+  const task = pool.length ? pool[index % pool.length] : null;
 
   const answer = (i: number) => {
     if (!task || result) return;
     const r = answerTask(model, skillId, task, i);
     setResult({ ...r, choice: i });
     onModel(r.model);
-    if (r.setPassed) onToast(`Сет ${r.setPassed.number} пройден — отчёт и следующий сет в Обзоре`);
+    if (r.setPassed) onToast(`Сет ${r.setPassed.number} доказан — отчёт и следующий сет в «Обзоре»`);
   };
 
+  const state = result?.to ?? model.states[skillId];
+
   return (
-    <section className={`${styles.canvas} ${styles.topicCanvas}`} aria-label={`Задачи · ${skill.name}`}>
+    <section className={`${styles.canvas} ${styles.topicCanvas}`} aria-label={`Проверь себя · ${skill.name}`}>
       <header className={styles.canvasHead}>
-        <h3>{skill.name}</h3>
-        <span className={styles.muted}>{STATE_LABEL[model.states[skillId]]}</span>
+        <h3>Проверь себя · {skill.name}</h3>
+        <span className={styles.checkState} data-state={state}>
+          <StateGlyph state={state} size={12} /> {STATE_LABEL[state]}
+        </span>
       </header>
 
-      {guide && task ? (
+      {task ? (
         <div className={styles.task}>
-          <p className={styles.eyebrow}>Задача {(taskIndex % guide.tasks.length) + 1} из пула · демо</p>
+          <p className={styles.eyebrow}>Вопрос {(index % pool.length) + 1} из {pool.length} · демо</p>
           <p className={styles.taskText}>{task.text}</p>
           <div className={styles.options} role="group" aria-label="Варианты ответа">
             {task.options.map((o, i) => (
@@ -254,12 +190,11 @@ function TaskCanvas({
 
           {result && (
             <div className={styles.feedback} data-correct={result.correct}>
-              <strong>{result.correct ? "Верно" : result.trap ? `Ловушка: ${result.trap.toLowerCase()}` : "Неверно"}</strong>
-              <p>{task.explain}</p>
+              <strong>{result.correct ? "Верно — засчитано" : result.trap ? `Ловушка: ${result.trap.toLowerCase()}` : "Неверно"}</strong>
               <p className={styles.modelUpdate}>
-                <Icon name="sparkles" size={14} />
-                Модель знаний обновлена: {STATE_LABEL[result.from]}
-                {result.from !== result.to && ` → ${STATE_LABEL[result.to]}`}
+                <StateGlyph state={result.to} size={12} />
+                На карте навыков: «{skill.name}» — {STATE_LABEL[result.to]}
+                {result.from !== result.to && ` (было: ${STATE_LABEL[result.from]})`}
               </p>
               <div className={styles.actions}>
                 <button
@@ -267,56 +202,28 @@ function TaskCanvas({
                   className={styles.primary}
                   onClick={() => {
                     setResult(null);
-                    setTaskIndex((i) => i + 1);
+                    setIndex((i) => i + 1);
                   }}
                 >
-                  Следующая задача
+                  Ещё вопрос
                 </button>
-                <button
-                  type="button"
-                  className={styles.secondary}
-                  onClick={() => onToast(`Мок по топику «${skill.name}»: 5–7 заданий одного навыка`)}
-                >
-                  Мок по топику
+                <button type="button" className={styles.secondary} onClick={() => onGo("sets", "map", skill.exam)}>
+                  <Icon name="network" size={16} /> Открыть карту
                 </button>
               </div>
             </div>
           )}
         </div>
       ) : (
-        <p className={styles.muted}>Задачи соберутся, когда подойдёшь к этому топику.</p>
+        <p className={styles.muted}>Вопросы по этому навыку появятся, когда до него дойдёт маршрут.</p>
       )}
     </section>
   );
 }
 
-function tutorReply(text: string, topicName: string, topicId: string, model: PrepModel): { text: string; detail?: string } {
-  const t = text.toLowerCase();
-  const guide = GUIDELINES[topicId];
-  const confirmed = model.misconceptions[topicId].find((m) => m.status === "confirmed");
-  if (/не понима|почему|объясни|как /.test(t)) {
-    return {
-      text: `Давай по шагам. Главное здесь: ${guide?.mustKnow[0].toLowerCase() ?? topicName.toLowerCase()}. Попробуй применить это в «Задачах» и напиши, что получилось.`,
-    };
-  }
-  if (/\d/.test(t) && confirmed) {
-    return {
-      text: "Проверь ещё раз обе ветви — здесь легко потерять вторую. Что будет, если выражение под модулем отрицательное?",
-      detail: `Свидетельство из чата (слабое): «${text}» → ${topicName}. В сет не пишется, пока не подтвердит задача.`,
-    };
-  }
-  if (/задач|ещё|еще|дай/.test(t)) {
-    return { text: `Держи: ${guide?.tasks[guide.tasks.length - 1].text ?? "задача появится, когда соберётся гайдлайн"}` };
-  }
-  return {
-    text: `Понял. В «${topicName}» у тебя сейчас ${STATE_LABEL[model.states[topicId]]} — могу объяснить правило, разобрать твоё решение или дать задачу.`,
-  };
-}
+/* ---------- Ассистент: plans the preparation, does not teach ---------- */
 
-/* ---------- Репетитор: questions about the topic or the whole set ---------- */
-
-function PrepChat({ topicName, topicId, setTitle, model }: { topicName: string; topicId: string; setTitle: string; model: PrepModel }) {
-  const [level, setLevel] = useState<"topic" | "set">("topic");
+function AssistantChat({ model, fallbackExam }: { model: PrepModel; fallbackExam: ExamId }) {
   const [lines, setLines] = useState<ChatLine[]>([]);
   const [input, setInput] = useState("");
   const idRef = useRef(0);
@@ -326,67 +233,56 @@ function PrepChat({ topicName, topicId, setTitle, model }: { topicName: string; 
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [lines]);
 
-  const send = (e: React.FormEvent) => {
-    e.preventDefault();
-    const text = input.trim();
+  const ask = (raw: string) => {
+    const text = raw.trim();
     if (!text) return;
     setInput("");
-    const reply = tutorReply(text, level === "topic" ? topicName : setTitle, topicId, model);
+    const reply = assistantReply(text, model, fallbackExam);
     setLines((l) => [...l, { id: ++idRef.current, role: "student", text }]);
-    setTimeout(() => setLines((l) => [...l, { id: ++idRef.current, role: "tutor", text: reply.text }]), 700);
-    // The observer runs after the answer and never holds it up
-    if (reply.detail) {
-      setTimeout(
-        () => setLines((l) => [...l, { id: ++idRef.current, role: "system", text: "Модель знаний обновлена", detail: reply.detail }]),
-        2400
-      );
-    }
+    setTimeout(() => setLines((l) => [...l, { id: ++idRef.current, role: "assistant", text: reply }]), 600);
   };
 
   return (
-    <section className={`${styles.canvas} ${styles.chatCanvas}`} aria-label="Чат подготовки">
+    <section className={`${styles.canvas} ${styles.chatCanvas}`} aria-label="Ассистент подготовки">
       <header className={styles.canvasHead}>
         <h3>
-          <Icon name="message-circle" size={18} /> Репетитор
+          <Icon name="message-circle" size={18} /> Ассистент
         </h3>
-        <div className={styles.segmented} role="tablist">
-          <button type="button" role="tab" aria-selected={level === "topic"} onClick={() => setLevel("topic")}>
-            Топик
-          </button>
-          <button type="button" role="tab" aria-selected={level === "set"} onClick={() => setLevel("set")}>
-            Весь сет
-          </button>
-        </div>
+        <span className={styles.muted}>план к твоим срокам, без уроков</span>
       </header>
       <div className={styles.chatLines} ref={listRef} aria-live="polite">
         {lines.length === 0 && (
-          <p className={styles.muted}>
-            {level === "topic"
-              ? `Спроси про «${topicName}», пришли решение или попроси задачу.`
-              : `Вопросы поверх всего сета «${setTitle}».`}
-          </p>
-        )}
-        {lines.map((l) =>
-          l.role === "system" ? (
-            <details key={l.id} className={styles.systemLine}>
-              <summary>
-                <Icon name="sparkles" size={14} /> {l.text}
-              </summary>
-              <p>{l.detail}</p>
-            </details>
-          ) : (
-            <p key={l.id} className={styles.chatLine} data-role={l.role}>
-              {l.text}
+          <div className={styles.assistantEmpty}>
+            <p className={styles.muted}>
+              Спроси, как успеть к своей дате: я разложу сеты по дням и скажу, сколько заниматься. Проверить знания — в «Проверь себя».
             </p>
-          )
+            <div className={styles.promptChips}>
+              {ASSISTANT_PROMPTS.map((p) => (
+                <button key={p} type="button" onClick={() => ask(p)}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
+        {lines.map((l) => (
+          <p key={l.id} className={styles.chatLine} data-role={l.role}>
+            {l.text}
+          </p>
+        ))}
       </div>
-      <form className={styles.chatForm} onSubmit={send}>
+      <form
+        className={styles.chatForm}
+        onSubmit={(e) => {
+          e.preventDefault();
+          ask(input);
+        }}
+      >
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={level === "topic" ? "Например: |x − 2| = 3, у меня x = 5" : "Вопрос по сету"}
-          aria-label="Сообщение репетитору"
+          placeholder="Например: у меня IELTS 12 декабря, как успеть?"
+          aria-label="Сообщение ассистенту"
         />
         <button type="submit" className={styles.primary} disabled={!input.trim()}>
           Отправить

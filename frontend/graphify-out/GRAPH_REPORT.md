@@ -1,195 +1,230 @@
 # Graph Report - frontend  (2026-09-18)
 
 ## Corpus Check
-- 83 files · ~79,353 words
+- 88 files · ~90,565 words
 - Verdict: corpus is large enough that graph structure adds value.
+- Unclassified: 22 file(s) not represented in the graph (top: .css 20, (none) 2)
 
 ## Summary
-- 599 nodes · 1368 edges · 26 communities (25 shown, 1 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
+- 691 nodes · 1623 edges · 36 communities (31 shown, 5 thin omitted)
+- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 8 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `024c3687`
+- Built from commit: `b9709411`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_Community 0|Community 0]]
-- [[_COMMUNITY_Community 1|Community 1]]
-- [[_COMMUNITY_Community 2|Community 2]]
-- [[_COMMUNITY_Community 3|Community 3]]
-- [[_COMMUNITY_Community 4|Community 4]]
-- [[_COMMUNITY_Community 5|Community 5]]
-- [[_COMMUNITY_Community 6|Community 6]]
-- [[_COMMUNITY_Community 7|Community 7]]
-- [[_COMMUNITY_Community 8|Community 8]]
-- [[_COMMUNITY_Community 9|Community 9]]
-- [[_COMMUNITY_Community 10|Community 10]]
-- [[_COMMUNITY_Community 11|Community 11]]
-- [[_COMMUNITY_Community 12|Community 12]]
-- [[_COMMUNITY_Community 13|Community 13]]
-- [[_COMMUNITY_Community 14|Community 14]]
-- [[_COMMUNITY_Community 15|Community 15]]
-- [[_COMMUNITY_Community 16|Community 16]]
-- [[_COMMUNITY_Community 17|Community 17]]
-- [[_COMMUNITY_Community 18|Community 18]]
-- [[_COMMUNITY_Community 19|Community 19]]
-- [[_COMMUNITY_Community 20|Community 20]]
-- [[_COMMUNITY_Community 21|Community 21]]
-- [[_COMMUNITY_Community 22|Community 22]]
-- [[_COMMUNITY_Community 23|Community 23]]
-- [[_COMMUNITY_Community 24|Community 24]]
-- [[_COMMUNITY_Community 25|Community 25]]
+- dashboardRules.ts
+- ChoiceApp.tsx
+- localSource.ts
+- ProgramUi.tsx
+- compilerOptions
+- react
+- What You Must Do When Invoked
+- HeroLandscape.tsx
+- app/page.tsx
+- Globe.tsx
+- PixelDuck.tsx
+- Quack! — frontend
+- prepModel.ts
+- standing.ts
+- SkillGraph.tsx
+- CalendarTab.tsx
+- SetsView.tsx
+- Icon.tsx
+- prepAssistant.ts
+- PageSky.tsx
+- prepData.ts
+- graphify reference: extra exports and benchmark
+- package.json
+- programs.ts
+- Sidebar.tsx
+- graphify reference: query, path, explain
+- FooterDucks.tsx
+- graphify reference: add a URL and watch a folder
+- graphify reference: commit hook and native CLAUDE.md integration
+- graphify reference: incremental update and cluster-only
+- graphify reference: GitHub clone and cross-repo merge
+- graphify reference: transcribe video and audio
+- CLAUDE.md
+- .claude/CLAUDE.md
+- extraction-spec.md
+- copy.ts
 
 ## God Nodes (most connected - your core abstractions)
-1. `formatDate()` - 22 edges
-2. `daysBetween()` - 20 edges
-3. `Icon()` - 17 edges
-4. `compilerOptions` - 16 edges
-5. `Dashboard()` - 15 edges
-6. `PixelDuck()` - 15 edges
-7. `setById()` - 14 edges
-8. `copy` - 13 edges
-9. `programById()` - 12 edges
-10. `Overview()` - 12 edges
+1. `react` - 42 edges
+2. `ChoiceApp()` - 28 edges
+3. `formatDate()` - 23 edges
+4. `daysBetween()` - 23 edges
+5. `programById()` - 19 edges
+6. `computeStanding()` - 19 edges
+7. `Icon()` - 16 edges
+8. `evaluate()` - 16 edges
+9. `compilerOptions` - 16 edges
+10. `formatShort()` - 15 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `ChoiceApp()` --calls--> `useQuack()`  [EXTRACTED]
-  src/components/choice/ChoiceApp.tsx → src/components/quack/source.ts
-- `ProgramDrawer()` --calls--> `programById()`  [EXTRACTED]
-  src/components/choice/ProgramUi.tsx → src/components/choice/programs.ts
-- `describeChange()` --calls--> `fieldValue()`  [EXTRACTED]
-  src/components/quack/localSource.ts → src/components/choice/assistant.ts
-- `CalendarTab()` --calls--> `formatDate()`  [EXTRACTED]
-  src/components/dashboard/CalendarTab.tsx → src/components/prep/prepData.ts
-- `Dashboard()` --calls--> `removalEffects()`  [EXTRACTED]
-  src/components/dashboard/Dashboard.tsx → src/components/dashboard/dashboardRules.ts
+- `Dashboard()` --indirect_call--> `programById()`  [INFERRED]
+  src/components/dashboard/Dashboard.tsx → src/components/choice/programs.ts
+- `savedPrograms()` --indirect_call--> `programById()`  [INFERRED]
+  src/components/prep/prepData.ts → src/components/choice/programs.ts
+- `describePrep()` --indirect_call--> `programById()`  [INFERRED]
+  src/components/quack/localSource.ts → src/components/choice/programs.ts
+- `computeStanding()` --indirect_call--> `programById()`  [INFERRED]
+  src/components/quack/standing.ts → src/components/choice/programs.ts
+- `Requirements()` --indirect_call--> `formatShort()`  [INFERRED]
+  src/components/prep/Overview.tsx → src/components/prep/prepData.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (26 total, 1 thin omitted)
+## Communities (36 total, 5 thin omitted)
 
-### Community 0 - "Community 0"
-Cohesion: 0.17
-Nodes (8): CursorAura(), RADIUS, HeroTitle(), Point, LayerStack(), Roadmap(), STEPS, StepState
+### Community 0 - "dashboardRules.ts"
+Cohesion: 0.13
+Nodes (27): ActivityGrid(), Dashboard(), src_components_dashboard_dashboard_module, Props, activityByDay(), ActivityDay, calendar(), calendarEvents() (+19 more)
 
-### Community 1 - "Community 1"
-Cohesion: 0.10
-Nodes (23): useAccount(), intelOneMono, inter, metadata, raleway, Mode, LETTERS, MENU_LABEL (+15 more)
+### Community 1 - "ChoiceApp.tsx"
+Cohesion: 0.05
+Nodes (68): react-dom, acknowledge(), CONFIRM_REPLY, editField(), EMPTY_PROFILE, extract(), FieldKey, FIELDS (+60 more)
 
-### Community 2 - "Community 2"
+### Community 2 - "localSource.ts"
+Cohesion: 0.07
+Nodes (41): ChancesCard(), examWord(), Props, ago(), ChangesFeed(), Props, Target, TARGET_LABEL (+33 more)
+
+### Community 3 - "ProgramUi.tsx"
+Cohesion: 0.18
+Nodes (16): budgetOf(), evaluate(), formatEur(), Level, LEVEL_LABEL, LevelBadge(), LevelDot(), ProgramActions (+8 more)
+
+### Community 4 - "compilerOptions"
 Cohesion: 0.11
-Nodes (48): Program, Dashboard(), calendar(), calendarEvents(), hardConflicts(), unionExams(), CurrentSet(), Important() (+40 more)
+Nodes (18): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+10 more)
 
-### Community 3 - "Community 3"
-Cohesion: 0.18
-Nodes (9): ChatDemoProps, ChatThreadProps, ChatTurn, copy, DIALOGUES, Billing, PricingPlans(), SiteHeader() (+1 more)
+### Community 5 - "react"
+Cohesion: 0.19
+Nodes (15): react, ChatDemo(), src_components_home_quack_module, QuackSection(), TABS, src_components_home_reveal_module, Reveal(), RevealProps (+7 more)
 
-### Community 4 - "Community 4"
-Cohesion: 0.10
-Nodes (19): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+11 more)
+### Community 6 - "What You Must Do When Invoked"
+Cohesion: 0.07
+Nodes (26): For /graphify add and --watch, For /graphify query, For the commit hook and native CLAUDE.md integration, For --update and --cluster-only, /graphify, Honesty Rules, Interpreter guard for subcommands, Part A - Structural extraction for code files (+18 more)
 
-### Community 5 - "Community 5"
+### Community 7 - "HeroLandscape.tsx"
 Cohesion: 0.12
-Nodes (17): useNodeDrag(), useVertical(), AREAS, Skill, along(), autoLayout(), BASE, edgePath() (+9 more)
+Nodes (20): Prop(), FLAG_A, FLAG_B, GROUND, HALL, HeroLandscape(), mirror(), PACE (+12 more)
 
-### Community 6 - "Community 6"
-Cohesion: 0.12
-Nodes (16): dependencies, next, react, react-dom, devDependencies, @types/node, @types/react, @types/react-dom (+8 more)
+### Community 8 - "app/page.tsx"
+Cohesion: 0.11
+Nodes (19): metadata, src_components_home_aura_module, copy, CursorAura(), RADIUS, HeroTitle(), measurePath(), Point (+11 more)
 
-### Community 7 - "Community 7"
-Cohesion: 0.15
-Nodes (18): Evidence, savedPrograms(), SetStatus, SkillState, StudySet, Task, acceptSet(), disputeMisconception() (+10 more)
+### Community 9 - "Globe.tsx"
+Cohesion: 0.14
+Nodes (21): PROGRAMS, arcDeg(), decodeWorld(), frameCountry(), Globe(), GlobeProps, Land, src_components_home_globe_module (+13 more)
 
-### Community 8 - "Community 8"
-Cohesion: 0.18
-Nodes (10): BALLOON, COLORS, DuckLane(), DuckLaneProps, FLAME, Flight, PARACHUTE, ROPE (+2 more)
+### Community 10 - "PixelDuck.tsx"
+Cohesion: 0.09
+Nodes (21): src_components_duck_pixel_duck_module, BEAT, BODY, COLORS, FEET, PixelDuck(), PixelDuckProps, pixels() (+13 more)
 
-### Community 9 - "Community 9"
-Cohesion: 0.06
-Nodes (38): acknowledge(), editField(), EMPTY_PROFILE, extract(), FieldKey, FIELDS, FieldStatus, fieldValue() (+30 more)
-
-### Community 10 - "Community 10"
-Cohesion: 0.08
-Nodes (25): Prop(), FLAG_A, FLAG_B, GROUND, HALL, HeroLandscape(), PACE, POND (+17 more)
-
-### Community 11 - "Community 11"
+### Community 11 - "Quack! — frontend"
 Cohesion: 0.22
 Nodes (8): graphify, Quack! — frontend, Адаптивность, Запуск, Стек, Страницы, Структура, Что имитируется и где подключать бэкенд
 
-### Community 12 - "Community 12"
-Cohesion: 0.06
-Nodes (59): Profile, CompareView(), CompareViewProps, Icon(), IconName, budgetOf(), CompareRow, compareRows() (+51 more)
+### Community 12 - "prepModel.ts"
+Cohesion: 0.15
+Nodes (26): ChatLine, CheckCanvas(), CurrentSet(), Props, Now(), src_components_prep_prep_module, Evidence, ExamId (+18 more)
 
-### Community 13 - "Community 13"
+### Community 13 - "standing.ts"
 Cohesion: 0.19
-Nodes (11): SET_STATUS_LABEL, SETS, SKILLS, clampGap(), columnScale(), isNow(), Props, RouteColumn() (+3 more)
+Nodes (24): hardConflicts(), Important(), Milestones(), Requirements(), daysBetween(), formatDate(), SETS, StudySet (+16 more)
 
-### Community 14 - "Community 14"
-Cohesion: 0.22
+### Community 14 - "SkillGraph.tsx"
+Cohesion: 0.09
+Nodes (34): Beacon, Beacons(), clamp(), Drag, dropSelection(), GraphCanvas(), Popover, PopoverCard() (+26 more)
+
+### Community 15 - "CalendarTab.tsx"
+Cohesion: 0.24
 Nodes (14): downloadIcs(), escape(), googleCalendarUrl(), icsFile(), nextDay(), pad(), stamp(), CalendarTab() (+6 more)
 
-### Community 15 - "Community 15"
-Cohesion: 0.21
-Nodes (9): ChatDemo(), QuackSection(), TABS, Reveal(), RevealProps, UniCarousel(), UniCarouselProps, useRotator() (+1 more)
-
-### Community 16 - "Community 16"
-Cohesion: 0.12
-Nodes (16): PROGRAMS, arcDeg(), frameCountry(), Globe(), GlobeProps, Land, OPEN_COUNTRIES, pinsFor() (+8 more)
-
-### Community 17 - "Community 17"
+### Community 16 - "SetsView.tsx"
 Cohesion: 0.18
-Nodes (11): BEAT, BODY, COLORS, FEET, PixelDuck(), PixelDuckProps, pixels(), SLEEPING (+3 more)
+Nodes (17): useVertical(), forecastSeries(), SET_STATUS_LABEL, disputeMisconception(), MISCONCEPTION_LABEL(), setStatus(), clampGap(), columnScale() (+9 more)
 
-### Community 18 - "Community 18"
+### Community 17 - "Icon.tsx"
+Cohesion: 0.15
+Nodes (15): Icon(), IconName, Mode, LETTERS, MENU_LABEL, MODES, Topbar(), TopbarProps (+7 more)
+
+### Community 18 - "prepAssistant.ts"
+Cohesion: 0.32
+Nodes (13): AssistantChat(), addDays(), ASSISTANT_PROMPTS, assistantReply(), examOf(), findDeadline(), minutesPerDay(), openSkills() (+5 more)
+
+### Community 19 - "PageSky.tsx"
+Cohesion: 0.18
+Nodes (9): Cloud, CLOUD_A, CLOUD_B, CLOUDS, PageSky(), PALETTE, Pass, WEDGE (+1 more)
+
+### Community 20 - "prepData.ts"
+Cohesion: 0.09
+Nodes (32): ForecastChart(), PAD, Props, useWidth(), Overview(), Programs(), Props, CHECKS (+24 more)
+
+### Community 21 - "graphify reference: extra exports and benchmark"
+Cohesion: 0.22
+Nodes (8): graphify reference: extra exports and benchmark, Step 6b - Wiki (only if --wiki flag), Step 7 - Neo4j export (only if --neo4j or --neo4j-push flag), Step 7a - FalkorDB export (only if --falkordb or --falkordb-push flag), Step 7b - SVG export (only if --svg flag), Step 7c - GraphML export (only if --graphml flag), Step 7d - MCP server (only if --mcp flag), Step 8 - Token reduction benchmark (only if total_words > 5000)
+
+### Community 22 - "package.json"
+Cohesion: 0.05
+Nodes (36): nextConfig, dependencies, next, react, react-dom, devDependencies, @types/node, @types/react (+28 more)
+
+### Community 23 - "programs.ts"
+Cohesion: 0.27
+Nodes (10): CompareView(), CompareViewProps, CompareRow, compareRows(), compareSummary(), Evaluation, Factor, FactorStatus (+2 more)
+
+### Community 24 - "Sidebar.tsx"
 Cohesion: 0.20
-Nodes (8): DEMO_SAVED, ExamRequirement, Guideline, Milestone, Misconception, MisconceptionStatus, MONTHS, MONTHS_SHORT
+Nodes (11): ChatSummary, Sidebar(), SidebarProps, SidebarTab, TABS, timeLabel(), DASH_TABS, DashTab (+3 more)
 
-### Community 19 - "Community 19"
-Cohesion: 0.06
-Nodes (36): Account, AccountContext, AuthGate(), AuthApi, AuthError, AuthErrorCode, StateBackend, User (+28 more)
-
-### Community 20 - "Community 20"
-Cohesion: 0.10
-Nodes (28): programById(), initialModel(), reviveModel(), ChanceFact, EMPTY_STATE, ExamPace, glowOf(), PaceLevel (+20 more)
-
-### Community 21 - "Community 21"
-Cohesion: 0.16
-Nodes (11): ChatLine, GuideCanvas(), Props, TaskCanvas(), GUIDELINES, skillById(), STATE_LABEL, AnswerResult (+3 more)
-
-### Community 23 - "Community 23"
-Cohesion: 0.18
-Nodes (9): Beacon, clamp(), Drag, GraphCanvas(), Popover, PopoverCard(), Props, ScaleContext (+1 more)
-
-### Community 24 - "Community 24"
+### Community 25 - "graphify reference: query, path, explain"
 Cohesion: 0.33
-Nodes (5): FooterDucks(), POND, TUFT, SCENE_PALETTE, SiteFooter()
+Nodes (5): For /graphify explain, For /graphify path, graphify reference: query, path, explain, Step 0 — Constrained query expansion (REQUIRED before traversal), Step 1 — Traversal
 
-### Community 25 - "Community 25"
-Cohesion: 0.23
-Nodes (10): ActivityGrid(), ActivityDay, streak(), ForecastChart(), PAD, Props, useWidth(), ForecastPoint (+2 more)
+### Community 26 - "FooterDucks.tsx"
+Cohesion: 0.22
+Nodes (8): ref_next_link, src_components_home_footer_module, FooterDucks(), POND, TUFT, SCENE_PALETTE, SiteFooter(), TransitionLinkProps
+
+### Community 27 - "graphify reference: add a URL and watch a folder"
+Cohesion: 0.50
+Nodes (3): For /graphify add, For --watch, graphify reference: add a URL and watch a folder
+
+### Community 28 - "graphify reference: commit hook and native CLAUDE.md integration"
+Cohesion: 0.50
+Nodes (3): For git commit hook, For native CLAUDE.md integration, graphify reference: commit hook and native CLAUDE.md integration
+
+### Community 29 - "graphify reference: incremental update and cluster-only"
+Cohesion: 0.50
+Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphify reference: incremental update and cluster-only
+
+### Community 35 - "copy.ts"
+Cohesion: 0.28
+Nodes (5): Tempo, ChatDemoProps, ChatThreadProps, ChatTurn, DIALOGUES
 
 ## Knowledge Gaps
-- **193 isolated node(s):** `nextConfig`, `name`, `version`, `private`, `dev` (+188 more)
-  These have ≤1 connection - possible missing edges or undocumented components.
-- **1 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **233 isolated node(s):** `nextConfig`, `name`, `version`, `private`, `dev` (+228 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 279 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **5 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `PixelDuck()` connect `Community 17` to `Community 0`, `Community 1`, `Community 3`, `Community 8`, `Community 10`, `Community 19`, `Community 24`?**
-  _High betweenness centrality (0.075) - this node is a cross-community bridge._
-- **Why does `store` connect `Community 19` to `Community 5`, `Community 7`, `Community 9`, `Community 12`, `Community 20`, `Community 23`?**
-  _High betweenness centrality (0.033) - this node is a cross-community bridge._
-- **Why does `Program` connect `Community 2` to `Community 16`, `Community 18`, `Community 12`, `Community 15`?**
-  _High betweenness centrality (0.024) - this node is a cross-community bridge._
+- **Why does `react` connect `react` to `dashboardRules.ts`, `ChoiceApp.tsx`, `localSource.ts`, `ProgramUi.tsx`, `HeroLandscape.tsx`, `app/page.tsx`, `Globe.tsx`, `PixelDuck.tsx`, `prepModel.ts`, `SkillGraph.tsx`, `CalendarTab.tsx`, `SetsView.tsx`, `Icon.tsx`, `PageSky.tsx`, `prepData.ts`, `package.json`, `Sidebar.tsx`, `FooterDucks.tsx`, `copy.ts`?**
+  _High betweenness centrality (0.326) - this node is a cross-community bridge._
+- **Why does `ChoiceApp()` connect `ChoiceApp.tsx` to `localSource.ts`, `package.json`?**
+  _High betweenness centrality (0.025) - this node is a cross-community bridge._
+- **Why does `quackSource` connect `localSource.ts` to `prepModel.ts`?**
+  _High betweenness centrality (0.011) - this node is a cross-community bridge._
+- **Are the 5 inferred relationships involving `programById()` (e.g. with `compareRows()` and `Dashboard()`) actually correct?**
+  _`programById()` has 5 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `nextConfig`, `name`, `version` to the rest of the system?**
-  _193 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.09655172413793103 - nodes in this community are weakly interconnected._
-- **Should `Community 2` be split into smaller, more focused modules?**
-  _Cohesion score 0.10633484162895927 - nodes in this community are weakly interconnected._
-- **Should `Community 4` be split into smaller, more focused modules?**
-  _Cohesion score 0.1 - nodes in this community are weakly interconnected._
+  _233 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `dashboardRules.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.12903225806451613 - nodes in this community are weakly interconnected._
+- **Should `ChoiceApp.tsx` be split into smaller, more focused modules?**
+  _Cohesion score 0.05 - nodes in this community are weakly interconnected._
