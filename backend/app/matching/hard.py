@@ -29,6 +29,7 @@ class HardResult(BaseModel):
     realism_inputs: dict[str, FactorStatus]
     factors: list[FactorOut]
     assumptions: list[str]
+    grant_required: bool = False
 
 
 # --- public ---
@@ -96,7 +97,9 @@ def _score_program(
             realism_inputs[factor.id] = factor.status
 
     # 2. Бюджет
-    budget_factor, budget_status = _budget_factor(profile, program, source)
+    budget_factor, budget_status, grant_required = _budget_factor(
+        profile, program, source
+    )
     factors.append(budget_factor)
     if budget_factor.id in ("budget", "grant"):
         realism_inputs[budget_factor.id] = budget_status
@@ -123,6 +126,7 @@ def _score_program(
         realism_inputs=realism_inputs,
         factors=factors,
         assumptions=assumptions,
+        grant_required=grant_required,
     )
 
 
@@ -244,7 +248,7 @@ def _language_factor(profile: Profile, req: Requirement, source: Source) -> Fact
 
 def _budget_factor(
     profile: Profile, program: Program, source: Source
-) -> tuple[FactorOut, FactorStatus]:
+) -> tuple[FactorOut, FactorStatus, bool]:
     prefs = profile.questionnaire.preferences
 
     tuition = program.tuition_per_year
@@ -260,6 +264,7 @@ def _budget_factor(
                 weight=0.8,
             ),
             "unknown",
+            False,
         )
 
     budget = prefs.budget_per_year.value
@@ -277,6 +282,7 @@ def _budget_factor(
                 weight=0.8,
             ),
             "unknown",
+            False,
         )
 
     total = (tuition or 0) + (living or 0)
@@ -296,6 +302,7 @@ def _budget_factor(
                 weight=1.0,
             ),
             "below",
+            True,  # grant_required
         )
 
     text = f"стоимость {total} {program_currency}/год против бюджета {budget}"
@@ -309,6 +316,7 @@ def _budget_factor(
             weight=1.0 if grant_need == "only_grant" else 0.8,
         ),
         status,
+        False,
     )
 
 
