@@ -1,59 +1,21 @@
 """Diagnostic — adaptive descent by prerequisites — memory-architecture §8.4.
 
-Pure state machine, no I/O. Takes a skill map, prerequisites, budget and a
-sequence of grades; returns the next skill to ask and the final result.
-
+Pure state machine, no I/O.
 Source: 20-B1-phase2.md §2.4.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
-
 from app.config import KnowledgeParams
+from app.schemas.diagnostic import DiagnosticResult, DiagnosticState
 from app.schemas.knowledge import (
     AreaOut,
     KnowledgeStateOut,
     Prerequisite,
+    RootCauseOut,
     SkillWeight,
 )
-
-if TYPE_CHECKING:
-    # B3's phase-2 skeleton models. Forward-refs until the skeleton is merged.
-    from app.schemas.knowledge import RootCauseOut
-    from app.schemas.tasks import Grade
-
-
-# --- result types (owner: B1, declared here until B3's schemas land) ---
-
-
-@dataclass
-class DiagnosticState:
-    """State of one diagnostic run — persisted as JSONB by repo.diagnostic."""
-
-    exam_id: str
-    budget_left: int
-    reserve_left: int
-    asked: list[str] = field(default_factory=list)
-    answered: int = 0
-    pending_descent: list[str] = field(default_factory=list)
-    reask_queue: list[tuple[str, int]] = field(default_factory=list)
-    roots_found: list[RootCauseOut] = field(default_factory=list)
-    trap_hits: list[str] = field(default_factory=list)
-    firm: list[str] = field(default_factory=list)
-    shaky: list[str] = field(default_factory=list)
-    last_grade_correct: bool | None = None
-
-
-@dataclass
-class DiagnosticResult:
-    firm: list[str]
-    shaky: list[str]
-    roots: list[RootCauseOut]
-    suspected: list[str]
-    start_from: list[str]
-    words: str
+from app.schemas.tasks import Grade
 
 
 def start(
@@ -64,11 +26,45 @@ def start(
     budget: int | None,
     params: KnowledgeParams,
 ) -> DiagnosticState:
-    """Build the initial state: budget by area share, roots first in pending_descent.
+    """Build the initial state: budget by area share, roots first in pending_descent."""
+    total_budget = budget if budget is not None else params.diag_base
 
-    budget = params.diag_base or the caller's n_tasks; reserve = params.diag_reserve.
-    """
-    raise NotImplementedError("phase 2")
+    # Порядок навыков: по областям в порядке score_share, внутри — по weight
+    share_by_area = {a.id: a.score_share for a in areas}
+    ordered = sorted(
+        exam_skills,
+        key=lambda sw: (
+            -share_by_area.get(sw.area_id, 0.0),
+            -sw.weight,
+            sw.skill.id,
+        ),
+    )
+    budget_order = [sw.skill.id for sw in ordered]
+
+    # Корни — первыми в pending_descent
+    pending_descent: list[str] = []
+    for root in known_roots:
+        if root.root_skill_id not in pending_descent:
+            pending_descent.append(root.root_skill_id)
+
+    exam_id = exam_skills[0].skill.exam_ids[0] if exam_skills else "SAT_MATH"
+
+    return DiagnosticState(
+        exam_id=exam_id,  # type: ignore[arg-type]
+        budget_left=total_budget,
+        reserve_left=params.diag_reserve,
+        asked=[],
+        answered=0,
+        pending_descent=pending_descent,
+        reask_queue=[],
+        roots_found=list(known_roots),
+        trap_hits=[],
+        firm=[],
+        shaky=[],
+        last_grade_correct=None,
+        budget_order=budget_order,
+        indirect=[],
+    )
 
 
 def next_skill(
@@ -78,9 +74,27 @@ def next_skill(
 ) -> str | None:
     """Return the next skill to ask, or None if the run is done.
 
-    Priority: reask_queue pair with count == 0 → pending_descent → next by budget.
+    Priority: reask_queue with count == 0 → pending_descent → next by budget order.
     """
-    raise NotImplementedError("phase 2")
+    # 1. reask_queue: пара с нулевым счётчиком
+    for skill_id, count in state.reask_queue:
+        if count == 0:
+            return skill_id
+
+    # 2. pending_descent
+    if state.pending_descent:
+        return state.pending_descent[0]
+
+    # 3. бюджет исчерпан?
+    if state.budget_left <= 0:
+        return None
+
+    # 4. Следующий по порядку, кого ещё не спрашивали
+    for skill_id in state.budget_order:
+        if skill_id not in state.firm and skill_id not in state.shaky:
+            return skill_id
+
+    return None
 
 
 def apply_answer(
@@ -92,12 +106,57 @@ def apply_answer(
 ) -> DiagnosticState:
     """Advance the state after one answer.
 
-    - correct → firm; prerequisites get indirect evidence (returned via state)
+    - correct → firm; prerequisites get indirect evidence
     - incorrect → shaky; if reserve_left > 0, push the strongest prerequisite
-      into pending_descent (roots first)
+      into pending_descent
     - trap hit → reask_queue.append((skill, diag_reask_after)); tick others
     """
-    raise NotImplementedError("phase 2")
+    new_firm = list(state.firm)
+    new_shaky = list(state.shaky)
+    new_pending = [s for s in state.pending_descent if s != skill_id]
+    new_reask = [(sid, c) for sid, c in state.reask_queue if sid != skill_id]
+    new_reask = [(sid, max(0, c - 1)) for sid, c in new_reask]
+    new_indirect = list(state.indirect)
+    new_traps = list(state.trap_hits)
+    new_roots = list(state.roots_found)
+
+    on_descent = skill_id in state.pending_descent
+
+    if grade.correct:
+        if skill_id not in new_firm:
+            new_firm.append(skill_id)
+        for prereq in prerequisites:
+            new_indirect.append((prereq.skill_id, params.prior_indirect_weight))
+    else:
+        if skill_id not in new_shaky:
+            new_shaky.append(skill_id)
+        # Спуск по предпосылкам, если есть резерв (смотрим на резерв ДО ответа)
+        if state.reserve_left > 0 and prerequisites:
+            strongest = max(prerequisites, key=lambda p: p.strength)
+            if strongest.skill_id not in new_pending:
+                new_pending.insert(0, strongest.skill_id)
+
+    # Попадание в ловушку — отложить повторный вопрос
+    if grade.matched_misconception_id is not None:
+        new_traps.append(grade.matched_misconception_id)
+        new_reask.append((skill_id, params.diag_reask_after))
+
+    return state.model_copy(
+        update={
+            "budget_left": state.budget_left - 1,
+            "reserve_left": max(0, state.reserve_left - (1 if on_descent else 0)),
+            "answered": state.answered + 1,
+            "asked": [*state.asked, _make_uuid()],
+            "firm": new_firm,
+            "shaky": new_shaky,
+            "pending_descent": new_pending,
+            "reask_queue": new_reask,
+            "trap_hits": new_traps,
+            "roots_found": new_roots,
+            "last_grade_correct": grade.correct,
+            "indirect": new_indirect,
+        }
+    )
 
 
 def finish(
@@ -106,4 +165,41 @@ def finish(
     params: KnowledgeParams,
 ) -> DiagnosticResult:
     """Final result: firm / shaky / roots / suspected / start_from + words."""
-    raise NotImplementedError("phase 2")
+    # start_from — самые нижние shaky, у которых нет shaky-предпосылок.
+    # Без карты зависимостей считаем, что shaky — это стартовые точки.
+    start_from = list(state.shaky)
+
+    words = _words(state)
+
+    return DiagnosticResult(
+        firm=list(state.firm),
+        shaky=list(state.shaky),
+        roots=list(state.roots_found),
+        suspected=list(state.trap_hits),
+        start_from=start_from,
+        words=words,
+    )
+
+
+# --- helpers ---
+
+
+def _make_uuid():
+    from uuid import uuid4
+
+    return uuid4()
+
+
+def _words(state: DiagnosticState) -> str:
+    if not state.firm and not state.shaky:
+        return "Замер не состоялся — нет данных."
+    parts: list[str] = []
+    if state.firm:
+        parts.append(f"твёрдо: {len(state.firm)} навыков")
+    if state.shaky:
+        parts.append(f"шатко: {len(state.shaky)} навыков")
+    if state.roots_found:
+        parts.append(f"корней: {len(state.roots_found)}")
+    if state.trap_hits:
+        parts.append(f"подозрений на ловушки: {len(state.trap_hits)}")
+    return ", ".join(parts) + "."
