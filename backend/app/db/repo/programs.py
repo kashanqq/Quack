@@ -116,3 +116,26 @@ async def remove_saved(
         raise NotFound("saved program not found")
     await session.delete(row)
     await session.flush()
+
+
+async def list_all(session: AsyncSession) -> list[Program]:
+    rows = (
+        await session.scalars(
+            select(ProgramCache)
+            .where(ProgramCache.flagged.is_(False))
+            .order_by(ProgramCache.id)
+        )
+    ).all()
+    return [_to_program(row) for row in rows]
+
+
+async def list_saved_programs(session: AsyncSession, student_id: UUID) -> list[Program]:
+    rows = (
+        await session.scalars(
+            select(ProgramCache)
+            .join(SavedProgramRow, SavedProgramRow.program_id == ProgramCache.id)
+            .where(SavedProgramRow.student_id == student_id)
+            .order_by(SavedProgramRow.saved_at, SavedProgramRow.program_id)
+        )
+    ).all()
+    return [_to_program(row) for row in rows]
