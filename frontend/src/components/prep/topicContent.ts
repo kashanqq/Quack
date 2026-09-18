@@ -292,9 +292,146 @@ const MOCK_CHECKS: Record<string, Task[]> = {
   ],
 };
 
+/** More demo questions, so every topic's mock is 6–8 long, the way the backend will build it */
+const MOCK_MORE: Record<string, Task[]> = {
+  linear: [
+    { id: "m-ln4", text: "Реши: x/4 + 1 = 3", options: [{ label: "x = 8", correct: true }, { label: "x = 16", trap: "Умножил на 4 до того, как перенёс 1" }, { label: "x = 2" }, { label: "x = 4" }] },
+    { id: "m-ln5", text: "Такси: 500 тг за посадку и 150 тг за км. Сколько стоит поездка на 6 км?", options: [{ label: "1400", correct: true }, { label: "3900", trap: "Умножил посадку на километры" }, { label: "900" }, { label: "650" }] },
+    { id: "m-ln6", text: "При каком k прямые y = kx + 1 и y = 3x − 2 параллельны?", options: [{ label: "k = 3", correct: true }, { label: "k = −1/3", trap: "Взял условие перпендикулярности" }, { label: "k = −2" }, { label: "k = 1" }] },
+  ],
+  systems: [
+    { id: "m-sy4", text: "3x + 2y = 12, x − 2y = 4. Чему равен x?", options: [{ label: "4", correct: true }, { label: "2", trap: "Вычел уравнения вместо сложения" }, { label: "8" }, { label: "0" }] },
+    { id: "m-sy5", text: "Билеты: взрослый 3, детский 2, всего 10 билетов за 26. Сколько взрослых?", options: [{ label: "6", correct: true }, { label: "4", trap: "Нашёл детские и ответил ими" }, { label: "5" }, { label: "8" }] },
+    { id: "m-sy6", text: "При каком a у системы x + y = 2 и 2x + 2y = a бесконечно много решений?", options: [{ label: "a = 4", correct: true }, { label: "a = 2", trap: "Не умножил правую часть вместе с левой" }, { label: "Ни при каком" }] },
+  ],
+  abs: [
+    { id: "m-ab4", text: "Реши: |x − 3| < 2", options: [{ label: "1 < x < 5", correct: true }, { label: "x < 5", trap: "Потерял нижнюю границу" }, { label: "x < 1 или x > 5", trap: "Перепутал «меньше» с «больше» у модуля" }, { label: "−1 < x < 5" }] },
+    { id: "m-ab5", text: "Чему равно |−7| − |3 − 5|?", options: [{ label: "5", correct: true }, { label: "9", trap: "Раскрыл |3 − 5| как −2 и вычел минус" }, { label: "−9" }, { label: "2" }] },
+    { id: "m-ab6", text: "Реши: |x| = x − 4", options: [{ label: "Решений нет", correct: true }, { label: "x = 2", trap: "Не проверил корень подстановкой" }, { label: "x = 4" }] },
+  ],
+  inequalities: [
+    { id: "m-iq4", text: "Реши: 5 − x > 2", options: [{ label: "x < 3", correct: true }, { label: "x > 3", trap: "Не перевернул знак при делении на −1" }, { label: "x < −3" }, { label: "x > −3" }] },
+    { id: "m-iq5", text: "Сколько целых x удовлетворяют −2 ≤ x < 3?", options: [{ label: "5", correct: true }, { label: "4", trap: "Не включил границу со знаком ≤" }, { label: "6", trap: "Включил строгую границу" }] },
+    { id: "m-iq6", text: "Реши: (x − 1)(x + 2) < 0", options: [{ label: "−2 < x < 1", correct: true }, { label: "x < −2 или x > 1", trap: "Перепутал знак на интервалах" }, { label: "x < 1" }] },
+  ],
+  quadratics: [
+    { id: "m-qd4", text: "Сумма корней x² − 7x + 10 = 0?", options: [{ label: "7", correct: true }, { label: "−7", trap: "Забыл, что сумма корней — это −b/a" }, { label: "10" }, { label: "3" }] },
+    { id: "m-qd5", text: "Наименьшее значение y = (x − 2)² + 5?", options: [{ label: "5", correct: true }, { label: "2", trap: "Взял абсциссу вершины вместо значения" }, { label: "−2" }, { label: "0" }] },
+    { id: "m-qd6", text: "Реши: x² = 9x", options: [{ label: "x = 0 или x = 9", correct: true }, { label: "x = 9", trap: "Поделил на x и потерял корень 0" }, { label: "x = ±3" }] },
+  ],
+  polynomials: [
+    { id: "m-pl4", text: "Раскрой: (x + 3)²", options: [{ label: "x² + 6x + 9", correct: true }, { label: "x² + 9", trap: "Потерял удвоенное произведение" }, { label: "x² + 3x + 9" }] },
+    { id: "m-pl5", text: "Корни x³ − 4x = 0?", options: [{ label: "0, 2, −2", correct: true }, { label: "2, −2", trap: "Сократил на x и потерял корень 0" }, { label: "0, 4" }] },
+    { id: "m-pl6", text: "Степень многочлена (x² + 1)(x³ − x)?", options: [{ label: "5", correct: true }, { label: "6", trap: "Перемножил степени вместо сложения" }, { label: "3" }] },
+  ],
+  exponential: [
+    { id: "m-ex4", text: "2ˣ = 32. x = ?", options: [{ label: "5", correct: true }, { label: "16", trap: "Поделил 32 на 2" }, { label: "4" }, { label: "6" }] },
+    { id: "m-ex5", text: "Бактерии удваиваются каждые 3 часа, было 100. Сколько через 9 часов?", options: [{ label: "800", correct: true }, { label: "600", trap: "Посчитал как линейный рост" }, { label: "300" }, { label: "900" }] },
+    { id: "m-ex6", text: "Какая функция описывает убывание на 25% за период?", options: [{ label: "y = a · 0,75ᵗ", correct: true }, { label: "y = a · 0,25ᵗ", trap: "Взял процент убывания вместо остатка" }, { label: "y = a − 0,25t" }] },
+  ],
+  statistics: [
+    { id: "m-st4", text: "Среднее 4 чисел равно 10. Сумма чисел?", options: [{ label: "40", correct: true }, { label: "10", trap: "Перепутал среднее и сумму" }, { label: "2,5" }, { label: "14" }] },
+    { id: "m-st5", text: "Мода набора 2, 3, 3, 5, 7, 7, 7?", options: [{ label: "7", correct: true }, { label: "5", trap: "Взял медиану вместо моды" }, { label: "3" }] },
+    { id: "m-st6", text: "Опрос в спортзале: «Сколько раз в неделю вы тренируетесь?» Можно ли переносить итог на всех жителей города?", options: [{ label: "Нет, выборка смещена", correct: true }, { label: "Да, если опрошенных много", trap: "Размер выборки не лечит её смещение" }] },
+  ],
+  probability: [
+    { id: "m-pr4", text: "Кубик бросают один раз. Вероятность чётного числа?", options: [{ label: "1/2", correct: true }, { label: "1/3", trap: "Посчитал только 2 и 4" }, { label: "1/6" }] },
+    { id: "m-pr5", text: "P(A) = 0,3. Чему равна P(не A)?", options: [{ label: "0,7", correct: true }, { label: "0,3", trap: "Не взял дополнение" }, { label: "−0,3" }] },
+    { id: "m-pr6", text: "Из 5 учеников выбирают старосту и заместителя. Сколько вариантов?", options: [{ label: "20", correct: true }, { label: "10", trap: "Не учёл, что роли разные" }, { label: "25" }] },
+  ],
+  triangles: [
+    { id: "m-tg4", text: "Сумма углов треугольника 180°, два угла 50° и 60°. Третий?", options: [{ label: "70°", correct: true }, { label: "110°", trap: "Сложил два угла и остановился" }, { label: "90°" }] },
+    { id: "m-tg5", text: "Тень столба 6 м, тень человека ростом 1,8 м — 2 м. Высота столба?", options: [{ label: "5,4 м", correct: true }, { label: "6,6 м", trap: "Прибавил вместо пропорции" }, { label: "3,6 м" }] },
+    { id: "m-tg6", text: "В равнобедренном треугольнике угол при вершине 40°. Угол при основании?", options: [{ label: "70°", correct: true }, { label: "40°", trap: "Решил, что все углы равны вершинному" }, { label: "140°" }] },
+  ],
+  circle: [
+    { id: "m-c4", text: "Длина окружности радиуса 5?", options: [{ label: "10π", correct: true }, { label: "25π", trap: "Посчитал площадь вместо длины" }, { label: "5π" }] },
+    { id: "m-c5", text: "Дуга 90° в круге радиуса 4. Её длина?", options: [{ label: "2π", correct: true }, { label: "4π", trap: "Взял половину окружности вместо четверти" }, { label: "π" }] },
+    { id: "m-c6", text: "Вписанный угол опирается на диаметр. Он равен…", options: [{ label: "90°", correct: true }, { label: "180°", trap: "Взял дугу вместо половины дуги" }, { label: "45°" }] },
+  ],
+  trig: [
+    { id: "m-tr4", text: "cos 60° = ?", options: [{ label: "1/2", correct: true }, { label: "√3/2", trap: "Перепутал с sin 60°" }, { label: "1" }] },
+    { id: "m-tr5", text: "tan 45° = ?", options: [{ label: "1", correct: true }, { label: "√2/2", trap: "Взял sin 45° вместо тангенса" }, { label: "0" }] },
+    { id: "m-tr6", text: "sin²x + cos²x = ?", options: [{ label: "1", correct: true }, { label: "0" }, { label: "2", trap: "Сложил максимумы функций" }] },
+  ],
+  reduction: [
+    { id: "m-rd4", text: "sin(180° − 30°) = ?", options: [{ label: "1/2", correct: true }, { label: "−1/2", trap: "Синус во II четверти положителен" }, { label: "√3/2" }] },
+    { id: "m-rd5", text: "cos(360° − 60°) = ?", options: [{ label: "1/2", correct: true }, { label: "−1/2", trap: "Косинус в IV четверти положителен" }, { label: "−√3/2" }] },
+    { id: "m-rd6", text: "Когда функция меняется на «ко-функцию»?", options: [{ label: "При 90° и 270°", correct: true }, { label: "При 180° и 360°", trap: "Перепутал правило смены функции" }, { label: "Всегда" }] },
+  ],
+  "l-detail": [
+    { id: "m-ld3", text: "Слышно: «The meeting is on the thirteenth… no, the thirtieth». Что записать?", options: [{ label: "30th", correct: true }, { label: "13th", trap: "Записал первое число, не дослушав" }, { label: "3rd" }] },
+    { id: "m-ld4", text: "Лимит — NO MORE THAN TWO WORDS. Слышно «a large red suitcase». Что писать?", options: [{ label: "red suitcase", correct: true }, { label: "large red suitcase", trap: "Превысил лимит слов" }, { label: "suitcase red" }] },
+    { id: "m-ld5", text: "Телефон: «oh-seven-double-four-nine». Что записать?", options: [{ label: "07449", correct: true }, { label: "0749", trap: "Пропустил «double»" }, { label: "7449" }] },
+    { id: "m-ld6", text: "Вопрос про цену, в записи звучат три суммы. Какую брать?", options: [{ label: "Ту, что подтвердили в конце", correct: true }, { label: "Первую прозвучавшую", trap: "Не дождался исправления" }, { label: "Самую большую" }] },
+  ],
+  "l-maps": [
+    { id: "m-lm5", text: "«Walk past the library and turn left». Где объект относительно библиотеки?", options: [{ label: "Дальше библиотеки, после поворота налево", correct: true }, { label: "Напротив библиотеки", trap: "Не проследил маршрут до конца" }, { label: "Перед библиотекой" }] },
+    { id: "m-lm6", text: "Что сделать до начала записи в задании с картой?", options: [{ label: "Найти точку «You are here» и стороны света", correct: true }, { label: "Выучить подписи наизусть", trap: "Тратит время не на ориентирование" }, { label: "Ничего" }] },
+    { id: "m-lm7", text: "«It's opposite the car park». Где объект?", options: [{ label: "Через дорогу от парковки, лицом к ней", correct: true }, { label: "Рядом с парковкой", trap: "Перепутал opposite и next to" }, { label: "За парковкой" }] },
+    { id: "m-lm8", text: "«Go straight on until you reach the roundabout». Что это за место?", options: [{ label: "Круговое движение", correct: true }, { label: "Перекрёсток со светофором", trap: "Не знает слово roundabout" }, { label: "Мост" }] },
+    { id: "m-lm9", text: "Говорящий называет объекты по часовой стрелке от входа. Как это использовать?", options: [{ label: "Вести пальцем по карте в том же порядке", correct: true }, { label: "Отвечать по алфавиту подписей", trap: "Не следит за порядком описания" }] },
+  ],
+  "l-lecture": [
+    { id: "m-ll3", text: "Лектор: «This is a common misconception». Что будет дальше?", options: [{ label: "Правильная версия", correct: true }, { label: "Подтверждение сказанного", trap: "Не узнал сигнал опровержения" }, { label: "Новая тема" }] },
+    { id: "m-ll4", text: "Как лучше конспектировать лекцию в Part 4?", options: [{ label: "Ключевые слова рядом с пропусками", correct: true }, { label: "Записывать всё подряд", trap: "Не успевает за речью" }, { label: "Не писать, запоминать" }] },
+    { id: "m-ll5", text: "В задании «notes completion» слово в записи звучит во множественном числе. Как писать?", options: [{ label: "Как прозвучало, во множественном", correct: true }, { label: "В единственном, так короче", trap: "Искажает форму слова — ответ не засчитают" }] },
+    { id: "m-ll6", text: "Лектор: «To sum up…». Что это за часть?", options: [{ label: "Вывод", correct: true }, { label: "Пример", trap: "Не узнал сигнальную фразу" }, { label: "Введение" }] },
+  ],
+  "r-scan": [
+    { id: "m-rs3", text: "Вопрос с именем собственным «Dr Patel». Как быстрее найти место?", options: [{ label: "Искать заглавные буквы Patel", correct: true }, { label: "Читать абзацы по порядку", trap: "Читает вместо сканирования" }] },
+    { id: "m-rs4", text: "Сколько времени в среднем на один текст Reading?", options: [{ label: "Около 20 минут", correct: true }, { label: "40 минут на первый", trap: "Не распределил время на три текста" }, { label: "10 минут" }] },
+    { id: "m-rs5", text: "В вопросе «expensive», в тексте «cost a fortune». Это совпадение?", options: [{ label: "Да, это перефраз", correct: true }, { label: "Нет, слова разные", trap: "Ищет точные слова, а не смысл" }] },
+    { id: "m-rs6", text: "Ответы в заданиях на заполнение обычно идут…", options: [{ label: "По порядку текста", correct: true }, { label: "Вразброс", trap: "Не использует порядок, чтобы искать быстрее" }] },
+  ],
+  "r-tfng": [
+    { id: "m-rt3", text: "Текст: «Most students passed». Утверждение: «All students passed».", options: [{ label: "FALSE", correct: true }, { label: "TRUE", trap: "Не заметил разницу most / all" }, { label: "NOT GIVEN" }] },
+    { id: "m-rt4", text: "Текст не говорит о цене. Утверждение: «The course is cheap».", options: [{ label: "NOT GIVEN", correct: true }, { label: "FALSE", trap: "Путает «не сказано» с «сказано обратное»" }, { label: "TRUE" }] },
+    { id: "m-rt5", text: "Текст: «The bridge opened in 1990». Утверждение: «The bridge opened before 2000».", options: [{ label: "TRUE", correct: true }, { label: "NOT GIVEN", trap: "Ищет точное совпадение, а не смысл" }, { label: "FALSE" }] },
+    { id: "m-rt6", text: "Можно ли для TRUE опираться на свои знания о мире?", options: [{ label: "Нет, только на текст", correct: true }, { label: "Да, если уверен", trap: "Отвечает по знаниям, а не по тексту" }] },
+  ],
+  "r-headings": [
+    { id: "m-rh3", text: "Где обычно главная мысль абзаца?", options: [{ label: "В первом-втором предложении", correct: true }, { label: "Всегда в последнем", trap: "Читает только конец абзаца" }, { label: "В середине" }] },
+    { id: "m-rh4", text: "Абзац про плюсы и минусы машин. Какой заголовок?", options: [{ label: "Pros and cons of cars", correct: true }, { label: "Why cars are dangerous", trap: "Заголовок по одной детали" }, { label: "History of cars" }] },
+    { id: "m-rh5", text: "Заголовков больше, чем абзацев. Что делать?", options: [{ label: "Лишние просто не использовать", correct: true }, { label: "Два на один абзац", trap: "Один абзац — один заголовок" }] },
+    { id: "m-rh6", text: "Трудный абзац не подходит ни под один заголовок. Как быть?", options: [{ label: "Отложить и вернуться после остальных", correct: true }, { label: "Сидеть над ним до конца", trap: "Теряет время на одном абзаце" }] },
+  ],
+  "w-task1": [
+    { id: "m-wt3", text: "Минимум слов в Task 1?", options: [{ label: "150", correct: true }, { label: "250", trap: "Перепутал с Task 2" }, { label: "100" }] },
+    { id: "m-wt4", text: "Что лучше для графика с долями?", options: [{ label: "Сравнить крупные и мелкие доли", correct: true }, { label: "Перечислить каждую цифру по порядку", trap: "Список цифр вместо сравнения" }] },
+    { id: "m-wt5", text: "Как начать Task 1?", options: [{ label: "Перефразировать задание", correct: true }, { label: "Переписать задание слово в слово", trap: "Скопированный текст не засчитывают" }, { label: "Сразу с цифр" }] },
+    { id: "m-wt6", text: "Где лучше поставить overview?", options: [{ label: "После вступления или в конце, отдельным абзацем", correct: true }, { label: "Можно не писать", trap: "Без overview балл ограничен" }] },
+  ],
+  "w-coherence": [
+    { id: "m-wc3", text: "Сколько основных идей в одном абзаце?", options: [{ label: "Одна", correct: true }, { label: "Сколько поместится", trap: "Смешивает идеи в одном абзаце" }] },
+    { id: "m-wc4", text: "Что делать с повторами одного слова?", options: [{ label: "Местоимения и синонимы", correct: true }, { label: "Повторять для ясности", trap: "Однообразие снижает оценку" }] },
+    { id: "m-wc5", text: "«However» ставится, когда…", options: [{ label: "Следующая мысль противоречит прошлой", correct: true }, { label: "Добавляется ещё один пример", trap: "Связка не по смыслу" }] },
+    { id: "m-wc6", text: "Нужен ли вывод в Task 2?", options: [{ label: "Да, коротко и без новых идей", correct: true }, { label: "Нет, если закончились слова", trap: "Эссе без завершения теряет балл" }, { label: "Да, с новым аргументом" }] },
+  ],
+  "w-task2": [
+    { id: "m-w23", text: "Минимум слов в Task 2?", options: [{ label: "250", correct: true }, { label: "150", trap: "Перепутал с Task 1" }, { label: "300" }] },
+    { id: "m-w24", text: "Сколько времени отдать Task 2 из 60 минут?", options: [{ label: "Около 40", correct: true }, { label: "20", trap: "Task 2 весит вдвое больше" }, { label: "30" }] },
+    { id: "m-w25", text: "Нужно ли спорить с самим вопросом эссе?", options: [{ label: "Нет, отвечать на заданный вопрос", correct: true }, { label: "Да, если он кажется неверным", trap: "Уход от темы" }] },
+    { id: "m-w26", text: "Как лучше поддержать аргумент?", options: [{ label: "Объяснение и конкретный пример", correct: true }, { label: "Выдуманная статистика", trap: "Недостоверные цифры не усиливают эссе" }] },
+  ],
+  "s-part1": [
+    { id: "m-sp5", text: "Сколько длится Part 1?", options: [{ label: "4–5 минут", correct: true }, { label: "2 минуты", trap: "Перепутал с монологом Part 2" }, { label: "15 минут" }] },
+    { id: "m-sp6", text: "Examiner: «Where are you from?» Что лучше?", options: [{ label: "Город и одна деталь о нём", correct: true }, { label: "Выученный рассказ на минуту", trap: "Заученный текст заметен и не засчитывается" }] },
+    { id: "m-sp7", text: "Не понял вопрос. Что можно сделать?", options: [{ label: "Попросить повторить", correct: true }, { label: "Ответить наугад", trap: "Ответ не по вопросу" }] },
+    { id: "m-sp8", text: "Время в ответах Part 1 чаще всего…", options: [{ label: "Present Simple, про себя сейчас", correct: true }, { label: "Только Past", trap: "Вопросы Part 1 — про настоящее" }] },
+  ],
+  "s-part2": [
+    { id: "m-sp9", text: "Закончил говорить за минуту. Что делать?", options: [{ label: "Добавить пример или чувство по пункту карточки", correct: true }, { label: "Замолчать", trap: "Слишком короткий монолог" }] },
+    { id: "m-sp10", text: "Нужно ли раскрыть все пункты карточки?", options: [{ label: "Желательно да", correct: true }, { label: "Хватит одного", trap: "Не раскрывает тему целиком" }] },
+    { id: "m-sp11", text: "Что будет после монолога Part 2?", options: [{ label: "Пара коротких вопросов", correct: true }, { label: "Сразу оценка", trap: "Не готов к уточняющим вопросам" }] },
+    { id: "m-sp12", text: "Как связать части монолога?", options: [{ label: "Сначала, потом, в итоге", correct: true }, { label: "Никак, по пунктам карточки", trap: "Монолог звучит как список" }] },
+  ],
+};
+
 /** Every check for a topic: the original pool first, then the added ones; a mock test takes them all */
 export const checksFor = (skillId: string): Task[] => [
   ...(CHECKS[skillId] ?? []),
   ...(MORE_CHECKS[skillId] ?? []),
   ...(MOCK_CHECKS[skillId] ?? []),
+  ...(MOCK_MORE[skillId] ?? []),
 ];

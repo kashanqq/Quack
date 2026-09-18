@@ -61,7 +61,20 @@ export type PrepModel = {
   demo: boolean;
   /** Last set whose report hasn't been dismissed */
   reportFor: string | null;
+  /** What the student asked the assistant to make for a topic: notes and flashcards */
+  materials: Record<string, Material[]>;
 };
+
+/**
+ * A material exists only because the student asked for it in the chat: it is generated for them, then
+ * kept in the topic's «Материалы» to look through. Nothing is stored in advance, so it is not a course.
+ */
+export type Material =
+  | { id: string; kind: "notes"; title: string; createdAt: Date; markdown: string }
+  | { id: string; kind: "cards"; title: string; createdAt: Date; cards: { front: string; back: string }[] };
+
+/** How many right answers of a topic's mock prove it; fewer leave it shaky or weak */
+export const MOCK_SOLID = 5;
 
 export function initialModel(): PrepModel {
   return {
@@ -76,6 +89,7 @@ export function initialModel(): PrepModel {
     resolvedConflicts: {},
     demo: false,
     reportFor: "s1",
+    materials: {},
   };
 }
 
@@ -96,6 +110,9 @@ export function reviveModel(raw: unknown): PrepModel | null {
   };
   model.evidence = Object.fromEntries(
     Object.entries(model.evidence).map(([id, list]) => [id, list.map((e) => ({ ...e, date: new Date(e.date) }))])
+  );
+  model.materials = Object.fromEntries(
+    Object.entries(saved.materials ?? {}).map(([id, list]) => [id, list.map((m) => ({ ...m, createdAt: new Date(m.createdAt) }))])
   );
   return model;
 }
@@ -197,14 +214,23 @@ export type AnswerResult = {
   setPassed?: StudySet;
 };
 
-/** A task answer becomes evidence; correct answers raise the state, trap answers feed the misconception. */
-export function answerTask(model: PrepModel, skillId: string, task: Task, optionIndex: number): AnswerResult {
+/**
+ * A task answer becomes evidence; trap answers feed the misconception. A single task raises the state a
+ * step; inside a mock the state waits for the whole mock (settleMock), so two lucky answers prove nothing.
+ */
+export function answerTask(
+  model: PrepModel,
+  skillId: string,
+  task: Task,
+  optionIndex: number,
+  inMock = false
+): AnswerResult {
   const option = task.options[optionIndex];
   const from = model.states[skillId];
-  const to = option.correct ? UP[from] : from === "solid" ? "shaky" : from;
+  const to = inMock ? from : option.correct ? UP[from] : from === "solid" ? "shaky" : from;
 
   const evidence: Evidence = {
-    source: "проверка",
+    source: inMock ? "мок" : "проверка",
     text: `${task.text.slice(0, 60)}… — ответ ${option.label}${option.correct ? ", верно" : option.trap ? `, ловушка: ${option.trap.toLowerCase()}` : ", неверно"}`,
     date: TODAY,
   };
@@ -231,7 +257,7 @@ export function answerTask(model: PrepModel, skillId: string, task: Task, option
 
   const recall = option.correct ? Math.min(0.95, model.recall[skillId] + 0.2) : Math.max(0.2, model.recall[skillId] - 0.1);
 
-  let next: PrepModel = {
+  const next: PrepModel = {
     ...model,
     states: { ...model.states, [skillId]: to },
     recall: { ...model.recall, [skillId]: recall },
@@ -239,7 +265,13 @@ export function answerTask(model: PrepModel, skillId: string, task: Task, option
     evidence: { ...model.evidence, [skillId]: [evidence, ...model.evidence[skillId]] },
   };
 
-  // Any open set with this topic may be complete now — not only the current one
+  const passed = passSets(next, skillId);
+  return { model: passed.model, correct: Boolean(option.correct), trap: option.trap, from, to, setPassed: passed.set };
+}
+
+/** Any open set with this topic may be complete now — not only the current one */
+function passSets(model: PrepModel, skillId: string): { model: PrepModel; set?: StudySet } {
+  let next = model;
   let setPassed: StudySet | undefined;
   for (const set of SETS.filter((s) => s.skills.includes(skillId) && !next.doneSets.includes(s.id))) {
     if (closed(next, set) === set.skills.length) {
@@ -252,8 +284,42 @@ export function answerTask(model: PrepModel, skillId: string, task: Task, option
       };
     }
   }
+  return { model: next, set: setPassed };
+}
 
-  return { model: next, correct: Boolean(option.correct), trap: option.trap, from, to, setPassed };
+/**
+ * A finished mock decides the topic's state: MOCK_SOLID right answers or more — solid, a bit less —
+ * shaky, fewer — weak. A solid topic also lets confirmed traps go to «исправлено, следим».
+ */
+export function settleMock(
+  model: PrepModel,
+  skillId: string,
+  correct: number,
+  total: number
+): { model: PrepModel; from: SkillState; to: SkillState; setPassed?: StudySet } {
+  const from = model.states[skillId];
+  const need = Math.min(MOCK_SOLID, total);
+  const to: SkillState = correct >= need ? "solid" : correct >= Math.ceil(need / 2) + 1 ? "shaky" : "weak";
+  const misconceptions =
+    to === "solid"
+      ? model.misconceptions[skillId].map((m) => (m.status === "confirmed" ? { ...m, status: "resolved" as const } : m))
+      : model.misconceptions[skillId];
+  const next: PrepModel = {
+    ...model,
+    states: { ...model.states, [skillId]: to },
+    misconceptions: { ...model.misconceptions, [skillId]: misconceptions },
+  };
+  const passed = passSets(next, skillId);
+  return { model: passed.model, from, to, setPassed: passed.set };
+}
+
+/** A freshly generated material goes to the top of the topic's «Материалы» */
+export function addMaterial(model: PrepModel, skillId: string, material: Material): PrepModel {
+  return { ...model, materials: { ...model.materials, [skillId]: [material, ...(model.materials[skillId] ?? [])] } };
+}
+
+export function removeMaterial(model: PrepModel, skillId: string, id: string): PrepModel {
+  return { ...model, materials: { ...model.materials, [skillId]: (model.materials[skillId] ?? []).filter((m) => m.id !== id) } };
 }
 
 /** "Не согласен": the misconception leaves sets and chat context until new evidence. */

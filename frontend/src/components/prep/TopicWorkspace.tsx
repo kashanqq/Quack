@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Icon } from "../choice/Icon";
 import { daysBetween, formatShort, skillById, STATE_LABEL, TODAY, type StudySet, type Task } from "./prepData";
 import { TOPIC_PROMPTS, topicReply } from "./prepAssistant";
-import { answerTask, MISCONCEPTION_LABEL, type PrepModel } from "./prepModel";
+import { addMaterial, answerTask, MOCK_SOLID, removeMaterial, settleMock, type Material, type PrepModel } from "./prepModel";
+import { downloadMarkdown, generateCards, generateNotes, materialAsked, printPdf, renderMarkdown, type MaterialKind } from "./materials";
 import { StateGlyph } from "./SkillGraph";
 import { checksFor, TOPICS, type TopicContent } from "./topicContent";
 import styles from "./prep.module.css";
@@ -23,11 +24,16 @@ type Props = {
   onToast: (text: string) => void;
 };
 
-type Line = { id: number; role: "student" | "assistant"; text: string };
+type Line = { id: number; role: "student" | "assistant"; text: string; material?: string };
+/** What the «Материалы» column shows: the list, the mock test or one material */
+type Open = null | "mock" | string;
+
+const KIND_LABEL: Record<MaterialKind, string> = { notes: "конспект", cards: "карточки" };
 
 /**
- * A topic opened from the set's graph: the graph gives way to a chat with the assistant, which starts
- * with the topic's minimum, and a mock test beside it. A wrong answer can be taken straight to the chat.
+ * A topic opened from the set's graph: a chat with the assistant and the topic's «Материалы» — the mock
+ * test, and notes and flashcards the student asked the assistant to make. Nothing is waiting there in
+ * advance: a material appears only after it was asked for, so the topic is not a course (product-logic §1).
  */
 export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, onTopic, onModel, onToast }: Props) {
   const skill = skillById(skillId);
@@ -36,31 +42,56 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
   const index = order.indexOf(skillId);
   const left = daysBetween(TODAY, plannedBy);
   const behind = state !== "solid" && left < 0;
+  const materials = model.materials[skillId] ?? [];
+  const [open, setOpen] = useState<Open>(null);
   // Phones show one pane at a time
-  const [pane, setPane] = useState<"chat" | "test">("chat");
+  const [pane, setPane] = useState<"chat" | "materials">("chat");
 
   const [lines, setLines] = useState<Line[]>([]);
   const [typing, setTyping] = useState(false);
   const idRef = useRef(0);
+  // The latest model: a reply lands a moment later and must not undo an answer given meanwhile
+  const modelRef = useRef(model);
+  modelRef.current = model;
 
-  const say = (question: string, reply: string) => {
+  const say = (question: string, reply: () => Omit<Line, "id" | "role">) => {
     setLines((l) => [...l, { id: ++idRef.current, role: "student", text: question }]);
     setTyping(true);
     setTimeout(() => {
       setTyping(false);
-      setLines((l) => [...l, { id: ++idRef.current, role: "assistant", text: reply }]);
-    }, 650);
+      // Worked out before the state update: making a material also changes the model
+      const answer = { id: ++idRef.current, role: "assistant" as const, ...reply() };
+      setLines((l) => [...l, answer]);
+    }, 900);
+  };
+
+  const make = (kind: MaterialKind, question: string) => {
+    const count = materials.filter((m) => m.kind === kind).length;
+    const material = kind === "notes" ? generateNotes(model, skillId, count) : generateCards(model, skillId, count);
+    say(question, () => {
+      onModel(addMaterial(modelRef.current, skillId, material));
+      const size = material.kind === "cards" ? ` · ${material.cards.length} карточек` : "";
+      return { text: `Готово: «${material.title}»${size}. Лежит в «Материалах» — открой, когда удобно.`, material: material.id };
+    });
   };
 
   const ask = (text: string) => {
-    if (!text.trim() || typing) return;
-    say(text.trim(), topicReply(text, model, skillId, set, content));
+    const q = text.trim();
+    if (!q || typing) return;
+    const kind = materialAsked(q);
+    if (kind) return make(kind, q);
+    say(q, () => ({ text: topicReply(q, model, skillId, set, content) }));
   };
 
   const explain = (task: Task, choice: number) => {
     if (typing) return;
     setPane("chat");
-    say(`Разбери вопрос: «${task.text}»`, explainTask(task, choice, content));
+    say(`Разбери вопрос: «${task.text}»`, () => ({ text: explainTask(task, choice, content) }));
+  };
+
+  const openMaterial = (id: Open) => {
+    setOpen(id);
+    setPane("materials");
   };
 
   return (
@@ -101,24 +132,50 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
         <button type="button" role="tab" aria-selected={pane === "chat"} onClick={() => setPane("chat")}>
           <Icon name="message-circle" size={15} /> Чат
         </button>
-        <button type="button" role="tab" aria-selected={pane === "test"} onClick={() => setPane("test")}>
-          <Icon name="circle-check" size={15} /> Мок-тест
+        <button type="button" role="tab" aria-selected={pane === "materials"} onClick={() => setPane("materials")}>
+          <Icon name="book-open-check" size={15} /> Материалы
+          {materials.length > 0 && <span className={styles.paneCount}>{materials.length}</span>}
         </button>
       </div>
 
-      <div className={styles.topicWorkStage} data-pane={pane}>
+      <div className={styles.topicWorkStage} data-pane={pane === "chat" ? "chat" : "side"}>
         <section className={`${styles.canvas} ${styles.chatPane}`} aria-label="Чат по теме">
-          <Chat model={model} skillId={skillId} content={content} lines={lines} typing={typing} onAsk={ask} />
+          <Chat skill={skill.name} lines={lines} typing={typing} onAsk={ask} onOpen={openMaterial} />
         </section>
-        <aside className={`${styles.canvas} ${styles.mockPane}`} aria-label="Мок-тест">
-          <MockTest model={model} skillId={skillId} onModel={onModel} onToast={onToast} onExplain={explain} />
+
+        <aside className={`${styles.canvas} ${styles.sidePane}`} aria-label="Материалы">
+          {open === null && (
+            <MaterialList
+              model={model}
+              skillId={skillId}
+              materials={materials}
+              busy={typing}
+              onOpen={openMaterial}
+              onAsk={(kind) => {
+                setPane("chat");
+                ask(kind === "notes" ? "Сделай конспект по теме" : "Сделай карточки по теме");
+              }}
+              onRemove={(id) => {
+                onModel(removeMaterial(model, skillId, id));
+                onToast("Материал удалён");
+              }}
+            />
+          )}
+          {/* The mock stays mounted: opening a material mid-test must not lose the test */}
+          <div hidden={open !== "mock"}>
+            <ViewerHead title="Мок-тест" onBack={() => setOpen(null)} />
+            <MockTest model={model} skillId={skillId} onModel={onModel} onToast={onToast} onExplain={explain} />
+          </div>
+          {open !== null && open !== "mock" && (
+            <MaterialView material={materials.find((m) => m.id === open)} onBack={() => setOpen(null)} />
+          )}
         </aside>
       </div>
     </div>
   );
 }
 
-/** A wrong (or right) answer, taken apart: the correct option, the trap behind the pick, the rule */
+/** An answer taken apart: the correct option, the trap behind the pick, the rule */
 function explainTask(task: Task, choice: number, content?: TopicContent) {
   const right = task.options.find((o) => o.correct);
   const picked = task.options[choice];
@@ -132,22 +189,20 @@ function explainTask(task: Task, choice: number, content?: TopicContent) {
   return parts.join(" ");
 }
 
-/* ---------- Chat: opens with the topic's minimum, then anything the student asks ---------- */
+/* ---------- Chat: answers what the student asks, and makes materials on request ---------- */
 
 function Chat({
-  model,
-  skillId,
-  content,
+  skill,
   lines,
   typing,
   onAsk,
+  onOpen,
 }: {
-  model: PrepModel;
-  skillId: string;
-  content?: TopicContent;
+  skill: string;
   lines: Line[];
   typing: boolean;
   onAsk: (text: string) => void;
+  onOpen: (id: string) => void;
 }) {
   const [input, setInput] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
@@ -159,12 +214,26 @@ function Chat({
   return (
     <div className={styles.topicChat}>
       <div className={styles.chatLines} ref={listRef} aria-live="polite">
-        <Brief model={model} skillId={skillId} content={content} />
-        {lines.map((l) => (
-          <p key={l.id} className={styles.chatLine} data-role={l.role}>
-            {l.text}
-          </p>
-        ))}
+        <p className={styles.chatLine} data-role="assistant">
+          Это чат по теме «{skill}». Пришли решение — проверю, спроси, где ошибка, или попроси конспект или карточки: они появятся в
+          «Материалах». В прогресс идут ответы в мок-тесте.
+        </p>
+        {lines.map((l) =>
+          l.material ? (
+            <div key={l.id} className={styles.chatReply}>
+              <p className={styles.chatLine} data-role="assistant">
+                {l.text}
+              </p>
+              <button type="button" className={styles.pinButton} onClick={() => onOpen(l.material!)}>
+                <Icon name="book-open-check" size={13} /> Открыть
+              </button>
+            </div>
+          ) : (
+            <p key={l.id} className={styles.chatLine} data-role={l.role}>
+              {l.text}
+            </p>
+          )
+        )}
         {typing && (
           <p className={styles.chatLine} data-role="assistant" aria-label="Ассистент печатает">
             …
@@ -173,7 +242,7 @@ function Chat({
       </div>
 
       <div className={styles.promptChips}>
-        {TOPIC_PROMPTS.map((p) => (
+        {["Сделай конспект", "Сделай карточки", ...TOPIC_PROMPTS].map((p) => (
           <button key={p} type="button" onClick={() => onAsk(p)} disabled={typing}>
             {p}
           </button>
@@ -187,7 +256,7 @@ function Chat({
           setInput("");
         }}
       >
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Спроси что угодно по теме…" aria-label="Вопрос ассистенту" />
+        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Пришли решение или спроси по теме…" aria-label="Сообщение" />
         <button type="submit" className={styles.primary} disabled={!input.trim() || typing}>
           Отправить
         </button>
@@ -196,62 +265,220 @@ function Chat({
   );
 }
 
-/** The assistant's first message: just enough to know what the topic is about */
-function Brief({ model, skillId, content }: { model: PrepModel; skillId: string; content?: TopicContent }) {
-  const [shown, setShown] = useState(false);
-  const own = model.misconceptions[skillId].filter((m) => m.status !== "disputed");
+/* ---------- Материалы: the mock test and whatever the student asked to make ---------- */
 
-  if (!content) {
-    return (
-      <div className={styles.topicBrief}>
-        <p>Материал по этой теме появится, когда до неё дойдёт маршрут. Пока можно спросить меня о чём угодно.</p>
-      </div>
-    );
-  }
+function MaterialList({
+  model,
+  skillId,
+  materials,
+  busy,
+  onOpen,
+  onAsk,
+  onRemove,
+}: {
+  model: PrepModel;
+  skillId: string;
+  materials: Material[];
+  busy: boolean;
+  onOpen: (id: Open) => void;
+  onAsk: (kind: MaterialKind) => void;
+  onRemove: (id: string) => void;
+}) {
+  const total = checksFor(skillId).length;
+  const last = model.evidence[skillId].find((e) => e.source === "мок");
 
   return (
-    <div className={styles.topicBrief}>
-      <p className={styles.eyebrow}>Коротко о теме</p>
-      <p>{content.summary}</p>
+    <div className={styles.materials}>
+      <header className={styles.materialsHead}>
+        <h3>Материалы</h3>
+        <span className={styles.muted}>всё, что ты попросил сделать по теме</span>
+      </header>
 
-      <p className={styles.eyebrow}>Нужно уметь</p>
-      <ul className={styles.materialPoints}>
-        {content.points.map((point) => (
-          <li key={point}>{point}</li>
-        ))}
-      </ul>
+      <button type="button" className={`${styles.materialRow} ${styles.materialMock}`} onClick={() => onOpen("mock")}>
+        <span className={styles.materialIcon} data-kind="mock">
+          <Icon name="circle-check" size={18} />
+        </span>
+        <span className={styles.materialText}>
+          <strong>Мок-тест</strong>
+          <span className={styles.muted}>
+            {total} вопросов · засчитывается при {Math.min(MOCK_SOLID, total)} верных
+            {last ? ` · последний ${formatShort(last.date)}` : ""}
+          </span>
+        </span>
+        <Icon name="chevron-right" size={16} />
+      </button>
 
-      <p className={styles.eyebrow}>Пример</p>
-      <div className={styles.example}>
-        <p>{content.example.q}</p>
-        {shown ? (
-          <p className={styles.exampleAnswer}>{content.example.a}</p>
-        ) : (
-          <button type="button" className={styles.link} onClick={() => setShown(true)}>
-            Показать решение
-          </button>
-        )}
-      </div>
-
-      <p className={styles.eyebrow}>Где ошибаются</p>
-      <ul className={styles.plainList}>
-        {own.map((m) => (
-          <li key={m.id} className={styles.misconception} data-status={m.status}>
-            <span>{m.text}</span>
-            <span className={styles.muted}>у тебя: {MISCONCEPTION_LABEL(m)}</span>
-          </li>
-        ))}
-        <li className={styles.misconception}>
-          <span>{content.trap}</span>
-          <span className={styles.muted}>частая у всех</span>
-        </li>
-      </ul>
-      <p className={styles.note}>Минимум для понимания, не курс. Спрашивай ниже, а когда будешь готов — мок-тест справа.</p>
+      {(["notes", "cards"] as const).map((kind) => {
+        const list = materials.filter((m) => m.kind === kind);
+        return (
+          <section key={kind} className={styles.materialGroup}>
+            <p className={styles.eyebrow}>{kind === "notes" ? "Конспекты" : "Карточки"}</p>
+            {list.length ? (
+              list.map((m) => (
+                <div key={m.id} className={styles.materialItem}>
+                  <button type="button" className={styles.materialRow} onClick={() => onOpen(m.id)}>
+                    <span className={styles.materialIcon} data-kind={m.kind}>
+                      <Icon name={m.kind === "notes" ? "book-open-check" : "layers"} size={18} />
+                    </span>
+                    <span className={styles.materialText}>
+                      <strong>{m.title}</strong>
+                      <span className={styles.muted}>
+                        {m.kind === "cards" ? `${m.cards.length} карточек` : "Markdown · PDF"} · {formatShort(m.createdAt)}
+                      </span>
+                    </span>
+                    <Icon name="chevron-right" size={16} />
+                  </button>
+                  <button type="button" className={styles.pinRemove} aria-label={`Удалить «${m.title}»`} onClick={() => onRemove(m.id)}>
+                    <Icon name="x" size={13} />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <button type="button" className={styles.materialEmpty} disabled={busy} onClick={() => onAsk(kind)}>
+                <Icon name="sparkles" size={15} /> Попросить ассистента: {KIND_LABEL[kind]}
+              </button>
+            )}
+          </section>
+        );
+      })}
+      <p className={styles.note}>Конспекты и карточки делает ассистент по твоей просьбе в чате. Демо: позже их будет собирать бэкенд.</p>
     </div>
   );
 }
 
-/* ---------- Mock test: every question of the topic in a row, each answer moves the graph ---------- */
+function ViewerHead({ title, meta, onBack, children }: { title: string; meta?: string; onBack: () => void; children?: React.ReactNode }) {
+  return (
+    <header className={styles.viewerHead}>
+      <button type="button" className={styles.topicClose} onClick={onBack} aria-label="К материалам" title="К материалам">
+        <Icon name="arrow-left" size={16} />
+      </button>
+      <div className={styles.viewerTitle}>
+        <strong>{title}</strong>
+        {meta && <span className={styles.muted}>{meta}</span>}
+      </div>
+      {children}
+    </header>
+  );
+}
+
+function MaterialView({ material, onBack }: { material?: Material; onBack: () => void }) {
+  if (!material) {
+    return (
+      <>
+        <ViewerHead title="Материал удалён" onBack={onBack} />
+      </>
+    );
+  }
+  if (material.kind === "cards") {
+    return (
+      <>
+        <ViewerHead title={material.title} meta={`${material.cards.length} карточек · ${formatShort(material.createdAt)}`} onBack={onBack} />
+        <Flashcards key={material.id} cards={material.cards} />
+      </>
+    );
+  }
+  return (
+    <>
+      <ViewerHead title={material.title} meta={`конспект · ${formatShort(material.createdAt)}`} onBack={onBack}>
+        <div className={styles.viewerActions}>
+          <button type="button" className={styles.secondary} onClick={() => downloadMarkdown(material.title, material.markdown)}>
+            .md
+          </button>
+          <button type="button" className={styles.secondary} onClick={() => printPdf(material.title, material.markdown)}>
+            PDF
+          </button>
+        </div>
+      </ViewerHead>
+      <article className={styles.markdown}>{renderMarkdown(material.markdown)}</article>
+    </>
+  );
+}
+
+/* ---------- Flashcards: one big card, tap to flip, arrows to move — the Quizlet way ---------- */
+
+function Flashcards({ cards: initial }: { cards: { front: string; back: string }[] }) {
+  const [cards, setCards] = useState(initial);
+  const [at, setAt] = useState(0);
+  const [flipped, setFlipped] = useState(false);
+  const card = cards[at];
+
+  const go = (step: number) => {
+    setFlipped(false);
+    setAt((i) => Math.min(cards.length - 1, Math.max(0, i + step)));
+  };
+
+  const shuffle = () => {
+    setCards((list) => [...list].sort(() => Math.random() - 0.5));
+    setAt(0);
+    setFlipped(false);
+  };
+
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "ArrowRight") go(1);
+    else if (e.key === "ArrowLeft") go(-1);
+    else if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      setFlipped((f) => !f);
+    }
+  };
+
+  return (
+    <div className={styles.flash} tabIndex={0} onKeyDown={onKey} aria-label="Карточки: пробел — перевернуть, стрелки — листать">
+      <div className={styles.flashProgress} aria-hidden="true">
+        <span style={{ width: `${((at + 1) / cards.length) * 100}%` }} />
+      </div>
+      <button
+        type="button"
+        className={styles.flashCard}
+        data-flipped={flipped || undefined}
+        onClick={() => setFlipped((f) => !f)}
+        aria-label={flipped ? "Ответ. Нажми, чтобы увидеть вопрос" : "Вопрос. Нажми, чтобы увидеть ответ"}
+      >
+        <span className={styles.flashInner}>
+          <span className={styles.flashFace}>
+            <span className={styles.flashSide}>Вопрос</span>
+            {card.front}
+          </span>
+          <span className={`${styles.flashFace} ${styles.flashBack}`}>
+            <span className={styles.flashSide}>Ответ</span>
+            {card.back}
+          </span>
+        </span>
+      </button>
+      <div className={styles.flashControls}>
+        <button type="button" className={styles.flashNav} onClick={() => go(-1)} disabled={at === 0} aria-label="Предыдущая">
+          <Icon name="chevron-right" size={18} className={styles.flipX} />
+        </button>
+        <span className={styles.flashCount}>
+          {at + 1} / {cards.length}
+        </span>
+        <button type="button" className={styles.flashNav} onClick={() => go(1)} disabled={at === cards.length - 1} aria-label="Следующая">
+          <Icon name="chevron-right" size={18} />
+        </button>
+      </div>
+      <div className={styles.flashFoot}>
+        <button type="button" className={styles.link} onClick={shuffle}>
+          Перемешать
+        </button>
+        <span className={styles.muted}>нажми на карточку или пробел · стрелки листают</span>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Mock test: every question of the topic; the state is settled at the end ---------- */
+
+/** Options in a stable shuffled order per question, so the right one is not always «A» */
+function shuffled(task: Task, round: number): number[] {
+  let seed = [...`${task.id}:${round}`].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+  const order = task.options.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    const j = seed % (i + 1);
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return order;
+}
 
 function MockTest({
   model,
@@ -269,29 +496,38 @@ function MockTest({
   const pool = checksFor(skillId);
   const [round, setRound] = useState(0);
   const [picks, setPicks] = useState<number[]>([]);
-  const [startState, setStartState] = useState(model.states[skillId]);
   // After an answer the question stays on screen until «Дальше»
   const [shownAt, setShownAt] = useState(0);
+  const [settled, setSettled] = useState<{ from: string; to: string } | null>(null);
   const task = pool[shownAt];
   const pick = picks[shownAt];
   const finished = shownAt >= pool.length;
   const correct = picks.filter((p, i) => pool[i].options[p]?.correct).length;
-  const state = model.states[skillId];
+  const need = Math.min(MOCK_SOLID, pool.length);
 
   if (!pool.length) return <p className={styles.muted}>Вопросы по этой теме появятся, когда до неё дойдёт маршрут.</p>;
 
   const answer = (i: number) => {
     if (pick !== undefined) return;
-    const r = answerTask(model, skillId, pool[shownAt], i);
+    onModel(answerTask(model, skillId, pool[shownAt], i, true).model);
     setPicks((p) => [...p, i]);
+  };
+
+  const nextQuestion = () => {
+    const last = shownAt + 1 >= pool.length;
+    setShownAt((n) => n + 1);
+    if (!last) return;
+    // The whole mock decides the state, not a single answer
+    const r = settleMock(model, skillId, correct, pool.length);
     onModel(r.model);
+    setSettled({ from: STATE_LABEL[r.from], to: STATE_LABEL[r.to] });
     if (r.setPassed) onToast(`Сет ${r.setPassed.number} доказан целиком — отчёт в «Обзоре»`);
   };
 
   const restart = () => {
     setPicks([]);
     setShownAt(0);
-    setStartState(model.states[skillId]);
+    setSettled(null);
     setRound((n) => n + 1);
   };
 
@@ -299,7 +535,7 @@ function MockTest({
     <div className={styles.mockTest} key={round}>
       <header className={styles.mockHead}>
         <div>
-          <p className={styles.eyebrow}>Мок-тест · демо</p>
+          <p className={styles.eyebrow}>Мок-тест · демо · нужно {need} верных</p>
           <h3>{finished ? "Итог" : `Вопрос ${shownAt + 1} из ${pool.length}`}</h3>
         </div>
         <span className={styles.mockDots} aria-hidden="true">
@@ -317,13 +553,15 @@ function MockTest({
       {finished ? (
         <div className={styles.mockResult}>
           <p className={styles.mockScore}>
-            <strong>{correct}</strong> из {pool.length}
+            <strong>{correct}</strong> из {pool.length} · {correct >= need ? "тема доказана" : `до зачёта не хватило ${need - correct}`}
           </p>
-          <p className={styles.modelUpdate}>
-            <StateGlyph state={state} size={12} />
-            На графе: {STATE_LABEL[state]}
-            {startState !== state && ` (было: ${STATE_LABEL[startState]})`}
-          </p>
+          {settled && (
+            <p className={styles.modelUpdate}>
+              <StateGlyph state={model.states[skillId]} size={12} />
+              На графе: {settled.to}
+              {settled.from !== settled.to && ` (было: ${settled.from})`}
+            </p>
+          )}
           <ul className={styles.mockReview}>
             {pool.map((t, i) => {
               const ok = t.options[picks[i]]?.correct;
@@ -350,32 +588,35 @@ function MockTest({
         <div className={styles.task}>
           <p className={styles.taskText}>{task.text}</p>
           <div className={styles.options} role="group" aria-label="Варианты ответа">
-            {task.options.map((o, i) => (
-              <button
-                key={o.label}
-                type="button"
-                className={styles.option}
-                data-result={pick !== undefined ? (o.correct ? "correct" : pick === i ? "wrong" : undefined) : undefined}
-                disabled={pick !== undefined}
-                onClick={() => answer(i)}
-              >
-                <span className={styles.optionLetter}>{"ABCD"[i]}</span>
-                {o.label}
-              </button>
-            ))}
+            {shuffled(task, round).map((i, place) => {
+              const o = task.options[i];
+              return (
+                <button
+                  key={o.label}
+                  type="button"
+                  className={styles.option}
+                  data-result={pick !== undefined ? (o.correct ? "correct" : pick === i ? "wrong" : undefined) : undefined}
+                  disabled={pick !== undefined}
+                  onClick={() => answer(i)}
+                >
+                  <span className={styles.optionLetter}>{"ABCD"[place]}</span>
+                  {o.label}
+                </button>
+              );
+            })}
           </div>
 
           {pick !== undefined && (
             <div className={styles.feedback} data-correct={Boolean(task.options[pick].correct)}>
               <strong>
                 {task.options[pick].correct
-                  ? "Верно — засчитано"
+                  ? "Верно"
                   : task.options[pick].trap
                     ? `Ловушка: ${task.options[pick].trap!.toLowerCase()}`
                     : "Неверно"}
               </strong>
               <div className={styles.actions}>
-                <button type="button" className={styles.primary} onClick={() => setShownAt((n) => n + 1)}>
+                <button type="button" className={styles.primary} onClick={nextQuestion}>
                   {shownAt + 1 < pool.length ? "Дальше" : "Итог"}
                 </button>
                 <button type="button" className={styles.secondary} onClick={() => onExplain(task, pick)}>
