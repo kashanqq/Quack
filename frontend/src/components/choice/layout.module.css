@@ -181,11 +181,20 @@
   padding: 4px;
   background: rgba(0, 0, 0, 0.25);
   border-radius: 12px;
+  /* The column can be dragged narrower, so the tabs size themselves to it, not to the screen */
+  container-type: inline-size;
 }
 
+/* Label and count sit side by side while they fit; when they don't, the count drops under the label
+   instead of sliding over the next tab */
 .tab {
   position: relative;
+  display: flex;
   flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px 4px;
   min-width: 0;
   padding: 7px 4px;
   background: none;
@@ -193,9 +202,23 @@
   border-radius: 9px;
   color: var(--text-dim);
   font-size: 13px;
-  white-space: nowrap;
   cursor: pointer;
   transition: background 0.25s ease, color 0.25s ease;
+}
+
+.tabLabel {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@container (max-width: 270px) {
+  .tab {
+    padding: 6px 2px;
+    font-size: 12px;
+  }
 }
 
 .tab[aria-selected="true"] {
@@ -209,10 +232,10 @@
 
 .count {
   display: inline-grid;
+  flex: none;
   place-items: center;
   min-width: 18px;
   height: 18px;
-  margin-left: 4px;
   padding: 0 5px;
   background: rgba(255, 255, 255, 0.12);
   border-radius: 9px;
@@ -228,6 +251,9 @@
 
 .list {
   display: grid;
+  /* Without this the track grows to the longest unbroken line and the rows run past the column edge,
+     where it clips them — along with the star button */
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   margin: 0;
   padding: 0;
@@ -316,6 +342,14 @@
 
 .rowTitle {
   font-size: 15px;
+}
+
+/* University names wrap instead of being cut off: the name is what the student is looking for */
+.rowTitleFull {
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
 }
 
 .rowSub {

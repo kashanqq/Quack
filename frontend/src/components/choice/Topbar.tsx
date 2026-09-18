@@ -18,6 +18,13 @@ type TopbarProps = {
   alert?: { active: boolean; reasons: string[] };
 };
 
+/** What the menu drawer holds in each section — on phones it is the only way to switch categories */
+const MENU_LABEL: Record<Mode, string> = {
+  choice: "Меню: программы и чаты",
+  prep: "Меню: разделы подготовки",
+  dashboard: "Меню: разделы дашборда",
+};
+
 const MODES: { mode: Mode; label: string; icon: IconName }[] = [
   { mode: "choice", label: "Выбор", icon: "graduation-cap" },
   { mode: "prep", label: "Подготовка", icon: "book-open-check" },
@@ -30,7 +37,7 @@ export function Topbar({ mode, onMode, onOpenMenu, profilePanel, alert }: Topbar
   return (
     <header className={styles.topbar}>
       <div className={styles.topbarSide}>
-        <button type="button" className={`${layout.iconButton} ${styles.menuButton} ${styles.glass}`} aria-label="Меню: программы и чаты" onClick={onOpenMenu}>
+        <button type="button" className={`${layout.iconButton} ${styles.menuButton} ${styles.glass}`} aria-label={MENU_LABEL[mode]} onClick={onOpenMenu}>
           <Icon name="menu" />
         </button>
       </div>
