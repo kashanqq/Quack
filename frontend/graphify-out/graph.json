@@ -590,7 +590,7 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "choice_profilepanel_profiletoggle",
-      "community": 1,
+      "community": 0,
       "norm_label": "profiletoggle()"
     },
     {
@@ -1300,7 +1300,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "dashboard_dashboard",
-      "community": 2,
+      "community": 7,
       "norm_label": "dashboard.tsx"
     },
     {
@@ -1310,7 +1310,7 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "dashboard_dashboard_props",
-      "community": 2,
+      "community": 7,
       "norm_label": "props"
     },
     {
@@ -1320,7 +1320,7 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "dashboard_dashboard_forecastscore",
-      "community": 2,
+      "community": 7,
       "norm_label": "forecastscore()"
     },
     {
@@ -1330,7 +1330,7 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "dashboard_dashboard_dashboard",
-      "community": 2,
+      "community": 7,
       "norm_label": "dashboard()"
     },
     {
@@ -1560,7 +1560,7 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "dashboard_dashboardrules_unionexams",
-      "community": 2,
+      "community": 7,
       "norm_label": "unionexams()"
     },
     {
@@ -1590,7 +1590,7 @@
       "source_location": "L107",
       "_origin": "ast",
       "id": "dashboard_dashboardrules_hardconflicts",
-      "community": 2,
+      "community": 7,
       "norm_label": "hardconflicts()"
     },
     {
@@ -1610,7 +1610,7 @@
       "source_location": "L171",
       "_origin": "ast",
       "id": "dashboard_dashboardrules_calendar",
-      "community": 2,
+      "community": 7,
       "norm_label": "calendar()"
     },
     {
@@ -1630,7 +1630,7 @@
       "source_location": "L192",
       "_origin": "ast",
       "id": "dashboard_dashboardrules_removaleffects",
-      "community": 2,
+      "community": 7,
       "norm_label": "removaleffects()"
     },
     {
@@ -1650,7 +1650,7 @@
       "source_location": "L224",
       "_origin": "ast",
       "id": "dashboard_dashboardrules_watchlist",
-      "community": 2,
+      "community": 7,
       "norm_label": "watchlist()"
     },
     {
@@ -1690,7 +1690,7 @@
       "source_location": "L259",
       "_origin": "ast",
       "id": "dashboard_dashboardrules_calendarevents",
-      "community": 2,
+      "community": 7,
       "norm_label": "calendarevents()"
     },
     {
@@ -1730,7 +1730,7 @@
       "source_location": "L279",
       "_origin": "ast",
       "id": "dashboard_dashboardrules_activitybyday",
-      "community": 2,
+      "community": 7,
       "norm_label": "activitybyday()"
     },
     {
@@ -2600,7 +2600,7 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "prep_currentset_currentset",
-      "community": 2,
+      "community": 7,
       "norm_label": "currentset()"
     },
     {
@@ -2610,7 +2610,7 @@
       "source_location": "L137",
       "_origin": "ast",
       "id": "prep_currentset_guidecanvas",
-      "community": 5,
+      "community": 7,
       "norm_label": "guidecanvas()"
     },
     {
@@ -2620,7 +2620,7 @@
       "source_location": "L202",
       "_origin": "ast",
       "id": "prep_currentset_taskcanvas",
-      "community": 5,
+      "community": 7,
       "norm_label": "taskcanvas()"
     },
     {
@@ -2717,7 +2717,7 @@
       "label": "clamp()",
       "file_type": "code",
       "source_file": "src/components/prep/GraphCanvas.tsx",
-      "source_location": "L39",
+      "source_location": "L33",
       "_origin": "ast",
       "id": "prep_graphcanvas_clamp",
       "community": 5,
@@ -2727,7 +2727,7 @@
       "label": "dropSelection()",
       "file_type": "code",
       "source_file": "src/components/prep/GraphCanvas.tsx",
-      "source_location": "L45",
+      "source_location": "L39",
       "_origin": "ast",
       "id": "prep_graphcanvas_dropselection",
       "community": 5,
@@ -2737,7 +2737,7 @@
       "label": "ScaleContext",
       "file_type": "code",
       "source_file": "src/components/prep/GraphCanvas.tsx",
-      "source_location": "L48",
+      "source_location": "L42",
       "_origin": "ast",
       "id": "prep_graphcanvas_scalecontext",
       "community": 5,
@@ -2747,7 +2747,7 @@
       "label": "readStore()",
       "file_type": "code",
       "source_file": "src/components/prep/GraphCanvas.tsx",
-      "source_location": "L50",
+      "source_location": "L44",
       "_origin": "ast",
       "id": "prep_graphcanvas_readstore",
       "community": 5,
@@ -2757,7 +2757,7 @@
       "label": "writeStore()",
       "file_type": "code",
       "source_file": "src/components/prep/GraphCanvas.tsx",
-      "source_location": "L59",
+      "source_location": "L53",
       "_origin": "ast",
       "id": "prep_graphcanvas_writestore",
       "community": 5,
@@ -2767,7 +2767,7 @@
       "label": "Props",
       "file_type": "code",
       "source_file": "src/components/prep/GraphCanvas.tsx",
-      "source_location": "L67",
+      "source_location": "L61",
       "_origin": "ast",
       "id": "prep_graphcanvas_props",
       "community": 5,
@@ -2777,7 +2777,7 @@
       "label": "Popover",
       "file_type": "code",
       "source_file": "src/components/prep/GraphCanvas.tsx",
-      "source_location": "L84",
+      "source_location": "L78",
       "_origin": "ast",
       "id": "prep_graphcanvas_popover",
       "community": 5,
@@ -2787,7 +2787,7 @@
       "label": "GraphCanvas()",
       "file_type": "code",
       "source_file": "src/components/prep/GraphCanvas.tsx",
-      "source_location": "L97",
+      "source_location": "L91",
       "_origin": "ast",
       "id": "prep_graphcanvas_graphcanvas",
       "community": 5,
@@ -2797,27 +2797,17 @@
       "label": "PopoverCard()",
       "file_type": "code",
       "source_file": "src/components/prep/GraphCanvas.tsx",
-      "source_location": "L272",
+      "source_location": "L257",
       "_origin": "ast",
       "id": "prep_graphcanvas_popovercard",
       "community": 5,
       "norm_label": "popovercard()"
     },
     {
-      "label": "FitToWidth()",
-      "file_type": "code",
-      "source_file": "src/components/prep/GraphCanvas.tsx",
-      "source_location": "L321",
-      "_origin": "ast",
-      "id": "prep_graphcanvas_fittowidth",
-      "community": 5,
-      "norm_label": "fittowidth()"
-    },
-    {
       "label": "Drag",
       "file_type": "code",
       "source_file": "src/components/prep/GraphCanvas.tsx",
-      "source_location": "L343",
+      "source_location": "L302",
       "_origin": "ast",
       "id": "prep_graphcanvas_drag",
       "community": 5,
@@ -2827,7 +2817,7 @@
       "label": "useNodeDrag()",
       "file_type": "code",
       "source_file": "src/components/prep/GraphCanvas.tsx",
-      "source_location": "L349",
+      "source_location": "L308",
       "_origin": "ast",
       "id": "prep_graphcanvas_usenodedrag",
       "community": 5,
@@ -2870,7 +2860,7 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "prep_overview_now",
-      "community": 2,
+      "community": 7,
       "norm_label": "now()"
     },
     {
@@ -2940,7 +2930,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "prep_setsview",
-      "community": 5,
+      "community": 7,
       "norm_label": "setsview.tsx"
     },
     {
@@ -2950,7 +2940,7 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "prep_setsview_props",
-      "community": 5,
+      "community": 7,
       "norm_label": "props"
     },
     {
@@ -2960,7 +2950,7 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "prep_setsview_status_text",
-      "community": 5,
+      "community": 7,
       "norm_label": "status_text"
     },
     {
@@ -2970,57 +2960,57 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "prep_setsview_setsview",
-      "community": 5,
+      "community": 7,
       "norm_label": "setsview()"
     },
     {
       "label": "routeLayout()",
       "file_type": "code",
       "source_file": "src/components/prep/SetsView.tsx",
-      "source_location": "L54",
+      "source_location": "L51",
       "_origin": "ast",
       "id": "prep_setsview_routelayout",
-      "community": 5,
+      "community": 7,
       "norm_label": "routelayout()"
     },
     {
       "label": "Route()",
       "file_type": "code",
       "source_file": "src/components/prep/SetsView.tsx",
-      "source_location": "L77",
+      "source_location": "L67",
       "_origin": "ast",
       "id": "prep_setsview_route",
-      "community": 5,
+      "community": 7,
       "norm_label": "route()"
     },
     {
       "label": "SetMark()",
       "file_type": "code",
       "source_file": "src/components/prep/SetsView.tsx",
-      "source_location": "L200",
+      "source_location": "L189",
       "_origin": "ast",
       "id": "prep_setsview_setmark",
-      "community": 5,
+      "community": 7,
       "norm_label": "setmark()"
     },
     {
       "label": "KnowledgeMap()",
       "file_type": "code",
       "source_file": "src/components/prep/SetsView.tsx",
-      "source_location": "L223",
+      "source_location": "L212",
       "_origin": "ast",
       "id": "prep_setsview_knowledgemap",
-      "community": 5,
+      "community": 7,
       "norm_label": "knowledgemap()"
     },
     {
       "label": "AllSets()",
       "file_type": "code",
       "source_file": "src/components/prep/SetsView.tsx",
-      "source_location": "L342",
+      "source_location": "L326",
       "_origin": "ast",
       "id": "prep_setsview_allsets",
-      "community": 5,
+      "community": 7,
       "norm_label": "allsets()"
     },
     {
@@ -3037,7 +3027,7 @@
       "label": "Props",
       "file_type": "code",
       "source_file": "src/components/prep/SkillGraph.tsx",
-      "source_location": "L9",
+      "source_location": "L8",
       "_origin": "ast",
       "id": "prep_skillgraph_props",
       "community": 5,
@@ -3047,7 +3037,7 @@
       "label": "Point",
       "file_type": "code",
       "source_file": "src/components/prep/SkillGraph.tsx",
-      "source_location": "L24",
+      "source_location": "L21",
       "_origin": "ast",
       "id": "prep_skillgraph_point",
       "community": 5,
@@ -3057,17 +3047,17 @@
       "label": "StateGlyph()",
       "file_type": "code",
       "source_file": "src/components/prep/SkillGraph.tsx",
-      "source_location": "L41",
+      "source_location": "L38",
       "_origin": "ast",
       "id": "prep_skillgraph_stateglyph",
-      "community": 5,
+      "community": 7,
       "norm_label": "stateglyph()"
     },
     {
       "label": "StateLegend()",
       "file_type": "code",
       "source_file": "src/components/prep/SkillGraph.tsx",
-      "source_location": "L59",
+      "source_location": "L56",
       "_origin": "ast",
       "id": "prep_skillgraph_statelegend",
       "community": 5,
@@ -3077,7 +3067,7 @@
       "label": "NodeMark()",
       "file_type": "code",
       "source_file": "src/components/prep/SkillGraph.tsx",
-      "source_location": "L77",
+      "source_location": "L74",
       "_origin": "ast",
       "id": "prep_skillgraph_nodemark",
       "community": 5,
@@ -3087,17 +3077,27 @@
       "label": "autoLayout()",
       "file_type": "code",
       "source_file": "src/components/prep/SkillGraph.tsx",
-      "source_location": "L108",
+      "source_location": "L105",
       "_origin": "ast",
       "id": "prep_skillgraph_autolayout",
       "community": 5,
       "norm_label": "autolayout()"
     },
     {
+      "label": "BASE",
+      "file_type": "code",
+      "source_file": "src/components/prep/SkillGraph.tsx",
+      "source_location": "L142",
+      "_origin": "ast",
+      "id": "prep_skillgraph_base",
+      "community": 5,
+      "norm_label": "base"
+    },
+    {
       "label": "along()",
       "file_type": "code",
       "source_file": "src/components/prep/SkillGraph.tsx",
-      "source_location": "L166",
+      "source_location": "L150",
       "_origin": "ast",
       "id": "prep_skillgraph_along",
       "community": 5,
@@ -3107,7 +3107,7 @@
       "label": "edgePath()",
       "file_type": "code",
       "source_file": "src/components/prep/SkillGraph.tsx",
-      "source_location": "L177",
+      "source_location": "L161",
       "_origin": "ast",
       "id": "prep_skillgraph_edgepath",
       "community": 5,
@@ -3117,7 +3117,7 @@
       "label": "SkillGraph()",
       "file_type": "code",
       "source_file": "src/components/prep/SkillGraph.tsx",
-      "source_location": "L187",
+      "source_location": "L171",
       "_origin": "ast",
       "id": "prep_skillgraph_skillgraph",
       "community": 5,
@@ -3130,7 +3130,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "prep_prepdata",
-      "community": 5,
+      "community": 7,
       "norm_label": "prepdata.ts"
     },
     {
@@ -3150,7 +3150,7 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "prep_prepdata_day",
-      "community": 5,
+      "community": 7,
       "norm_label": "day()"
     },
     {
@@ -3160,7 +3160,7 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "prep_prepdata_months",
-      "community": 5,
+      "community": 7,
       "norm_label": "months"
     },
     {
@@ -3170,7 +3170,7 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "prep_prepdata_months_short",
-      "community": 5,
+      "community": 7,
       "norm_label": "months_short"
     },
     {
@@ -3180,7 +3180,7 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "prep_prepdata_formatdate",
-      "community": 2,
+      "community": 7,
       "norm_label": "formatdate()"
     },
     {
@@ -3190,7 +3190,7 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "prep_prepdata_formatshort",
-      "community": 2,
+      "community": 7,
       "norm_label": "formatshort()"
     },
     {
@@ -3200,7 +3200,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "prep_prepdata_daysbetween",
-      "community": 2,
+      "community": 7,
       "norm_label": "daysbetween()"
     },
     {
@@ -3210,7 +3210,7 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "prep_prepdata_parsedeadline",
-      "community": 2,
+      "community": 7,
       "norm_label": "parsedeadline()"
     },
     {
@@ -3230,7 +3230,7 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "prep_prepdata_state_label",
-      "community": 5,
+      "community": 7,
       "norm_label": "state_label"
     },
     {
@@ -3240,7 +3240,7 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "prep_prepdata_misconceptionstatus",
-      "community": 5,
+      "community": 7,
       "norm_label": "misconceptionstatus"
     },
     {
@@ -3260,7 +3260,7 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "prep_prepdata_evidence",
-      "community": 5,
+      "community": 7,
       "norm_label": "evidence"
     },
     {
@@ -3300,7 +3300,7 @@
       "source_location": "L255",
       "_origin": "ast",
       "id": "prep_prepdata_skillbyid",
-      "community": 5,
+      "community": 7,
       "norm_label": "skillbyid()"
     },
     {
@@ -3310,7 +3310,7 @@
       "source_location": "L259",
       "_origin": "ast",
       "id": "prep_prepdata_setstatus",
-      "community": 5,
+      "community": 7,
       "norm_label": "setstatus"
     },
     {
@@ -3320,7 +3320,7 @@
       "source_location": "L261",
       "_origin": "ast",
       "id": "prep_prepdata_set_status_label",
-      "community": 5,
+      "community": 7,
       "norm_label": "set_status_label"
     },
     {
@@ -3330,7 +3330,7 @@
       "source_location": "L268",
       "_origin": "ast",
       "id": "prep_prepdata_studyset",
-      "community": 5,
+      "community": 7,
       "norm_label": "studyset"
     },
     {
@@ -3340,7 +3340,7 @@
       "source_location": "L281",
       "_origin": "ast",
       "id": "prep_prepdata_sets",
-      "community": 5,
+      "community": 7,
       "norm_label": "sets"
     },
     {
@@ -3350,7 +3350,7 @@
       "source_location": "L350",
       "_origin": "ast",
       "id": "prep_prepdata_setbyid",
-      "community": 2,
+      "community": 7,
       "norm_label": "setbyid()"
     },
     {
@@ -3360,7 +3360,7 @@
       "source_location": "L353",
       "_origin": "ast",
       "id": "prep_prepdata_closedcount",
-      "community": 5,
+      "community": 7,
       "norm_label": "closedcount()"
     },
     {
@@ -3370,7 +3370,7 @@
       "source_location": "L358",
       "_origin": "ast",
       "id": "prep_prepdata_task",
-      "community": 5,
+      "community": 7,
       "norm_label": "task"
     },
     {
@@ -3380,7 +3380,7 @@
       "source_location": "L365",
       "_origin": "ast",
       "id": "prep_prepdata_guideline",
-      "community": 5,
+      "community": 7,
       "norm_label": "guideline"
     },
     {
@@ -3400,7 +3400,7 @@
       "source_location": "L430",
       "_origin": "ast",
       "id": "prep_prepdata_milestone",
-      "community": 5,
+      "community": 7,
       "norm_label": "milestone"
     },
     {
@@ -3410,7 +3410,7 @@
       "source_location": "L440",
       "_origin": "ast",
       "id": "prep_prepdata_examrequirement",
-      "community": 5,
+      "community": 7,
       "norm_label": "examrequirement"
     },
     {
@@ -3420,7 +3420,7 @@
       "source_location": "L454",
       "_origin": "ast",
       "id": "prep_prepdata_demo_saved",
-      "community": 5,
+      "community": 7,
       "norm_label": "demo_saved"
     },
     {
@@ -3480,7 +3480,7 @@
       "source_location": "L549",
       "_origin": "ast",
       "id": "prep_prepdata_forecastseries",
-      "community": 5,
+      "community": 7,
       "norm_label": "forecastseries()"
     },
     {
@@ -3590,7 +3590,7 @@
       "source_location": "L110",
       "_origin": "ast",
       "id": "prep_prepmodel_setstatus",
-      "community": 5,
+      "community": 7,
       "norm_label": "setstatus()"
     },
     {
@@ -3600,7 +3600,7 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "prep_prepmodel_proposedset",
-      "community": 2,
+      "community": 7,
       "norm_label": "proposedset()"
     },
     {
@@ -3620,7 +3620,7 @@
       "source_location": "L125",
       "_origin": "ast",
       "id": "prep_prepmodel_readiness",
-      "community": 5,
+      "community": 7,
       "norm_label": "readiness()"
     },
     {
@@ -3680,7 +3680,7 @@
       "source_location": "L212",
       "_origin": "ast",
       "id": "prep_prepmodel_disputemisconception",
-      "community": 5,
+      "community": 7,
       "norm_label": "disputemisconception()"
     },
     {
@@ -3692,106 +3692,6 @@
       "id": "prep_prepmodel_misconception_label",
       "community": 7,
       "norm_label": "misconception_label()"
-    },
-    {
-      "label": "prepSource.ts",
-      "file_type": "code",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "prep_prepsource",
-      "community": 5,
-      "norm_label": "prepsource.ts"
-    },
-    {
-      "label": "Point",
-      "file_type": "code",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L13",
-      "_origin": "ast",
-      "id": "prep_prepsource_point",
-      "community": 5,
-      "norm_label": "point"
-    },
-    {
-      "label": "SkillMap",
-      "file_type": "code",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L15",
-      "_origin": "ast",
-      "id": "prep_prepsource_skillmap",
-      "community": 5,
-      "norm_label": "skillmap"
-    },
-    {
-      "label": "RouteData",
-      "file_type": "code",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L21",
-      "_origin": "ast",
-      "id": "prep_prepsource_routedata",
-      "community": 5,
-      "norm_label": "routedata"
-    },
-    {
-      "label": "DEMO_MAP",
-      "file_type": "code",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L28",
-      "_origin": "ast",
-      "id": "prep_prepsource_demo_map",
-      "community": 5,
-      "norm_label": "demo_map"
-    },
-    {
-      "label": "DEMO_ROUTE",
-      "file_type": "code",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L29",
-      "_origin": "ast",
-      "id": "prep_prepsource_demo_route",
-      "community": 5,
-      "norm_label": "demo_route"
-    },
-    {
-      "label": "getSkillMap()",
-      "file_type": "code",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L32",
-      "_origin": "ast",
-      "id": "prep_prepsource_getskillmap",
-      "community": 5,
-      "norm_label": "getskillmap()"
-    },
-    {
-      "label": "getRoute()",
-      "file_type": "code",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L37",
-      "_origin": "ast",
-      "id": "prep_prepsource_getroute",
-      "community": 5,
-      "norm_label": "getroute()"
-    },
-    {
-      "label": "loadMapLayout()",
-      "file_type": "code",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L48",
-      "_origin": "ast",
-      "id": "prep_prepsource_loadmaplayout",
-      "community": 5,
-      "norm_label": "loadmaplayout()"
-    },
-    {
-      "label": "saveMapLayout()",
-      "file_type": "code",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L52",
-      "_origin": "ast",
-      "id": "prep_prepsource_savemaplayout",
-      "community": 5,
-      "norm_label": "savemaplayout()"
     },
     {
       "label": "TransitionLink.tsx",
@@ -6568,9 +6468,9 @@
       "source_file": "src/components/choice/Topbar.tsx",
       "source_location": "L22",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "choice_topbar",
-      "target": "choice_topbar_menu_label"
+      "target": "choice_topbar_menu_label",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -10912,16 +10812,6 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/prep/GraphCanvas.tsx",
-      "source_location": "L321",
-      "weight": 1.0,
-      "source": "prep_graphcanvas",
-      "target": "prep_graphcanvas_fittowidth",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/GraphCanvas.tsx",
       "source_location": "L63",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -11012,28 +10902,6 @@
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L11",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_graphcanvas",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/SetsView.tsx",
-      "source_location": "L17",
-      "weight": 1.0,
-      "source": "prep_setsview",
-      "target": "prep_graphcanvas",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
       "source_file": "src/components/prep/SkillGraph.tsx",
       "source_location": "L4",
       "weight": 1.0,
@@ -11056,56 +10924,12 @@
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L11",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_graphcanvas_readstore",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L49",
-      "weight": 1.0,
-      "source": "prep_prepsource_loadmaplayout",
-      "target": "prep_graphcanvas_readstore"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
       "source_file": "src/components/prep/SkillGraph.tsx",
       "source_location": "L4",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "prep_skillgraph",
       "target": "prep_graphcanvas_readstore"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L11",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_graphcanvas_writestore",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L53",
-      "weight": 1.0,
-      "source": "prep_prepsource_savemaplayout",
-      "target": "prep_graphcanvas_writestore"
     },
     {
       "relation": "imports",
@@ -11128,17 +10952,6 @@
       "confidence_score": 1.0,
       "source": "prep_skillgraph",
       "target": "prep_graphcanvas_graphcanvas"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/SetsView.tsx",
-      "source_location": "L17",
-      "weight": 1.0,
-      "source": "prep_setsview",
-      "target": "prep_graphcanvas_fittowidth",
-      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -12123,50 +11936,6 @@
       "target": "prep_prepmodel_setstatus"
     },
     {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/SetsView.tsx",
-      "source_location": "L18",
-      "weight": 1.0,
-      "source": "prep_setsview",
-      "target": "prep_prepsource",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/SetsView.tsx",
-      "source_location": "L18",
-      "weight": 1.0,
-      "source": "prep_setsview",
-      "target": "prep_prepsource_getroute",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/SetsView.tsx",
-      "source_location": "L18",
-      "weight": 1.0,
-      "source": "prep_setsview",
-      "target": "prep_prepsource_getskillmap",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/SetsView.tsx",
-      "source_location": "L18",
-      "weight": 1.0,
-      "source": "prep_setsview",
-      "target": "prep_prepsource_routedata",
-      "confidence_score": 1.0
-    },
-    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/prep/SetsView.tsx",
@@ -12426,34 +12195,12 @@
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/SetsView.tsx",
-      "source_location": "L78",
-      "weight": 1.0,
-      "source": "prep_setsview_route",
-      "target": "prep_prepsource_getroute",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/prep/SetsView.tsx",
       "source_location": "L110",
       "weight": 1.0,
       "source": "prep_setsview_knowledgemap",
       "target": "prep_prepdata_skillbyid"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/components/prep/SetsView.tsx",
-      "source_location": "L226",
-      "weight": 1.0,
-      "source": "prep_setsview_knowledgemap",
-      "target": "prep_prepsource_getskillmap"
     },
     {
       "relation": "imports_from",
@@ -12533,50 +12280,6 @@
       "target": "prep_prepdata_state_label"
     },
     {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/SkillGraph.tsx",
-      "source_location": "L6",
-      "weight": 1.0,
-      "source": "prep_skillgraph",
-      "target": "prep_prepsource",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/SkillGraph.tsx",
-      "source_location": "L6",
-      "weight": 1.0,
-      "source": "prep_skillgraph",
-      "target": "prep_prepsource_loadmaplayout",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/SkillGraph.tsx",
-      "source_location": "L6",
-      "weight": 1.0,
-      "source": "prep_skillgraph",
-      "target": "prep_prepsource_savemaplayout",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/SkillGraph.tsx",
-      "source_location": "L6",
-      "weight": 1.0,
-      "source": "prep_skillgraph",
-      "target": "prep_prepsource_skillmap",
-      "confidence_score": 1.0
-    },
-    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/prep/SkillGraph.tsx",
@@ -12595,6 +12298,16 @@
       "confidence_score": 1.0,
       "source": "prep_skillgraph",
       "target": "prep_skillgraph_autolayout"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/prep/SkillGraph.tsx",
+      "source_location": "L139",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "prep_skillgraph",
+      "target": "prep_skillgraph_base"
     },
     {
       "relation": "contains",
@@ -13049,17 +12762,6 @@
       "target": "prep_prepdata"
     },
     {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L10",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepdata",
-      "confidence_score": 1.0
-    },
-    {
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -13102,17 +12804,6 @@
       "confidence_score": 1.0,
       "source": "prep_prepdata_requirements",
       "target": "prep_prepdata_day"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L10",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepdata_day",
-      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -13173,45 +12864,12 @@
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L10",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepdata_skill",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L10",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepdata_areas",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
       "source_file": "src/components/prep/prepModel.ts",
       "source_location": "L4",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "prep_prepmodel",
       "target": "prep_prepdata_skills"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L10",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepdata_skills",
-      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -13239,34 +12897,12 @@
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L10",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepdata_studyset",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
       "source_file": "src/components/prep/prepModel.ts",
       "source_location": "L4",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "prep_prepmodel",
       "target": "prep_prepdata_sets"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L10",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepdata_sets",
-      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -13534,96 +13170,6 @@
       "confidence_score": 1.0,
       "source": "prep_prepmodel_answertask",
       "target": "prep_prepmodel_closed"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L28",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepsource_demo_map",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L29",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepsource_demo_route",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L37",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepsource_getroute",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L32",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepsource_getskillmap",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L48",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepsource_loadmaplayout",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L13",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepsource_point",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L21",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepsource_routedata",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L52",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepsource_savemaplayout",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/components/prep/prepSource.ts",
-      "source_location": "L15",
-      "weight": 1.0,
-      "source": "prep_prepsource",
-      "target": "prep_prepsource_skillmap",
-      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -14020,5 +13566,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "263c6b92484f030679a373ab970446e86cf3b88e"
+  "built_at_commit": "8ac422e710ef8d4344b82288d7848dfb8f5e7d3e"
 }

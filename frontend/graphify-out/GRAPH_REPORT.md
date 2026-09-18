@@ -1,16 +1,16 @@
 # Graph Report - frontend  (2026-09-18)
 
 ## Corpus Check
-- 59 files · ~37,713 words
+- 58 files · ~36,813 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 420 nodes · 925 edges · 15 communities (14 shown, 1 thin omitted)
+- 410 nodes · 892 edges · 15 communities (14 shown, 1 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `263c6b92`
+- Built from commit: `8ac422e7`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -37,23 +37,23 @@
 3. `Dashboard()` - 14 edges
 4. `Icon()` - 13 edges
 5. `Overview()` - 12 edges
-6. `day()` - 12 edges
-7. `daysBetween()` - 12 edges
+6. `daysBetween()` - 12 edges
+7. `day()` - 11 edges
 8. `Profile` - 10 edges
 9. `setById()` - 10 edges
 10. `proposedSet()` - 10 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Dashboard()` --calls--> `readiness()`  [EXTRACTED]
-  src/components/dashboard/Dashboard.tsx → src/components/prep/prepModel.ts
-- `CurrentSet()` --calls--> `skillById()`  [EXTRACTED]
-  src/components/prep/CurrentSet.tsx → src/components/prep/prepData.ts
-- `CurrentSet()` --calls--> `closed()`  [EXTRACTED]
-  src/components/prep/CurrentSet.tsx → src/components/prep/prepModel.ts
+- `ActivityGrid()` --calls--> `formatShort()`  [EXTRACTED]
+  src/components/dashboard/ActivityGrid.tsx → src/components/prep/prepData.ts
+- `CalendarTab()` --calls--> `formatDate()`  [EXTRACTED]
+  src/components/dashboard/CalendarTab.tsx → src/components/prep/prepData.ts
 - `GuideCanvas()` --calls--> `skillById()`  [EXTRACTED]
   src/components/prep/CurrentSet.tsx → src/components/prep/prepData.ts
 - `TaskCanvas()` --calls--> `skillById()`  [EXTRACTED]
   src/components/prep/CurrentSet.tsx → src/components/prep/prepData.ts
+- `KnowledgeMap()` --calls--> `skillById()`  [EXTRACTED]
+  src/components/prep/SetsView.tsx → src/components/prep/prepData.ts
 
 ## Import Cycles
 - None detected.
@@ -62,31 +62,31 @@
 
 ### Community 0 - "Community 0"
 Cohesion: 0.06
-Nodes (39): acknowledge(), editField(), EMPTY_PROFILE, extract(), FieldKey, FIELDS, FieldStatus, fieldValue() (+31 more)
+Nodes (40): acknowledge(), editField(), EMPTY_PROFILE, extract(), FieldKey, FIELDS, FieldStatus, fieldValue() (+32 more)
 
 ### Community 1 - "Community 1"
-Cohesion: 0.10
-Nodes (22): intelOneMono, inter, metadata, raleway, ProfileToggle(), Mode, LETTERS, MENU_LABEL (+14 more)
+Cohesion: 0.11
+Nodes (21): intelOneMono, inter, metadata, raleway, Mode, LETTERS, MENU_LABEL, MODES (+13 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.08
-Nodes (48): ActivityGrid(), downloadIcs(), escape(), googleCalendarUrl(), icsFile(), nextDay(), pad(), stamp() (+40 more)
+Cohesion: 0.09
+Nodes (30): ActivityGrid(), downloadIcs(), escape(), googleCalendarUrl(), icsFile(), nextDay(), pad(), stamp() (+22 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.10
 Nodes (19): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+11 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.05
-Nodes (61): GuideCanvas(), TaskCanvas(), clamp(), Drag, FitToWidth(), GraphCanvas(), Popover, PopoverCard() (+53 more)
+Cohesion: 0.09
+Nodes (23): clamp(), Drag, GraphCanvas(), Popover, PopoverCard(), Props, readStore(), ScaleContext (+15 more)
 
 ### Community 6 - "Community 6"
 Cohesion: 0.12
 Nodes (16): dependencies, next, react, react-dom, devDependencies, @types/node, @types/react, @types/react-dom (+8 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.09
-Nodes (36): Icon(), IconName, ChatLine, Props, ForecastChart(), PAD, Props, useWidth() (+28 more)
+Cohesion: 0.06
+Nodes (83): Icon(), IconName, Dashboard(), forecastScore(), Props, activityByDay(), calendar(), calendarEvents() (+75 more)
 
 ### Community 11 - "Community 11"
 Cohesion: 0.22
@@ -117,24 +117,24 @@ Cohesion: 0.09
 Nodes (32): Profile, CompareView(), CompareViewProps, budgetOf(), CompareRow, compareRows(), compareSummary(), evaluate() (+24 more)
 
 ## Knowledge Gaps
-- **141 isolated node(s):** `nextConfig`, `name`, `version`, `private`, `dev` (+136 more)
+- **139 isolated node(s):** `nextConfig`, `name`, `version`, `private`, `dev` (+134 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **1 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Program` connect `Community 12` to `Community 2`, `Community 5`, `Community 7`, `Community 16`, `Community 18`?**
+- **Why does `Program` connect `Community 12` to `Community 16`, `Community 18`, `Community 2`, `Community 7`?**
   _High betweenness centrality (0.051) - this node is a cross-community bridge._
-- **Why does `Icon()` connect `Community 7` to `Community 0`, `Community 1`, `Community 2`, `Community 5`, `Community 18`?**
-  _High betweenness centrality (0.029) - this node is a cross-community bridge._
-- **Why does `PROGRAMS` connect `Community 12` to `Community 16`, `Community 18`, `Community 5`?**
-  _High betweenness centrality (0.022) - this node is a cross-community bridge._
+- **Why does `Icon()` connect `Community 7` to `Community 0`, `Community 1`, `Community 18`, `Community 2`?**
+  _High betweenness centrality (0.027) - this node is a cross-community bridge._
+- **Why does `PROGRAMS` connect `Community 12` to `Community 16`, `Community 18`, `Community 7`?**
+  _High betweenness centrality (0.020) - this node is a cross-community bridge._
 - **What connects `nextConfig`, `name`, `version` to the rest of the system?**
-  _141 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _139 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.06095791001451379 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0593990216631726 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.1010752688172043 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.10574712643678161 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
-  _Cohesion score 0.08080808080808081 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08888888888888889 - nodes in this community are weakly interconnected._

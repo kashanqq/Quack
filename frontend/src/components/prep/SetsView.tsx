@@ -4,18 +4,18 @@ import { useState } from "react";
 import { Icon } from "../choice/Icon";
 import {
   AREAS,
+  day,
   formatDate,
   formatShort,
   forecastSeries,
   SET_STATUS_LABEL,
   SETS,
   skillById,
+  SKILLS,
   STATE_LABEL,
   TODAY,
 } from "./prepData";
 import { closed, disputeMisconception, MISCONCEPTION_LABEL, readiness, setStatus, type PrepModel, type PrepSub } from "./prepModel";
-import { FitToWidth } from "./GraphCanvas";
-import { getRoute, getSkillMap, type RouteData } from "./prepSource";
 import { SkillGraph, StateGlyph, StateLegend } from "./SkillGraph";
 import styles from "./prep.module.css";
 
@@ -47,56 +47,45 @@ const AXIS_Y = 244;
 const MID = 140;
 const SET_R = 22;
 
-/**
- * Where a set sits on the route: the middle of its window, swaying above and below the line. The time
- * axis runs from the first set (or today) to a few days past the test, whatever dates the sets carry.
- */
-function routeLayout({ sets, testDate }: RouteData, forecast: Date) {
-  const times = [TODAY, testDate, forecast, ...sets.flatMap((set) => [set.start, set.deadline])].map((d) => d.getTime());
-  const from = Math.min(...times);
-  const to = Math.max(...times) + 5 * 86_400_000;
+/** Where a set sits on the route: the middle of its window, swaying above and below the line. */
+function routeLayout(forecast: Date, testDate: Date) {
+  const from = day(9, 1).getTime();
+  const to = day(11, 12).getTime();
   const x = (d: Date) => PAD + ((d.getTime() - from) / (to - from)) * (CANVAS_W - PAD * 2);
 
-  const months: Date[] = [];
-  for (let m = new Date(from); m.getTime() <= to; m = new Date(m.getFullYear(), m.getMonth() + 1, 1)) {
-    const first = new Date(m.getFullYear(), m.getMonth(), 1);
-    if (first.getTime() >= from) months.push(first);
-  }
-
-  const stops = sets.map((set, i) => ({
+  const stops = SETS.map((set, i) => ({
     set,
     x: x(new Date((set.start.getTime() + set.deadline.getTime()) / 2)),
     y: MID + (i % 2 ? 30 : -30),
     below: i % 2 === 1,
   }));
 
-  return { x, months, stops, forecastX: x(forecast), testX: x(testDate) };
+  return { x, stops, forecastX: x(forecast), testX: x(testDate) };
 }
 
 /** The route as a chain of circles: the same marks as the knowledge map, laid out on real dates. */
 function Route({ model }: { model: PrepModel }) {
-  const route = getRoute();
-  const { testDate } = route;
   const { forecast } = forecastSeries(readiness(model), model.extraDays);
-  const { x, months, stops, forecastX, testX } = routeLayout(route, forecast);
+  const testDate = day(11, 7);
+  const { x, stops, forecastX, testX } = routeLayout(forecast, testDate);
   const inTime = forecast <= testDate;
 
   return (
     <div className={styles.canvasGrid}>
       <section className={`${styles.canvas} ${styles.full}`} aria-label="Маршрут">
         <header className={styles.canvasHead}>
-          <h3>{route.exam} · маршрут</h3>
+          <h3>SAT Math · маршрут</h3>
           <span className={inTime ? styles.ok : styles.warn}>
             прогноз готовности {formatDate(forecast)} · тест {formatDate(testDate)}
           </span>
         </header>
 
-        <FitToWidth width={CANVAS_W} height={CANVAS_H}>
+        <div className={styles.graphScroll}>
           <div className={styles.routeMap} style={{ width: CANVAS_W, height: CANVAS_H }}>
             <svg className={styles.graphEdges} width={CANVAS_W} height={CANVAS_H} aria-hidden="true">
               {/* The line the whole route runs along */}
               <line x1={PAD - 20} y1={AXIS_Y} x2={CANVAS_W - PAD + 20} y2={AXIS_Y} className={styles.routeAxisLine} />
-              {months.map((m) => (
+              {[day(9, 1), day(10, 1), day(11, 1)].map((m) => (
                 <line key={m.getTime()} x1={x(m)} y1={AXIS_Y - 5} x2={x(m)} y2={AXIS_Y + 5} className={styles.routeAxisLine} />
               ))}
 
@@ -137,7 +126,7 @@ function Route({ model }: { model: PrepModel }) {
               ))}
             </svg>
 
-            {months.map((m) => (
+            {[day(9, 1), day(10, 1), day(11, 1)].map((m) => (
               <span key={m.getTime()} className={styles.routeMonth} style={{ left: x(m), top: AXIS_Y + 10 }}>
                 {formatShort(m).replace(/^\d+ /, "")}
               </span>
@@ -186,7 +175,7 @@ function Route({ model }: { model: PrepModel }) {
               </span>
             </span>
           </div>
-        </FitToWidth>
+        </div>
 
         <p className={styles.muted}>
           Кружок — сет на своих датах: {STATUS_TEXT.done} — залит, текущий — оранжевый, предстоит — контур, закрепление — пунктир.
@@ -223,12 +212,8 @@ function SetMark({ status }: { status: keyof typeof STATUS_TEXT }) {
 function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: PrepModel) => void }) {
   // Nothing open at first: the card would cover the map before the student has looked at it
   const [selected, setSelected] = useState<string | null>(null);
-  const map = getSkillMap();
   const current = SETS.find((s) => s.id === model.currentSet);
-  const skill = selected ? map.skills.find((s) => s.id === selected) ?? null : null;
-  const nameOf = (id: string) => map.skills.find((s) => s.id === id)?.name ?? id;
-  const traps = skill ? model.misconceptions[skill.id] ?? [] : [];
-  const evidence = skill ? model.evidence[skill.id] ?? [] : [];
+  const skill = selected ? skillById(selected) : null;
 
   return (
     <div className={styles.canvasGrid}>
@@ -238,7 +223,6 @@ function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: P
           <StateLegend />
         </header>
         <SkillGraph
-          map={map}
           states={model.states}
           recall={model.recall}
           misconceptions={model.misconceptions}
@@ -252,14 +236,14 @@ function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: P
                 <p className={styles.eyebrow}>{skill.area}</p>
                 <h4>{skill.name}</h4>
                 <p className={styles.skillState}>
-                  <StateGlyph state={model.states[skill.id] ?? "lowData"} size={16} />
-                  {STATE_LABEL[model.states[skill.id] ?? "lowData"]} · вспомнит сейчас ~{Math.round((model.recall[skill.id] ?? 0) * 100)}% · вес{" "}
+                  <StateGlyph state={model.states[skill.id]} size={16} />
+                  {STATE_LABEL[model.states[skill.id]]} · вспомнит сейчас ~{Math.round(model.recall[skill.id] * 100)}% · вес{" "}
                   {skill.weight}%
                 </p>
                 {skill.root && (
                   <p className={styles.rootNote}>
                     Корень: ошибки в «
-                    {map.skills.filter((s) => s.requires.includes(skill.id))
+                    {SKILLS.filter((s) => s.requires.includes(skill.id))
                       .map((s) => s.name)
                       .join(", ")}
                     » идут отсюда.
@@ -268,12 +252,12 @@ function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: P
                 <dl className={styles.facts}>
                   <div>
                     <dt>Опирается на</dt>
-                    <dd>{skill.requires.map(nameOf).join(", ") || "—"}</dd>
+                    <dd>{skill.requires.map((id) => skillById(id).name).join(", ") || "—"}</dd>
                   </div>
                   <div>
                     <dt>Нужен для</dt>
                     <dd>
-                      {map.skills.filter((s) => s.requires.includes(skill.id))
+                      {SKILLS.filter((s) => s.requires.includes(skill.id))
                         .map((s) => s.name)
                         .join(", ") || "—"}
                     </dd>
@@ -288,11 +272,11 @@ function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: P
                   </div>
                 </dl>
 
-                {traps.length > 0 && (
+                {model.misconceptions[skill.id].length > 0 && (
                   <>
                     <p className={styles.eyebrow}>Ловушки</p>
                     <ul className={styles.plainList}>
-                      {traps.map((m) => (
+                      {model.misconceptions[skill.id].map((m) => (
                         <li key={m.id} className={styles.misconception} data-status={m.status}>
                           <span>
                             {m.text}
@@ -315,9 +299,9 @@ function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: P
                 )}
 
                 <p className={styles.eyebrow}>Откуда мы это знаем</p>
-                {evidence.length ? (
+                {model.evidence[skill.id].length ? (
                   <ul className={styles.evidence}>
-                    {evidence.map((e, i) => (
+                    {model.evidence[skill.id].map((e, i) => (
                       <li key={i}>
                         <span className={styles.sourceTag}>{e.source}</span>
                         <span>{e.text}</span>

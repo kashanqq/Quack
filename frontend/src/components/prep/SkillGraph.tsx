@@ -1,14 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { GraphCanvas, useNodeDrag } from "./GraphCanvas";
-import { STATE_LABEL, type Misconception, type Skill, type SkillState } from "./prepData";
-import { loadMapLayout, saveMapLayout, type SkillMap } from "./prepSource";
+import { useEffect, useState, type ReactNode } from "react";
+import { GraphCanvas, readStore, useNodeDrag, writeStore } from "./GraphCanvas";
+import { AREAS, SKILLS, STATE_LABEL, type Misconception, type Skill, type SkillState } from "./prepData";
 import styles from "./prep.module.css";
 
 type Props = {
-  /** The canonical map: which skills exist, their areas and dependencies (from prepSource) */
-  map: SkillMap;
   states: Record<string, SkillState>;
   recall: Record<string, number>;
   misconceptions: Record<string, Misconception[]>;
@@ -105,33 +102,18 @@ function NodeMark({ state, recall }: { state: SkillState; recall: number }) {
  * The map reads left to right: what a skill rests on stays to its left, what it unlocks to its right.
  * Each exam area keeps its own horizontal lane, so a column means "this deep into the prerequisites".
  */
-function autoLayout({ areas, skills }: SkillMap) {
-  const byId = new Map(skills.map((s) => [s.id, s]));
-  const depths = new Map<string, number>();
-  // Data comes from the backend, so a dependency on an unknown skill or a loop must not break the map
-  const depth = (s: Skill, seen = new Set<string>()): number => {
-    const known = depths.get(s.id);
-    if (known !== undefined) return known;
-    if (seen.has(s.id)) return 0;
-    seen.add(s.id);
-    const parents = s.requires.map((id) => byId.get(id)).filter((p): p is Skill => !!p);
-    const d = parents.length ? 1 + Math.max(...parents.map((p) => depth(p, seen))) : 0;
-    depths.set(s.id, d);
-    return d;
-  };
+function autoLayout() {
+  const depth = (s: Skill): number =>
+    s.requires.length ? 1 + Math.max(...s.requires.map((id) => depth(SKILLS.find((k) => k.id === id)!))) : 0;
 
   const pos: Record<string, Point> = {};
   const lanes: { area: string; y: number; height: number }[] = [];
-  let columns = 1;
+  let columns = 0;
   let y = TOP;
 
-  // Areas in the order the map lists them, then any a skill names that the list forgot
-  const order = [...areas, ...new Set(skills.map((s) => s.area).filter((a) => !areas.includes(a)))];
-  order.forEach((area) => {
-    const inArea = skills.filter((s) => s.area === area);
-    if (!inArea.length) return;
+  AREAS.forEach((area) => {
     const byColumn = new Map<number, Skill[]>();
-    inArea.forEach((s) => {
+    SKILLS.filter((s) => s.area === area).forEach((s) => {
       const col = depth(s);
       columns = Math.max(columns, col + 1);
       byColumn.set(col, [...(byColumn.get(col) ?? []), s]);
@@ -157,6 +139,8 @@ function autoLayout({ areas, skills }: SkillMap) {
   return { pos, lanes, width: PAD_X * 2 + columns * COL_W, height: y };
 }
 
+const BASE = autoLayout();
+const NODES_KEY = "lupidrupi.skillmap.nodes.v1";
 const VIEW_KEY = "lupidrupi.skillmap.view.v1";
 
 const GAP = R + 9;
@@ -184,69 +168,72 @@ function edgePath(a: Point, b: Point) {
 }
 
 /** Knowledge map: exam areas as lanes, prerequisites linked to the skill that needs them. */
-export function SkillGraph({ map, states, recall, misconceptions, highlight, selected, onSelect, details, onClose }: Props) {
-  const { skills } = map;
-  const base = useMemo(() => autoLayout(map), [map]);
+export function SkillGraph({ states, recall, misconceptions, highlight, selected, onSelect, details, onClose }: Props) {
+  const [pos, setPos] = useState<Record<string, Point>>(BASE.pos);
+  const [moved, setMoved] = useState(false);
 
-  // Only the skills the student dragged; the rest keep their automatic place, including skills that
-  // arrive later
-  const [moved, setMoved] = useState<Record<string, Point>>({});
-  const [loaded, setLoaded] = useState(false);
-
+  // Whatever the student arranged last time; nodes that no longer exist are dropped
   useEffect(() => {
-    setMoved(loadMapLayout());
-    setLoaded(true);
+    const stored = readStore<Record<string, Point>>(NODES_KEY);
+    if (!stored) return;
+    const known = Object.entries(stored).filter(([id]) => id in BASE.pos);
+    if (!known.length) return;
+    setPos((p) => ({ ...p, ...Object.fromEntries(known) }));
+    setMoved(true);
   }, []);
 
   useEffect(() => {
-    if (loaded) saveMapLayout(moved);
-  }, [loaded, moved]);
+    if (moved) writeStore(NODES_KEY, pos);
+  }, [moved, pos]);
 
-  const pos = useMemo(() => {
-    const out = { ...base.pos };
-    for (const [id, at] of Object.entries(moved)) if (id in out) out[id] = at;
-    return out;
-  }, [base, moved]);
+  const drag = useNodeDrag((id, x, y) => {
+    setMoved(true);
+    setPos((p) => ({ ...p, [id]: { x, y } }));
+  });
 
-  const drag = useNodeDrag((id, x, y) => setMoved((m) => ({ ...m, [id]: { x, y } })));
+  const resetLayout = () => {
+    setPos(BASE.pos);
+    setMoved(false);
+    writeStore(NODES_KEY, null);
+  };
 
   const related = new Set<string>();
-  const selectedSkill = selected ? skills.find((s) => s.id === selected) : undefined;
-  if (selectedSkill) {
-    selectedSkill.requires.forEach((id) => related.add(id));
-    skills.filter((s) => s.requires.includes(selectedSkill.id)).forEach((s) => related.add(s.id));
+  if (selected) {
+    const skill = SKILLS.find((s) => s.id === selected)!;
+    skill.requires.forEach((id) => related.add(id));
+    SKILLS.filter((s) => s.requires.includes(selected)).forEach((s) => related.add(s.id));
   }
 
-  const edges = skills.flatMap((s) => s.requires.filter((from) => from in pos).map((from) => ({ from, to: s.id })));
+  const edges = SKILLS.flatMap((s) => s.requires.map((from) => ({ from, to: s.id })));
 
   return (
     <GraphCanvas
-      width={base.width}
-      height={base.height}
+      width={BASE.width}
+      height={BASE.height}
       label="Холст карты навыков"
       storageKey={VIEW_KEY}
       hint="Нажми на навык — подробности откроются рядом. Узлы и фон двигаются мышкой, Ctrl + колесо — масштаб."
       popover={
-        selectedSkill && details
-          ? { at: pos[selectedSkill.id], gap: NODE_W / 2, label: selectedSkill.name, content: details, onClose }
+        selected && details
+          ? { at: pos[selected], gap: NODE_W / 2, label: SKILLS.find((s) => s.id === selected)!.name, content: details, onClose }
           : null
       }
       onBackgroundTap={onClose}
       tools={
-        Object.keys(moved).length ? (
-          <button type="button" onClick={() => setMoved({})}>
+        moved ? (
+          <button type="button" onClick={resetLayout}>
             разложить заново
           </button>
         ) : null
       }
     >
-      {base.lanes.map((lane) => (
-        <div key={lane.area} className={styles.lane} style={{ top: lane.y, height: lane.height, width: base.width - 24 }}>
+      {BASE.lanes.map((lane) => (
+        <div key={lane.area} className={styles.lane} style={{ top: lane.y, height: lane.height, width: BASE.width - 24 }}>
           <span className={styles.laneName}>{lane.area}</span>
         </div>
       ))}
 
-      <svg className={styles.graphEdges} width={base.width} height={base.height} aria-hidden="true">
+      <svg className={styles.graphEdges} width={BASE.width} height={BASE.height} aria-hidden="true">
         <defs>
           <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M0,0 L8,4 L0,8 Z" className={styles.arrowHead} />
@@ -268,12 +255,10 @@ export function SkillGraph({ map, states, recall, misconceptions, highlight, sel
         })}
       </svg>
 
-      {skills.map((s) => {
-        // A skill the student model has nothing on yet shows as "мало данных", not as an error
-        const state = states[s.id] ?? "lowData";
-        const recalled = recall[s.id] ?? 0;
+      {SKILLS.map((s) => {
+        const state = states[s.id];
         const at = pos[s.id];
-        const openMisconceptions = (misconceptions[s.id] ?? []).filter((m) => m.status === "confirmed" || m.status === "suspected").length;
+        const openMisconceptions = misconceptions[s.id].filter((m) => m.status === "confirmed" || m.status === "suspected").length;
         return (
           <button
             key={s.id}
@@ -290,7 +275,7 @@ export function SkillGraph({ map, states, recall, misconceptions, highlight, sel
             data-state={state}
             style={{ left: at.x - NODE_W / 2, top: at.y - NODE / 2, width: NODE_W }}
             aria-pressed={selected === s.id}
-            aria-label={`${s.name}: ${STATE_LABEL[state]}, вспомнит сейчас ${Math.round(recalled * 100)}%, вес ${s.weight}%`}
+            aria-label={`${s.name}: ${STATE_LABEL[state]}, вспомнит сейчас ${Math.round(recall[s.id] * 100)}%, вес ${s.weight}%`}
             title={`${s.name} — ${STATE_LABEL[state]}`}
             {...drag.bind(s.id, at)}
             onClick={() => {
@@ -299,7 +284,7 @@ export function SkillGraph({ map, states, recall, misconceptions, highlight, sel
             }}
           >
             <span className={styles.mapShapeBox}>
-              <NodeMark state={state} recall={recalled} />
+              <NodeMark state={state} recall={recall[s.id]} />
             </span>
             <span className={styles.mapChip}>
               <StateGlyph state={state} size={10} />
