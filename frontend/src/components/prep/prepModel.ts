@@ -24,6 +24,45 @@ export const PREP_TABS: { tab: PrepTab; label: string; icon: IconName }[] = [
   { tab: "current", label: "Текущий сет", icon: "target" },
 ];
 
+/**
+ * Every tab holds several separate things, so each one is split further: the tab says which part of
+ * preparation you are in, the sub-tab says what you are looking at. The left column shows both.
+ */
+export type PrepSub =
+  | "now"
+  | "requirements"
+  | "milestones"
+  | "programs"
+  | "route"
+  | "map"
+  | "all"
+  | "guide"
+  | "tasks"
+  | "tutor";
+
+export const PREP_SUBS: Record<PrepTab, { sub: PrepSub; label: string; icon: IconName; hint: string }[]> = {
+  overview: [
+    { sub: "now", label: "Сейчас", icon: "target", hint: "текущий сет и отчёт" },
+    { sub: "requirements", label: "Требования", icon: "gauge", hint: "цели экзаменов и прогноз" },
+    { sub: "milestones", label: "Вехи", icon: "flag", hint: "даты и конфликты" },
+    { sub: "programs", label: "Программы", icon: "graduation-cap", hint: "как меняются оценки" },
+  ],
+  sets: [
+    { sub: "route", label: "Маршрут", icon: "route", hint: "сеты по датам" },
+    { sub: "map", label: "Карта навыков", icon: "network", hint: "граф и свидетельства" },
+    { sub: "all", label: "Все сеты", icon: "layers", hint: "по областям" },
+  ],
+  current: [
+    { sub: "guide", label: "Гайдлайн", icon: "book-open-check", hint: "как готовиться" },
+    { sub: "tasks", label: "Задачи", icon: "list-checks", hint: "решать и проверять" },
+    { sub: "tutor", label: "Репетитор", icon: "message-circle", hint: "спросить по топику" },
+  ],
+};
+
+/** Keeps a sub-tab that belongs to another tab from leaking in; falls back to the tab's first one. */
+export const subFor = (tab: PrepTab, sub: PrepSub): PrepSub =>
+  PREP_SUBS[tab].some((s) => s.sub === sub) ? sub : PREP_SUBS[tab][0].sub;
+
 export type PrepModel = {
   states: Record<string, SkillState>;
   recall: Record<string, number>;

@@ -1,0 +1,21 @@
+/* Fixed backdrop for the cursor aura: never scrolls, never catches a click. */
+
+.wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Keeps the edges of the page darker than the middle. */
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 45%, transparent 40%, rgba(20, 18, 17, 0.5) 100%);
+}

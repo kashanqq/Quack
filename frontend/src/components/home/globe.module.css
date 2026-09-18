@@ -1,0 +1,91 @@
+/* Globe column: the canvas is square, the card underneath reacts to what is picked. */
+
+.globe {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  /* The pointer drives the spin, so the browser must not steal the gesture. */
+  touch-action: none;
+  cursor: grab;
+}
+
+.canvas:active {
+  cursor: grabbing;
+}
+
+.card {
+  min-height: 96px;
+  padding: 14px 18px;
+  background: var(--panel-bg, #242120);
+  border: 1px solid var(--panel-line, rgba(255, 255, 255, 0.09));
+  border-radius: 20px;
+  transition: border-color 0.35s ease;
+}
+
+.card[data-open="true"] {
+  border-color: rgba(255, 122, 0, 0.35);
+}
+
+.cardHint {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: var(--font-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.cardCountry {
+  margin: 0;
+  color: var(--accent);
+  font-family: var(--font-text);
+  font-size: 12px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.cardTitle {
+  margin: 6px 0 0;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.cardLine {
+  margin: 6px 0 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-family: var(--font-text);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.cardWhere {
+  margin: 4px 0 0;
+  color: rgba(255, 255, 255, 0.42);
+  font-family: var(--font-text);
+  font-size: 12px;
+}
+
+.cardClose {
+  margin: 10px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-text);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.cardClose:hover {
+  color: #fff;
+}

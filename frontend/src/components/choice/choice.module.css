@@ -33,6 +33,7 @@
 /* Not a bar: just the logo and glass buttons over the page */
 .topbar {
   grid-area: 1 / 1 / 2 / 4;
+  view-transition-name: topbar;
   z-index: 20;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -96,6 +97,52 @@
 
 .topbarLogo:hover {
   opacity: 0.8;
+}
+
+.logoLetters {
+  display: inline-flex;
+}
+
+.letter {
+  position: relative;
+  display: inline-block;
+}
+
+/* Hovering the wordmark while another section is open: the letters hop one by one, under a second */
+.topbarLogo[aria-selected="false"]:hover .letter {
+  animation: letter-hop 0.3s var(--ease-out);
+}
+
+@keyframes letter-hop {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Something happened while the student was away, or a date is close */
+.logoDot {
+  position: absolute;
+  top: 1px;
+  right: -1px;
+  width: 7px;
+  height: 7px;
+  background: #ff4d3d;
+  border: 1px solid var(--bg);
+  border-radius: 50%;
+  animation: dot-in 0.3s var(--ease-out) both;
+}
+
+@keyframes dot-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbarLogo[aria-selected="false"]:hover .letter {
+    animation: none;
+  }
 }
 
 /* Active dashboard: a duck slowly walks along the wordmark */
@@ -376,7 +423,7 @@
   grid-template-rows: var(--topbar-h) minmax(0, 1fr);
   flex: 1;
   min-height: 0;
-  transition: grid-template-columns 0.6s var(--ease);
+  transition: grid-template-columns 0.32s var(--ease);
 }
 
 .app.isResizing {
@@ -397,7 +444,7 @@
   flex-direction: column;
   min-width: 0;
   padding: 0;
-  transition: padding 0.6s var(--ease);
+  transition: padding 0.32s var(--ease);
 }
 
 .app[data-view="compare"] .composer {
@@ -417,19 +464,19 @@
 .view {
   position: absolute;
   inset: 0;
-  transition: opacity 0.45s ease, transform 0.45s var(--ease);
+  transition: opacity 0.22s ease, transform 0.26s var(--ease-out);
 }
 
 .viewPrep,
 .viewDashboard {
   opacity: 0;
-  transform: translateX(32px);
+  transform: translateX(18px);
   pointer-events: none;
 }
 
 .app:not([data-mode="choice"]) .viewChoice {
   opacity: 0;
-  transform: translateX(-32px);
+  transform: translateX(-18px);
   pointer-events: none;
 }
 
@@ -467,7 +514,7 @@
   display: grid;
   place-content: center;
   padding: 0 24px;
-  transition: opacity 0.5s ease, transform 0.7s var(--ease);
+  transition: opacity 0.28s ease, transform 0.35s var(--ease);
 }
 
 .greetingText {
@@ -480,7 +527,7 @@
   opacity: 0;
   filter: blur(8px);
   transform: translateY(18px);
-  transition: opacity 0.8s ease, filter 0.8s ease, transform 0.8s var(--ease-out);
+  transition: opacity 0.4s ease, filter 0.4s ease, transform 0.4s var(--ease-out);
 }
 
 .greetingText.isVisible {
@@ -508,7 +555,7 @@
   inset: 0;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.5s ease 0.35s;
+  transition: opacity 0.3s ease 0.12s;
 }
 
 .app[data-stage="chat"] .messagesWrap {
@@ -734,6 +781,7 @@
 
 .profile {
   position: relative;
+  view-transition-name: profile;
   min-width: 0;
   overflow: hidden;
   container-type: inline-size;
@@ -980,7 +1028,7 @@
   background: rgba(217, 217, 217, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 16px;
-  transition: width 0.8s var(--ease), opacity 0.35s ease, transform 0.45s var(--ease), border-color 0.2s ease;
+  transition: width 0.4s var(--ease), opacity 0.25s ease, transform 0.3s var(--ease), border-color 0.2s ease;
 }
 
 .composer:focus-within {

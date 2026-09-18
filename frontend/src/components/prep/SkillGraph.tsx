@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { GraphCanvas, readStore, useNodeDrag, writeStore } from "./GraphCanvas";
 import { AREAS, SKILLS, STATE_LABEL, type Misconception, type Skill, type SkillState } from "./prepData";
 import styles from "./prep.module.css";
 
@@ -13,11 +15,21 @@ type Props = {
   onSelect: (id: string) => void;
 };
 
-const COL_W = 212;
-const NODE_W = 184;
-const NODE_H = 86;
-const ROW_H = 116;
-const TOP = 44;
+type Point = { x: number; y: number };
+
+/** One step to the right is one step deeper into the prerequisites */
+const COL_W = 210;
+/** Skills that sit at the same depth inside one area stack downwards */
+const ROW_H = 130;
+const NODE = 64;
+const NODE_W = 158;
+const R = 26;
+/** Room for the area name above its lane */
+const LANE_HEAD = 24;
+const LANE_FOOT = 16;
+const LANE_GAP = 14;
+const PAD_X = 26;
+const TOP = 12;
 
 /** State is shown by shape as well as colour: filled, half, hollow, dashed. */
 export function StateGlyph({ state, size = 14 }: { state: SkillState; size?: number }) {
@@ -55,25 +67,133 @@ export function StateLegend() {
   );
 }
 
-function layout() {
-  const pos: Record<string, { x: number; y: number }> = {};
-  const depth = (s: Skill): number => (s.requires.length ? 1 + Math.max(...s.requires.map((id) => depth(SKILLS.find((k) => k.id === id)!))) : 0);
-  AREAS.forEach((area, col) => {
-    SKILLS.filter((s) => s.area === area)
-      .sort((a, b) => depth(a) - depth(b))
-      .forEach((s, row) => {
-        pos[s.id] = { x: col * COL_W + (COL_W - NODE_W) / 2, y: TOP + row * ROW_H };
-      });
-  });
-  return pos;
+/** The node itself: the same four shapes as the small glyph, drawn big, with recall as an outer arc. */
+function NodeMark({ state, recall }: { state: SkillState; recall: number }) {
+  const c = NODE / 2;
+  const track = 2 * Math.PI * (R + 5);
+  return (
+    <svg className={styles.mapShape} width={NODE} height={NODE} viewBox={`0 0 ${NODE} ${NODE}`} aria-hidden="true">
+      <circle cx={c} cy={c} r={R + 5} className={styles.mapTrack} />
+      <circle
+        cx={c}
+        cy={c}
+        r={R + 5}
+        className={styles.mapRecall}
+        strokeDasharray={`${(track * recall).toFixed(1)} ${track.toFixed(1)}`}
+        transform={`rotate(-90 ${c} ${c})`}
+      />
+      {state === "solid" && <circle cx={c} cy={c} r={R} className={styles.mapFill} />}
+      {state === "shaky" && (
+        <>
+          <circle cx={c} cy={c} r={R} className={styles.mapRing} />
+          <path d={`M${c},${c - R} A${R},${R} 0 0 0 ${c},${c + R} Z`} className={styles.mapFill} />
+        </>
+      )}
+      {state === "weak" && <circle cx={c} cy={c} r={R} className={styles.mapRing} />}
+      {state === "lowData" && <circle cx={c} cy={c} r={R} className={`${styles.mapRing} ${styles.mapDashed}`} />}
+    </svg>
+  );
 }
 
-const POS = layout();
-const WIDTH = AREAS.length * COL_W;
-const HEIGHT = TOP + Math.max(...Object.values(POS).map((p) => p.y)) + NODE_H + 16;
+/**
+ * The map reads left to right: what a skill rests on stays to its left, what it unlocks to its right.
+ * Each exam area keeps its own horizontal lane, so a column means "this deep into the prerequisites".
+ */
+function autoLayout() {
+  const depth = (s: Skill): number =>
+    s.requires.length ? 1 + Math.max(...s.requires.map((id) => depth(SKILLS.find((k) => k.id === id)!))) : 0;
 
-/** Knowledge map: exam areas as columns, prerequisites as arrows pointing to the skill that needs them. */
+  const pos: Record<string, Point> = {};
+  const lanes: { area: string; y: number; height: number }[] = [];
+  let columns = 0;
+  let y = TOP;
+
+  AREAS.forEach((area) => {
+    const byColumn = new Map<number, Skill[]>();
+    SKILLS.filter((s) => s.area === area).forEach((s) => {
+      const col = depth(s);
+      columns = Math.max(columns, col + 1);
+      byColumn.set(col, [...(byColumn.get(col) ?? []), s]);
+    });
+
+    const stack = Math.max(...[...byColumn.values()].map((group) => group.length));
+    byColumn.forEach((group, col) => {
+      // A short column sits in the middle of the lane rather than hugging its top
+      const offset = (stack - group.length) / 2;
+      group.forEach((s, i) => {
+        pos[s.id] = {
+          x: PAD_X + col * COL_W + COL_W / 2,
+          y: y + LANE_HEAD + (offset + i) * ROW_H + NODE / 2 + 6,
+        };
+      });
+    });
+
+    const height = LANE_HEAD + stack * ROW_H + LANE_FOOT;
+    lanes.push({ area, y, height });
+    y += height + LANE_GAP;
+  });
+
+  return { pos, lanes, width: PAD_X * 2 + columns * COL_W, height: y };
+}
+
+const BASE = autoLayout();
+const NODES_KEY = "lupidrupi.skillmap.nodes.v1";
+const VIEW_KEY = "lupidrupi.skillmap.view.v1";
+
+const GAP = R + 9;
+const HEAD = 6;
+
+/** A point `d` away from `p` in the direction of `towards` — used to cut a link short of the circle. */
+function along(p: Point, towards: Point, d: number): Point {
+  const vx = towards.x - p.x;
+  const vy = towards.y - p.y;
+  const len = Math.hypot(vx, vy) || 1;
+  return { x: p.x + (vx / len) * d, y: p.y + (vy / len) * d };
+}
+
+/**
+ * A link between two circles: it leaves to the right and arrives from the left, so the flow of
+ * prerequisites stays readable wherever the two nodes have been dragged.
+ */
+function edgePath(a: Point, b: Point) {
+  const reach = Math.max(56, Math.abs(b.x - a.x) * 0.45);
+  const c1 = { x: a.x + reach, y: a.y };
+  const c2 = { x: b.x - reach, y: b.y };
+  const start = along(a, c1, GAP);
+  const end = along(b, c2, GAP + HEAD);
+  return `M${start.x},${start.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${end.x},${end.y}`;
+}
+
+/** Knowledge map: exam areas as lanes, prerequisites linked to the skill that needs them. */
 export function SkillGraph({ states, recall, misconceptions, highlight, selected, onSelect }: Props) {
+  const [pos, setPos] = useState<Record<string, Point>>(BASE.pos);
+  const [moved, setMoved] = useState(false);
+
+  // Whatever the student arranged last time; nodes that no longer exist are dropped
+  useEffect(() => {
+    const stored = readStore<Record<string, Point>>(NODES_KEY);
+    if (!stored) return;
+    const known = Object.entries(stored).filter(([id]) => id in BASE.pos);
+    if (!known.length) return;
+    setPos((p) => ({ ...p, ...Object.fromEntries(known) }));
+    setMoved(true);
+  }, []);
+
+  useEffect(() => {
+    if (moved) writeStore(NODES_KEY, pos);
+  }, [moved, pos]);
+
+  const drag = useNodeDrag((id, x, y) => {
+    setMoved(true);
+    setPos((p) => ({ ...p, [id]: { x, y } }));
+  });
+
+  const resetLayout = () => {
+    setPos(BASE.pos);
+    setMoved(false);
+    writeStore(NODES_KEY, null);
+  };
+
   const related = new Set<string>();
   if (selected) {
     const skill = SKILLS.find((s) => s.id === selected)!;
@@ -84,85 +204,94 @@ export function SkillGraph({ states, recall, misconceptions, highlight, selected
   const edges = SKILLS.flatMap((s) => s.requires.map((from) => ({ from, to: s.id })));
 
   return (
-    <div className={styles.graphScroll}>
-      <div className={styles.graph} style={{ width: WIDTH, height: HEIGHT }}>
-        {AREAS.map((area, col) => (
-          <div key={area} className={styles.graphArea} style={{ left: col * COL_W, width: COL_W }}>
-            {area}
-          </div>
-        ))}
+    <GraphCanvas
+      width={BASE.width}
+      height={BASE.height}
+      label="Холст карты навыков"
+      storageKey={VIEW_KEY}
+      hint="Узлы двигаются мышкой, фон — чтобы сдвинуть карту, Ctrl + колесо — масштаб."
+      tools={
+        moved ? (
+          <button type="button" onClick={resetLayout}>
+            разложить заново
+          </button>
+        ) : null
+      }
+    >
+      {BASE.lanes.map((lane) => (
+        <div key={lane.area} className={styles.lane} style={{ top: lane.y, height: lane.height, width: BASE.width - 24 }}>
+          <span className={styles.laneName}>{lane.area}</span>
+        </div>
+      ))}
 
-        <svg className={styles.graphEdges} width={WIDTH} height={HEIGHT} aria-hidden="true">
-          <defs>
-            <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0,0 L8,4 L0,8 Z" className={styles.arrowHead} />
-            </marker>
-            <marker id="arrow-active" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0,0 L8,4 L0,8 Z" className={styles.arrowHeadActive} />
-            </marker>
-          </defs>
-          {edges.map(({ from, to }) => {
-            const a = POS[from];
-            const b = POS[to];
-            const sameColumn = Math.abs(a.x - b.x) < 1;
-            const d = sameColumn
-              ? // Down the column, bowing out to the left so it clears nodes in between
-                `M${a.x + 18},${a.y + NODE_H} C${a.x - 14},${a.y + NODE_H + 30} ${b.x - 14},${b.y - 30} ${b.x + 18},${b.y}`
-              : `M${a.x + NODE_W},${a.y + NODE_H / 2} C${a.x + NODE_W + 40},${a.y + NODE_H / 2} ${b.x - 40},${b.y + NODE_H / 2} ${b.x},${b.y + NODE_H / 2}`;
-            const active = selected !== null && (from === selected || to === selected);
-            return (
-              <path
-                key={`${from}-${to}`}
-                d={d}
-                className={`${styles.edge} ${active ? styles.edgeActive : ""}`}
-                markerEnd={`url(#${active ? "arrow-active" : "arrow"})`}
-              />
-            );
-          })}
-        </svg>
-
-        {SKILLS.map((s) => {
-          const state = states[s.id];
-          const openMisconceptions = misconceptions[s.id].filter((m) => m.status === "confirmed" || m.status === "suspected").length;
+      <svg className={styles.graphEdges} width={BASE.width} height={BASE.height} aria-hidden="true">
+        <defs>
+          <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 Z" className={styles.arrowHead} />
+          </marker>
+          <marker id="arrow-active" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 Z" className={styles.arrowHeadActive} />
+          </marker>
+        </defs>
+        {edges.map(({ from, to }) => {
+          const active = selected !== null && (from === selected || to === selected);
           return (
-            <button
-              key={s.id}
-              type="button"
-              className={[
-                styles.node,
-                highlight.includes(s.id) && styles.nodeInSet,
-                selected === s.id && styles.nodeSelected,
-                selected && selected !== s.id && !related.has(s.id) && styles.nodeDim,
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              data-state={state}
-              style={{ left: POS[s.id].x, top: POS[s.id].y, width: NODE_W, height: NODE_H }}
-              aria-pressed={selected === s.id}
-              aria-label={`${s.name}: ${STATE_LABEL[state]}, вес ${s.weight}%`}
-              onClick={() => onSelect(s.id)}
-            >
-              <span className={styles.nodeTop}>
-                <StateGlyph state={state} />
-                <span className={styles.nodeName}>{s.name}</span>
-              </span>
-              <span className={styles.nodeMeta}>
-                <span>{STATE_LABEL[state]}</span>
-                <span>вес {s.weight}%</span>
-                {s.root && <span className={styles.rootTag}>корень</span>}
-                {openMisconceptions > 0 && (
-                  <span className={styles.trapTag} title="Активные заблуждения">
-                    ловушка
-                  </span>
-                )}
-              </span>
-              <span className={styles.recall} aria-hidden="true">
-                <span style={{ width: `${Math.round(recall[s.id] * 100)}%` }} />
-              </span>
-            </button>
+            <path
+              key={`${from}-${to}`}
+              d={edgePath(pos[from], pos[to])}
+              className={`${styles.edge} ${active ? styles.edgeActive : ""}`}
+              markerEnd={`url(#${active ? "arrow-active" : "arrow"})`}
+            />
           );
         })}
-      </div>
-    </div>
+      </svg>
+
+      {SKILLS.map((s) => {
+        const state = states[s.id];
+        const at = pos[s.id];
+        const openMisconceptions = misconceptions[s.id].filter((m) => m.status === "confirmed" || m.status === "suspected").length;
+        return (
+          <button
+            key={s.id}
+            type="button"
+            className={[
+              styles.mapNode,
+              highlight.includes(s.id) && styles.mapNodeInSet,
+              selected === s.id && styles.mapNodeSelected,
+              drag.dragging === s.id && styles.mapNodeDragging,
+              selected && selected !== s.id && !related.has(s.id) && styles.mapNodeDim,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            data-state={state}
+            style={{ left: at.x - NODE_W / 2, top: at.y - NODE / 2, width: NODE_W }}
+            aria-pressed={selected === s.id}
+            aria-label={`${s.name}: ${STATE_LABEL[state]}, вспомнит сейчас ${Math.round(recall[s.id] * 100)}%, вес ${s.weight}%`}
+            title={`${s.name} — ${STATE_LABEL[state]}`}
+            {...drag.bind(s.id, at)}
+            onClick={() => {
+              if (drag.tookOver()) return; // the press ended a drag, not a tap
+              onSelect(s.id);
+            }}
+          >
+            <span className={styles.mapShapeBox}>
+              <NodeMark state={state} recall={recall[s.id]} />
+            </span>
+            <span className={styles.mapChip}>
+              <StateGlyph state={state} size={10} />
+              <span className={styles.mapChipName}>{s.name}</span>
+            </span>
+            <span className={styles.mapFlags}>
+              {s.root && <span className={styles.rootTag}>корень</span>}
+              {openMisconceptions > 0 && (
+                <span className={styles.trapTag} title="Активные заблуждения">
+                  ловушка
+                </span>
+              )}
+            </span>
+          </button>
+        );
+      })}
+    </GraphCanvas>
   );
 }

@@ -1,0 +1,88 @@
+/* A narrow strip down the right edge of the section. Purely ambient: it never
+   takes a click and it never takes layout width from the panel. */
+
+.lane {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 150px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.flight {
+  position: absolute;
+  /* --lane spreads the ducks across the strip instead of stacking them. */
+  left: calc(var(--lane, 0.5) * 84px);
+  width: 62px;
+  animation: fall var(--seconds, 10s) linear forwards;
+}
+
+.flight[data-dir="up"] {
+  animation-name: climb;
+}
+
+/* A slow side-to-side drift, so nothing travels in a dead straight line. */
+.sway {
+  animation: sway 3.4s ease-in-out infinite alternate;
+}
+
+.tumble {
+  animation: tumble 1.9s linear infinite;
+}
+
+.prop {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+@keyframes fall {
+  from {
+    top: -30%;
+  }
+  to {
+    top: 115%;
+  }
+}
+
+@keyframes climb {
+  from {
+    top: 115%;
+  }
+  to {
+    top: -30%;
+  }
+}
+
+@keyframes sway {
+  from {
+    transform: translateX(-9px);
+  }
+  to {
+    transform: translateX(9px);
+  }
+}
+
+@keyframes tumble {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1240px) {
+  .lane {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lane {
+    display: none;
+  }
+}

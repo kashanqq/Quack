@@ -3,8 +3,18 @@
 // "Подготовка". Pure functions, no React.
 
 import type { Profile } from "../choice/assistant";
+import type { IconName } from "../choice/Icon";
 import { evaluate, formatEur, LEVEL_LABEL, programById, type Level, type Program } from "../choice/programs";
 import { day, daysBetween, formatDate, parseDeadline, TODAY } from "../prep/prepData";
+
+export type DashTab = "overview" | "exams" | "calendar" | "programs";
+
+export const DASH_TABS: { tab: DashTab; label: string; icon: IconName }[] = [
+  { tab: "overview", label: "Обзор", icon: "layout-dashboard" },
+  { tab: "exams", label: "Экзамены", icon: "book-open-check" },
+  { tab: "calendar", label: "Календарь", icon: "calendar-days" },
+  { tab: "programs", label: "Программы", icon: "graduation-cap" },
+];
 
 /* ---------- Exam calendar (demo) ---------- */
 
@@ -235,3 +245,98 @@ export function watchList(programs: Program[], profile: Profile): Watch[] {
 }
 
 export { programById };
+
+/* ---------- Month calendar ---------- */
+
+export type CalendarKind = "registration" | "test" | "application";
+
+export type CalendarEvent = Milestone & { kind: CalendarKind; id: string };
+
+const kindOf = (title: string): CalendarKind =>
+  title.startsWith("Регистрация") ? "registration" : title.startsWith("Подача") ? "application" : "test";
+
+/** The same dates, tagged so the calendar can colour them. */
+export function calendarEvents(programs: Program[], exams: UnionExam[]): CalendarEvent[] {
+  return calendar(programs, exams).map((m, i) => ({ ...m, id: `${i}-${m.title}`, kind: kindOf(m.title) }));
+}
+
+export const sameDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+/** Six weeks of cells, Monday first, so the grid never jumps in height. */
+export function monthGrid(year: number, month: number): Date[] {
+  const first = new Date(year, month, 1);
+  const start = new Date(first);
+  start.setDate(1 - ((first.getDay() + 6) % 7));
+  return Array.from({ length: 42 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
+}
+
+/* ---------- Activity ---------- */
+
+export type ActivityDay = { date: Date; count: number; level: 0 | 1 | 2 | 3; parts: string[] };
+
+/** What the student actually did, by day: tasks and mocks from preparation plus chats. */
+export function activityByDay(
+  evidence: { source: string; date: Date }[],
+  chatDays: number[],
+  weeks = 5
+): ActivityDay[] {
+  const counts = new Map<string, { count: number; parts: Map<string, number> }>();
+  const key = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
+  const bump = (date: Date, what: string) => {
+    const k = key(date);
+    const entry = counts.get(k) ?? { count: 0, parts: new Map() };
+    entry.count += 1;
+    entry.parts.set(what, (entry.parts.get(what) ?? 0) + 1);
+    counts.set(k, entry);
+  };
+
+  for (const e of evidence) bump(e.date, e.source === "чат" ? "разговор" : e.source === "мок" ? "мок" : "задача");
+  for (const ts of chatDays) bump(new Date(ts), "разговор");
+
+  // Start on a Monday, so a column of the grid is exactly one week
+  const start = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate() - (weeks * 7 - 1));
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  const days = daysBetween(start, TODAY) + 1;
+
+  return Array.from({ length: days }, (_, i) => {
+    const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const entry = counts.get(key(date));
+    const count = entry?.count ?? 0;
+    return {
+      date,
+      count,
+      level: count === 0 ? 0 : count === 1 ? 1 : count <= 3 ? 2 : 3,
+      parts: entry ? [...entry.parts].map(([what, n]) => `${what}: ${n}`) : [],
+    } as ActivityDay;
+  });
+}
+
+/** Days in a row up to today. */
+export function streak(days: ActivityDay[]): number {
+  let n = 0;
+  for (let i = days.length - 1; i >= 0; i--) {
+    if (days[i].count === 0) break;
+    n++;
+  }
+  return n;
+}
+
+
+/* ---------- What the red dot on the logo stands for ---------- */
+
+export type Alert = { id: string; text: string };
+
+/** A date coming up or an unresolved conflict — the things worth opening Quack for. */
+export function alerts(events: CalendarEvent[], conflicts: Conflict[], withinDays = 7): Alert[] {
+  const soon = events
+    .map((e) => ({ event: e, left: daysBetween(TODAY, e.date) }))
+    .filter(({ left }) => left >= 0 && left <= withinDays)
+    .map(({ event, left }) => ({
+      id: `soon-${event.id}`,
+      text: left === 0 ? `${event.title} — сегодня` : `${event.title} — через ${left} дн.`,
+    }));
+
+  return [...conflicts.map((c) => ({ id: c.id, text: c.text })), ...soon];
+}
