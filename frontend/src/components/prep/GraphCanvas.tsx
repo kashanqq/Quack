@@ -20,6 +20,8 @@ type View = { x: number; y: number; k: number };
 const MIN_K = 0.45;
 const MAX_K = 1.8;
 const PAD = 28;
+/** On a narrow canvas the margins around a fitted drawing shrink, every pixel goes to the graph */
+const PAD_NARROW = 8;
 /** Below this the pointer counts as a click on the node, not a drag of it */
 const SLOP = 3;
 /** The popover card: its width, and how close it may come to the canvas edge */
@@ -126,8 +128,9 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
   const fitWidth = useCallback(() => {
     const box = viewportRef.current?.getBoundingClientRect();
     if (!box) return;
-    const k = clamp((box.width - PAD * 2) / width, MIN_K, 1);
-    setView({ k, x: (box.width - width * k) / 2, y: PAD });
+    const pad = box.width < SHEET_BELOW ? PAD_NARROW : PAD;
+    const k = clamp((box.width - pad * 2) / width, MIN_K, 1);
+    setView({ k, x: (box.width - width * k) / 2, y: pad });
   }, [width]);
 
   useEffect(() => {
@@ -140,10 +143,13 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, pop
     if (storageKey && touched) writeStore(storageKey, view);
   }, [storageKey, touched, view]);
 
-  useEffect(() => {
+  // Measured before the first paint as well, not only when the observer gets round to it
+  useLayoutEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
-    const observer = new ResizeObserver(([entry]) => setBox({ w: entry.contentRect.width, h: entry.contentRect.height }));
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
@@ -297,6 +303,30 @@ function PopoverCard({ popover, view, box }: { popover: Popover; view: View; box
       {popover.content}
     </div>
   );
+}
+
+/** The app's phone width (PHONE_MAX in ChoiceApp) */
+const PHONE_QUERY = "(max-width: 760px)";
+
+/**
+ * On phones every graph runs top to bottom instead of left to right: a phone is tall and narrow, so a
+ * graph laid along its length stays readable at full size and only needs scrolling one way.
+ */
+export function useVertical() {
+  const [vertical, setVertical] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia(PHONE_QUERY);
+    const update = () => setVertical(query.matches);
+    update();
+    // Some browsers (and device emulation) skip the query's change event, a resize always arrives
+    query.addEventListener("change", update);
+    window.addEventListener("resize", update);
+    return () => {
+      query.removeEventListener("change", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+  return vertical;
 }
 
 type Drag = { id: string; pointer: number; px: number; py: number; ox: number; oy: number; moved: boolean };

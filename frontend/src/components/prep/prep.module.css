@@ -897,6 +897,46 @@
   border-color: rgba(255, 166, 77, 0.4);
 }
 
+/* ---------- The route on a phone: top to bottom ----------
+   Declared after the rules above on purpose: each of these overrides one of them at equal specificity. */
+
+.routeColumn {
+  width: 100%;
+}
+
+/* A set is a full-width row at its date; the mark sits on the axis, the label to its right */
+.routeRow {
+  right: 0;
+  left: 0;
+  width: auto;
+}
+
+.routeAnchor {
+  position: absolute;
+  top: 0;
+  left: var(--axis-x);
+  width: 0;
+  height: 0;
+}
+
+.routeChipSide {
+  top: 0;
+  right: 6px;
+  bottom: auto;
+  left: calc(var(--axis-x) + 28px);
+  /* Between left and right it takes only what the text needs, up to the edge of the card */
+  width: fit-content;
+  max-width: none;
+  text-align: left;
+  translate: 0 -50%;
+}
+
+/* Months, today and the forecast live in the margin left of the axis */
+.routeSideLabel {
+  left: calc(var(--axis-x) - 14px);
+  translate: -100% -50%;
+}
+
 .graphScroll {
   min-width: 0;
   overflow-x: auto;
@@ -1746,10 +1786,6 @@
 
   .canvas {
     padding: 14px;
-  }
-
-  .routeChip {
-    max-width: 132px;
   }
 
   .routeChipTitle {
