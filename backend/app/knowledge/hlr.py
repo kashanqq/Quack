@@ -104,7 +104,8 @@ def spread_factor(outcomes: list[int]) -> float:
     if len(outcomes) < 2:
         return 1.0
     alternations = sum(
-        1 for a, b in zip(outcomes, outcomes[1:], strict=False)
+        1
+        for a, b in zip(outcomes, outcomes[1:], strict=False)
         if a != b and a != 0 and b != 0
     )
     # Normalize by number of comparisons to get rate in [0, 1]
