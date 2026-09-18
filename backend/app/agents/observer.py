@@ -64,13 +64,18 @@ class Observation(BaseModel):
     event_ids: list[int]
     # `pace_signal` is the one kind the memory-architecture §8.1 example
     # emits without a confidence field at all (payload has only `signal`
-    # and `event_ids`) — since that example must validate byte-for-byte,
-    # confidence needs a default rather than being required for every kind.
-    # Defaulting to 1.0 (not 0.5): an omitted confidence reads as the model
-    # not having felt a need to hedge, and pace_signal never gates evidence
-    # weight downstream (§8.1's kind table has "—" for it), so the default
-    # is inert either way. Logged in docs/sync-log.md.
-    confidence: float = Field(default=1.0, ge=0, le=1)
+    # and `event_ids`) — that example must validate byte-for-byte, so
+    # confidence can't be flatly required. But §8.1's own rule ("при
+    # сомнении низкий confidence, а не пропуск") means a *missing*
+    # confidence on any other kind is a modeling mistake, not a shrug —
+    # defaulting it to 1.0 silently made a forgotten field read as
+    # maximum certainty and sail through `observer_min_confidence`. So
+    # the omission is accepted only for `pace_signal` (which never gates
+    # evidence weight downstream, §8.1's kind table has "—" for it); for
+    # the other eight kinds, a missing confidence is now a validation
+    # error. Narrowed from the earlier blanket default=1.0 — see
+    # docs/sync-log.md.
+    confidence: float | None = Field(default=None, ge=0, le=1)
 
     @model_validator(mode="after")
     def _check_required_for_kind(self) -> Observation:
@@ -79,6 +84,8 @@ class Observation(BaseModel):
             for field_name in _REQUIRED_FIELDS[self.kind]
             if getattr(self, field_name) is None
         ]
+        if self.confidence is None and self.kind != "pace_signal":
+            missing.append("confidence")
         if missing:
             raise ValueError(
                 f"observation kind {self.kind!r} is missing required "
