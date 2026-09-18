@@ -1,4 +1,4 @@
-"""Load exam formats (sections, scale table) into Neo4j — memory-architecture §2.3.
+﻿"""Load exam formats (sections, scale table) into Neo4j — memory-architecture §2.3.
 
 Idempotent MERGE by (exam_id, section.name) and by exam for the scale table.
 Depends on seed_skills: the Exam node must exist first.
@@ -43,12 +43,12 @@ class ExamFormatFile(BaseModel):
     is_demo: bool = False
 
 
-async def seed_exam_formats(driver: AsyncDriver, path_dir: Path) -> SeedReport:
+async def seed_exam_formats(driver: AsyncDriver, path: Path) -> SeedReport:
     """Load every .json under data/exam_formats/."""
     report = SeedReport()
-    files = sorted(path_dir.glob("*.json"))
+    files = sorted(path.glob("*.json"))
     if not files:
-        raise SeedError(str(path_dir), "no exam format files found")
+        raise SeedError(str(path), "no exam format files found")
 
     for path in files:
         raw = json.loads(path.read_text(encoding="utf-8"))

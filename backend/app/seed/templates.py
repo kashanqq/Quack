@@ -1,4 +1,4 @@
-"""Load task templates into Neo4j and Postgres cache — memory-architecture §3.1.
+﻿"""Load task templates into Neo4j and Postgres cache — memory-architecture §3.1.
 
 Each template lives in its own JSON file under data/templates/<exam>/<area>/<name>.json.
 Writes:
@@ -27,7 +27,7 @@ from app.tasks.generate import validate_template
 
 async def seed_templates(
     driver: AsyncDriver,
-    path_dir: Path,
+    path: Path,
     session: AsyncSession | None = None,
 ) -> SeedReport:
     """Walk data/templates/**/*.json and load each template.
@@ -36,9 +36,9 @@ async def seed_templates(
     If session is None, only Neo4j is written (useful for --validate).
     """
     report = SeedReport()
-    files = sorted(path_dir.rglob("*.json"))
+    files = sorted(path.rglob("*.json"))
     if not files:
-        raise SeedError(str(path_dir), "no template files found")
+        raise SeedError(str(path), "no template files found")
 
     specs: list[TaskTemplateSpec] = []
     for path in files:
@@ -145,3 +145,27 @@ def _collect_trap_pairs(spec: TaskTemplateSpec) -> list[tuple[str, str | None]]:
     for o in spec.omission_traps or []:
         pairs.append((o.omit, o.misconception_id))
     return pairs
+
+
+
+
+def validate_templates(path: Path) -> None:
+    """Validate all template files under path. Raises SeedError on first bad one.
+
+    Called by scripts/seed.py --validate.
+    """
+    if path.is_dir():
+        files = sorted(path.rglob("*.json"))
+    else:
+        files = [path]
+    if not files:
+        raise SeedError(str(path), "no template files found")
+    for f in files:
+        raw = json.loads(f.read_text(encoding="utf-8"))
+        try:
+            spec = TaskTemplateSpec.model_validate(raw)
+        except Exception as exc:  # noqa: BLE001
+            raise SeedError(str(f), str(exc)) from exc
+        errors = validate_template(spec)
+        if errors:
+            raise SeedError(str(f), "; ".join(errors))

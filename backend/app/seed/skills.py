@@ -1,4 +1,4 @@
-"""Load skill map and areas into Neo4j — memory-architecture-quack.md §2.1.
+﻿"""Load skill map and areas into Neo4j — memory-architecture-quack.md §2.1.
 
 Idempotent: MERGE by id, SET properties, no deletes.
 Validates Σ weight == max_raw_score, DAG (no cycles in REQUIRES).
@@ -77,12 +77,12 @@ class SeedError(Exception):
         self.message = message
 
 
-async def seed_skills(driver: AsyncDriver, path_dir: Path) -> SeedReport:
+async def seed_skills(driver: AsyncDriver, path: Path) -> SeedReport:
     """Load every .json under data/skills/. Exam + Area + Skill + HAS_AREA + HAS_SKILL + REQUIRES."""
     report = SeedReport()
-    files = sorted(path_dir.glob("*.json"))
+    files = sorted(path.glob("*.json"))
     if not files:
-        raise SeedError(str(path_dir), "no skill files found")
+        raise SeedError(str(path), "no skill files found")
 
     for path in files:
         raw = json.loads(path.read_text(encoding="utf-8"))

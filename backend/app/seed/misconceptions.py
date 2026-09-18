@@ -31,9 +31,15 @@ class MisconceptionFileEntry(BaseModel):
 async def seed_misconceptions(
     driver: AsyncDriver,
     path: Path,
-    embedder: Embedder,
+    embedder: Embedder | None = None,
 ) -> SeedReport:
     """Load data/misconceptions/library.json into Neo4j."""
+    if path.is_dir():
+        path = path / "library.json"
+    if embedder is None:
+        from app.config import settings
+
+        embedder = Embedder(settings.EMBEDDING_MODEL, settings.EMBEDDING_DIM)
     raw = json.loads(path.read_text(encoding="utf-8"))
     try:
         entries = [MisconceptionFileEntry.model_validate(r) for r in raw]

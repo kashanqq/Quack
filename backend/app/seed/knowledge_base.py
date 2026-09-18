@@ -1,4 +1,4 @@
-"""Load admission knowledge base — memory-architecture §2.3.
+﻿"""Load admission knowledge base — memory-architecture §2.3.
 
 Reads two files:
   - data/knowledge_base/exams.json: array of Fact nodes with node_id (Exam id)
@@ -54,14 +54,14 @@ class CountryRoutes(BaseModel):
     routes: list[RouteIn]
 
 
-async def seed_knowledge_base(driver: AsyncDriver, path_dir: Path) -> SeedReport:
+async def seed_knowledge_base(driver: AsyncDriver, path: Path) -> SeedReport:
     """Load exams.json (Fact nodes) and routes.json (Country–Route–Requirement)."""
     report = SeedReport()
-    exams_path = path_dir / "exams.json"
-    routes_path = path_dir / "routes.json"
+    exams_path = path / "exams.json"
+    routes_path = path / "routes.json"
 
     if not exams_path.exists() and not routes_path.exists():
-        raise SeedError(str(path_dir), "no exams.json or routes.json")
+        raise SeedError(str(path), "no exams.json or routes.json")
 
     if exams_path.exists():
         report = report + await _seed_facts(driver, exams_path)
