@@ -5,7 +5,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { morph } from "@/components/transition/morph";
-import { Icon } from "../choice/Icon";
 import { CurrentSet } from "./CurrentSet";
 import { Overview } from "./Overview";
 import { savedPrograms } from "./prepData";
@@ -13,8 +12,6 @@ import {
   acceptSet,
   initialModel,
   makeCurrent,
-  PREP_SUBS,
-  PREP_TABS,
   reviveModel,
   subFor,
   type PrepModel,
@@ -98,16 +95,6 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
               : "Вход раздела — сохранённые программы"}
           </p>
         </div>
-        {programs.length > 0 && (
-          <div className={styles.tabs} role="tablist" aria-label="Разделы подготовки">
-            {PREP_TABS.map((t) => (
-              <button key={t.tab} type="button" role="tab" aria-selected={tab === t.tab} onClick={() => go(t.tab)}>
-                <Icon name={t.icon} size={16} />
-                {t.label}
-              </button>
-            ))}
-          </div>
-        )}
       </header>
 
       <div className={styles.prepScroll} ref={scrollRef}>
@@ -128,16 +115,7 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
           </div>
         ) : (
           <>
-            {/* On phones the left column is hidden, so the sub-tabs live above the content */}
-            <div className={styles.subTabs} role="tablist" aria-label="Разделы вкладки">
-              {PREP_SUBS[tab].map((s) => (
-                <button key={s.sub} type="button" role="tab" aria-selected={current === s.sub} onClick={() => go(tab, s.sub)}>
-                  <Icon name={s.icon} size={14} />
-                  {s.label}
-                </button>
-              ))}
-            </div>
-
+            {/* Tabs and their parts are picked only in the left column — on phones it is the menu drawer */}
             <div key={`${tab}-${current}`} className={styles.tabBody}>
               {tab === "overview" && (
                 <Overview

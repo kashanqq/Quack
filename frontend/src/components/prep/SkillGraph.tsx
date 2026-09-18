@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { GraphCanvas, readStore, useNodeDrag, writeStore } from "./GraphCanvas";
 import { AREAS, SKILLS, STATE_LABEL, type Misconception, type Skill, type SkillState } from "./prepData";
 import styles from "./prep.module.css";
@@ -13,6 +13,9 @@ type Props = {
   highlight: string[];
   selected: string | null;
   onSelect: (id: string) => void;
+  /** What the selected skill opens: shown in a card beside its node, inside the canvas */
+  details?: ReactNode;
+  onClose: () => void;
 };
 
 type Point = { x: number; y: number };
@@ -165,7 +168,7 @@ function edgePath(a: Point, b: Point) {
 }
 
 /** Knowledge map: exam areas as lanes, prerequisites linked to the skill that needs them. */
-export function SkillGraph({ states, recall, misconceptions, highlight, selected, onSelect }: Props) {
+export function SkillGraph({ states, recall, misconceptions, highlight, selected, onSelect, details, onClose }: Props) {
   const [pos, setPos] = useState<Record<string, Point>>(BASE.pos);
   const [moved, setMoved] = useState(false);
 
@@ -209,7 +212,13 @@ export function SkillGraph({ states, recall, misconceptions, highlight, selected
       height={BASE.height}
       label="Холст карты навыков"
       storageKey={VIEW_KEY}
-      hint="Узлы двигаются мышкой, фон — чтобы сдвинуть карту, Ctrl + колесо — масштаб."
+      hint="Нажми на навык — подробности откроются рядом. Узлы и фон двигаются мышкой, Ctrl + колесо — масштаб."
+      popover={
+        selected && details
+          ? { at: pos[selected], gap: NODE_W / 2, label: SKILLS.find((s) => s.id === selected)!.name, content: details, onClose }
+          : null
+      }
+      onBackgroundTap={onClose}
       tools={
         moved ? (
           <button type="button" onClick={resetLayout}>

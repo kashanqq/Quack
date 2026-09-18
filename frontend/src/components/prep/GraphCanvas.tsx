@@ -5,8 +5,10 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
@@ -20,8 +22,21 @@ const MAX_K = 1.8;
 const PAD = 28;
 /** Below this the pointer counts as a click on the node, not a drag of it */
 const SLOP = 3;
+/** The popover card: its width, and how close it may come to the canvas edge */
+const POP_W = 320;
+const EDGE = 12;
+/** The card starts below the zoom controls, so it never covers them */
+const TOP_EDGE = 54;
+/** Narrower than this, the card turns into a sheet along the bottom of the canvas */
+const SHEET_BELOW = 560;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/**
+ * A text selection left on the page turns the next press into a native drag of that text, and the
+ * canvas stops moving until it is cleared — so every press on the canvas drops it first.
+ */
+const dropSelection = () => window.getSelection()?.removeAllRanges();
 
 /** Nodes drag in screen pixels; the current zoom turns those into canvas pixels. */
 const ScaleContext = createContext<{ current: number }>({ current: 1 });
@@ -53,20 +68,34 @@ type Props = {
   hint?: string;
   /** Where to remember the pan and zoom between visits */
   storageKey?: string;
+  /** A card pinned beside a point of the drawing; it follows the point but never scales with the zoom */
+  popover?: Popover | null;
+  /** A press on the empty background that did not turn into a pan */
+  onBackgroundTap?: () => void;
   children: ReactNode;
+};
+
+type Popover = {
+  /** The point in drawing coordinates, and how far to the side of it the card starts */
+  at: { x: number; y: number };
+  gap: number;
+  label: string;
+  content: ReactNode;
+  onClose: () => void;
 };
 
 /**
  * A canvas the way Obsidian does it: the drawing sits in an open plane, the background drags to move
  * it, Ctrl + wheel zooms. Every graph on this screen — and the ones still to come — lives in one.
  */
-export function GraphCanvas({ width, height, label, tools, hint, storageKey, children }: Props) {
+export function GraphCanvas({ width, height, label, tools, hint, storageKey, popover, onBackgroundTap, children }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<View>({ x: 0, y: PAD, k: 1 });
   const [grabbing, setGrabbing] = useState(false);
   /** Nothing is remembered until the map has actually been moved — the first visit always gets a fresh view */
   const [touched, setTouched] = useState(false);
-  const pan = useRef<{ id: number; x: number; y: number } | null>(null);
+  const pan = useRef<{ id: number; x: number; y: number; sx: number; sy: number; moved: boolean } | null>(null);
+  const [box, setBox] = useState({ w: 0, h: 0 });
   const scaleRef = useRef(1);
   scaleRef.current = view.k;
 
@@ -111,11 +140,29 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, chi
     if (storageKey && touched) writeStore(storageKey, view);
   }, [storageKey, touched, view]);
 
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => setBox({ w: entry.contentRect.width, h: entry.contentRect.height }));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const closePopover = popover?.onClose;
+  useEffect(() => {
+    if (!closePopover) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closePopover();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [closePopover]);
+
   // The wheel has to be non-passive to zoom; a plain wheel is left alone so the page still scrolls.
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
+      // Over the popover or the controls the wheel belongs to them, e.g. to scroll a long card
+      if ((e.target as HTMLElement).closest?.("[data-canvas-chrome]")) return;
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const box = el.getBoundingClientRect();
@@ -132,14 +179,18 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, chi
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 && e.button !== 1) return;
     if ((e.target as HTMLElement).closest("[data-canvas-node]")) return;
+    e.preventDefault(); // no text selection starting from the background
+    dropSelection();
     e.currentTarget.setPointerCapture(e.pointerId);
-    pan.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    pan.current = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false };
     setGrabbing(true);
   };
 
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     const p = pan.current;
     if (!p || p.id !== e.pointerId) return;
+    if (!p.moved && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) < SLOP) return;
+    p.moved = true;
     setTouched(true);
     const dx = e.clientX - p.x;
     const dy = e.clientY - p.y;
@@ -149,9 +200,11 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, chi
   };
 
   const endPan = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (pan.current?.id !== e.pointerId) return;
+    const p = pan.current;
+    if (p?.id !== e.pointerId) return;
     pan.current = null;
     setGrabbing(false);
+    if (!p.moved && e.type === "pointerup") onBackgroundTap?.();
   };
 
   return (
@@ -164,6 +217,7 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, chi
         onPointerMove={onPointerMove}
         onPointerUp={endPan}
         onPointerCancel={endPan}
+        onDragStart={(e) => e.preventDefault()}
       >
         <div
           className={styles.canvasWorld}
@@ -173,7 +227,7 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, chi
         </div>
 
         {/* The controls sit inside the viewport, so they have to keep their presses out of the pan */}
-        <div className={styles.canvasTools} onPointerDown={(e) => e.stopPropagation()}>
+        <div className={styles.canvasTools} data-canvas-chrome onPointerDown={(e) => e.stopPropagation()}>
           <button type="button" onClick={() => zoomBy(1 / 1.2)} aria-label="Отдалить">
             −
           </button>
@@ -189,7 +243,58 @@ export function GraphCanvas({ width, height, label, tools, hint, storageKey, chi
 
         {/* The hint rides in the corner of the canvas instead of taking a line under it */}
         {hint && <p className={styles.canvasHint}>{hint}</p>}
+
+        {popover && box.w > 0 && <PopoverCard popover={popover} view={view} box={box} />}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The card beside the selected point. It lives in screen space, so the text stays the same size at any
+ * zoom; it takes whichever side of the point has room and slides to stay inside the canvas.
+ */
+function PopoverCard({ popover, view, box }: { popover: Popover; view: View; box: { w: number; h: number } }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [cardH, setCardH] = useState(0);
+
+  // The card's height depends on its content, and the vertical clamp needs it
+  useLayoutEffect(() => {
+    const h = ref.current?.offsetHeight ?? 0;
+    if (h !== cardH) setCardH(h);
+  });
+
+  let style: CSSProperties;
+  if (box.w < SHEET_BELOW) {
+    style = { left: EDGE, right: EDGE, bottom: EDGE, maxHeight: box.h * 0.62 };
+  } else {
+    const px = popover.at.x * view.k + view.x;
+    const py = popover.at.y * view.k + view.y;
+    const reach = popover.gap * view.k + 14;
+    const right = px + reach;
+    const left = px - reach - POP_W;
+    let x: number;
+    if (right + POP_W <= box.w - EDGE) x = right;
+    else if (left >= EDGE) x = left;
+    else x = box.w - right >= px - reach ? box.w - POP_W - EDGE : EDGE;
+    const y = clamp(py - 44, TOP_EDGE, Math.max(TOP_EDGE, box.h - cardH - EDGE));
+    style = { left: x, top: y, width: POP_W, maxHeight: box.h - TOP_EDGE - EDGE };
+  }
+
+  return (
+    <div
+      ref={ref}
+      className={styles.canvasPopover}
+      style={style}
+      role="dialog"
+      aria-label={popover.label}
+      data-canvas-chrome
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <button type="button" className={styles.canvasPopoverClose} onClick={popover.onClose} aria-label="Закрыть">
+        ×
+      </button>
+      {popover.content}
     </div>
   );
 }
@@ -211,6 +316,7 @@ export function useNodeDrag(onMove: (id: string, x: number, y: number) => void) 
     onPointerDown: (e: ReactPointerEvent<HTMLElement>) => {
       if (e.button !== 0) return;
       e.stopPropagation(); // the canvas behind must not start panning as well
+      dropSelection();
       e.currentTarget.setPointerCapture(e.pointerId);
       drag.current = { id, pointer: e.pointerId, px: e.clientX, py: e.clientY, ox: at.x, oy: at.y, moved: false };
     },

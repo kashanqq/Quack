@@ -215,7 +215,7 @@ export function Sidebar(props: SidebarProps) {
                       <button type="button" className={styles.rowMain} onClick={() => actions.onOpen(id)}>
                         <LevelDot level={evaluate(program, profile).level} />
                         <span className={styles.rowText}>
-                          <span className={styles.rowTitle}>{program.university}</span>
+                          <span className={`${styles.rowTitle} ${styles.rowTitleFull}`}>{program.university}</span>
                           <span className={styles.rowSub}>
                             {program.city} · {program.program}
                           </span>
@@ -283,7 +283,7 @@ export function Sidebar(props: SidebarProps) {
             <div className={styles.tabs} role="tablist">
               {TABS.map(({ tab: t, label }) => (
                 <button key={t} type="button" role="tab" aria-selected={tab === t} className={styles.tab} onClick={() => onTab(t)}>
-                  {label}
+                  <span className={styles.tabLabel}>{label}</span>
                   {counts[t] > 0 && <span className={styles.count}>{counts[t]}</span>}
                 </button>
               ))}
@@ -306,7 +306,7 @@ export function Sidebar(props: SidebarProps) {
                         <button type="button" className={styles.rowMain} onClick={() => actions.onOpen(id)}>
                           <LevelDot level={evaluate(program, profile).level} />
                           <span className={styles.rowText}>
-                            <span className={styles.rowTitle}>{program.university}</span>
+                            <span className={`${styles.rowTitle} ${styles.rowTitleFull}`}>{program.university}</span>
                             <span className={styles.rowSub}>
                               {program.city} · {program.program}
                             </span>

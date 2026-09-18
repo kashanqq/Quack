@@ -210,7 +210,8 @@ function SetMark({ status }: { status: keyof typeof STATUS_TEXT }) {
 /* ---------- Карта навыков: the graph, and why each skill is in that state ---------- */
 
 function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: PrepModel) => void }) {
-  const [selected, setSelected] = useState<string | null>("circle");
+  // Nothing open at first: the card would cover the map before the student has looked at it
+  const [selected, setSelected] = useState<string | null>(null);
   const current = SETS.find((s) => s.id === model.currentSet);
   const skill = selected ? skillById(selected) : null;
 
@@ -221,19 +222,17 @@ function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: P
           <h3>Карта навыков</h3>
           <StateLegend />
         </header>
-        <div className={styles.mapLayout}>
-          <SkillGraph
-            states={model.states}
-            recall={model.recall}
-            misconceptions={model.misconceptions}
-            highlight={current?.skills ?? []}
-            selected={selected}
-            onSelect={(id) => setSelected((s) => (s === id ? null : id))}
-          />
-
-          <aside className={styles.skillPanel} aria-live="polite">
-            {skill ? (
-              <>
+        <SkillGraph
+          states={model.states}
+          recall={model.recall}
+          misconceptions={model.misconceptions}
+          highlight={current?.skills ?? []}
+          selected={selected}
+          onSelect={(id) => setSelected((s) => (s === id ? null : id))}
+          onClose={() => setSelected(null)}
+          details={
+            skill && (
+              <div className={styles.skillPanel}>
                 <p className={styles.eyebrow}>{skill.area}</p>
                 <h4>{skill.name}</h4>
                 <p className={styles.skillState}>
@@ -313,12 +312,10 @@ function KnowledgeMap({ model, onModel }: { model: PrepModel; onModel: (model: P
                 ) : (
                   <p className={styles.muted}>Свидетельств пока нет — навык проверится короткой серией внутри сета.</p>
                 )}
-              </>
-            ) : (
-              <p className={styles.muted}>Выбери навык на карте, чтобы увидеть его состояние, ловушки и откуда мы это знаем.</p>
-            )}
-          </aside>
-        </div>
+              </div>
+            )
+          }
+        />
       </section>
     </div>
   );
