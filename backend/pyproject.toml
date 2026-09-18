@@ -30,6 +30,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "fakeredis",
     "pytest",
     "pytest-asyncio",
     "ruff",
