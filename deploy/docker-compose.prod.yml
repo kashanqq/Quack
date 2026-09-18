@@ -1,0 +1,96 @@
+# Merge after docker-compose.yml; profiles alone cannot remove local port bindings.
+name: quack-prod
+
+x-app: &app
+  image: quack-api:prod
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    ENV: prod
+    DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in deploy/.env}
+    NEO4J_URI: ${NEO4J_URI:?set NEO4J_URI in deploy/.env}
+    NEO4J_USER: ${NEO4J_USER:?set NEO4J_USER in deploy/.env}
+    NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set NEO4J_PASSWORD in deploy/.env}
+    REDIS_URL: ${REDIS_URL:?set REDIS_URL in deploy/.env}
+    JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deploy/.env}
+    GIT_SHA: ${GIT_SHA:-dev}
+  restart: unless-stopped
+
+services:
+  postgres:
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+
+  neo4j:
+    ports: !reset []
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?set NEO4J_PASSWORD in deploy/.env}
+
+  redis:
+    ports: !reset []
+
+  api:
+    <<: *app
+    profiles: [prod]
+    command:
+      - sh
+      - -c
+      - >-
+        alembic upgrade head && exec uvicorn app.main:create_app --factory
+        --host 0.0.0.0 --port 8000 --workers 2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker-interactive:
+    <<: *app
+    profiles: [prod]
+    command: ["arq", "app.workers.main.WorkerInteractive"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker-bulk:
+    <<: *app
+    profiles: [prod]
+    command: ["arq", "app.workers.main.WorkerBulk"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2
+    profiles: [prod]
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in deploy/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

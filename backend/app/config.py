@@ -66,8 +66,8 @@ class Settings(BaseSettings):
     NEO4J_PASSWORD: SecretStr = SecretStr("quack-local-neo4j")
     REDIS_URL: str = Field(default="redis://127.0.0.1:6379/0", repr=False)
 
-    JWT_SECRET: SecretStr = SecretStr("quack-local-only")
-    JWT_TTL_DAYS: int = 7
+    JWT_SECRET: SecretStr = SecretStr("quack-local-only-development-secret")
+    JWT_TTL_DAYS: int = 30
 
     LLM_BASE_URL: str = ""
     LLM_API_KEY: SecretStr = SecretStr("")

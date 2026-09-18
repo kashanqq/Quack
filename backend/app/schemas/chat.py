@@ -40,7 +40,7 @@ class TextDelta(BaseModel):
 class ToolCall(BaseModel):
     type: Literal["tool_call"] = "tool_call"
     tool: str
-    args: dict
+    args: dict[str, Any]
     call_id: str
 
 
@@ -55,10 +55,10 @@ class ToolResult(BaseModel):
 class Done(BaseModel):
     type: Literal["done"] = "done"
     event_id: int
-    mode: str | None
-    gave_task_instance_id: UUID | None
-    hint_level: int | None
-    referenced_skill_ids: list[str]
+    mode: str | None = None
+    gave_task_instance_id: UUID | None = None
+    hint_level: int | None = None
+    referenced_skill_ids: list[str] = Field(default_factory=list)
 
 
 class StreamError(BaseModel):

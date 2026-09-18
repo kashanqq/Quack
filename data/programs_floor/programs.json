@@ -1,0 +1,32 @@
+[
+  {
+    "id": "demo-kz-1", "university": "Demo KZ Campus One", "country": "KZ", "city": "Demo City", "direction": "Mathematics", "language": "English", "duration_months": 48, "tuition_per_year": null, "living_per_year": null, "currency": "KZT",
+    "requirements": [{"type": "exam_score", "exam_id": "ENT_MATH", "threshold": null, "comparator": "present", "description": "Demo exam record", "source": null}, {"type": "document", "exam_id": null, "threshold": null, "comparator": "present", "description": "Demo application document", "source": null}],
+    "deadlines": [{"kind": "application", "date": "2027-06-01", "round": null, "source": "https://example.invalid/demo-kz-1", "checked_at": "2026-09-18", "is_demo": true}],
+    "scholarships_note": "Demo grant example; no real award is represented.", "environment_text": "This is a fictional campus for interface testing. It does not describe a real university.", "source_url": "https://example.invalid/demo-kz-1", "checked_at": "2026-09-18", "is_demo": true, "extracted_auto": false, "flagged": false
+  },
+  {
+    "id": "demo-kz-2", "university": "Demo KZ Campus Two", "country": "KZ", "city": "Demo City", "direction": "Engineering", "language": "English", "duration_months": 48, "tuition_per_year": null, "living_per_year": null, "currency": "KZT",
+    "requirements": [{"type": "exam_score", "exam_id": "ENT_MATH", "threshold": null, "comparator": "present", "description": "Demo exam record", "source": null}, {"type": "document", "exam_id": null, "threshold": null, "comparator": "present", "description": "Demo application document", "source": null}],
+    "deadlines": [{"kind": "application", "date": "2027-06-01", "round": null, "source": "https://example.invalid/demo-kz-2", "checked_at": "2026-09-18", "is_demo": true}],
+    "scholarships_note": null, "environment_text": "This is a fictional campus for interface testing. It does not describe a real university.", "source_url": "https://example.invalid/demo-kz-2", "checked_at": "2026-09-18", "is_demo": true, "extracted_auto": false, "flagged": false
+  },
+  {
+    "id": "demo-eu-1", "university": "Demo Europe Campus One", "country": "DE", "city": "Demo City", "direction": "Computer Science", "language": "English", "duration_months": 36, "tuition_per_year": null, "living_per_year": null, "currency": "EUR",
+    "requirements": [{"type": "language", "exam_id": null, "threshold": null, "comparator": "present", "description": "Demo language record", "source": null}, {"type": "document", "exam_id": null, "threshold": null, "comparator": "present", "description": "Demo application document", "source": null}],
+    "deadlines": [{"kind": "application", "date": "2027-06-01", "round": null, "source": "https://example.invalid/demo-eu-1", "checked_at": "2026-09-18", "is_demo": true}],
+    "scholarships_note": null, "environment_text": "This is a fictional campus for interface testing. It does not describe a real university.", "source_url": "https://example.invalid/demo-eu-1", "checked_at": "2026-09-18", "is_demo": true, "extracted_auto": false, "flagged": false
+  },
+  {
+    "id": "demo-eu-2", "university": "Demo Europe Campus Two", "country": "NL", "city": "Demo City", "direction": "Data Science", "language": "English", "duration_months": 36, "tuition_per_year": null, "living_per_year": null, "currency": "EUR",
+    "requirements": [{"type": "language", "exam_id": null, "threshold": null, "comparator": "present", "description": "Demo language record", "source": null}, {"type": "document", "exam_id": null, "threshold": null, "comparator": "present", "description": "Demo application document", "source": null}],
+    "deadlines": [{"kind": "application", "date": "2027-06-01", "round": null, "source": "https://example.invalid/demo-eu-2", "checked_at": "2026-09-18", "is_demo": true}],
+    "scholarships_note": null, "environment_text": "This is a fictional campus for interface testing. It does not describe a real university.", "source_url": "https://example.invalid/demo-eu-2", "checked_at": "2026-09-18", "is_demo": true, "extracted_auto": false, "flagged": false
+  },
+  {
+    "id": "demo-us-1", "university": "Demo US Campus One", "country": "US", "city": "Demo City", "direction": "Mathematics", "language": "English", "duration_months": 48, "tuition_per_year": null, "living_per_year": null, "currency": "USD",
+    "requirements": [{"type": "exam_score", "exam_id": "SAT_MATH", "threshold": null, "comparator": "present", "description": "Demo exam record", "source": null}, {"type": "document", "exam_id": null, "threshold": null, "comparator": "present", "description": "Demo application document", "source": null}],
+    "deadlines": [{"kind": "application", "date": "2027-06-01", "round": null, "source": "https://example.invalid/demo-us-1", "checked_at": "2026-09-18", "is_demo": true}],
+    "scholarships_note": null, "environment_text": "This is a fictional campus for interface testing. It does not describe a real university.", "source_url": "https://example.invalid/demo-us-1", "checked_at": "2026-09-18", "is_demo": true, "extracted_auto": false, "flagged": false
+  }
+]
