@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { copy } from "./copy";
 import styles from "./roadmap.module.css";
 
 /* Journey from product-logic.md: profile -> program picks -> roadmap -> study sets -> exam day.
    `y` offsets make the path zigzag instead of running in a straight line. */
 const STEPS = [
-  { name: "Profile", y: 22 },
-  { name: "Programs", y: -34 },
-  { name: "Roadmap", y: 30 },
-  { name: "Sets", y: -26 },
-  { name: "Exam day", y: 18 },
+  { name: copy.roadmap.profile, y: 22 },
+  { name: copy.roadmap.programs, y: -34 },
+  { name: copy.roadmap.plan, y: 30 },
+  { name: copy.roadmap.sets, y: -26 },
+  { name: copy.roadmap.exam, y: 18 },
 ];
 
 const STAGE_MS = 1800;
@@ -64,7 +65,7 @@ export function Roadmap() {
   }, []);
 
   return (
-    <div ref={ref} className={`${styles.roadmap} ${noAnim ? styles.noAnim : ""}`} role="list" aria-label="Roadmap stages">
+    <div ref={ref} className={`${styles.roadmap} ${noAnim ? styles.noAnim : ""}`} role="list" aria-label="Этапы пути">
       {STEPS.map((step, i) => {
         const shown = i < visible;
         const age = visible - 1 - i;

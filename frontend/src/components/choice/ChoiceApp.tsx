@@ -5,7 +5,7 @@
 // programs (picks, favourites, comparison) and chat history. Both side panels can be dragged
 // to resize or collapsed; the workspace is kept in localStorage.
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   CONFIRM_REPLY,
   EMPTY_PROFILE,
@@ -19,8 +19,17 @@ import {
   type Profile,
 } from "./assistant";
 import { Dashboard } from "../dashboard/Dashboard";
+import {
+  alerts as computeAlerts,
+  calendarEvents,
+  hardConflicts,
+  unionExams,
+  type DashTab,
+} from "../dashboard/dashboardRules";
+import { programById } from "./programs";
 import { PrepView } from "../prep/PrepView";
-import type { PrepTab } from "../prep/prepModel";
+import { morph } from "@/components/transition/morph";
+import type { PrepSub, PrepTab } from "../prep/prepModel";
 import { ChatMessage, type ChatMsg } from "./ChatMessage";
 import { CompareView } from "./CompareView";
 import { CustomScrollbar } from "./CustomScrollbar";
@@ -53,6 +62,7 @@ const CHAT_MIN = 460; // below this the profile panel turns into an overlay
 const PHONE_MAX = 760;
 const LAYOUT_KEY = "quack-choice-layout";
 const WORKSPACE_KEY = "quack-choice-workspace";
+const SEEN_KEY = "quack-seen-alerts";
 const INTRO_PLACEHOLDER = "Люблю бананы и хочу в IT...";
 
 type LeftPanel = { width: number; collapsed: boolean; lastWidth: number; userSet: boolean };
@@ -68,6 +78,9 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const [stage, setStage] = useState<"intro" | "chat">("intro");
   const [mode, setMode] = useState<Mode>("dashboard");
   const [prepTab, setPrepTab] = useState<PrepTab>("overview");
+  const [prepSub, setPrepSub] = useState<PrepSub>("now");
+  const [dashTab, setDashTab] = useState<DashTab>("overview");
+  const [seenAlerts, setSeenAlerts] = useState<string[]>([]);
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
   const [confirmed, setConfirmed] = useState(false);
   const [versions, setVersions] = useState<Partial<Record<FieldKey, number>>>({});
@@ -466,9 +479,11 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   };
 
   const changeMode = (next: Mode) => {
-    setMode(next);
-    setView("chat");
-    setDetailId(null);
+    morph(() => {
+      setMode(next);
+      setView("chat");
+      setDetailId(null);
+    });
   };
 
   const restart = () => {
@@ -477,6 +492,41 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     } catch {}
     onRestart();
   };
+
+  /* ---------- What the dashboard wants to tell the student ---------- */
+
+  useEffect(() => {
+    try {
+      setSeenAlerts(JSON.parse(localStorage.getItem(SEEN_KEY) ?? "[]"));
+    } catch {}
+  }, []);
+
+  // Everything the dashboard would tell the student right now
+  const pending = useMemo(() => {
+    const programs = saved.map(programById).filter(Boolean);
+    if (!programs.length) return [];
+    const exams = unionExams(programs);
+    return computeAlerts(calendarEvents(programs, exams), hardConflicts(programs, exams));
+  }, [saved]);
+
+  // The dot is about what the student has not seen yet, not about time
+  const unseen = pending.filter((a) => !seenAlerts.includes(a.id));
+  const pendingKey = pending.map((a) => a.id).join("|");
+
+  // Marked as seen a moment after the dashboard opens, so the dot does not vanish before it is noticed
+  useEffect(() => {
+    if (mode !== "dashboard") return;
+    const timer = setTimeout(() => {
+      const ids = pendingKey ? pendingKey.split("|") : [];
+      setSeenAlerts(ids);
+      try {
+        localStorage.setItem(SEEN_KEY, JSON.stringify(ids));
+      } catch {}
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [mode, pendingKey]);
+
+  const alert = { active: unseen.length > 0, reasons: unseen.map((a) => a.text) };
 
   /* ---------- Student profile ---------- */
 
@@ -549,6 +599,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
           mode={mode}
           onMode={changeMode}
           onOpenMenu={openMobilePrograms}
+          alert={alert}
           profilePanel={rightAvailable ? { open: profileVisible, readiness: readinessValue, onToggle: toggleProfile } : undefined}
         />
 
@@ -572,11 +623,23 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
             onOpenCompare={openCompare}
             onRestart={restart}
             prepTab={prepTab}
-            onPrepTab={(tab) => {
-              setMode("prep");
-              setPrepTab(tab);
-              setMobileProgramsOpen(false);
-            }}
+            prepSub={prepSub}
+            onPrepTab={(tab, sub) =>
+              morph(() => {
+                setMode("prep");
+                setPrepTab(tab);
+                if (sub) setPrepSub(sub);
+                setMobileProgramsOpen(false);
+              })
+            }
+            dashTab={dashTab}
+            onDashTab={(tab) =>
+              morph(() => {
+                setMode("dashboard");
+                setDashTab(tab);
+                setMobileProgramsOpen(false);
+              })
+            }
           />
           <ResizeHandle
             side="left"
@@ -664,8 +727,11 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
             <div className={`${styles.view} ${styles.viewDashboard}`} aria-hidden={mode !== "dashboard"}>
               {mode === "dashboard" && (
                 <Dashboard
+                  tab={dashTab}
+                  onTab={(t) => morph(() => setDashTab(t))}
                   saved={saved}
                   profile={profile}
+                  chatDays={sessions.map((c) => c.updatedAt)}
                   onUnsave={(id) => setSaved((list) => list.filter((x) => x !== id))}
                   onOpenChoice={() => changeMode("choice")}
                   onOpenPrep={(tab) => {
@@ -678,7 +744,14 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
             <div className={`${styles.view} ${styles.viewPrep}`} aria-hidden={mode !== "prep"}>
               {mode === "prep" && (
-                <PrepView tab={prepTab} onTab={setPrepTab} saved={saved} onGoToChoice={() => changeMode("choice")} />
+                <PrepView
+                  tab={prepTab}
+                  onTab={setPrepTab}
+                  sub={prepSub}
+                  onSub={setPrepSub}
+                  saved={saved}
+                  onGoToChoice={() => changeMode("choice")}
+                />
               )}
             </div>
 

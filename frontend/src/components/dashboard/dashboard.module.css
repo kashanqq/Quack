@@ -19,6 +19,7 @@
 }
 
 .head {
+  flex: none;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -41,7 +42,407 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  padding: 0 32px 40px;
+}
+
+/* GitHub-style tabs. On wide screens the left column carries the categories, so these
+   show up only on phones, where that column is hidden behind the menu. */
+.tabs {
+  flex: none;
+  display: none;
+  gap: 4px;
+  padding: 0 32px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--card-line);
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 15px;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.tabs button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tabs button[aria-selected="true"] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.counter {
+  min-width: 20px;
+  padding: 1px 6px;
+  color: var(--text-faint);
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+.tabBody {
+  flex: none;
+  padding: 18px 32px 40px;
+  animation: rise 0.24s var(--ease-out) both;
+}
+
+/* ---------- Overview tiles ---------- */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.tile {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  background: var(--inset-bg);
+  border: 1px solid transparent;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.15s ease;
+}
+
+.tile:hover {
+  border-color: rgba(255, 166, 77, 0.45);
+}
+
+.tile:active {
+  transform: scale(0.99);
+}
+
+.tile[data-alert="true"] .tileValue {
+  color: var(--warn);
+}
+
+.tileValue {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  line-height: 1.1;
+  color: var(--accent-label);
+}
+
+/* ---------- Calendar ---------- */
+
+.calNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0 8px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.calLegend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.calLegend li::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--kind);
+}
+
+.calLegend li[data-kind="registration"],
+.calDots span[data-kind="registration"],
+.calKind[data-kind="registration"] {
+  --kind: #ffc44a;
+}
+
+.calLegend li[data-kind="test"],
+.calDots span[data-kind="test"],
+.calKind[data-kind="test"] {
+  --kind: var(--accent);
+}
+
+.calLegend li[data-kind="application"],
+.calDots span[data-kind="application"],
+.calKind[data-kind="application"] {
+  --kind: #ff7a5c;
+}
+
+.navButton {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.navButton:hover {
+  color: var(--text);
+  border-color: rgba(255, 166, 77, 0.6);
+}
+
+.flip {
+  transform: rotate(180deg);
+}
+
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.calWeekday {
+  padding: 2px 0 6px;
+  color: var(--text-faint);
+  font-size: 12px;
+  text-align: center;
+}
+
+.calDay {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 4px;
+  min-height: 54px;
+  padding: 6px 4px;
+  color: var(--text);
+  font: inherit;
+  background: var(--inset-bg);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.calDay:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.calDay[data-outside="true"] {
+  opacity: 0.35;
+}
+
+.calDay[data-today="true"] {
+  border-color: rgba(255, 166, 77, 0.6);
+}
+
+.calDay[aria-pressed="true"] {
+  background: var(--accent-tint);
+  border-color: rgba(255, 166, 77, 0.6);
+}
+
+.calNumber {
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.calDots {
+  display: flex;
+  gap: 3px;
+}
+
+.calDots span {
+  width: 6px;
+  height: 6px;
+  background: var(--kind);
+  border-radius: 50%;
+}
+
+.calList {
+  margin-top: 16px;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.link {
+  padding: 0;
+  color: var(--accent-label);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.calEvents {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+}
+
+.calEvents li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.addToCalendar {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 12px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.addToCalendar:hover {
+  background: rgba(255, 145, 0, 0.14);
+  border-color: rgba(255, 166, 77, 0.6);
+}
+
+.googleLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-faint);
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.calEvents li:hover .googleLink,
+.googleLink:focus-visible {
+  opacity: 1;
+}
+
+.googleLink:hover {
+  color: var(--accent-label);
+}
+
+@media (hover: none) {
+  .googleLink {
+    opacity: 1;
+  }
+}
+
+.calKind {
+  padding: 1px 8px;
+  color: var(--kind);
+  font-size: 12px;
+  border: 1px solid var(--kind);
+  border-radius: 999px;
+}
+
+/* ---------- Activity ---------- */
+
+.activity {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 15px);
+  grid-auto-columns: 15px;
+  gap: 4px;
+  justify-content: start;
+}
+
+.activityDay {
+  width: 15px;
+  height: 15px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.activityDay[data-level="1"] {
+  background: rgba(255, 122, 0, 0.35);
+}
+
+.activityDay[data-level="2"] {
+  background: rgba(255, 122, 0, 0.65);
+}
+
+.activityDay[data-level="3"] {
+  background: var(--accent);
+}
+
+.activityFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.activityScale {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-faint);
+}
+
+.activityScale .activityDay {
+  width: 11px;
+  min-height: 11px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .wide {
@@ -54,15 +455,15 @@
   background: var(--card-bg);
   border: 1px solid var(--card-line);
   border-radius: 20px;
-  animation: rise 0.5s var(--ease-out) both;
+  animation: rise 0.3s var(--ease-out) both;
 }
 
 .card:nth-child(2) {
-  animation-delay: 60ms;
+  animation-delay: 30ms;
 }
 
 .card:nth-child(n + 3) {
-  animation-delay: 120ms;
+  animation-delay: 60ms;
 }
 
 .alert {
@@ -167,7 +568,7 @@
   background: var(--card-bg);
   border: 1px solid var(--card-line);
   border-radius: 20px;
-  animation: rise 0.5s var(--ease-out) both;
+  animation: rise 0.3s var(--ease-out) both;
 }
 
 .empty h2 {
@@ -413,18 +814,25 @@
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(6px);
   }
 }
 
 @media (max-width: 1100px) {
   .grid {
     grid-template-columns: minmax(0, 1fr);
-    padding: 0 20px 32px;
   }
 
   .head {
     padding: 16px 20px 12px;
+  }
+
+  .tabs {
+    padding: 0 20px;
+  }
+
+  .tabBody {
+    padding: 16px 20px 32px;
   }
 }
 
@@ -439,7 +847,42 @@
 
   .grid {
     gap: 12px;
-    padding: 0 12px 32px;
+  }
+
+  .tabs {
+    display: flex;
+    padding: 0 8px;
+  }
+
+  .tabs button {
+    padding: 10px 8px 12px;
+    font-size: 14px;
+  }
+
+  .tabBody {
+    padding: 14px 12px 32px;
+  }
+
+  .calDay {
+    min-height: 44px;
+    padding: 4px 2px;
+  }
+
+  .calEvents li {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .calEvents li > .muted,
+  .googleLink {
+    grid-column: 2;
+  }
+
+  .googleLink {
+    opacity: 1;
+  }
+
+  .calNav {
+    flex-wrap: wrap;
   }
 
   .card {

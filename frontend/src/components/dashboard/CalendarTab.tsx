@@ -1,0 +1,161 @@
+"use client";
+
+import { useState } from "react";
+import { Icon } from "../choice/Icon";
+import { daysBetween, formatDate, TODAY } from "../prep/prepData";
+import { downloadIcs, googleCalendarUrl } from "./calendarExport";
+import { monthGrid, sameDay, type CalendarEvent } from "./dashboardRules";
+import styles from "./dashboard.module.css";
+
+const MONTHS = [
+  "Январь",
+  "Февраль",
+  "Март",
+  "Апрель",
+  "Май",
+  "Июнь",
+  "Июль",
+  "Август",
+  "Сентябрь",
+  "Октябрь",
+  "Ноябрь",
+  "Декабрь",
+];
+const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+const KIND_LABEL = { registration: "регистрация", test: "тест", application: "подача" } as const;
+
+/** Deadlines as a month calendar: registrations, tests and applications. */
+export function CalendarTab({ events }: { events: CalendarEvent[] }) {
+  // Open on this month, or on the month of the next event when this one is empty
+  const [cursor, setCursor] = useState(() => {
+    const thisMonth = events.some((e) => e.date.getFullYear() === TODAY.getFullYear() && e.date.getMonth() === TODAY.getMonth());
+    const upcoming = events.find((e) => e.date >= TODAY);
+    const base = thisMonth || !upcoming ? TODAY : upcoming.date;
+    return { year: base.getFullYear(), month: base.getMonth() };
+  });
+  const [selected, setSelected] = useState<Date | null>(null);
+
+  const cells = monthGrid(cursor.year, cursor.month);
+  const eventsOn = (d: Date) => events.filter((e) => sameDay(e.date, d));
+  const monthEvents = events
+    .filter((e) => e.date.getFullYear() === cursor.year && e.date.getMonth() === cursor.month)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+  const shown = selected ? eventsOn(selected) : monthEvents;
+
+  const step = (delta: number) => {
+    const d = new Date(cursor.year, cursor.month + delta, 1);
+    setCursor({ year: d.getFullYear(), month: d.getMonth() });
+    setSelected(null);
+  };
+
+  return (
+    <section className={styles.card} aria-label="Календарь">
+      <header className={styles.cardHead}>
+        <h3>
+          {MONTHS[cursor.month]} {cursor.year}
+        </h3>
+        <div className={styles.calNav}>
+          <button
+            type="button"
+            className={styles.addToCalendar}
+            title="Скачает файл .ics со всеми датами — открывается в Google Календаре, Apple и Outlook"
+            onClick={() => downloadIcs(events)}
+          >
+            <Icon name="calendar-plus" size={16} /> В свой календарь
+          </button>
+          <ul className={styles.calLegend}>
+            <li data-kind="registration">регистрация</li>
+            <li data-kind="test">тест</li>
+            <li data-kind="application">подача</li>
+          </ul>
+          <button type="button" className={styles.navButton} aria-label="Предыдущий месяц" onClick={() => step(-1)}>
+            <Icon name="arrow-left" size={16} />
+          </button>
+          <button type="button" className={styles.navButton} aria-label="Следующий месяц" onClick={() => step(1)}>
+            <Icon name="arrow-left" size={16} className={styles.flip} />
+          </button>
+        </div>
+      </header>
+
+      <div className={styles.calendar} role="grid">
+        {WEEKDAYS.map((w) => (
+          <span key={w} className={styles.calWeekday}>
+            {w}
+          </span>
+        ))}
+        {cells.map((date) => {
+          const list = eventsOn(date);
+          const outside = date.getMonth() !== cursor.month;
+          return (
+            <button
+              key={date.toISOString()}
+              type="button"
+              className={styles.calDay}
+              data-outside={outside}
+              data-today={sameDay(date, TODAY)}
+              aria-pressed={selected ? sameDay(date, selected) : false}
+              aria-label={`${date.getDate()} ${MONTHS[date.getMonth()].toLowerCase()}${list.length ? `, событий: ${list.length}` : ""}`}
+              onClick={() => setSelected((s) => (s && sameDay(s, date) ? null : date))}
+            >
+              <span className={styles.calNumber}>{date.getDate()}</span>
+              {list.length > 0 && (
+                <span className={styles.calDots}>
+                  {list.slice(0, 3).map((e) => (
+                    <span key={e.id} data-kind={e.kind} title={e.title} />
+                  ))}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className={styles.calList}>
+        <p className={styles.eyebrow}>
+          {selected ? formatDate(selected) : `Весь ${MONTHS[cursor.month].toLowerCase()}`}
+          {selected && (
+            <button type="button" className={styles.link} onClick={() => setSelected(null)}>
+              показать весь месяц
+            </button>
+          )}
+        </p>
+        {shown.length === 0 ? (
+          <p className={styles.muted}>Ничего не запланировано.</p>
+        ) : (
+          <ul className={styles.calEvents}>
+            {shown.map((e) => {
+              const left = daysBetween(TODAY, e.date);
+              return (
+                <li key={e.id}>
+                  <span className={styles.calKind} data-kind={e.kind}>
+                    {KIND_LABEL[e.kind]}
+                  </span>
+                  <span>
+                    <strong>{e.title}</strong>
+                    <span className={styles.muted}> · {e.detail}</span>
+                  </span>
+                  <span className={styles.muted}>
+                    {formatDate(e.date)}
+                    {left >= 0 ? ` · через ${left} дн.` : " · прошло"}
+                  </span>
+                  <a
+                    className={styles.googleLink}
+                    href={googleCalendarUrl(e)}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    title="Открыть в Google Календаре"
+                    aria-label={`Добавить «${e.title}» в Google Календарь`}
+                  >
+                    <Icon name="external-link" size={14} />
+                    Google
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}

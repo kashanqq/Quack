@@ -3,22 +3,36 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../choice/Icon";
 import { daysBetween, formatDate, GUIDELINES, setById, skillById, STATE_LABEL, TODAY } from "./prepData";
-import { answerTask, closed, MISCONCEPTION_LABEL, proposedSet, type AnswerResult, type PrepModel, type PrepTab } from "./prepModel";
+import {
+  answerTask,
+  closed,
+  MISCONCEPTION_LABEL,
+  proposedSet,
+  type AnswerResult,
+  type PrepModel,
+  type PrepSub,
+  type PrepTab,
+} from "./prepModel";
 import { StateGlyph } from "./SkillGraph";
 import styles from "./prep.module.css";
 
 type Props = {
   model: PrepModel;
+  sub: PrepSub;
   onModel: (model: PrepModel) => void;
   onAccept: (setId: string) => void;
-  onTab: (tab: PrepTab) => void;
+  /** Jump to another tab, optionally straight to one of its sub-tabs */
+  onGo: (tab: PrepTab, sub?: PrepSub) => void;
   onToast: (text: string) => void;
 };
 
 type ChatLine = { id: number; role: "student" | "tutor" | "system"; text: string; detail?: string };
 
-/** §4.4–4.5: work on the current set — topics with guidelines and tasks, and the prep chat. */
-export function CurrentSet({ model, onModel, onAccept, onTab, onToast }: Props) {
+/**
+ * §4.4–4.5 — work on the current set. The set and its topics stay on screen as context; the
+ * sub-tabs decide what fills the right pane: the guideline, the tasks, or the tutor.
+ */
+export function CurrentSet({ model, sub, onModel, onAccept, onGo, onToast }: Props) {
   const set = model.currentSet ? setById(model.currentSet) : null;
   const [topic, setTopic] = useState<string | null>(set?.skills[0] ?? null);
 
@@ -40,7 +54,7 @@ export function CurrentSet({ model, onModel, onAccept, onTab, onToast }: Props) 
               <button type="button" className={styles.primary} onClick={() => onAccept(next.id)}>
                 Принять сет {next.number}
               </button>
-              <button type="button" className={styles.secondary} onClick={() => onTab("sets")}>
+              <button type="button" className={styles.secondary} onClick={() => onGo("sets")}>
                 Выбрать другой
               </button>
             </div>
@@ -91,13 +105,7 @@ export function CurrentSet({ model, onModel, onAccept, onTab, onToast }: Props) 
           const s = skillById(id);
           const active = model.misconceptions[id].filter((m) => m.status === "confirmed" || m.status === "suspected");
           return (
-            <button
-              key={id}
-              type="button"
-              className={styles.topic}
-              aria-current={topic === id}
-              onClick={() => setTopic(id)}
-            >
+            <button key={id} type="button" className={styles.topic} aria-current={topic === id} onClick={() => setTopic(id)}>
               <StateGlyph state={model.states[id]} />
               <span className={styles.topicText}>
                 <span>{s.name}</span>
@@ -112,32 +120,27 @@ export function CurrentSet({ model, onModel, onAccept, onTab, onToast }: Props) 
         })}
       </nav>
 
-      {skill && <TopicCanvas key={skill.id} skillId={skill.id} model={model} onModel={onModel} onToast={onToast} />}
-
-      {skill && <PrepChat key={`chat-${set.id}`} topicName={skill.name} topicId={skill.id} setTitle={set.title} model={model} />}
+      {skill &&
+        (sub === "tutor" ? (
+          <PrepChat key={`chat-${set.id}`} topicName={skill.name} topicId={skill.id} setTitle={set.title} model={model} />
+        ) : sub === "tasks" ? (
+          <TaskCanvas key={`task-${skill.id}`} skillId={skill.id} model={model} onModel={onModel} onToast={onToast} />
+        ) : (
+          <GuideCanvas key={`guide-${skill.id}`} skillId={skill.id} model={model} onGo={onGo} />
+        ))}
     </div>
   );
 }
 
-function TopicCanvas({ skillId, model, onModel, onToast }: { skillId: string; model: PrepModel; onModel: (m: PrepModel) => void; onToast: (t: string) => void }) {
+/* ---------- Гайдлайн: what this topic asks of you ---------- */
+
+function GuideCanvas({ skillId, model, onGo }: { skillId: string; model: PrepModel; onGo: (tab: PrepTab, sub?: PrepSub) => void }) {
   const skill = skillById(skillId);
   const guide = GUIDELINES[skillId];
-  const [taskIndex, setTaskIndex] = useState(0);
-  const [result, setResult] = useState<(AnswerResult & { choice: number }) | null>(null);
-
-  const task = guide?.tasks[taskIndex % guide.tasks.length];
   const traps = model.misconceptions[skillId].filter((m) => m.status !== "disputed");
 
-  const answer = (i: number) => {
-    if (!task || result) return;
-    const r = answerTask(model, skillId, task, i);
-    setResult({ ...r, choice: i });
-    onModel(r.model);
-    if (r.setPassed) onToast(`Сет ${r.setPassed.number} пройден — отчёт и следующий сет в Обзоре`);
-  };
-
   return (
-    <section className={`${styles.canvas} ${styles.topicCanvas}`} aria-label={skill.name}>
+    <section className={`${styles.canvas} ${styles.topicCanvas}`} aria-label={`Гайдлайн · ${skill.name}`}>
       <header className={styles.canvasHead}>
         <h3>{skill.name}</h3>
         <span className={styles.muted}>гайдлайн собран для тебя сейчас</span>
@@ -178,64 +181,110 @@ function TopicCanvas({ skillId, model, onModel, onToast }: { skillId: string; mo
               <p>{guide.practice}</p>
             </div>
           </div>
-
-          {task && (
-            <div className={styles.task}>
-              <p className={styles.eyebrow}>
-                Задача {(taskIndex % guide.tasks.length) + 1} из пула · демо
-              </p>
-              <p className={styles.taskText}>{task.text}</p>
-              <div className={styles.options} role="group" aria-label="Варианты ответа">
-                {task.options.map((o, i) => (
-                  <button
-                    key={o.label}
-                    type="button"
-                    className={styles.option}
-                    data-result={result ? (o.correct ? "correct" : result.choice === i ? "wrong" : undefined) : undefined}
-                    disabled={Boolean(result)}
-                    onClick={() => answer(i)}
-                  >
-                    <span className={styles.optionLetter}>{"ABCD"[i]}</span>
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-
-              {result && (
-                <div className={styles.feedback} data-correct={result.correct}>
-                  <strong>{result.correct ? "Верно" : result.trap ? `Ловушка: ${result.trap.toLowerCase()}` : "Неверно"}</strong>
-                  <p>{task.explain}</p>
-                  <p className={styles.modelUpdate}>
-                    <Icon name="sparkles" size={14} />
-                    Модель знаний обновлена: {STATE_LABEL[result.from]}
-                    {result.from !== result.to && ` → ${STATE_LABEL[result.to]}`}
-                  </p>
-                  <div className={styles.actions}>
-                    <button
-                      type="button"
-                      className={styles.primary}
-                      onClick={() => {
-                        setResult(null);
-                        setTaskIndex((i) => i + 1);
-                      }}
-                    >
-                      Следующая задача
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.secondary}
-                      onClick={() => onToast(`Мок по топику «${skill.name}»: 5–7 заданий одного навыка`)}
-                    >
-                      Мок по топику
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <div className={styles.actions}>
+            <button type="button" className={styles.primary} onClick={() => onGo("current", "tasks")}>
+              <Icon name="play" size={16} /> К задачам
+            </button>
+            <button type="button" className={styles.secondary} onClick={() => onGo("current", "tutor")}>
+              <Icon name="message-circle" size={16} /> Спросить репетитора
+            </button>
+          </div>
         </>
       ) : (
         <p className={styles.muted}>Гайдлайн соберётся, когда подойдёшь к этому топику.</p>
+      )}
+    </section>
+  );
+}
+
+/* ---------- Задачи: one task at a time, each answer moves the model ---------- */
+
+function TaskCanvas({
+  skillId,
+  model,
+  onModel,
+  onToast,
+}: {
+  skillId: string;
+  model: PrepModel;
+  onModel: (m: PrepModel) => void;
+  onToast: (t: string) => void;
+}) {
+  const skill = skillById(skillId);
+  const guide = GUIDELINES[skillId];
+  const [taskIndex, setTaskIndex] = useState(0);
+  const [result, setResult] = useState<(AnswerResult & { choice: number }) | null>(null);
+
+  const task = guide?.tasks[taskIndex % guide.tasks.length];
+
+  const answer = (i: number) => {
+    if (!task || result) return;
+    const r = answerTask(model, skillId, task, i);
+    setResult({ ...r, choice: i });
+    onModel(r.model);
+    if (r.setPassed) onToast(`Сет ${r.setPassed.number} пройден — отчёт и следующий сет в Обзоре`);
+  };
+
+  return (
+    <section className={`${styles.canvas} ${styles.topicCanvas}`} aria-label={`Задачи · ${skill.name}`}>
+      <header className={styles.canvasHead}>
+        <h3>{skill.name}</h3>
+        <span className={styles.muted}>{STATE_LABEL[model.states[skillId]]}</span>
+      </header>
+
+      {guide && task ? (
+        <div className={styles.task}>
+          <p className={styles.eyebrow}>Задача {(taskIndex % guide.tasks.length) + 1} из пула · демо</p>
+          <p className={styles.taskText}>{task.text}</p>
+          <div className={styles.options} role="group" aria-label="Варианты ответа">
+            {task.options.map((o, i) => (
+              <button
+                key={o.label}
+                type="button"
+                className={styles.option}
+                data-result={result ? (o.correct ? "correct" : result.choice === i ? "wrong" : undefined) : undefined}
+                disabled={Boolean(result)}
+                onClick={() => answer(i)}
+              >
+                <span className={styles.optionLetter}>{"ABCD"[i]}</span>
+                {o.label}
+              </button>
+            ))}
+          </div>
+
+          {result && (
+            <div className={styles.feedback} data-correct={result.correct}>
+              <strong>{result.correct ? "Верно" : result.trap ? `Ловушка: ${result.trap.toLowerCase()}` : "Неверно"}</strong>
+              <p>{task.explain}</p>
+              <p className={styles.modelUpdate}>
+                <Icon name="sparkles" size={14} />
+                Модель знаний обновлена: {STATE_LABEL[result.from]}
+                {result.from !== result.to && ` → ${STATE_LABEL[result.to]}`}
+              </p>
+              <div className={styles.actions}>
+                <button
+                  type="button"
+                  className={styles.primary}
+                  onClick={() => {
+                    setResult(null);
+                    setTaskIndex((i) => i + 1);
+                  }}
+                >
+                  Следующая задача
+                </button>
+                <button
+                  type="button"
+                  className={styles.secondary}
+                  onClick={() => onToast(`Мок по топику «${skill.name}»: 5–7 заданий одного навыка`)}
+                >
+                  Мок по топику
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className={styles.muted}>Задачи соберутся, когда подойдёшь к этому топику.</p>
       )}
     </section>
   );
@@ -247,7 +296,7 @@ function tutorReply(text: string, topicName: string, topicId: string, model: Pre
   const confirmed = model.misconceptions[topicId].find((m) => m.status === "confirmed");
   if (/не понима|почему|объясни|как /.test(t)) {
     return {
-      text: `Давай по шагам. Главное здесь: ${guide?.mustKnow[0].toLowerCase() ?? topicName.toLowerCase()}. Попробуй применить это к задаче слева и напиши, что получилось.`,
+      text: `Давай по шагам. Главное здесь: ${guide?.mustKnow[0].toLowerCase() ?? topicName.toLowerCase()}. Попробуй применить это в «Задачах» и напиши, что получилось.`,
     };
   }
   if (/\d/.test(t) && confirmed) {
@@ -263,6 +312,8 @@ function tutorReply(text: string, topicName: string, topicId: string, model: Pre
     text: `Понял. В «${topicName}» у тебя сейчас ${STATE_LABEL[model.states[topicId]]} — могу объяснить правило, разобрать твоё решение или дать задачу.`,
   };
 }
+
+/* ---------- Репетитор: questions about the topic or the whole set ---------- */
 
 function PrepChat({ topicName, topicId, setTitle, model }: { topicName: string; topicId: string; setTitle: string; model: PrepModel }) {
   const [level, setLevel] = useState<"topic" | "set">("topic");

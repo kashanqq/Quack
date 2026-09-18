@@ -4,11 +4,23 @@
 // student can look at it on demo programs. Its state lives in localStorage until there is a backend.
 
 import { useEffect, useRef, useState } from "react";
+import { morph } from "@/components/transition/morph";
 import { Icon } from "../choice/Icon";
 import { CurrentSet } from "./CurrentSet";
 import { Overview } from "./Overview";
 import { savedPrograms } from "./prepData";
-import { acceptSet, initialModel, makeCurrent, PREP_TABS, reviveModel, type PrepModel, type PrepTab } from "./prepModel";
+import {
+  acceptSet,
+  initialModel,
+  makeCurrent,
+  PREP_SUBS,
+  PREP_TABS,
+  reviveModel,
+  subFor,
+  type PrepModel,
+  type PrepSub,
+  type PrepTab,
+} from "./prepModel";
 import { SetsView } from "./SetsView";
 import styles from "./prep.module.css";
 
@@ -17,11 +29,13 @@ const STORAGE_KEY = "quack-prep";
 type Props = {
   tab: PrepTab;
   onTab: (tab: PrepTab) => void;
+  sub: PrepSub;
+  onSub: (sub: PrepSub) => void;
   saved: string[];
   onGoToChoice: () => void;
 };
 
-export function PrepView({ tab, onTab, saved, onGoToChoice }: Props) {
+export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props) {
   // Rendered only after the student switches to the section, so storage can be read right away
   const [model, setModel] = useState<PrepModel>(() => {
     try {
@@ -32,6 +46,9 @@ export function PrepView({ tab, onTab, saved, onGoToChoice }: Props) {
   });
   const [toast, setToast] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // A sub-tab belongs to its tab; switching tabs falls back to the first one
+  const current = subFor(tab, sub);
 
   useEffect(() => {
     try {
@@ -47,14 +64,21 @@ export function PrepView({ tab, onTab, saved, onGoToChoice }: Props) {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
-  }, [tab]);
+  }, [tab, current]);
 
   const programs = savedPrograms(saved, model.demo);
+
+  /** One move for both levels, so a jump across the section is a single animated step */
+  const go = (next: PrepTab, nextSub?: PrepSub) =>
+    morph(() => {
+      onTab(next);
+      if (nextSub) onSub(nextSub);
+    });
 
   const accept = (id: string) => {
     setModel((m) => acceptSet(m, id));
     setToast("Сет принят — он в «Текущем сете»");
-    onTab("current");
+    go("current", "guide");
   };
 
   const choose = (id: string) => {
@@ -77,7 +101,7 @@ export function PrepView({ tab, onTab, saved, onGoToChoice }: Props) {
         {programs.length > 0 && (
           <div className={styles.tabs} role="tablist" aria-label="Разделы подготовки">
             {PREP_TABS.map((t) => (
-              <button key={t.tab} type="button" role="tab" aria-selected={tab === t.tab} onClick={() => onTab(t.tab)}>
+              <button key={t.tab} type="button" role="tab" aria-selected={tab === t.tab} onClick={() => go(t.tab)}>
                 <Icon name={t.icon} size={16} />
                 {t.label}
               </button>
@@ -103,28 +127,50 @@ export function PrepView({ tab, onTab, saved, onGoToChoice }: Props) {
             </div>
           </div>
         ) : (
-          <div key={tab} className={styles.tabBody}>
-            {tab === "overview" && (
-              <Overview
-                model={model}
-                programs={programs}
-                onTab={onTab}
-                onAccept={accept}
-                onToggleMilestone={(id) =>
-                  setModel((m) => ({
-                    ...m,
-                    milestonesDone: m.milestonesDone.includes(id) ? m.milestonesDone.filter((x) => x !== id) : [...m.milestonesDone, id],
-                  }))
-                }
-                onResolveConflict={(id, option) => {
-                  setModel((m) => ({ ...m, resolvedConflicts: { ...m.resolvedConflicts, [id]: option } }));
-                  setToast("Решение принято — вехи пересобраны");
-                }}
-              />
-            )}
-            {tab === "sets" && <SetsView model={model} onMakeCurrent={choose} onModel={setModel} />}
-            {tab === "current" && <CurrentSet model={model} onModel={setModel} onAccept={accept} onTab={onTab} onToast={setToast} />}
-          </div>
+          <>
+            {/* On phones the left column is hidden, so the sub-tabs live above the content */}
+            <div className={styles.subTabs} role="tablist" aria-label="Разделы вкладки">
+              {PREP_SUBS[tab].map((s) => (
+                <button key={s.sub} type="button" role="tab" aria-selected={current === s.sub} onClick={() => go(tab, s.sub)}>
+                  <Icon name={s.icon} size={14} />
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            <div key={`${tab}-${current}`} className={styles.tabBody}>
+              {tab === "overview" && (
+                <Overview
+                  model={model}
+                  programs={programs}
+                  sub={current}
+                  onGo={go}
+                  onAccept={accept}
+                  onToggleMilestone={(id) =>
+                    setModel((m) => ({
+                      ...m,
+                      milestonesDone: m.milestonesDone.includes(id) ? m.milestonesDone.filter((x) => x !== id) : [...m.milestonesDone, id],
+                    }))
+                  }
+                  onResolveConflict={(id, option) => {
+                    setModel((m) => ({ ...m, resolvedConflicts: { ...m.resolvedConflicts, [id]: option } }));
+                    setToast("Решение принято — вехи пересобраны");
+                  }}
+                />
+              )}
+              {tab === "sets" && <SetsView model={model} sub={current} onMakeCurrent={choose} onModel={setModel} />}
+              {tab === "current" && (
+                <CurrentSet
+                  model={model}
+                  sub={current}
+                  onModel={setModel}
+                  onAccept={accept}
+                  onGo={go}
+                  onToast={setToast}
+                />
+              )}
+            </div>
+          </>
         )}
       </div>
 

@@ -3,8 +3,16 @@
   --dropdown-bg: #242120;
   --text-muted: #877d73;
   --accent-soft: #ff8f28;
+  position: relative;
   min-height: 100dvh;
+  overflow-x: clip;
   font-family: var(--font-mono);
+}
+
+/* Everything that scrolls sits above the fixed grid backdrop. */
+.content {
+  position: relative;
+  z-index: 1;
 }
 
 .accent {
@@ -168,14 +176,25 @@
   }
 }
 
-/* Hero */
+/* Hero: exactly one screen, so the first scroll lands on the section below */
 
 .hero {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 67px 16px 64px;
+  justify-content: center;
+  /* Viewport minus the header plate and its top margin */
+  min-height: calc(100dvh - 77px);
+  padding: 40px 16px 96px;
   text-align: center;
+}
+
+/* Each hero element drifts up into place on load, one after the other. */
+.title,
+.cta,
+.subtitle {
+  animation: hero-in 0.8s var(--ease-out) both;
 }
 
 .title {
@@ -184,13 +203,6 @@
   font-size: 90px;
   font-weight: 400;
   line-height: 103px;
-}
-
-.subtitle {
-  max-width: 936px;
-  margin: 14px 0 0;
-  color: var(--text-muted);
-  font-size: 22px;
 }
 
 .cta {
@@ -203,20 +215,81 @@
   padding-top: 5px;
   background: var(--accent);
   border-radius: 44px;
-  font-family: var(--font-khula), sans-serif;
+  /* Khula, the Figma face, has no Cyrillic — Raleway is the loaded font that does. */
+  font-family: var(--font-text);
   font-size: 31px;
-  transition: filter 0.15s;
+  animation-delay: 0.15s;
+  transition:
+    filter 0.15s,
+    scale 0.25s var(--ease-out),
+    box-shadow 0.3s ease;
 }
 
 .cta:hover {
+  scale: 1.04;
   filter: brightness(1.08);
+  box-shadow: 0 10px 40px rgba(255, 122, 0, 0.35);
 }
 
-.ctaNote {
-  margin: 6px 0 0;
-  font-family: var(--font-montserrat-alternates), sans-serif;
-  font-size: 24px;
-  opacity: 0.47;
+.cta:active {
+  scale: 0.98;
+}
+
+.subtitle {
+  max-width: 936px;
+  margin: 28px 0 0;
+  color: var(--text-muted);
+  font-size: 22px;
+  animation-delay: 0.3s;
+}
+
+/* Sits at the bottom of the first screen and invites the scroll */
+
+.scrollHint {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  /* Centring goes on `transform` so the `translate` animation below stays free. */
+  transform: translateX(-50%);
+  animation: hero-in 0.8s var(--ease-out) 0.8s both;
+}
+
+.scrollArrow {
+  width: 8px;
+  height: 8px;
+  border-right: 1px solid var(--text-muted);
+  border-bottom: 1px solid var(--text-muted);
+  rotate: 45deg;
+  animation: scroll-nudge 1.8s ease-in-out infinite;
+}
+
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    translate: 0 26px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* The hint is already shifted by -50%, so its own keyframes keep that offset. */
+@keyframes scroll-nudge {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 5px;
+  }
 }
 
 /* Narrow screens */
@@ -252,7 +325,17 @@
     padding-top: 4px;
     font-size: 23px;
   }
-  .ctaNote {
-    font-size: 18px;
+  .scrollHint {
+    font-size: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title,
+  .cta,
+  .subtitle,
+  .scrollHint,
+  .scrollArrow {
+    animation: none;
   }
 }

@@ -14,6 +14,8 @@ type TopbarProps = {
   onOpenMenu: () => void;
   /** Toggle for the student profile; omitted while it isn't available */
   profilePanel?: { open: boolean; readiness: number; onToggle: () => void };
+  /** Something changed or a date is close: a red dot sits on the Q */
+  alert?: { active: boolean; reasons: string[] };
 };
 
 const MODES: { mode: Mode; label: string; icon: IconName }[] = [
@@ -22,7 +24,9 @@ const MODES: { mode: Mode; label: string; icon: IconName }[] = [
 ];
 
 /** Выбор · Quack! · Подготовка — the logo in the middle opens the dashboard. */
-export function Topbar({ mode, onMode, onOpenMenu, profilePanel }: TopbarProps) {
+const LETTERS = [..."Quack"];
+
+export function Topbar({ mode, onMode, onOpenMenu, profilePanel, alert }: TopbarProps) {
   return (
     <header className={styles.topbar}>
       <div className={styles.topbarSide}>
@@ -49,10 +53,22 @@ export function Topbar({ mode, onMode, onOpenMenu, profilePanel }: TopbarProps) 
           role="tab"
           aria-selected={mode === "dashboard"}
           className={styles.topbarLogo}
-          title="Дашборд"
+          title={alert?.active ? `Дашборд · ${alert.reasons[0]}` : "Дашборд"}
           onClick={() => onMode("dashboard")}
         >
-          Quack<span className={styles.accent}>!</span>
+          <span className={styles.logoLetters}>
+            {LETTERS.map((letter, i) => (
+              <span key={i} className={styles.letter} style={{ animationDelay: `${i * 70}ms` }}>
+                {letter}
+                {i === 0 && alert?.active && (
+                  <span className={styles.logoDot} role="status" aria-label={`Есть важное: ${alert.reasons.join("; ")}`} />
+                )}
+              </span>
+            ))}
+            <span className={`${styles.letter} ${styles.accent}`} style={{ animationDelay: `${LETTERS.length * 70}ms` }}>
+              !
+            </span>
+          </span>
           {/* The duck walks along the wordmark while the dashboard is open */}
           {mode === "dashboard" && (
             <span className={styles.logoTrack} aria-hidden="true">

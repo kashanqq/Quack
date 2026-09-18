@@ -1,40 +1,43 @@
 import Link from "next/link";
+import { copy } from "./copy";
 import styles from "./home.module.css";
 
 export function SiteHeader() {
+  const t = copy.nav;
+
   return (
     <header className={styles.header}>
       <Link className={styles.logo} href="/">
         Quack<span className={styles.accent}>!</span>
       </Link>
 
-      <nav className={styles.nav} aria-label="Main">
+      <nav className={styles.nav} aria-label="Основная навигация">
         <div className={styles.navItem}>
-          <a href="#possibilities">Possibilities</a>
+          <a href="#possibilities">{t.possibilities}</a>
           <div className={`${styles.dropdown} ${styles.dropdownStacked}`}>
-            <a href="#preparation">Preparation</a>
-            <a href="#choice">Choice</a>
+            <a href="#preparation">{t.preparation}</a>
+            <a href="#choice">{t.choice}</a>
           </div>
         </div>
         <div className={styles.navItem}>
-          <a href="#resources">Resources</a>
+          <a href="#resources">{t.resources}</a>
           <div className={`${styles.dropdown} ${styles.dropdownRow}`}>
-            <a href="#how-it-works">How it works</a>
-            <a href="#about">About us</a>
+            <a href="#how-it-works">{t.howItWorks}</a>
+            <a href="#about">{t.about}</a>
           </div>
         </div>
         <div className={styles.navItem}>
-          <a href="#pricing">Pricing</a>
+          <a href="#pricing">{t.pricing}</a>
         </div>
       </nav>
 
       <div className={styles.auth}>
         <a className={styles.login} href="#login">
-          Log In
+          {t.login}
         </a>
-        <a className={styles.signin} href="#signin">
+        <a className={styles.signin} href="#signup" data-aura>
           <span className={styles.signinBg} aria-hidden="true" />
-          <span className={styles.signinText}>Sign In</span>
+          <span className={styles.signinText}>{t.signup}</span>
           <img className={styles.signinArrow} src="/assets/arrow.svg" alt="" />
         </a>
       </div>
