@@ -17,8 +17,6 @@
   text-align: left;
 }
 
-
-
 .prepScroll {
   flex: 1;
   min-height: 0;
@@ -403,22 +401,6 @@
 
 /* ---------- Side cards ---------- */
 
-.realism {
-  display: grid !important;
-  gap: 2px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--canvas-line);
-}
-
-.shift {
-  font-size: 14px;
-}
-
-.shift b {
-  color: var(--solid);
-  font-weight: 500;
-}
-
 .diagnostic {
   margin-top: 16px;
   padding: 14px 16px;
@@ -677,6 +659,29 @@
   width: 0;
   height: 0;
   color: rgba(255, 255, 255, 0.45);
+}
+
+/* A set on the route is a button: it opens the set */
+.routeStopOpen {
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.routeStopOpen:hover .routeChip,
+.routeStopOpen:focus-visible .routeChip {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.routeStopOpen:hover .routeMarkShape {
+  scale: 1.12;
+}
+
+.routeStopOpen:focus-visible {
+  outline: none;
 }
 
 .routeStop[data-status="done"] {
@@ -1997,6 +2002,39 @@
   min-height: 0;
 }
 
+/* The route and the map in the same mode: their card and drawing grow to the bottom of the screen */
+.prepScroll[data-fill] > .tabBody > .canvasGrid {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.prepScroll[data-fill] > .tabBody > .canvasGrid > .full {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.prepScroll[data-fill] .routeScroll {
+  flex: 1;
+  min-height: 0;
+}
+
+.prepScroll[data-fill] .full > .canvasFrame {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.prepScroll[data-fill] .full > .canvasFrame > .canvasViewport {
+  flex: 1;
+  height: auto;
+  min-height: 400px;
+}
+
 .setDetail {
   display: flex;
   flex: 1;
@@ -2240,7 +2278,6 @@
   line-height: 17px;
   border-radius: 6px;
 }
-
 
 .behindTag {
   color: #1f1d1b;

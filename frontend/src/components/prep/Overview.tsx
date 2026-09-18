@@ -11,7 +11,6 @@ import {
   formatShort,
   forecastSeries,
   milestones,
-  realismShift,
   requirements,
   SETS,
   setById,
@@ -60,7 +59,6 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept }: Pr
   const list = milestones(programs);
 
   if (sub === "requirements") return <Requirements exams={exams} series={series} />;
-  if (sub === "programs") return <Programs programs={programs} onGo={onGo} />;
   return <Now model={model} forecast={forecast} milestoneList={list} onGo={onGo} onOpenSet={onOpenSet} onAccept={onAccept} />;
 }
 
@@ -360,54 +358,6 @@ function Requirements({
           <ForecastChart points={series[id].points} testDate={EXAMS[id].test} forecast={series[id].forecast} />
         </section>
       ))}
-    </div>
-  );
-}
-
-/* ---------- Программы: how preparation moves the saved programs ---------- */
-
-function Programs({ programs, onGo }: { programs: Program[]; onGo: (tab: PrepTab, sub?: PrepSub) => void }) {
-  return (
-    <div className={styles.canvasGrid}>
-      <section className={`${styles.canvas} ${styles.wide}`} aria-label="Сохранённые программы">
-        <header className={styles.canvasHead}>
-          <h3>Сохранённые</h3>
-          <span className={styles.muted}>оценки пересчитываются по ходу подготовки</span>
-        </header>
-        <ul className={styles.plainList}>
-          {realismShift(programs).map(({ program, basis, change }) => (
-            <li key={program.id} className={styles.realism}>
-              <strong>{program.university}</strong>
-              <span className={styles.muted}>
-                {program.program} · {basis}
-              </span>
-              {change && (
-                <span className={styles.shift}>
-                  {change.from} → <b>{change.to}</b>
-                  <span className={styles.muted}> · {change.reason}</span>
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className={styles.canvas} aria-label="Первичный замер">
-        <header className={styles.canvasHead}>
-          <h3>Первичный замер</h3>
-          <span className={styles.muted}>3 сентября</span>
-        </header>
-        <p className={styles.muted}>
-          Фундамент — линейные уравнения и подобие. Тригонометрия не держится, корень — свойства окружности. Начали с окружности и модуля.
-        </p>
-        <button
-          type="button"
-          className={styles.link}
-          onClick={() => onGo("sets", "map")}
-        >
-          Смотреть на карте навыков →
-        </button>
-      </section>
     </div>
   );
 }

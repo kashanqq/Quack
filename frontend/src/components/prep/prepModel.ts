@@ -27,13 +27,12 @@ export const PREP_TABS: { tab: PrepTab; label: string; icon: IconName }[] = [
  * Every tab holds several separate things, so each one is split further: the tab says which part of
  * preparation you are in, the sub-tab says what you are looking at. The left column shows both.
  */
-export type PrepSub = "now" | "requirements" | "programs" | "list" | "route" | "map";
+export type PrepSub = "now" | "requirements" | "list" | "route" | "map";
 
 export const PREP_SUBS: Record<PrepTab, { sub: PrepSub; label: string; icon: IconName; hint: string }[]> = {
   overview: [
     { sub: "now", label: "Сейчас", icon: "target", hint: "что делать и темп" },
     { sub: "requirements", label: "Требования", icon: "gauge", hint: "цели экзаменов и прогноз" },
-    { sub: "programs", label: "Программы", icon: "graduation-cap", hint: "как меняются оценки" },
   ],
   sets: [
     { sub: "list", label: "Все сеты", icon: "layers", hint: "три рекомендованных сверху" },

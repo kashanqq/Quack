@@ -64,8 +64,9 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
   }, [tab, current, openSet?.id]);
 
   const programs = savedPrograms(saved, model.demo);
-  // An open set is a screen of its own: the graph takes all the height left
-  const fill = programs.length > 0 && tab === "sets" && current === "list" && !!openSet;
+  // An open set, the route and the map are drawings: they take all the height left
+  const setOpen = programs.length > 0 && tab === "sets" && current === "list" && !!openSet;
+  const fill = setOpen || (programs.length > 0 && tab === "sets" && (current === "route" || current === "map"));
 
   /** One move for both levels, so a jump across the section is a single animated step */
   const go = (next: PrepTab, nextSub?: PrepSub, nextExam?: ExamId) =>
@@ -118,7 +119,7 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
           </div>
         ) : (
           <>
-            {fill ? null : saved.length ? (
+            {setOpen ? null : saved.length ? (
               <FirstHint id="prep" title="Зачем «Подготовка»">
                 Здесь план подготовки к экзаменам, которые требуют твои программы. В «Сетах» сверху три, которые мы советуем по твоим
                 ошибкам. Внутри сета — граф тем до дедлайна: в каждой теме материал, проверка и ассистент.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Icon } from "../choice/Icon";
 import {
   EXAM_IDS,
@@ -47,7 +47,7 @@ export function SetsView({ model, sub, exam, onExam, onMakeCurrent, onModel, ope
   const switcher = <ExamSwitch exam={exam} onExam={onExam} />;
   // Keyed by exam: the map keeps a layout and a selection per exam, and switching starts clean
   if (sub === "map") return <KnowledgeMap key={exam} exam={exam} switcher={switcher} model={model} onModel={onModel} />;
-  if (sub === "route") return <Route exam={exam} switcher={switcher} model={model} />;
+  if (sub === "route") return <Route exam={exam} switcher={switcher} model={model} onOpen={(id) => onOpenSet(id)} />;
   const set = openSet ? SETS.find((s) => s.id === openSet.id) : undefined;
   if (set) {
     return (
@@ -81,34 +81,67 @@ function ExamSwitch({ exam, onExam }: { exam: ExamId; onExam: (exam: ExamId) => 
 
 /* ---------- Маршрут: the sets on a timeline against the test date ---------- */
 
-const CANVAS_W = 1020;
-const CANVAS_H = 286;
+/** The least the route needs; on a big screen it grows to the whole card */
+const MIN_W = 1020;
+const MIN_H = 286;
 const PAD = 54;
-const AXIS_Y = 244;
-const MID = 140;
 const SET_R = 22;
 
 /** Where a set sits on the route: the middle of its window, swaying above and below the line. */
-function routeLayout(exam: ExamId, forecast: Date, testDate: Date) {
+function routeLayout(exam: ExamId, forecast: Date, testDate: Date, width: number, height: number) {
   const from = EXAMS[exam].routeFrom.getTime();
   const to = EXAMS[exam].routeTo.getTime();
-  const x = (d: Date) => PAD + ((d.getTime() - from) / (to - from)) * (CANVAS_W - PAD * 2);
+  const x = (d: Date) => PAD + ((d.getTime() - from) / (to - from)) * (width - PAD * 2);
+  const axisY = height - 42;
+  // Sets hang in the middle of the room above the axis; the taller it is, the wider they sway
+  const mid = 26 + (axisY - 26) / 2 + 12;
+  const sway = Math.min(110, 30 + (height - MIN_H) * 0.2);
 
   const stops = SETS.filter((s) => s.exam === exam).map((set, i) => ({
     set,
     x: x(new Date((set.start.getTime() + set.deadline.getTime()) / 2)),
-    y: MID + (i % 2 ? 30 : -30),
+    y: mid + (i % 2 ? sway : -sway),
     below: i % 2 === 1,
   }));
 
-  return { x, stops, forecastX: x(forecast), testX: x(testDate) };
+  return { x, stops, forecastX: x(forecast), testX: x(testDate), axisY, mid };
+}
+
+/** The size of a box the drawing should fill */
+function useBoxSize() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: MIN_W, h: MIN_H });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, box] as const;
 }
 
 /** The route as a chain of circles: the same marks as the knowledge map, laid out on real dates. */
-function Route({ exam, switcher, model }: { exam: ExamId; switcher: React.ReactNode; model: PrepModel }) {
+function Route({
+  exam,
+  switcher,
+  model,
+  onOpen,
+}: {
+  exam: ExamId;
+  switcher: React.ReactNode;
+  model: PrepModel;
+  onOpen: (setId: string) => void;
+}) {
   const { forecast } = forecastSeries(readiness(model, exam), model.extraDays, exam);
   const testDate = EXAMS[exam].test;
-  const { x, stops, forecastX, testX } = routeLayout(exam, forecast, testDate);
+  const [boxRef, box] = useBoxSize();
+  // The scroll box has a little padding and maybe a scrollbar: stay inside it, never push it to grow
+  const width = Math.max(MIN_W, box.w);
+  const height = Math.max(MIN_H, box.h - 12);
+  const { x, stops, forecastX, testX, axisY: AXIS_Y, mid: MID } = routeLayout(exam, forecast, testDate, width, height);
   const months = monthStarts(EXAMS[exam].routeFrom, EXAMS[exam].routeTo);
   const inTime = forecast <= testDate;
   const vertical = useVertical();
@@ -125,13 +158,13 @@ function Route({ exam, switcher, model }: { exam: ExamId; switcher: React.ReactN
         </header>
 
         {vertical ? (
-          <RouteColumn exam={exam} model={model} forecast={forecast} testDate={testDate} inTime={inTime} />
+          <RouteColumn exam={exam} model={model} forecast={forecast} testDate={testDate} inTime={inTime} onOpen={onOpen} />
         ) : (
-          <div className={styles.graphScroll}>
-            <div className={styles.routeMap} style={{ width: CANVAS_W, height: CANVAS_H }}>
-              <svg className={styles.graphEdges} width={CANVAS_W} height={CANVAS_H} aria-hidden="true">
+          <div className={`${styles.graphScroll} ${styles.routeScroll}`} ref={boxRef}>
+            <div className={styles.routeMap} style={{ width, height }}>
+              <svg className={styles.graphEdges} width={width} height={height} aria-hidden="true">
                 {/* The line the whole route runs along */}
-                <line x1={PAD - 20} y1={AXIS_Y} x2={CANVAS_W - PAD + 20} y2={AXIS_Y} className={styles.routeAxisLine} />
+                <line x1={PAD - 20} y1={AXIS_Y} x2={width - PAD + 20} y2={AXIS_Y} className={styles.routeAxisLine} />
                 {months.map((m) => (
                   <line key={m.getTime()} x1={x(m)} y1={AXIS_Y - 5} x2={x(m)} y2={AXIS_Y + 5} className={styles.routeAxisLine} />
                 ))}
@@ -192,14 +225,16 @@ function Route({ exam, switcher, model }: { exam: ExamId; switcher: React.ReactN
               {stops.map((stop) => {
                 const status = setStatus(model, stop.set);
                 return (
-                  <span
+                  <button
+                    type="button"
                     key={stop.set.id}
-                    className={styles.routeStop}
+                    className={`${styles.routeStop} ${styles.routeStopOpen}`}
                     data-status={status}
                     style={{ left: stop.x, top: stop.y }}
-                    title={`Сет ${stop.set.number} · ${stop.set.title}: ${formatShort(stop.set.start)} – ${formatShort(
+                    title={`Открыть сет ${stop.set.number} · ${stop.set.title}: ${formatShort(stop.set.start)} – ${formatShort(
                       stop.set.deadline
                     )}, ${STATUS_TEXT[status]}`}
+                    onClick={() => onOpen(stop.set.id)}
                   >
                     <SetMark status={status} />
                     <span className={`${styles.routeChip} ${stop.below ? styles.routeChipBelow : ""}`}>
@@ -211,7 +246,7 @@ function Route({ exam, switcher, model }: { exam: ExamId; switcher: React.ReactN
                         {STATUS_TEXT[status]} · до {formatShort(stop.set.deadline)}
                       </span>
                     </span>
-                  </span>
+                  </button>
                 );
               })}
 
@@ -227,7 +262,7 @@ function Route({ exam, switcher, model }: { exam: ExamId; switcher: React.ReactN
         )}
 
         <p className={styles.muted}>
-          Кружок — сет на своих датах: {STATUS_TEXT.done} — залит, текущий — оранжевый и пульсирует, предстоит — контур, закрепление — пунктир.
+          Нажми на сет, чтобы открыть его. Кружок — сет на своих датах: {STATUS_TEXT.done} — залит, текущий — оранжевый и пульсирует, предстоит — контур, закрепление — пунктир.
         </p>
       </section>
     </div>
@@ -279,12 +314,14 @@ function RouteColumn({
   forecast,
   testDate,
   inTime,
+  onOpen,
 }: {
   exam: ExamId;
   model: PrepModel;
   forecast: Date;
   testDate: Date;
   inTime: boolean;
+  onOpen: (setId: string) => void;
 }) {
   const from = EXAMS[exam].routeFrom.getTime();
   const to = EXAMS[exam].routeTo.getTime();
@@ -324,12 +361,14 @@ function RouteColumn({
       {stops.map(({ set, at }) => {
         const status = setStatus(model, set);
         return (
-          <div
+          <button
+            type="button"
             key={set.id}
-            className={`${styles.routeStop} ${styles.routeRow}`}
+            className={`${styles.routeStop} ${styles.routeRow} ${styles.routeStopOpen}`}
             data-status={status}
             style={{ top: y(at) }}
-            title={`Сет ${set.number} · ${set.title}: ${formatShort(set.start)} – ${formatShort(set.deadline)}, ${STATUS_TEXT[status]}`}
+            title={`Открыть сет ${set.number} · ${set.title}: ${formatShort(set.start)} – ${formatShort(set.deadline)}, ${STATUS_TEXT[status]}`}
+            onClick={() => onOpen(set.id)}
           >
             <span className={styles.routeAnchor}>
               <SetMark status={status} />
@@ -343,7 +382,7 @@ function RouteColumn({
                 {STATUS_TEXT[status]} · до {formatShort(set.deadline)}
               </span>
             </span>
-          </div>
+          </button>
         );
       })}
 
