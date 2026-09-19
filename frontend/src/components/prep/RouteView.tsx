@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "../choice/Icon";
 import { daysBetween, EXAMS, formatShort, SETS, setById, skillById, STATE_LABEL, TODAY, type ExamId, type StudySet } from "./prepData";
 import { closed, MAX_PROPOSED, proposals, type PrepModel } from "./prepModel";
+import type { RemoteSetsData } from "./remoteSets";
 import { StateGlyph } from "./SkillGraph";
 import styles from "./prep.module.css";
 
@@ -18,6 +19,8 @@ type Props = {
   /** Makes a set the active one; the one in work is put aside */
   onTake: (setId: string) => void;
   onOpenDiagnostic?: () => void;
+  remoteData?: RemoteSetsData | null;
+  loading?: boolean;
 };
 
 type Kind = "advised" | "postponed" | "done";
@@ -25,20 +28,54 @@ type Kind = "advised" | "postponed" | "done";
 const trapsWord = (n: number) => (n === 1 ? "ловушка" : n < 5 ? "ловушки" : "ловушек");
 
 const trapsOf = (model: PrepModel, set: StudySet) =>
-  set.skills.reduce((n, id) => n + model.misconceptions[id].filter((m) => m.status === "confirmed").length, 0);
+  set.skills.reduce(
+    (n, id) => n + (model.misconceptions[id]?.filter((m) => m.status === "confirmed").length ?? 0),
+    0
+  );
 
 /**
  * §4.3 — Маршрут: which set is chosen and why, then what the assistant advises instead. The work on
  * the chosen set itself happens in «Сейчас»; here the student only picks it. A set swapped out goes
  * to «Отложенные» and comes back with one press, its topics keep their progress.
  */
-export function RouteView({ exam, switcher, model, focus, onGoNow, onTake, onOpenDiagnostic }: Props) {
-  const sets = SETS.filter((s) => s.exam === exam);
-  const current = model.currentSet ? setById(model.currentSet) : null;
+export function RouteView({
+  exam,
+  switcher,
+  model,
+  focus,
+  onGoNow,
+  onTake,
+  onOpenDiagnostic,
+  remoteData,
+  loading,
+}: Props) {
+  const sets = remoteData
+    ? [
+        ...(remoteData.current ? [remoteData.current] : []),
+        ...remoteData.upcoming,
+        ...remoteData.done,
+      ]
+    : SETS.filter((s) => s.exam === exam);
+
+  const current = remoteData
+    ? remoteData.current ?? (model.currentSet ? setById(model.currentSet) : null)
+    : model.currentSet ? setById(model.currentSet) : null;
+
   const postponedIds = model.postponed ?? [];
-  const advised = proposals(model, exam);
-  const postponed = postponedIds.map(setById).filter((s) => s.exam === exam && !model.doneSets.includes(s.id));
-  const done = sets.filter((s) => model.doneSets.includes(s.id) && s.id !== model.currentSet);
+  const advised = remoteData
+    ? remoteData.upcoming.map((s) => ({
+        set: s,
+        reasons: s.why ? [s.why] : [s.title],
+      }))
+    : proposals(model, exam);
+
+  const postponed = postponedIds
+    .map(setById)
+    .filter((s) => s && s.exam === exam && !model.doneSets.includes(s.id) && s.id !== current?.id);
+
+  const done = remoteData
+    ? remoteData.done
+    : sets.filter((s) => model.doneSets.includes(s.id) && s.id !== model.currentSet);
 
   return (
     <div className={styles.setList}>

@@ -349,7 +349,30 @@ export const SKILLS: Skill[] = [
   ...ENT_SKILLS.map((s) => ({ ...s, exam: "ent" as const })),
 ];
 
-export const skillById = (id: string) => SKILLS.find((s) => s.id === id)!;
+const REMOTE_SKILLS: Map<string, Skill> = new Map();
+
+export function registerRemoteSkills(skills: Skill[]) {
+  for (const s of skills) {
+    REMOTE_SKILLS.set(s.id, s);
+  }
+}
+
+export const skillById = (id: string): Skill => {
+  const found = REMOTE_SKILLS.get(id) ?? SKILLS.find((s) => s.id === id);
+  if (found) return found;
+  return {
+    id,
+    name: id,
+    area: "Алгебра",
+    exam: "sat",
+    weight: 5,
+    state: "weak",
+    recall: 0.5,
+    requires: [],
+    misconceptions: [],
+    evidence: [],
+  };
+};
 
 /* ---------- Sets (§4.3) ---------- */
 
@@ -375,6 +398,25 @@ export type StudySet = {
   deadline: Date;
   status: SetStatus;
   why: string;
+  rawId?: string;
+  kind?: "regular" | "review" | "consolidation";
+  topics?: Array<{
+    skill_id: string;
+    name: string;
+    kind: "topic" | "check" | "review";
+    position: number;
+    status: "open" | "closed";
+    level: "low_data" | "weak" | "shaky" | "solid" | "closed";
+    is_root: boolean;
+    misconception_labels: string[];
+    subtitle: string | null;
+  }>;
+  progress?: {
+    topics_closed: number;
+    topics_total: number;
+    tasks_answered: number;
+    tasks_correct: number;
+  };
 };
 
 const SAT_SETS: Omit<StudySet, "exam">[] = [
@@ -451,7 +493,30 @@ export const SETS: StudySet[] = [
   ...ENT_SETS.map((s) => ({ ...s, exam: "ent" as const })),
 ];
 
-export const setById = (id: string) => SETS.find((s) => s.id === id)!;
+const REMOTE_SETS: Map<string, StudySet> = new Map();
+
+export function registerRemoteSets(sets: StudySet[]) {
+  for (const s of sets) {
+    REMOTE_SETS.set(s.id, s);
+  }
+}
+
+export const setById = (id: string): StudySet => {
+  const found = REMOTE_SETS.get(id) ?? SETS.find((s) => s.id === id);
+  if (found) return found;
+  return {
+    id,
+    exam: "sat",
+    number: 1,
+    title: id,
+    area: "Подготовка",
+    skills: [],
+    start: TODAY,
+    deadline: TODAY,
+    status: "upcoming",
+    why: "",
+  };
+};
 
 /** A skill is closed for the set when it is solid. */
 export const closedCount = (set: StudySet, states: Record<string, SkillState>) =>

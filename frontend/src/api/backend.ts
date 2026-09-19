@@ -17,6 +17,11 @@ export type BackendExamRequirement = Schemas["ExamRequirementOut"];
 export type BackendExamProgress = Schemas["ExamProgress"];
 export type BackendConflict = Schemas["ConflictOut"];
 export type BackendKnowledgeVersion = Schemas["KnowledgeVersionOut"];
+export type BackendSetsByExam = Schemas["SetsByExam"];
+export type BackendSetOut = Schemas["SetOut"];
+export type BackendTopicOut = Schemas["TopicOut"];
+export type BackendSetProgress = Schemas["SetProgress"];
+export type BackendSetEditIn = Schemas["SetEditIn"];
 
 export const backend = {
   profile: {
@@ -38,6 +43,24 @@ export const backend = {
     get: () => api.get<BackendOverview>("/overview"),
     markMilestone: (key: string, done: boolean) =>
       api.post<BackendMilestone>(`/overview/milestones/${encodeURIComponent(key)}`, { done }),
+  },
+  sets: {
+    list: (examId: "SAT_MATH" | "ENT_MATH") =>
+      api.get<BackendSetsByExam>(`/sets?exam_id=${examId}`),
+    switch: (setId: string) =>
+      api.post<BackendSetsByExam>("/sets/switch", { set_id: setId }),
+    get: (setId: string) =>
+      api.get<BackendSetOut>(`/sets/${encodeURIComponent(setId)}`),
+    open: (setId: string) =>
+      api.post<BackendSetOut>(`/sets/${encodeURIComponent(setId)}/open`),
+    patch: (setId: string, body: { skill_ids?: string[]; deadline?: string }) =>
+      api.patch<BackendSetOut>(`/sets/${encodeURIComponent(setId)}`, body),
+    topic: {
+      open: (setId: string, skillId: string) =>
+        api.post<BackendTopicOut>(`/sets/${encodeURIComponent(setId)}/topics/${encodeURIComponent(skillId)}/open`),
+      complete: (setId: string, skillId: string) =>
+        api.post<BackendSetOut>(`/sets/${encodeURIComponent(setId)}/topics/${encodeURIComponent(skillId)}/complete`),
+    },
   },
   prep: {
     version: () => api.get<BackendKnowledgeVersion>("/prep/knowledge/version"),

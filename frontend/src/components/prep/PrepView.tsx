@@ -8,6 +8,12 @@ import { useEffect, useRef, useState } from "react";
 import { morph } from "@/components/transition/morph";
 import { Overview } from "./Overview";
 import { prefetchRemoteOverview } from "./remotePrep";
+import {
+  openRemoteSet,
+  prefetchRemoteSets,
+  REMOTE_PREP,
+  switchRemoteSet,
+} from "./remoteSets";
 import { savedPrograms, setById, type ExamId } from "./prepData";
 import {
   acceptSet,
@@ -126,6 +132,12 @@ export function PrepView({
     prefetchRemoteOverview(programs);
   }, [programs.length]);
 
+  useEffect(() => {
+    if (REMOTE_PREP) {
+      prefetchRemoteSets(exam);
+    }
+  }, [exam]);
+
   // Asked to open the test from outside (a locked tab in the column): it runs in «Сейчас»
   const diagOpen = showDiagnostic || Boolean(externalOpenDiagnostic);
   const closeDiagnostic = () => {
@@ -169,6 +181,11 @@ export function PrepView({
     setModel((m) => acceptSet(m, id));
     setFocus(null);
     setToast("Сет принят — начни с первой темы на графе");
+    if (REMOTE_PREP) {
+      openRemoteSet(id, exam).catch((err) => {
+        console.error("Failed to open remote set:", err);
+      });
+    }
     go("overview", "now");
   };
 
@@ -183,6 +200,11 @@ export function PrepView({
         ? `Сет ${setById(id).number} теперь актуальный, сет ${setById(prev).number} отложен · занятия — во вкладке «Сейчас»`
         : `Сет ${setById(id).number} теперь актуальный · занятия — во вкладке «Сейчас»`
     );
+    if (REMOTE_PREP) {
+      switchRemoteSet(id, exam).catch((err) => {
+        console.error("Failed to switch remote set:", err);
+      });
+    }
   };
 
   const skipDiagnostic = () => {
