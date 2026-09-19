@@ -91,7 +91,7 @@ export function SetDetail({ model, set, topic, onBack, onMakeCurrent, onModel, o
           </span>
           {status !== "current" && status !== "done" && (
             <button type="button" className={styles.secondary} onClick={() => onMakeCurrent(set.id)}>
-              <Icon name="target" size={16} /> Сделать текущим
+              <Icon name="target" size={16} /> Взять в работу
             </button>
           )}
         </div>
