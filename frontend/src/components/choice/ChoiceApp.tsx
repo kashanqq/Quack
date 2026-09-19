@@ -830,6 +830,8 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   // Everything of this student goes (chats, programs, preparation, the map), the account stays
   const restart = async () => {
     await store.reset();
+    // Saved programs live on the server: "начать заново" empties them too
+    if (REMOTE) await Promise.all(saved.map((id) => backend.saved.remove(id).catch(() => undefined)));
     forgetSynced();
     resetQuack();
     onRestart();
