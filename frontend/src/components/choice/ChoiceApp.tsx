@@ -21,6 +21,7 @@ import {
 import { Dashboard } from "../dashboard/Dashboard";
 import type { DashTab } from "../dashboard/dashboardRules";
 import { PrepView } from "../prep/PrepView";
+import { prefetchRemoteOverview } from "../prep/remotePrep";
 import { useQuack } from "../quack/source";
 import { morph } from "@/components/transition/morph";
 import { FirstHint, HelpDialog } from "@/components/hints/FirstHint";
@@ -242,6 +243,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
         const ids = await loadSaved();
         if (!alive) return;
         setSaved(ids);
+        prefetchRemoteOverview();
         // Cards picked before the backend was on refer to the demo set
         setPicks((list) => list.filter((id) => catalog.get(id)?.remote));
         setCompare((list) => list.filter((id) => catalog.get(id)?.remote));
@@ -404,10 +406,14 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     if (!has && !saved.length) setToast("Сохранено. Под неё уже собирается «Подготовка»");
     setSaved((list) => (has ? list.filter((x) => x !== id) : list.includes(id) ? list : [...list, id]));
     if (REMOTE && catalog.get(id)?.remote) {
-      (has ? backend.saved.remove(id) : backend.saved.add(id)).catch(() => {
-        setSaved((list) => (has ? [...list, id] : list.filter((x) => x !== id)));
-        setToast("Не получилось сохранить. Попробуй ещё раз");
-      });
+      (has ? backend.saved.remove(id) : backend.saved.add(id))
+        .then(() => {
+          prefetchRemoteOverview();
+        })
+        .catch(() => {
+          setSaved((list) => (has ? [...list, id] : list.filter((x) => x !== id)));
+          setToast("Не получилось сохранить. Попробуй ещё раз");
+        });
     }
   }
 
@@ -781,6 +787,9 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   };
 
   const changeMode = (next: Mode) => {
+    if (next === "prep") {
+      prefetchRemoteOverview();
+    }
     morph(() => {
       setMode(next);
       setView("chat");
