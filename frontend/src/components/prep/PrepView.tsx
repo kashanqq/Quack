@@ -9,11 +9,17 @@ import { morph } from "@/components/transition/morph";
 import { Overview } from "./Overview";
 import { prefetchRemoteOverview } from "./remotePrep";
 import {
+  fetchRemoteSets,
   openRemoteSet,
   prefetchRemoteSets,
   REMOTE_PREP,
   switchRemoteSet,
 } from "./remoteSets";
+import {
+  applyRemoteKnowledgeToModel,
+  fetchRemoteKnowledge,
+} from "./remoteKnowledge";
+import { fetchKnowledgeVersion } from "./remoteChat";
 import { savedPrograms, setById, type ExamId } from "./prepData";
 import {
   acceptSet,
@@ -136,7 +142,51 @@ export function PrepView({
   useEffect(() => {
     if (REMOTE_PREP) {
       prefetchRemoteSets(exam);
+      fetchRemoteKnowledge(exam).then((data) => {
+        if (data) {
+          setModel((prev) => applyRemoteKnowledgeToModel(prev, data, exam));
+        }
+      });
     }
+  }, [exam]);
+
+  const lastVersionRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!REMOTE_PREP) return;
+    let active = true;
+
+    const checkVersionAndSync = async (force = false) => {
+      try {
+        const v = await fetchKnowledgeVersion();
+        if (!active) return;
+        if (force || lastVersionRef.current === null || v > lastVersionRef.current) {
+          lastVersionRef.current = v;
+          prefetchRemoteSets(exam);
+          const data = await fetchRemoteKnowledge(exam, true);
+          if (active && data) {
+            setModel((prev) => applyRemoteKnowledgeToModel(prev, data, exam));
+          }
+        }
+      } catch (err) {
+        console.warn("Version check sync failed:", err);
+      }
+    };
+
+    const onFocus = () => {
+      checkVersionAndSync();
+    };
+    window.addEventListener("focus", onFocus);
+
+    const interval = setInterval(() => {
+      checkVersionAndSync();
+    }, 20000);
+
+    return () => {
+      active = false;
+      window.removeEventListener("focus", onFocus);
+      clearInterval(interval);
+    };
   }, [exam]);
 
   // Asked to open the test from outside (a locked tab in the column): it runs in «Сейчас»
@@ -220,13 +270,22 @@ export function PrepView({
       const next = { ...m, diagnosticDone: true, diagnosticSkipped: false, states: { ...m.states, ...summary.statesUpdate } };
       // The first test builds the route: its top set becomes the first one in work. A retake leaves the choice alone.
       if (m.diagnosticDone && m.currentSet) return next;
-      const top = rankSets(next, "sat")[0]?.set;
+      const top = rankSets(next, exam)[0]?.set;
       return top ? acceptSet(next, top.id) : next;
     });
     closeDiagnostic();
     setFocus(null);
     onDiagnosticStatusChange?.(true);
-    setToast(`Входной замер завершён: ${summary.score} из 8. Маршрут собран — начни с первой темы на графе`);
+    setToast(`Входной замер завершён: ${summary.score} из ${summary.total}. Маршрут собран — начни с первой темы на графе`);
+
+    if (REMOTE_PREP) {
+      fetchRemoteKnowledge(exam, true).then((data) => {
+        if (data) {
+          setModel((prev) => applyRemoteKnowledgeToModel(prev, data, exam));
+        }
+      });
+      fetchRemoteSets(exam, true).catch(() => {});
+    }
   };
 
   return (

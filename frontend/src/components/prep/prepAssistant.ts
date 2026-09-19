@@ -3,7 +3,7 @@
 // with. A request to explain material is turned back to planning and to «Проверь себя».
 // Pure functions over the prep model; stands in for the backend until there is one.
 
-import { daysBetween, EXAMS, formatDate, formatShort, parseDeadline, SETS, skillById, SKILLS, TODAY, type ExamId, type StudySet } from "./prepData";
+import { allSkills, daysBetween, EXAMS, formatDate, formatShort, parseDeadline, SETS, skillById, SKILLS, TODAY, type ExamId, type StudySet } from "./prepData";
 import type { PrepModel } from "./prepModel";
 import type { TopicContent } from "./topicContent";
 
@@ -44,7 +44,7 @@ function examOf(t: string, fallback: ExamId): ExamId {
 }
 
 const openSkills = (model: PrepModel, exam: ExamId) =>
-  SKILLS.filter((s) => s.exam === exam && model.states[s.id] !== "solid");
+  allSkills().filter((s) => s.exam === exam && model.states[s.id] !== "solid");
 
 const minutesPerDay = (skills: number, days: number) =>
   Math.min(240, Math.max(20, Math.round((skills * MINUTES_PER_SKILL) / Math.max(1, days) / 5) * 5));
@@ -55,12 +55,12 @@ function priorities(model: PrepModel, exam: ExamId) {
   const why = (id: string) => {
     const s = skillById(id);
     if (s.root) return "корень: от него ошибки выше по карте";
-    if (model.misconceptions[id].some((m) => m.status === "confirmed")) return "подтверждённая ловушка";
+    if ((model.misconceptions[id] ?? []).some((m) => m.status === "confirmed")) return "подтверждённая ловушка";
     return s.weight >= 8 ? "большой вес на экзамене" : "ещё не держится";
   };
   const rank = (id: string) => {
     const s = skillById(id);
-    return (s.root ? 200 : 0) + (model.misconceptions[id].some((m) => m.status === "confirmed") ? 100 : 0) + s.weight;
+    return (s.root ? 200 : 0) + ((model.misconceptions[id] ?? []).some((m) => m.status === "confirmed") ? 100 : 0) + s.weight;
   };
   return open
     .map((s) => s.id)
@@ -181,7 +181,7 @@ export function topicReply(text: string, model: PrepModel, skillId: string, set:
   }
 
   if (/ошиб|ловушк|где я|не так|неправ/.test(t)) {
-    const own = model.misconceptions[skillId].filter((m) => m.status === "confirmed" || m.status === "suspected");
+    const own = (model.misconceptions[skillId] ?? []).filter((m) => m.status === "confirmed" || m.status === "suspected");
     if (own.length) {
       return [
         `По твоим ответам в теме «${skill.name}»:`,

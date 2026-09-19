@@ -8,6 +8,9 @@ backend/.venv
 backend/.pytest_cache
 backend/.ruff_cache
 backend/tests
-frontend
 docs
 *.md
+frontend/node_modules
+frontend/dist
+frontend/.next
+frontend/graphify-out

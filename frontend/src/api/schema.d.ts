@@ -509,6 +509,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get State */
+        get: operations["get_state_state_get"];
+        put?: never;
+        post?: never;
+        /** Clear State */
+        delete: operations["clear_state_state_delete"];
+        options?: never;
+        head?: never;
+        /** Patch State */
+        patch: operations["patch_state_state_patch"];
+        trace?: never;
+    };
     "/knowledge": {
         parameters: {
             query?: never;
@@ -1086,6 +1105,22 @@ export interface components {
             hint_level?: number | null;
             /** Referenced Skill Ids */
             referenced_skill_ids?: string[];
+        };
+        /**
+         * AuthOut
+         * @description Identity plus the display name. The name rides in the token so that
+         *     /auth/me stays free of database access.
+         */
+        AuthOut: {
+            /**
+             * Student Id
+             * Format: uuid
+             */
+            student_id: string;
+            /** Email */
+            email: string;
+            /** Name */
+            name: string;
         };
         /**
          * AvailabilityOut
@@ -3890,6 +3925,79 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SetOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_state_state_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    clear_state_state_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patch_state_state_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

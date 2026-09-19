@@ -130,6 +130,10 @@ export function localSource(): QuackSource {
     if (!baseline) {
       baseline = firstBaseline(current);
       write(KEYS.baseline, baseline);
+    } else if (!baseline.skills) {
+      // A baseline saved before topics were tracked: start tracking them from here
+      baseline = { ...baseline, skills: current.skills };
+      write(KEYS.baseline, baseline);
     }
 
     // A signal keeps the time and cause of the moment it first appeared, however often it is recomputed

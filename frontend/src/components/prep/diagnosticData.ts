@@ -11,6 +11,7 @@ export type DiagnosticQuestion = {
   question: string;
   options: {
     label: string;
+    key?: string;
     correct?: boolean;
     trap?: string;
   }[];
@@ -139,6 +140,7 @@ export type DiagnosticResultSummary = {
   attentionSkills: string[];
   trapsCaught: string[];
   statesUpdate: Record<string, SkillState>;
+  words?: string;
 };
 
 export function evaluateDiagnostic(answers: Record<string, number>): DiagnosticResultSummary {

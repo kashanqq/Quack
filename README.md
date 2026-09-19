@@ -2,7 +2,7 @@
 
 Сервис для школьников 10–11 класса Казахстана: подбирает программы вузов под конкретного ученика и ведёт подготовку к экзаменам. Ассистент понимает ученика из разговора, собирает профиль, предлагает программы с оценкой реалистичности и строит маршрут подготовки.
 
-> Статус: прототип. Фронтенд — рабочий интерфейс с имитацией ассистента и демо-данными программ. Бэкенд разрабатывается поэтапно в `backend/`.
+> Статус: MVP. Фронтенд подключён к бэкенду (Фазы 1–5): вход, профиль, подборка, чат-ассистент, подготовка и Quack! работают через API. Без бэкенда фронт по-прежнему запускается в демо-режиме на данных в браузере.
 
 ## Структура репозитория
 
@@ -10,7 +10,9 @@
 .
 ├── frontend/          Next.js-приложение (интерфейс)
 ├── backend/           FastAPI-приложение, миграции и тесты
-├── deploy/            Локальная инфраструктура
+├── deploy/            Локальная и прод-инфраструктура (compose, Caddy, Dockerfile'ы)
+├── data/              Сид-данные: программы, навыки, шаблоны задач, демо-аккаунты
+├── scripts/           seed.py, генерация типов, проверка релиза
 ├── product-logic.md   Продуктовая логика: что делает сервис и по каким правилам
 ├── arch-logic.md      Техническая архитектура по слоям
 ├── DESIGN.md          Цели, палитра, ключевые экраны
@@ -56,6 +58,28 @@ make worker-bulk                         # в отдельном термина�
 cd frontend && npm install && npm run dev # http://localhost:3000
 ```
 
+Чтобы фронт ходил в бэкенд, создайте `frontend/.env.local` (иначе он работает на демо-данных в браузере):
+
+```bash
+NEXT_PUBLIC_DATA_SOURCE=remote
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+После правки `.env.local` перезапустите `npm run dev`. CORS на бэкенде по умолчанию разрешает `localhost:3000`, `127.0.0.1:3000` и `localhost:3001` (`CORS_ORIGINS`).
+
+### Как фронт связан с бэкендом
+
+| Экран | Эндпоинты |
+|---|---|
+| Вход и регистрация | `/auth/register`, `/auth/login`, `/auth/me`, `/auth/logout` |
+| Состояние интерфейса | `/state` (GET/PATCH/DELETE) |
+| Выбор: профиль, подборка, избранное | `/profile`, `/matching`, `/matching/compare`, `/saved` |
+| Чат-ассистент (SSE) | `POST /chat/selection/messages`, история `GET` |
+| Подготовка | `/sets`, `/tasks`, `/knowledge`, `/diagnostic`, `/mocks`, `/overview`, чат репетитора `/chat/prep/*` |
+| Quack! | пересчитывается в браузере из данных бэкенда; серверный `/quack` включается `NEXT_PUBLIC_QUACK_SOURCE=remote` (контракт ещё не согласован) |
+
+Подробный план и статус — [docs/frontend-backend-integration.md](docs/frontend-backend-integration.md). Типы API генерируются из OpenAPI: `make types` → `frontend/src/api/schema.d.ts`.
+
 Без ключа модели сервис поднимается и работает в деградированном режиме:
 правила, замер, задачи, план и сохранённые программы доступны, чат отвечает
 `503 llm_unavailable`, а тексты показываются сохранённые с пометкой.
@@ -99,6 +123,20 @@ uv run --frozen python ../scripts/seed.py --demo-check  # готовность, 
   один раз» с идемпотентными эффектами); программы с флагом остаются
   исключёнными до ручной перепроверки.
 
+## Прод
+
+Фронт и API отдаются с одного домена через Caddy, поэтому cookie сессии работает без CORS:
+
+- `deploy/Dockerfile.web` собирает статический экспорт фронта (`NEXT_PUBLIC_API_URL=/api`) в образ Caddy;
+- `deploy/Caddyfile`: `/api/*` → API (префикс срезается, стрим чата не буферизуется), `/health` → API, остальное — статика.
+
+```bash
+cp deploy/.env.example deploy/.env   # DOMAIN, JWT_SECRET (≥ 32 байт), LLM_*, пароли баз
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.prod.yml --profile prod up -d --build
+```
+
+После мержа в `main` деплой идёт автоматически (`.github/workflows/deploy.yml`), если в репозитории заданы секреты `VPS_*` и `DOMAIN`. Проверка: `https://ДОМЕН/health`, вход под `demo@quack.kz`.
+
 ## Эксплуатация
 
 Релиз, поведение при отказах, восстановление и откат — [docs/runbook.md](docs/runbook.md).
@@ -117,6 +155,7 @@ uv run --frozen python ../scripts/seed.py --demo-check  # готовность, 
 | [arch-logic.md](arch-logic.md) | Слои системы: клиент → оркестрация → ИИ / правила → данные → внешние источники |
 | [DESIGN.md](DESIGN.md) | Цели, дизайн-система, ключевые экраны |
 | [docs/runbook.md](docs/runbook.md) | Релиз, отказы, восстановление, откат, демо |
+| [docs/frontend-backend-integration.md](docs/frontend-backend-integration.md) | Связка фронта и бэкенда: план, статус, известные ограничения |
 | [docs/sync-log.md](docs/sync-log.md) | Согласованные решения по контрактам между B1/B2/B3 |
 
 ## Как работаем
