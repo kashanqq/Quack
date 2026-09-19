@@ -9,7 +9,9 @@ import type { BackendConflict } from "@/api/backend";
 import {
   REMOTE_PREP,
   fetchRemoteOverview,
+  getCachedRemoteOverview,
   markRemoteMilestone,
+  prefetchRemoteOverview,
   type RemotePrepOverview,
 } from "./remotePrep";
 import {
@@ -28,6 +30,7 @@ import {
   EXAMS,
   type ExamId,
   type ExamOutlook,
+  type ExamRequirement,
   type Milestone,
 } from "./prepData";
 import { proposedSet, readiness, type PrepModel, type PrepSub, type PrepTab } from "./prepModel";
@@ -66,7 +69,11 @@ type Props = {
  * the first visit, then the active set itself — its graph of topics, the chat and the mocks.
  */
 export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onModel, onToast, focus, diagnostic }: Props) {
-  const [remoteData, setRemoteData] = useState<RemotePrepOverview | null>(null);
+  const [remoteData, setRemoteData] = useState<RemotePrepOverview | null>(() => {
+    if (typeof window === "undefined" || !REMOTE_PREP) return null;
+    return getCachedRemoteOverview();
+  });
+  const [loading, setLoading] = useState(() => REMOTE_PREP && !getCachedRemoteOverview());
 
   useEffect(() => {
     if (!REMOTE_PREP) return;
@@ -75,6 +82,7 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onMo
       .then((data) => {
         if (!cancelled) {
           setRemoteData(data);
+          setLoading(false);
           if (data.doneMilestoneKeys.length) {
             onModel({
               ...model,
@@ -84,6 +92,7 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onMo
         }
       })
       .catch((err) => {
+        if (!cancelled) setLoading(false);
         console.warn("Failed to fetch remote overview, using local fallback:", err);
       });
     return () => {
@@ -104,8 +113,16 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onMo
     ent: { readiness: series.ent.readiness, forecast: series.ent.forecast },
   };
 
-  const exams = remoteData?.requirements.length ? remoteData.requirements : requirements(programs, outlook);
-  const list = remoteData?.milestones.length ? remoteData.milestones : milestones(programs);
+  const exams = remoteData
+    ? remoteData.requirements
+    : REMOTE_PREP
+    ? []
+    : requirements(programs, outlook);
+  const list = remoteData
+    ? remoteData.milestones
+    : REMOTE_PREP
+    ? []
+    : milestones(programs);
   const conflicts = remoteData?.conflicts ?? [];
 
   const handleToggleMilestone = async (milestone: Milestone, done: boolean) => {
@@ -131,7 +148,7 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onMo
 
   if (sub === "requirements")
     return (
-      <Requirements exams={exams}>
+      <Requirements exams={exams} loading={loading && !remoteData}>
         <MilestonesSection
           milestones={list}
           doneKeys={model.milestonesDone}
@@ -149,6 +166,7 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onMo
   return (
     <Now
       model={model}
+      exams={exams}
       forecasts={{ sat: outlook.sat.forecast, ent: outlook.ent.forecast }}
       onGo={onGo}
       onAccept={onAccept}
@@ -168,6 +186,7 @@ type Pace = { id: string; name: string; level: 0 | 1 | 2 | 3; verdict: string; s
 
 function Now({
   model,
+  exams,
   forecasts,
   onGo,
   onAccept,
@@ -177,6 +196,7 @@ function Now({
   diagnostic,
 }: {
   model: PrepModel;
+  exams: ExamRequirement[];
   forecasts: Record<ExamId, Date>;
   onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
   onAccept: (setId: string) => void;
@@ -189,16 +209,30 @@ function Now({
   const current = model.currentSet ? setById(model.currentSet) : null;
   const isDiagPending = !model.diagnosticDone;
 
-  // Quack's verdict per exam; demo programs are not saved, so there only the forecast date
-  const paces: Pace[] = state.standing?.exams.length
-    ? state.standing.exams.map((e) => ({ id: e.id, name: e.name, level: e.level, verdict: e.verdict, summary: e.summary }))
-    : EXAM_IDS.map((id) => ({
-        id,
-        name: EXAMS[id].name,
-        level: forecasts[id] <= EXAMS[id].test ? 3 : 0,
-        verdict: forecasts[id] <= EXAMS[id].test ? "Успеваешь" : "Не успеваешь",
-        summary: `прогноз на ${formatDate(forecasts[id])}, тест ${formatDate(EXAMS[id].test)}`,
-      }));
+  // Quack's verdict per exam — strictly filtered to exams that are actually required
+  const paces: Pace[] = exams.map((exam) => {
+    const standingPace = state.standing?.exams.find((se) => se.id === exam.id);
+    if (standingPace) {
+      return {
+        id: standingPace.id,
+        name: standingPace.name,
+        level: standingPace.level,
+        verdict: standingPace.verdict,
+        summary: standingPace.summary,
+      };
+    }
+    const examId = exam.id as ExamId;
+    const forecastDate = forecasts[examId] ?? EXAMS[examId]?.test ?? TODAY;
+    const testDate = exam.testDate ?? EXAMS[examId]?.test ?? TODAY;
+    const onTime = forecastDate <= testDate;
+    return {
+      id: exam.id,
+      name: exam.name,
+      level: onTime ? 3 : 0,
+      verdict: onTime ? "Успеваешь" : "Не успеваешь",
+      summary: `прогноз на ${formatDate(forecastDate)}, тест ${formatDate(testDate)}`,
+    };
+  });
 
   // The test itself, in place: its result builds the route and the first set opens on the same spot
   if (diagnostic.open)
@@ -215,15 +249,17 @@ function Now({
     return (
       <div className={styles.nowWork}>
         <div className={styles.nowStrip}>
-          <ul className={styles.nowStripPaces} aria-label="Темп по экзаменам">
-            {paces.map((p) => (
-              <li key={p.id} data-pace={p.level} title={p.summary}>
-                <PixelDuck tempo={DUCK_TEMPO[p.level]} className={styles.nowStripDuck} asleep={p.level === 0} />
-                <span className={styles.nowPaceName}>{p.name}</span>
-                <strong>{p.verdict}</strong>
-              </li>
-            ))}
-          </ul>
+          {paces.length > 0 && (
+            <ul className={styles.nowStripPaces} aria-label="Темп по экзаменам">
+              {paces.map((p) => (
+                <li key={p.id} data-pace={p.level} title={p.summary}>
+                  <PixelDuck tempo={DUCK_TEMPO[p.level]} className={styles.nowStripDuck} asleep={p.level === 0} />
+                  <span className={styles.nowPaceName}>{p.name}</span>
+                  <strong>{p.verdict}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
           <button type="button" className={styles.link} onClick={() => onGo("sets", "route")}>
             Сменить сет →
           </button>
@@ -270,15 +306,17 @@ function Now({
           <h2 className={styles.nowSet}>Все сеты пройдены — осталось закрепление и тест</h2>
         )}
 
-        <ul className={styles.nowPaces}>
-          {paces.map((p) => (
-            <li key={p.id} data-pace={p.level}>
-              <PixelDuck tempo={DUCK_TEMPO[p.level]} className={styles.nowPaceDuck} asleep={p.level === 0} />
-              <span className={styles.nowPaceName}>{p.name}</span>
-              <strong>{p.verdict}</strong>
-            </li>
-          ))}
-        </ul>
+        {paces.length > 0 && (
+          <ul className={styles.nowPaces}>
+            {paces.map((p) => (
+              <li key={p.id} data-pace={p.level}>
+                <PixelDuck tempo={DUCK_TEMPO[p.level]} className={styles.nowPaceDuck} asleep={p.level === 0} />
+                <span className={styles.nowPaceName}>{p.name}</span>
+                <strong>{p.verdict}</strong>
+              </li>
+            ))}
+          </ul>
+        )}
 
         {isDiagPending ? (
           <div className={styles.nowDiagActionBlock}>
@@ -478,12 +516,32 @@ function MilestonesSection({
 /* ---------- Требования: the exams the saved programs ask for ---------- */
 
 /** What each exam asks for and whether the student makes it, in words: no readiness charts or percentages */
-function Requirements({ exams, children }: { exams: ReturnType<typeof requirements>; children: React.ReactNode }) {
+function Requirements({ exams, loading, children }: { exams: ExamRequirement[]; loading?: boolean; children: React.ReactNode }) {
   return (
     <div className={styles.canvasGrid}>
+      {loading && (
+        <section className={`${styles.canvas} ${styles.full}`} aria-label="Загрузка">
+          <header className={styles.canvasHead}>
+            <h3>Требования</h3>
+          </header>
+          <p className={styles.muted}>Загружаем актуальные требования к экзаменам...</p>
+        </section>
+      )}
+
+      {!loading && exams.length === 0 && (
+        <section className={`${styles.canvas} ${styles.full}`} aria-label="Экзамены не требуются">
+          <header className={styles.canvasHead}>
+            <h3>Стандартизированные экзамены не требуются</h3>
+          </header>
+          <p className={styles.muted}>
+            Для твоих сохранённых программ сдача стандартизированных экзаменов (SAT / ЕНТ) не требуется. План подготовки строится вокруг дедлайнов подачи документов.
+          </p>
+        </section>
+      )}
+
       {exams.map((exam) => {
         const margin = exam.testDate && exam.forecast ? daysBetween(exam.forecast, exam.testDate) : 0;
-        const isDemo = !exam.programs.length || exam.programs.some((p) => p.id.startsWith("demo-"));
+        const isDemo = !exam.programs.length || exam.programs.some((p: Program) => p.id.startsWith("demo-"));
         return (
           <section key={exam.id} className={styles.canvas} aria-label={exam.name}>
             <header className={styles.canvasHead}>
@@ -506,7 +564,7 @@ function Requirements({ exams, children }: { exams: ReturnType<typeof requiremen
                 <dt>Нужен для</dt>
                 {exam.programs.length ? (
                   <dd className={styles.chips}>
-                    {exam.programs.map((p) => (
+                    {exam.programs.map((p: Program) => (
                       <span key={p.id}>{p.university}</span>
                     ))}
                   </dd>

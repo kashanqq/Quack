@@ -7,6 +7,7 @@ import { FirstHint } from "@/components/hints/FirstHint";
 import { useEffect, useRef, useState } from "react";
 import { morph } from "@/components/transition/morph";
 import { Overview } from "./Overview";
+import { prefetchRemoteOverview } from "./remotePrep";
 import { savedPrograms, setById, type ExamId } from "./prepData";
 import {
   acceptSet,
@@ -119,14 +120,18 @@ export function PrepView({
     scrollRef.current?.scrollTo({ top: 0 });
   }, [tab, current, focus?.n]);
 
+  const programs = savedPrograms(saved, model.demo);
+
+  useEffect(() => {
+    prefetchRemoteOverview(programs);
+  }, [programs.length]);
+
   // Asked to open the test from outside (a locked tab in the column): it runs in «Сейчас»
   const diagOpen = showDiagnostic || Boolean(externalOpenDiagnostic);
   const closeDiagnostic = () => {
     setShowDiagnostic(false);
     onCloseExternalDiagnostic?.();
   };
-
-  const programs = savedPrograms(saved, model.demo);
   // The active set in «Сейчас» and the map are drawings: they take all the height left
   const working = tab === "overview" && current === "now" && !isDiagPending && !diagOpen && !!model.currentSet;
   const fill = programs.length > 0 && (working || (tab === "sets" && current === "map"));

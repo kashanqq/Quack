@@ -152,22 +152,143 @@ export type RemotePrepOverview = {
   doneMilestoneKeys: string[];
 };
 
-export async function fetchRemoteOverview(programs: Program[]): Promise<RemotePrepOverview> {
-  const raw = await backend.overview.get();
-  const outlook = adaptOutlook(raw.progress);
-  const reqs = adaptRequirements(raw.requirements, raw.progress, programs);
-  const milestones = adaptMilestones(raw.milestones, programs);
-  const doneMilestoneKeys = raw.milestones.filter((m) => m.done).map((m) => m.key);
+const CACHE_STORAGE_KEY = "quack:prep:overview-cache";
+let memoryCachedOverview: RemotePrepOverview | null = null;
+let inflightOverviewPromise: Promise<RemotePrepOverview> | null = null;
 
-  return {
-    requirements: reqs,
-    milestones,
-    conflicts: raw.conflicts,
-    outlook,
-    doneMilestoneKeys,
-  };
+function serializeOverview(data: RemotePrepOverview): string {
+  return JSON.stringify({
+    requirements: data.requirements.map((r) => ({
+      ...r,
+      testDate: r.testDate ? r.testDate.toISOString() : undefined,
+      testCandidates: r.testCandidates.map((d) => d.toISOString()),
+      forecast: r.forecast ? r.forecast.toISOString() : undefined,
+    })),
+    milestones: data.milestones.map((m) => ({
+      ...m,
+      date: m.date.toISOString(),
+    })),
+    conflicts: data.conflicts,
+    outlook: {
+      sat: {
+        readiness: data.outlook.sat.readiness,
+        forecast: data.outlook.sat.forecast.toISOString(),
+      },
+      ent: {
+        readiness: data.outlook.ent.readiness,
+        forecast: data.outlook.ent.forecast.toISOString(),
+      },
+    },
+    doneMilestoneKeys: data.doneMilestoneKeys,
+  });
+}
+
+function deserializeOverview(rawJson: string): RemotePrepOverview | null {
+  try {
+    const parsed = JSON.parse(rawJson);
+    if (!parsed || !Array.isArray(parsed.requirements) || !Array.isArray(parsed.milestones)) {
+      return null;
+    }
+    return {
+      requirements: parsed.requirements.map((r: any) => ({
+        ...r,
+        testDate: r.testDate ? new Date(r.testDate) : undefined,
+        testCandidates: (r.testCandidates ?? []).map((d: string) => new Date(d)),
+        forecast: r.forecast ? new Date(r.forecast) : undefined,
+      })),
+      milestones: parsed.milestones.map((m: any) => ({
+        ...m,
+        date: new Date(m.date),
+      })),
+      conflicts: parsed.conflicts ?? [],
+      outlook: {
+        sat: {
+          readiness: parsed.outlook?.sat?.readiness ?? 0,
+          forecast: parsed.outlook?.sat?.forecast ? new Date(parsed.outlook.sat.forecast) : EXAMS.sat.test,
+        },
+        ent: {
+          readiness: parsed.outlook?.ent?.readiness ?? 0,
+          forecast: parsed.outlook?.ent?.forecast ? new Date(parsed.outlook.ent.forecast) : EXAMS.ent.test,
+        },
+      },
+      doneMilestoneKeys: parsed.doneMilestoneKeys ?? [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function getCachedRemoteOverview(): RemotePrepOverview | null {
+  if (memoryCachedOverview) return memoryCachedOverview;
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(CACHE_STORAGE_KEY);
+    if (raw) {
+      memoryCachedOverview = deserializeOverview(raw);
+      return memoryCachedOverview;
+    }
+  } catch {}
+  return null;
+}
+
+export function saveCachedRemoteOverview(data: RemotePrepOverview): void {
+  memoryCachedOverview = data;
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CACHE_STORAGE_KEY, serializeOverview(data));
+  } catch {}
+}
+
+export async function fetchRemoteOverview(programs: Program[] = []): Promise<RemotePrepOverview> {
+  if (inflightOverviewPromise) return inflightOverviewPromise;
+
+  inflightOverviewPromise = (async () => {
+    try {
+      const raw = await backend.overview.get();
+      const outlook = adaptOutlook(raw.progress);
+      const reqs = adaptRequirements(raw.requirements, raw.progress, programs);
+      const milestones = adaptMilestones(raw.milestones, programs);
+      const doneMilestoneKeys = raw.milestones.filter((m) => m.done).map((m) => m.key);
+
+      const overview: RemotePrepOverview = {
+        requirements: reqs,
+        milestones,
+        conflicts: raw.conflicts,
+        outlook,
+        doneMilestoneKeys,
+      };
+
+      saveCachedRemoteOverview(overview);
+      return overview;
+    } finally {
+      inflightOverviewPromise = null;
+    }
+  })();
+
+  return inflightOverviewPromise;
+}
+
+export function prefetchRemoteOverview(programs: Program[] = []): void {
+  if (!REMOTE_PREP) return;
+  fetchRemoteOverview(programs).catch(() => undefined);
 }
 
 export async function markRemoteMilestone(key: string, done: boolean): Promise<BackendMilestone> {
-  return backend.overview.markMilestone(key, done);
+  const result = await backend.overview.markMilestone(key, done);
+  if (memoryCachedOverview) {
+    const nextDoneKeys = done
+      ? Array.from(new Set([...memoryCachedOverview.doneMilestoneKeys, key]))
+      : memoryCachedOverview.doneMilestoneKeys.filter((k) => k !== key);
+    const nextMilestones = memoryCachedOverview.milestones.map((m) =>
+      (m.key === key || m.id === key) ? { ...m, done } : m
+    );
+    const updated: RemotePrepOverview = {
+      ...memoryCachedOverview,
+      milestones: nextMilestones,
+      doneMilestoneKeys: nextDoneKeys,
+    };
+    saveCachedRemoteOverview(updated);
+  }
+  return result;
 }
+

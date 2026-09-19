@@ -260,15 +260,18 @@ export function computeStanding({ profile, saved, prep }: QuackInputs, today = T
     conflicts,
   });
 
-  // The plan is SAT Math and ЕНТ; IELTS is only a score the student tells us, so it gets no pace.
-  // ЕНТ is planned whether or not a saved program asks for it
+  // The plan includes exams asked for by the student's saved programs
+  const entPrograms = programs.filter((p) => p.entMin || p.country === "Казахстан");
   const ent: UnionExam = exams.find((u) => u.exam.id === "ent") ?? {
     exam: EXAMS.ent,
     target: 40,
     targetOwner: programs[0],
     demands: [],
   };
-  const planned = [...exams.filter((u) => u.exam.id === "sat"), ...(programs.length ? [ent] : [])];
+  const planned = [
+    ...exams.filter((u) => u.exam.id === "sat"),
+    ...(entPrograms.length || exams.some((u) => u.exam.id === "ent") ? [ent] : []),
+  ];
   const paces = planned.map((u) => modelPace(u, ctxFor(u.exam.id as ExamId)));
   // The worst exam speaks for all; on a tie the one with a forecast says more
   const worst = [...paces].sort((a, b) => a.level - b.level || Number(!a.forecast) - Number(!b.forecast))[0];

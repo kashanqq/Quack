@@ -532,8 +532,9 @@ export function requirements(programs: Program[], outlook: ExamOutlook): ExamReq
     });
   }
 
-  // ЕНТ is the student's own plan, not a program's demand: it is there whenever preparation is
-  if (programs.length) {
+  // ЕНТ is included only if a program requires it or is in Kazakhstan
+  const entPrograms = programs.filter((p) => p.entMin || p.country === "Казахстан");
+  if (entPrograms.length) {
     result.push({
       id: "ent",
       name: "ЕНТ · математика",
@@ -541,7 +542,7 @@ export function requirements(programs: Program[], outlook: ExamOutlook): ExamReq
       targetNote: "из 50 · профильная математика, цель на грант",
       testDate: EXAMS.ent.test,
       testCandidates: [EXAMS.ent.test, day(6, 20, 2027)],
-      programs: [],
+      programs: entPrograms,
       hasModel: true,
       ...outlook.ent,
     });
@@ -558,7 +559,7 @@ export function milestones(programs: Program[]): Milestone[] {
       { id: "sat-test", date: day(11, 7), title: "SAT — тест", detail: "Цель по Math выставлена по сохранённым", source: "демо", checkable: true }
     );
   }
-  if (programs.length) {
+  if (programs.some((p) => p.entMin || p.country === "Казахстан")) {
     list.push(
       { id: "ent-reg", date: day(12, 20), title: "Регистрация на ЕНТ", detail: "Тест 20 января · НЦТ", source: "демо", checkable: true },
       { id: "ent-test", date: day(1, 20, 2027), title: "ЕНТ — тест", detail: "Профильная математика", source: "демо", checkable: true }
