@@ -14,7 +14,8 @@ type Props = {
   set: StudySet;
   /** A topic to open straight away, e.g. from «Важно сейчас» */
   topic?: string;
-  onBack: () => void;
+  /** Absent in «Сейчас»: there the set is the whole screen, nothing to go back to */
+  onBack?: () => void;
   onMakeCurrent: (setId: string) => void;
   onModel: (model: PrepModel) => void;
   onToast: (text: string) => void;
@@ -65,9 +66,11 @@ export function SetDetail({ model, set, topic, onBack, onMakeCurrent, onModel, o
   return (
     <div className={styles.setDetail}>
       <header className={styles.setBar}>
-        <button type="button" className={styles.backLink} onClick={onBack} aria-label="Все сеты" title="Все сеты">
-          <Icon name="arrow-left" size={18} />
-        </button>
+        {onBack && (
+          <button type="button" className={styles.backLink} onClick={onBack} aria-label="Все сеты" title="Все сеты">
+            <Icon name="arrow-left" size={18} />
+          </button>
+        )}
         <div className={styles.setBarTitle}>
           <h2>
             Сет {set.number} · {set.title}
