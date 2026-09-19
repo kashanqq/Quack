@@ -141,7 +141,10 @@ export function applyRemoteKnowledgeToModel(
   const newMisconceptions = { ...model.misconceptions };
 
   for (const s of data.skills) {
-    newStates[s.skill_id] = toFrontendSkillState(s.level);
+    const remote = toFrontendSkillState(s.level);
+    // «low_data» means the server has not seen enough yet: a verdict the student already earned here
+    // (a finished mock) is kept instead of being wiped back to «не изучено»
+    if (remote !== "lowData" || !newStates[s.skill_id] || newStates[s.skill_id] === "lowData") newStates[s.skill_id] = remote;
     newRecall[s.skill_id] = s.p_recall;
 
     const skillTraps = (data.misconceptions || [])

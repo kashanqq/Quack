@@ -83,6 +83,8 @@ export type Standing = {
   asOf: string;
   /** Preparation readiness, % */
   readiness: number;
+  /** State of every topic (skill id -> state), so a bad test shows up even when readiness stays put */
+  skills?: Record<string, string>;
   /** The worst exam decides; null while nothing is saved */
   pace: { level: PaceLevel; verdict: string; summary: string; advice: string[]; exam: string; mark?: ExamPace["mark"]; adviceActions?: ExamPace["adviceActions"] } | null;
   exams: ExamPace[];
@@ -99,7 +101,7 @@ export type Signal = {
   level: SignalLevel;
   /** up — got better, down — got worse, info — neither */
   tone: "up" | "down" | "info";
-  kind: "chance" | "pace" | "deadline" | "missed" | "conflict" | "late-set" | "programs";
+  kind: "chance" | "pace" | "skills" | "deadline" | "missed" | "conflict" | "late-set" | "programs";
   title: string;
   detail?: string;
   /** What the student did that caused it, when known */

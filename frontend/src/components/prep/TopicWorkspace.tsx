@@ -15,7 +15,16 @@ import {
   submitRemoteAnswer,
 } from "./remoteTasks";
 import { fetchRemoteSets, REMOTE_PREP } from "./remoteSets";
-import { explainRemoteNode, refreshRemoteKnowledge } from "./remoteKnowledge";
+import { applyRemoteKnowledgeToModel, explainRemoteNode, fetchRemoteKnowledge, refreshRemoteKnowledge } from "./remoteKnowledge";
+import type { ExamId } from "./prepData";
+
+/** The server's knowledge model after answers: states, recall and traps go into the model, and from
+ * there to Quack's «Что изменилось» (PrepView reports every model change). */
+async function pullKnowledge(base: PrepModel, exam: ExamId): Promise<PrepModel | null> {
+  if (!REMOTE_PREP) return null;
+  const data = await fetchRemoteKnowledge(exam, true).catch(() => null);
+  return data ? applyRemoteKnowledgeToModel(base, data, exam) : null;
+}
 import {
   loadPrepMessages,
   pollObservationsDiff,
@@ -190,6 +199,11 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
     } catch {
       onToast("Ошибка при запуске обновления");
     } finally {
+      const pulled = await pullKnowledge(modelRef.current, set.exam);
+      if (pulled) {
+        onModel(pulled);
+        onToast("Модель знаний обновлена — изменения в Quack!");
+      }
       setRefreshing(false);
     }
   };
@@ -809,8 +823,10 @@ function MockTest({
         }
         currentTask.solution = res.solution;
 
-        onModel(answerTask(model, skillId, currentTask, i, true).model);
+        const answered = answerTask(model, skillId, currentTask, i, true).model;
+        onModel(answered);
         setPicks((p) => [...p, i]);
+        pullKnowledge(answered, set.exam).then((m) => m && onModel(m));
       } catch (err) {
         console.warn("Failed remote answer, falling back to local:", err);
         onModel(answerTask(model, skillId, currentTask, i, true).model);
@@ -835,6 +851,7 @@ function MockTest({
     onModel(r.model);
     setSettled({ from: STATE_LABEL[r.from], to: STATE_LABEL[r.to] });
     if (r.setPassed) onToast(`Сет ${r.setPassed.number} доказан целиком — отчёт в «Обзоре»`);
+    pullKnowledge(r.model, set.exam).then((m) => m && onModel(m));
 
     if (r.to === "solid" && set.rawId && REMOTE_PREP) {
       try {

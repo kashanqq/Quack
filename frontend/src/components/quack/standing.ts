@@ -310,6 +310,7 @@ export function computeStanding({ profile, saved, prep }: QuackInputs, today = T
   return {
     asOf: iso(today),
     readiness: now,
+    skills: { ...prep.states },
     pace: worst
       ? { level: worst.level, verdict: worst.verdict, summary: `${worst.name}: ${lowerFirst(worst.summary)}`, advice: worst.advice, exam: worst.id, mark: worst.mark, adviceActions: worst.adviceActions }
       : null,
