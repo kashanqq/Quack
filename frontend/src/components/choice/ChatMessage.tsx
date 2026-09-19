@@ -14,6 +14,10 @@ export type ChatMsg = {
   editable: boolean;
   editing?: boolean;
   confirmBeforeEdit?: ChatMsg["confirm"];
+  /** A milestone this reply ticked done, with a way to take the tick back */
+  milestone?: { id: string; title: string; undone?: boolean };
+  /** A test date this reply picked, with the one it replaced to go back to */
+  testDate?: { exam: "sat" | "ent"; label: string; prev: string | null; prevLabel: string; undone?: boolean };
 };
 
 type ChatMessageProps = {
@@ -22,9 +26,11 @@ type ChatMessageProps = {
   onEditStart: (id: number) => void;
   onEditCancel: (id: number) => void;
   onEditSave: (id: number, original: string, edited: string) => void;
+  onUndoMilestone?: (id: number) => void;
+  onUndoTestDate?: (id: number) => void;
 };
 
-export function ChatMessage({ msg, onConfirm, onEditStart, onEditCancel, onEditSave }: ChatMessageProps) {
+export function ChatMessage({ msg, onConfirm, onEditStart, onEditCancel, onEditSave, onUndoMilestone, onUndoTestDate }: ChatMessageProps) {
   const editRef = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState(msg.text);
 
@@ -79,6 +85,34 @@ export function ChatMessage({ msg, onConfirm, onEditStart, onEditCancel, onEditS
           />
         ) : (
           <div className={styles.msgText}>{msg.text}</div>
+        )}
+        {msg.testDate && !msg.typing && (
+          <p className={styles.msgMilestone} data-undone={msg.testDate.undone || undefined}>
+            {msg.testDate.undone ? (
+              <>Вернул прежнюю дату: {msg.testDate.prevLabel}</>
+            ) : (
+              <>
+                ✓ Дата теста: {msg.testDate.label} ·{" "}
+                <button type="button" className={styles.msgMilestoneUndo} onClick={() => onUndoTestDate?.(msg.id)}>
+                  вернуть {msg.testDate.prevLabel}
+                </button>
+              </>
+            )}
+          </p>
+        )}
+        {msg.milestone && !msg.typing && (
+          <p className={styles.msgMilestone} data-undone={msg.milestone.undone || undefined}>
+            {msg.milestone.undone ? (
+              <>Отметка снята: {msg.milestone.title}</>
+            ) : (
+              <>
+                ✓ {msg.milestone.title} ·{" "}
+                <button type="button" className={styles.msgMilestoneUndo} onClick={() => onUndoMilestone?.(msg.id)}>
+                  отменить
+                </button>
+              </>
+            )}
+          </p>
         )}
       </div>
 
