@@ -1,34 +1,36 @@
-/* "Под основой": a tall section whose stage sticks to the viewport while the
-   scroll moves the focus down the stack of layers. */
+/* "Что внутри": the whole stack of layers on one screen. Every layer is placed
+   from the same few sizes, so the layers, the bands that pick them and the
+   cards beside them all line up:
+   - --w: layer width;
+   - --gap: how far apart neighbouring layers sit;
+   - a layer's middle is at --top + --y × --gap from the top of the stack,
+     where --y is its slot (the script's `slot`). */
 
 .section {
   --panel-bg: #242120;
   --panel-line: rgba(255, 255, 255, 0.09);
   --violet: #9b7bff;
-  /* Resting width of a layer; the focused one is 1.3× this (FOCUS_SCALE in the script). */
-  --layer-w: min(480px, 32vw);
-  /* Half the focused layer plus breathing room: where the cards start. */
-  --card-offset: calc(var(--layer-w) * 0.65 + 32px);
+  /* Wide enough to read, small enough that the stack and the heading fit one screen. */
+  --w: max(220px, min(400px, 30vw, calc((100dvh - 300px) / 1.8)));
+  --gap: calc(var(--w) * 0.2);
+  --top: calc(var(--w) * 0.42);
+  /* The picked layer grows by this much. */
+  --pop: 1.1;
 
   position: relative;
   z-index: 1;
-}
-
-.stage {
-  position: sticky;
-  top: 0;
-  height: 100dvh;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  /* Sized to fit one screen by --w, so it needs no min-height and adds no empty room below. */
+  padding: 104px 16px 24px;
 }
 
 .head {
-  position: absolute;
-  top: 92px;
-  left: 50%;
-  z-index: 60;
-  width: min(640px, calc(100% - 32px));
+  width: min(640px, 100%);
   text-align: center;
-  translate: -50% 0;
 }
 
 .heading {
@@ -46,24 +48,90 @@
   font-size: 15px;
 }
 
-/* The stack: every layer is centred on the same point and moved by script. */
+/* Tells the visitor the layers can be picked: a small mono line with a pulsing dot. */
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 5px 12px;
+  border: 1px solid var(--panel-line);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.62);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.hint::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* The stack and its cards. The cards are laid over the stack and stand
+   outside it, either side, so they take no width of their own. */
+
+.wrap {
+  position: relative;
+  width: var(--w);
+}
 
 .stack {
-  position: absolute;
-  inset: 0;
-  /* Clear of the sticky header and the heading under it. */
-  top: 130px;
-  bottom: 40px;
+  position: relative;
+  height: calc(var(--top) + 5 * var(--gap) + var(--w) * 0.36);
 }
 
 .layer {
   position: absolute;
-  top: 50%;
+  top: calc(var(--top) + var(--y) * var(--gap));
   left: 50%;
-  /* Laid out at the focused size and scaled down by script, never up, so it stays sharp. */
-  width: calc(var(--layer-w) * 1.3);
+  width: 100%;
   pointer-events: none;
+  translate: -50% -50%;
+  transition:
+    scale 0.5s var(--ease-out),
+    translate 0.5s var(--ease-out),
+    filter 0.35s ease,
+    opacity 0.35s ease;
+}
+
+/* The picked layer comes forward — towards the viewer and a little larger —
+   and the rest go soft behind it. */
+.wrap[data-picked="true"] .layer {
+  opacity: 0.45;
+  filter: blur(4px);
+}
+
+.wrap[data-picked="true"] .layer[data-active="true"] {
+  opacity: 1;
+  filter: none;
+  scale: var(--pop);
+  translate: -50% calc(-50% + var(--gap) * 0.25);
+}
+
+/* Each layer rides its own slow swell, a beat behind the one above. */
+.bob {
+  animation: bob 5.2s ease-in-out infinite alternate;
+  animation-delay: calc(var(--i) * -0.9s);
   will-change: transform;
+}
+
+@keyframes bob {
+  from {
+    transform: translateY(-3px) rotate(-0.4deg);
+  }
+  to {
+    transform: translateY(4px) rotate(0.4deg);
+  }
 }
 
 .layer img {
@@ -73,138 +141,81 @@
   user-select: none;
 }
 
-/* The builder's ladder hugs the left corner of the layer in focus and fades out
-   above and below. Its rungs are moved by script, in step with the stack. */
-.ladder {
+/* Invisible bands, one level with each layer, that pick it: the layers overlap
+   too much to be pointed at by their own outlines. The first band reaches up
+   to the top of the stack and the last one down to its bottom. */
+.band {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: calc(50% - var(--layer-w) * 0.65 - 30px);
-  width: 24px;
-  background:
-    linear-gradient(to right, #6a6058 4px, transparent 4px 20px, #6a6058 20px),
-    repeating-linear-gradient(to bottom, #544c46 0 4px, transparent 4px 24px);
-  opacity: 0.8;
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
-  mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
-}
-
-/* The builder stands on a rung level with the layer in focus. While the stack
-   moves, it climbs: a quick two-step hop in place. */
-.builder {
-  position: absolute;
-  bottom: 50%;
-  left: calc(50% - var(--layer-w) * 0.65 - 44px);
-  z-index: 55;
-  width: 48px;
-}
-
-.builder[data-climbing="true"] > svg {
-  animation: climb 0.22s steps(2, end) infinite;
-}
-
-@keyframes climb {
-  from {
-    translate: 0 0;
-  }
-  to {
-    translate: 0 -8px;
-  }
-}
-
-/* Index of the layers along the bottom edge. */
-
-.rail {
-  position: absolute;
-  bottom: 28px;
-  left: 50%;
+  top: calc(var(--top) + var(--from) * var(--gap));
+  left: -8%;
   z-index: 60;
-  display: flex;
-  gap: 4px;
-  margin: 0;
-  padding: 6px;
-  background: rgba(36, 33, 32, 0.6);
-  border: 1px solid var(--panel-line);
-  border-radius: 18px;
-  list-style: none;
-  backdrop-filter: blur(10px);
-  translate: -50% 0;
-}
-
-.railItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 12px;
+  width: 116%;
+  height: calc((var(--to) - var(--from)) * var(--gap));
+  padding: 0;
   border: 0;
-  border-radius: 12px;
   background: none;
-  color: rgba(255, 255, 255, 0.38);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  text-align: left;
   cursor: pointer;
-  transition:
-    color 0.3s ease,
-    background 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.railItem:hover {
-  color: rgba(255, 255, 255, 0.75);
+.band:first-of-type {
+  top: 0;
+  height: calc(var(--top) + var(--to) * var(--gap));
 }
 
-.railItem[data-active="true"] {
-  background: var(--panel-bg);
-  color: #fff;
+.band:last-of-type {
+  height: auto;
+  bottom: 0;
 }
 
-.railNum {
-  color: var(--accent);
-  opacity: 0.55;
-  transition: opacity 0.3s ease;
+.band:focus-visible {
+  outline: 1px dashed rgba(255, 255, 255, 0.35);
+  outline-offset: -1px;
+  border-radius: 12px;
 }
 
-.railItem[data-active="true"] .railNum {
-  opacity: 1;
-}
+/* Description of the picked layer, beside it and level with it. */
 
-/* Description of the focused layer, beside it. */
+.cards {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
 
 .card {
   position: absolute;
-  top: 50%;
-  z-index: 60;
-  width: min(340px, 22vw);
+  top: calc(var(--top) + var(--y) * var(--gap));
+  z-index: 70;
+  width: min(340px, 24vw);
   padding: 22px 24px;
   background: rgba(36, 33, 32, 0.82);
   border: 1px solid var(--panel-line);
   border-radius: 24px;
   backdrop-filter: blur(10px);
   opacity: 0;
-  pointer-events: none;
-  translate: 0 calc(-50% + 30px);
+  translate: 0 -50%;
   transition:
-    opacity 0.25s ease,
-    translate 0.4s var(--ease-out);
+    opacity 0.2s ease,
+    translate 0.35s var(--ease-out);
 }
 
 .card[data-side="left"] {
-  right: calc(50% + var(--card-offset));
-  translate: -24px calc(-50% + 30px);
+  right: calc(100% + var(--w) * (var(--pop) - 1) / 2 + 40px);
+  translate: 16px -50%;
 }
 
 .card[data-side="right"] {
-  left: calc(50% + var(--card-offset));
-  translate: 24px calc(-50% + 30px);
+  left: calc(100% + var(--w) * (var(--pop) - 1) / 2 + 40px);
+  translate: -16px -50%;
 }
 
 .card[data-active="true"] {
   opacity: 1;
   pointer-events: auto;
-  translate: 0 calc(-50% + 30px);
+  translate: 0 -50%;
   transition:
-    opacity 0.45s ease 0.12s,
-    translate 0.6s var(--ease-out) 0.12s;
+    opacity 0.35s ease 0.08s,
+    translate 0.5s var(--ease-out) 0.08s;
 }
 
 .cardNum {
@@ -260,33 +271,38 @@
   font-size: 12px;
 }
 
-/* Narrower screens: no room either side, so the card sits under the stack. */
+/* Narrower screens: no room either side, so the card goes under the stack.
+   All cards share one cell, so the room kept for them is the tallest card's. */
 
 @media (max-width: 1100px) {
   .section {
-    --layer-w: min(420px, 70vw);
+    --w: min(380px, 78vw);
   }
-  .ladder,
-  .builder,
-  .rail {
-    display: none;
+  .wrap {
+    width: min(460px, 100%);
+  }
+  .stack {
+    width: var(--w);
+    margin: 0 auto;
+  }
+  .cards {
+    position: relative;
+    display: grid;
+    margin-top: 16px;
   }
   .card,
   .card[data-side="left"],
   .card[data-side="right"] {
+    grid-area: 1 / 1;
+    position: relative;
     top: auto;
     right: auto;
-    bottom: 24px;
-    left: 50%;
-    width: min(460px, calc(100% - 32px));
-    translate: -50% 20px;
+    left: auto;
+    width: 100%;
+    translate: 0 12px;
   }
   .card[data-active="true"] {
-    translate: -50% 0;
-  }
-  .stack {
-    top: 0;
-    bottom: 200px;
+    translate: 0 0;
   }
 }
 
@@ -294,15 +310,17 @@
   .heading {
     font-size: 34px;
   }
-  .lead {
-    display: none;
-  }
   .cardText {
     font-size: 14px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .bob,
+  .hint::before {
+    animation: none;
+  }
+  .layer,
   .card,
   .card[data-active="true"] {
     transition: opacity 0.2s ease;

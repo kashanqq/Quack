@@ -8,8 +8,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100dvh;
-  padding: 80px 16px;
+  /* Only as tall as the card, so it follows the layers closely. */
+  padding: 40px 16px 80px;
   /* The flyer waits off to the right of the card; that must never scroll the page. */
   overflow-x: clip;
 }
