@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models import Event as EventRow
 from app.db.models import (
     SeenTemplate,
 )
@@ -226,3 +227,77 @@ async def list_instances(
         for row in rows
     }
     return [by_id[instance_id] for instance_id in ids if instance_id in by_id]
+
+
+async def list_open_chat_instances(
+    session: AsyncSession, student_id: UUID, chat_id: UUID
+) -> list[TaskInstance]:
+    """Instances handed over in this chat (`task.issued.chat_id`) and not yet
+    answered — the tasks the observer may see answered in its window, even
+    when `task.issued` itself was processed with an earlier window."""
+    rows = (
+        await session.scalars(
+            select(InstanceRow)
+            .join(EventRow, EventRow.id == InstanceRow.issued_event_id)
+            .where(
+                InstanceRow.student_id == student_id,
+                InstanceRow.answered_at.is_(None),
+                EventRow.chat_id == chat_id,
+            )
+            .order_by(InstanceRow.issued_event_id)
+        )
+    ).all()
+    fields = TaskInstance.model_fields
+    return [
+        TaskInstance.model_validate({name: getattr(row, name) for name in fields})
+        for row in rows
+    ]
+
+
+async def issued_event_ids(
+    session: AsyncSession, student_id: UUID, instance_ids: list[UUID]
+) -> dict[UUID, int]:
+    """instance id -> id of its `task.issued` event (instances without one are
+    left out)."""
+    if not instance_ids:
+        return {}
+    rows = await session.execute(
+        select(InstanceRow.id, InstanceRow.issued_event_id).where(
+            InstanceRow.student_id == student_id,
+            InstanceRow.id.in_(instance_ids),
+            InstanceRow.issued_event_id.is_not(None),
+        )
+    )
+    return {instance_id: int(event_id) for instance_id, event_id in rows.all()}
+
+
+async def chat_outcomes(
+    session: AsyncSession, student_id: UUID, chat_id: UUID
+) -> list[bool]:
+    """Grades of the answered tasks issued in this chat, oldest answer first —
+    what the tutor counts consecutive failures from."""
+    rows = (
+        await session.scalars(
+            select(InstanceRow.correct)
+            .join(EventRow, EventRow.id == InstanceRow.issued_event_id)
+            .where(
+                InstanceRow.student_id == student_id,
+                InstanceRow.answered_at.is_not(None),
+                InstanceRow.correct.is_not(None),
+                EventRow.chat_id == chat_id,
+            )
+            .order_by(InstanceRow.answered_at)
+        )
+    ).all()
+    return [bool(value) for value in rows]
+
+
+async def get_outcome(
+    session: AsyncSession, student_id: UUID, instance_id: UUID
+) -> bool | None:
+    """`correct` of one answered instance, None while unanswered."""
+    return await session.scalar(
+        select(InstanceRow.correct).where(
+            InstanceRow.id == instance_id, InstanceRow.student_id == student_id
+        )
+    )

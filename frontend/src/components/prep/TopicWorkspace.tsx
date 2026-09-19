@@ -8,6 +8,13 @@ import { addMaterial, answerTask, MOCK_SOLID, removeMaterial, settleMock, type M
 import { downloadMarkdown, generateCards, generateNotes, materialAsked, printPdf, renderMarkdown, type MaterialKind } from "./materials";
 import { StateGlyph } from "./SkillGraph";
 import { checksFor, TOPICS, type TopicContent } from "./topicContent";
+import {
+  completeRemoteTopic,
+  fetchRemoteTopicTasks,
+  openRemoteTopic,
+  submitRemoteAnswer,
+} from "./remoteTasks";
+import { fetchRemoteSets, REMOTE_PREP } from "./remoteSets";
 import styles from "./prep.module.css";
 
 type Props = {
@@ -36,6 +43,12 @@ const KIND_LABEL: Record<MaterialKind, string> = { notes: "конспект", ca
  * advance: a material appears only after it was asked for, so the topic is not a course (product-logic §1).
  */
 export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, onTopic, onModel, onToast }: Props) {
+  useEffect(() => {
+    if (set.rawId && REMOTE_PREP) {
+      openRemoteTopic(set.rawId, skillId);
+    }
+  }, [set.rawId, skillId]);
+
   const skill = skillById(skillId);
   const state = model.states[skillId];
   const content = TOPICS[skillId];
@@ -164,7 +177,7 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
           {/* The mock stays mounted: opening a material mid-test must not lose the test */}
           <div hidden={open !== "mock"}>
             <ViewerHead title="Мок-тест" onBack={() => setOpen(null)} />
-            <MockTest model={model} skillId={skillId} onModel={onModel} onToast={onToast} onExplain={explain} />
+            <MockTest set={set} model={model} skillId={skillId} onModel={onModel} onToast={onToast} onExplain={explain} />
           </div>
           {open !== null && open !== "mock" && (
             <MaterialView material={materials.find((m) => m.id === open)} onBack={() => setOpen(null)} />
@@ -177,6 +190,9 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
 
 /** An answer taken apart: the correct option, the trap behind the pick, the rule */
 function explainTask(task: Task, choice: number, content?: TopicContent) {
+  if (task.solution && task.solution.length > 0) {
+    return `Разбор задачи: ${task.solution.join(" → ")}`;
+  }
   const right = task.options.find((o) => o.correct);
   const picked = task.options[choice];
   const parts = [`Правильный ответ — «${right?.label ?? "—"}».`];
@@ -468,8 +484,11 @@ function Flashcards({ cards: initial }: { cards: { front: string; back: string }
 
 /* ---------- Mock test: every question of the topic; the state is settled at the end ---------- */
 
-/** Options in a stable shuffled order per question, so the right one is not always «A» */
-function shuffled(task: Task, round: number): number[] {
+/** Options order: keep server order if instanceId is present (server already randomized it), else deterministic shuffle */
+function getOptionOrder(task: Task, round: number): number[] {
+  if (task.instanceId) {
+    return task.options.map((_, i) => i);
+  }
   let seed = [...`${task.id}:${round}`].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
   const order = task.options.map((_, i) => i);
   for (let i = order.length - 1; i > 0; i--) {
@@ -481,53 +500,126 @@ function shuffled(task: Task, round: number): number[] {
 }
 
 function MockTest({
+  set,
   model,
   skillId,
   onModel,
   onToast,
   onExplain,
 }: {
+  set: StudySet;
   model: PrepModel;
   skillId: string;
   onModel: (m: PrepModel) => void;
   onToast: (t: string) => void;
   onExplain: (task: Task, choice: number) => void;
 }) {
-  const pool = checksFor(skillId);
+  const [tasks, setTasks] = useState<Task[]>(() => checksFor(skillId));
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [answering, setAnswering] = useState(false);
   const [round, setRound] = useState(0);
   const [picks, setPicks] = useState<number[]>([]);
   // After an answer the question stays on screen until «Дальше»
   const [shownAt, setShownAt] = useState(0);
   const [settled, setSettled] = useState<{ from: string; to: string } | null>(null);
+  const questionStartTimeRef = useRef(Date.now());
+
+  useEffect(() => {
+    let active = true;
+    if (REMOTE_PREP) {
+      setLoadingTasks(true);
+      fetchRemoteTopicTasks(skillId, set.rawId).then((remote) => {
+        if (!active) return;
+        setLoadingTasks(false);
+        if (remote && remote.length > 0) {
+          setTasks(remote);
+        } else {
+          setTasks(checksFor(skillId));
+        }
+      });
+    } else {
+      setTasks(checksFor(skillId));
+    }
+    return () => {
+      active = false;
+    };
+  }, [skillId, set.rawId, round]);
+
+  const pool = tasks;
   const task = pool[shownAt];
   const pick = picks[shownAt];
   const finished = shownAt >= pool.length;
-  const correct = picks.filter((p, i) => pool[i].options[p]?.correct).length;
-  const need = Math.min(MOCK_SOLID, pool.length);
+  const correct = picks.filter((p, i) => pool[i]?.options[p]?.correct).length;
+  const need = Math.min(MOCK_SOLID, Math.max(1, pool.length));
 
+  if (loadingTasks) return <p className={styles.muted}>Загружаем вопросы по теме…</p>;
   if (!pool.length) return <p className={styles.muted}>Вопросы по этой теме появятся, когда до неё дойдёт маршрут.</p>;
 
-  const answer = (i: number) => {
-    if (pick !== undefined) return;
-    onModel(answerTask(model, skillId, pool[shownAt], i, true).model);
-    setPicks((p) => [...p, i]);
+  const answer = async (i: number) => {
+    if (pick !== undefined || answering) return;
+    const currentTask = pool[shownAt];
+    if (!currentTask) return;
+    const elapsed = Math.max(1, Math.round((Date.now() - questionStartTimeRef.current) / 1000));
+
+    if (currentTask.instanceId) {
+      setAnswering(true);
+      try {
+        const optionKey = currentTask.options[i]?.key ?? currentTask.options[i]?.label;
+        const res = await submitRemoteAnswer(currentTask.instanceId, optionKey, elapsed);
+
+        if (currentTask.options[i]) {
+          currentTask.options[i].correct = res.grade.correct;
+          if (res.grade.matched_misconception_id) {
+            currentTask.options[i].trap = res.grade.matched_misconception_id;
+          }
+        }
+        currentTask.solution = res.solution;
+
+        onModel(answerTask(model, skillId, currentTask, i, true).model);
+        setPicks((p) => [...p, i]);
+      } catch (err) {
+        console.warn("Failed remote answer, falling back to local:", err);
+        onModel(answerTask(model, skillId, currentTask, i, true).model);
+        setPicks((p) => [...p, i]);
+      } finally {
+        setAnswering(false);
+      }
+    } else {
+      onModel(answerTask(model, skillId, currentTask, i, true).model);
+      setPicks((p) => [...p, i]);
+    }
   };
 
-  const nextQuestion = () => {
+  const nextQuestion = async () => {
     const last = shownAt + 1 >= pool.length;
     setShownAt((n) => n + 1);
+    questionStartTimeRef.current = Date.now();
     if (!last) return;
+
     // The whole mock decides the state, not a single answer
     const r = settleMock(model, skillId, correct, pool.length);
     onModel(r.model);
     setSettled({ from: STATE_LABEL[r.from], to: STATE_LABEL[r.to] });
     if (r.setPassed) onToast(`Сет ${r.setPassed.number} доказан целиком — отчёт в «Обзоре»`);
+
+    if (r.to === "solid" && set.rawId && REMOTE_PREP) {
+      try {
+        const updated = await completeRemoteTopic(set.rawId, skillId);
+        if (updated) {
+          onToast(`Тема «${skillById(skillId).name}» закрыта на сервере`);
+          fetchRemoteSets(set.exam, true).catch(() => {});
+        }
+      } catch (err) {
+        console.warn("Failed to complete topic on server:", err);
+      }
+    }
   };
 
   const restart = () => {
     setPicks([]);
     setShownAt(0);
     setSettled(null);
+    questionStartTimeRef.current = Date.now();
     setRound((n) => n + 1);
   };
 
@@ -588,7 +680,7 @@ function MockTest({
         <div className={styles.task}>
           <p className={styles.taskText}>{task.text}</p>
           <div className={styles.options} role="group" aria-label="Варианты ответа">
-            {shuffled(task, round).map((i, place) => {
+            {getOptionOrder(task, round).map((i, place) => {
               const o = task.options[i];
               return (
                 <button
@@ -596,7 +688,7 @@ function MockTest({
                   type="button"
                   className={styles.option}
                   data-result={pick !== undefined ? (o.correct ? "correct" : pick === i ? "wrong" : undefined) : undefined}
-                  disabled={pick !== undefined}
+                  disabled={pick !== undefined || answering}
                   onClick={() => answer(i)}
                 >
                   <span className={styles.optionLetter}>{"ABCD"[place]}</span>
@@ -607,12 +699,12 @@ function MockTest({
           </div>
 
           {pick !== undefined && (
-            <div className={styles.feedback} data-correct={Boolean(task.options[pick].correct)}>
+            <div className={styles.feedback} data-correct={Boolean(task.options[pick]?.correct)}>
               <strong>
-                {task.options[pick].correct
+                {task.options[pick]?.correct
                   ? "Верно"
-                  : task.options[pick].trap
-                    ? `Ловушка: ${task.options[pick].trap!.toLowerCase()}`
+                  : task.options[pick]?.trap
+                    ? `Ловушка: ${task.options[pick]!.trap!.toLowerCase()}`
                     : "Неверно"}
               </strong>
               <div className={styles.actions}>

@@ -205,7 +205,8 @@ export function proposedSet(model: PrepModel): StudySet | undefined {
   return SETS.find((s) => !model.doneSets.includes(s.id) && s.id !== model.currentSet);
 }
 
-export const closed = (model: PrepModel, set: StudySet) => set.skills.filter((id) => model.states[id] === "solid").length;
+export const closed = (model: PrepModel, set: StudySet) =>
+  set.progress ? set.progress.topics_closed : set.skills.filter((id) => model.states[id] === "solid").length;
 
 /** Readiness for one exam: weighted share of its solid skills, shaky counts half. */
 export function readiness(model: PrepModel, exam: ExamId = "sat"): number {

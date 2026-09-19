@@ -25,5 +25,7 @@ venv/
 # local TZ notes and CI logs, not the pytest suite
 backend/tests/*.md
 backend/tests/error.txt
-# local graphify output at the repo root (per-folder graphs are tracked)
-/graphify-out/
+
+# graphify
+graphify-out/
+frontend/graphify-out/

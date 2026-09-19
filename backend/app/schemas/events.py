@@ -7,8 +7,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.schemas.common import ExamId, MockKind, TaskMode
+from app.schemas.common import ErrorClass, ExamId, MockKind, TaskMode
 from app.schemas.diagnostic import DiagnosticResult, DiagnosticState
+from app.schemas.observer import Observation
 
 
 class EventType(StrEnum):
@@ -34,6 +35,7 @@ class EventType(StrEnum):
     misconception_undisputed = "misconception.undisputed"
     skill_personal_created = "skill.personal_created"
     misconception_personal_created = "misconception.personal_created"
+    misconception_canonized = "misconception.canonized"
     profile_updated = "profile.updated"
     program_saved = "program.saved"
     program_removed = "program.removed"
@@ -179,3 +181,56 @@ class MisconceptionDisputedPayload(_Payload):
 class MilestoneDonePayload(_Payload):
     milestone_key: str
     done: bool
+
+
+# --- phase 3: observer, canonization, job failures (phase3-agents §5.1 C5) ---
+
+
+class ObservationExtractedPayload(_Payload):
+    """The observer's output, whole — including observations the rule will
+    later skip (low confidence, unknown ids): the event records what the model
+    said, the rule decides what to apply."""
+
+    observations: list[Observation]
+    window_from_event_id: int | None
+    window_to_event_id: int | None
+    topic_skill_id: str | None
+    set_id: UUID
+    exam_id: ExamId
+    model: str
+    raw_count: int
+
+
+class ObserverRequestedPayload(_Payload):
+    reason: Literal["button"] = "button"
+
+
+class JobFailedPayload(_Payload):
+    job: str
+    job_id: str | None
+    reason: str
+    args: dict[str, Any]
+
+
+class MisconceptionCanonizedPayload(_Payload):
+    source_event_id: int
+    ordinal: int
+    skill_id: str
+    canonical_id: str
+    similarity: float
+    decided_by: Literal["threshold", "model"]
+    name: str
+    description: str
+    error_class: ErrorClass
+
+
+class MisconceptionPersonalCreatedPayload(_Payload):
+    misconception_id: str
+    source_event_id: int
+    ordinal: int
+    skill_id: str
+    name: str
+    description: str
+    error_class: ErrorClass
+    embedding: list[float]
+    best_similarity: float | None

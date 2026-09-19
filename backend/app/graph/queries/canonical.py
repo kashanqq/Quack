@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
+from uuid import UUID
 
 from neo4j import AsyncDriver
 
@@ -273,3 +274,151 @@ async def is_dag(driver: AsyncDriver) -> bool:
         result = await session.run(query)
         rec = await result.single()
         return rec is None or int(rec["cycles"]) == 0
+
+
+# --- phase 3: canonization of proposed misconceptions (§5.4, phase3 §3.11) ---
+
+_SEARCH_POOL = 20
+
+
+def _cosine_from_index_score(score: float) -> float:
+    """Neo4j's cosine vector index reports `(1 + cos) / 2`; the thresholds
+    `canon_merge` / `canon_adjudicate` (§5.4, §12) are plain cosine."""
+    return 2.0 * float(score) - 1.0
+
+
+async def search_misconceptions(
+    driver: AsyncDriver,
+    embedding: list[float],
+    skill_id: str,
+    student_id: UUID,
+    k: int = 5,
+) -> list[tuple[MisconceptionRef, float]]:
+    """Top-k candidates for one proposed misconception, best first.
+
+    Candidates are library misconceptions ABOUT `skill_id` and this student's
+    personal ones; the index is asked for the top-20 nearest nodes overall
+    and filtered, since a vector query cannot be restricted by relationship.
+    The score is cosine similarity in [-1, 1].
+    """
+    query = f"""
+    CALL db.index.vector.queryNodes('misc_emb', $pool, $embedding)
+    YIELD node, score
+    WITH node, score
+    WHERE (node.scope = 'library'
+           AND EXISTS {{ (node)-[:{L.ABOUT}]->(:{L.SKILL} {{id: $skill_id}}) }})
+       OR (node.scope = 'personal' AND node.student_id = $student_id)
+    OPTIONAL MATCH (node)-[:{L.ABOUT}]->(s:{L.SKILL})
+    WITH node, score, collect(DISTINCT s.id) AS skill_ids
+    RETURN node.id AS id, node.name AS name, node.description AS description,
+           node.error_class AS error_class, skill_ids, score
+    ORDER BY score DESC
+    LIMIT $k
+    """
+    out: list[tuple[MisconceptionRef, float]] = []
+    async with driver.session() as session:
+        result = await session.run(
+            query,
+            pool=max(_SEARCH_POOL, k),
+            embedding=list(embedding),
+            skill_id=skill_id,
+            student_id=str(student_id),
+            k=k,
+        )
+        async for rec in result:
+            out.append(
+                (
+                    MisconceptionRef(
+                        id=rec["id"],
+                        name=rec["name"],
+                        description=rec["description"],
+                        error_class=rec["error_class"],
+                        skill_ids=list(rec["skill_ids"] or []),
+                    ),
+                    _cosine_from_index_score(rec["score"]),
+                )
+            )
+    return out
+
+
+async def get_misconception(
+    driver: AsyncDriver, misconception_id: str
+) -> MisconceptionRef | None:
+    """One misconception node (library or personal) by id."""
+    query = f"""
+    MATCH (m:{L.MISCONCEPTION} {{id: $id}})
+    OPTIONAL MATCH (m)-[:{L.ABOUT}]->(s:{L.SKILL})
+    WITH m, collect(DISTINCT s.id) AS skill_ids
+    RETURN m.id AS id, m.name AS name, m.description AS description,
+           m.error_class AS error_class, skill_ids
+    """
+    async with driver.session() as session:
+        result = await session.run(query, id=misconception_id)
+        rec = await result.single()
+    if rec is None:
+        return None
+    return MisconceptionRef(
+        id=rec["id"],
+        name=rec["name"],
+        description=rec["description"],
+        error_class=rec["error_class"],
+        skill_ids=list(rec["skill_ids"] or []),
+    )
+
+
+async def create_personal_misconception(
+    driver: AsyncDriver,
+    student_id: UUID,
+    misconception_id: str,
+    name: str,
+    description: str,
+    error_class: str,
+    skill_id: str,
+    embedding: list[float],
+    source_event_id: int,
+    ordinal: int,
+) -> MisconceptionRef:
+    """MERGE a personal `Misconception` by id, `ABOUT` its skill (§5.4).
+
+    Idempotent: a replayed event finds the node by id and changes nothing but
+    the (identical) properties. The embedding lands in the `misc_emb` index,
+    so the next proposal of the same idea finds this node as a candidate.
+    """
+    query = f"""
+    MATCH (s:{L.SKILL} {{id: $skill_id}})
+    MERGE (m:{L.MISCONCEPTION} {{id: $id}})
+    ON CREATE SET m.name = $name, m.description = $description,
+        m.error_class = $error_class, m.scope = 'personal',
+        m.student_id = $student_id, m.embedding = $embedding,
+        m.source_event_id = $source_event_id, m.ordinal = $ordinal,
+        m.created_at = datetime()
+    MERGE (m)-[:{L.ABOUT}]->(s)
+    WITH m
+    OPTIONAL MATCH (m)-[:{L.ABOUT}]->(s2:{L.SKILL})
+    WITH m, collect(DISTINCT s2.id) AS skill_ids
+    RETURN m.id AS id, m.name AS name, m.description AS description,
+           m.error_class AS error_class, skill_ids
+    """
+    async with driver.session() as session:
+        result = await session.run(
+            query,
+            id=misconception_id,
+            name=name,
+            description=description,
+            error_class=error_class,
+            student_id=str(student_id),
+            skill_id=skill_id,
+            embedding=list(embedding),
+            source_event_id=source_event_id,
+            ordinal=ordinal,
+        )
+        rec = await result.single()
+    if rec is None:
+        raise LookupError(f"skill {skill_id} not found")
+    return MisconceptionRef(
+        id=rec["id"],
+        name=rec["name"],
+        description=rec["description"],
+        error_class=rec["error_class"],
+        skill_ids=list(rec["skill_ids"] or []),
+    )

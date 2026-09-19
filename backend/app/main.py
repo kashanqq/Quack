@@ -11,6 +11,7 @@ import structlog
 from arq.connections import ArqRedis
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
@@ -29,6 +30,7 @@ from app.api.profile import router as profile_router
 from app.api.programs import router as programs_router
 from app.api.saved import router as saved_router
 from app.api.sets import router as sets_router
+from app.api.state import router as state_router
 from app.api.tasks import router as tasks_router
 from app.config import settings
 from app.db.engine import close_engine, create_engine, create_sessionmaker
@@ -182,6 +184,18 @@ def create_app() -> FastAPI:
             headers={"X-Request-Id": request.state.request_id},
         )
 
+    if settings.CORS_ORIGINS:
+        # Added after the request-id middleware, so it is the outermost layer
+        # and preflight answers never reach the JSON content-type check.
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.CORS_ORIGINS,
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
+            allow_headers=["Content-Type", "X-Request-Id"],
+            expose_headers=["X-Request-Id"],
+        )
+
     app.include_router(auth_router)
     app.include_router(health_router)
     app.include_router(profile_router)
@@ -191,6 +205,7 @@ def create_app() -> FastAPI:
     app.include_router(prep_router)
     app.include_router(tasks_router)
     app.include_router(sets_router)
+    app.include_router(state_router)
     app.include_router(knowledge_router)
     app.include_router(matching_router)
     app.include_router(overview_router)

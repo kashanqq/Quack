@@ -14,6 +14,7 @@ import structlog
 from neo4j.exceptions import ServiceUnavailable, SessionExpired
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.apply._lock import student_lock
 from app.apply.targets import p_target_for
 from app.db.repo import tasks as tasks_repo
 from app.events.dispatch import RuleDeps
@@ -35,7 +36,16 @@ async def apply_task_answered(
     """Steps 2–11 of §8.2 for one task.answered event.
 
     Step 1 (write event) and the transaction are handled by events.store.dispatch.
+    Runs under the student's write lock (phase3 F9): the observer rule writes
+    the same skill states from its job.
     """
+    async with student_lock(deps.redis, event.student_id):
+        return await _apply_task_answered(session, event, deps)
+
+
+async def _apply_task_answered(
+    session: AsyncSession, event: Event, deps: RuleDeps
+) -> AnswerResult:
     payload = TaskAnsweredPayload.model_validate(event.payload)
     instance = await tasks_repo.get_instance(
         session, event.student_id, payload.instance_id

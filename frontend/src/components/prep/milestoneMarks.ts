@@ -138,7 +138,6 @@ export function dismissAdvice(text: string, hide = true) {
 export function useDismissedAdvice(): string[] {
   return useSyncExternalStore(subscribe, dismissedAdvice, () => NO_ADVICE);
 }
-
 const subscribe = (listener: () => void) => {
   listeners.add(listener);
   return () => {

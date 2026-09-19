@@ -8,6 +8,7 @@ import jwt
 import structlog
 from fastapi import APIRouter, Depends, Request, Response
 from passlib.context import CryptContext
+from pydantic import BaseModel, EmailStr, StringConstraints
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,8 +20,8 @@ from app.api.deps import (
     get_session,
 )
 from app.config import settings
-from app.db.repo.users import get_user_by_email
-from app.errors import TooManyRequests, Unauthorized
+from app.db.repo.users import create_user, get_user_by_email
+from app.errors import Conflict, TooManyRequests, Unauthorized
 from app.graph.queries.personal import ensure_student as _ensure_student
 from app.keys import login_ratelimit
 from app.schemas.auth import LoginIn, StudentCtx
@@ -30,18 +31,56 @@ _passwords = CryptContext(schemes=["bcrypt"], bcrypt__rounds=12)
 _logger = structlog.get_logger(__name__)
 
 
-def issue_token(student_id: UUID | str, email: str) -> str:
+class RegisterIn(BaseModel):
+    name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)
+    ]
+    email: EmailStr
+    password: Annotated[str, StringConstraints(min_length=8, max_length=128)]
+
+
+class AuthOut(StudentCtx):
+    """Identity plus the display name. The name rides in the token so that
+    /auth/me stays free of database access."""
+
+    name: str
+
+
+def _display_name(name: str | None, email: str) -> str:
+    return name or email.split("@", 1)[0]
+
+
+def issue_token(student_id: UUID | str, email: str, name: str | None = None) -> str:
     issued_at = datetime.now(UTC)
-    return jwt.encode(
-        {
-            "sub": str(student_id),
-            "email": email,
-            "iat": issued_at,
-            "exp": issued_at + timedelta(days=settings.JWT_TTL_DAYS),
-        },
-        settings.JWT_SECRET.get_secret_value(),
-        algorithm="HS256",
+    claims = {
+        "sub": str(student_id),
+        "email": email,
+        "iat": issued_at,
+        "exp": issued_at + timedelta(days=settings.JWT_TTL_DAYS),
+    }
+    if name:
+        claims["name"] = name
+    return jwt.encode(claims, settings.JWT_SECRET.get_secret_value(), algorithm="HS256")
+
+
+def _set_session_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key="quack_token",
+        value=token,
+        httponly=True,
+        samesite="lax",
+        path="/",
+        secure=settings.ENV == "prod",
     )
+
+
+async def _rate_limit(request: Request, redis: Redis) -> None:
+    key = login_ratelimit(client_ip(request))
+    attempts = await redis.incr(key)
+    if attempts == 1:
+        await redis.expire(key, 60)
+    if attempts > 10:
+        raise TooManyRequests("too many login attempts")
 
 
 def hash_password(raw: str) -> str:
@@ -52,35 +91,40 @@ def verify_password(raw: str, hashed: str) -> bool:
     return _passwords.verify(raw, hashed)
 
 
-@router.post("/login", response_model=StudentCtx)
+@router.post("/register", status_code=201, response_model=AuthOut)
+async def register(
+    body: RegisterIn,
+    request: Request,
+    response: Response,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    redis: Annotated[Redis, Depends(get_redis)],
+) -> AuthOut:
+    await _rate_limit(request, redis)
+    email = body.email.lower()
+    user_id = await create_user(session, email, hash_password(body.password), body.name)
+    if user_id is None:
+        raise Conflict("email already registered")
+    _set_session_cookie(response, issue_token(user_id, email, body.name))
+    return AuthOut(student_id=user_id, email=email, name=body.name)
+
+
+@router.post("/login", response_model=AuthOut)
 async def login(
     body: LoginIn,
     request: Request,
     response: Response,
     session: Annotated[AsyncSession, Depends(get_session)],
     redis: Annotated[Redis, Depends(get_redis)],
-) -> StudentCtx:
-    key = login_ratelimit(client_ip(request))
-    attempts = await redis.incr(key)
-    if attempts == 1:
-        await redis.expire(key, 60)
-    if attempts > 10:
-        raise TooManyRequests("too many login attempts")
+) -> AuthOut:
+    await _rate_limit(request, redis)
 
-    user = await get_user_by_email(session, body.email)
+    user = await get_user_by_email(session, body.email.lower())
     if user is None or not verify_password(body.password, user.password_hash):
         raise Unauthorized("invalid credentials")
 
-    student = StudentCtx(student_id=user.id, email=user.email)
-    response.set_cookie(
-        key="quack_token",
-        value=issue_token(student.student_id, student.email),
-        httponly=True,
-        samesite="lax",
-        path="/",
-        secure=settings.ENV == "prod",
-    )
-    return student
+    name = _display_name(user.name, user.email)
+    _set_session_cookie(response, issue_token(user.id, user.email, name))
+    return AuthOut(student_id=user.id, email=user.email, name=name)
 
 
 @router.post("/logout", status_code=204)
@@ -97,11 +141,12 @@ async def logout(
     )
 
 
-@router.get("/me", response_model=StudentCtx)
+@router.get("/me", response_model=AuthOut)
 async def me(
+    request: Request,
     student: Annotated[StudentCtx, Depends(get_current_student)],
     graph: Annotated[object, Depends(get_graph)],
-) -> StudentCtx:
+) -> AuthOut:
     # graph.client.create_driver returns None when Neo4j is unreachable; the
     # identity answer must not depend on the graph being up (product-logic §6.3).
     if graph is None:
@@ -112,4 +157,14 @@ async def me(
         )
     else:
         await _ensure_student(graph, student.student_id)
-    return student
+    # get_current_student has already verified the token; only read the claim.
+    claims = jwt.decode(
+        request.cookies["quack_token"],
+        settings.JWT_SECRET.get_secret_value(),
+        algorithms=["HS256"],
+    )
+    return AuthOut(
+        student_id=student.student_id,
+        email=student.email,
+        name=_display_name(claims.get("name"), student.email),
+    )

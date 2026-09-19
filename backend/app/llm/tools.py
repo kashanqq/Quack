@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ValidationError
 
 from app.errors import ValidationFailed
+from app.schemas.agents import TurnState
+from app.schemas.chat import ChatCtx
 
 if TYPE_CHECKING:
     from app.agents.router import AgentDeps
@@ -34,9 +36,18 @@ class ToolPayload(BaseModel):
 
 @dataclass
 class ToolCtx:
+    """What a tool body gets besides its arguments.
+
+    `chat` — the turn's chat (`chat_id`, `set_id`, `topic_skill_id` for
+    `get_task`); `turn` — counters shared by every call of one turn (one task
+    per turn, matching calls). Both default, so phase-1 call sites still work.
+    """
+
     student_id: str
     deps: AgentDeps
     request_id: str
+    chat: ChatCtx | None = None
+    turn: TurnState = field(default_factory=TurnState)
 
 
 @dataclass
@@ -113,8 +124,18 @@ class ToolRegistry:
         if isinstance(result, ToolPayload):
             return result
         if isinstance(result, BaseModel):
-            return result.model_dump()
+            return result.model_dump(mode="json")
         return result
 
     def names(self) -> list[str]:
         return list(self._specs.keys())
+
+    def subset(self, names: list[str]) -> ToolRegistry:
+        """A new registry with only these tools (same specs, same read-only
+        flag) — the per-turn access policy; unknown names are ignored."""
+        registry = ToolRegistry(read_only=self._read_only)
+        for name in names:
+            spec = self._specs.get(name)
+            if spec is not None:
+                registry.register(spec)
+        return registry

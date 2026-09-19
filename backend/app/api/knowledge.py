@@ -23,7 +23,12 @@ from app.graph.queries import personal
 from app.schemas.auth import StudentCtx
 from app.schemas.chat import ChatKind
 from app.schemas.common import ExamId
-from app.schemas.events import EventIn, EventType, MisconceptionDisputedPayload
+from app.schemas.events import (
+    EventIn,
+    EventType,
+    MisconceptionDisputedPayload,
+    ObserverRequestedPayload,
+)
 from app.schemas.knowledge import (
     EvidenceOut,
     MisconceptionStateOut,
@@ -161,7 +166,7 @@ async def refresh(
         deps.redis,
         EventIn(
             type=EventType.observer_requested,
-            payload={"chat_id": str(chat_id)},
+            payload=ObserverRequestedPayload(reason="button").model_dump(mode="json"),
             student_id=student.student_id,
             chat_id=chat_id,
             set_id=body.set_id,
@@ -169,13 +174,17 @@ async def refresh(
         ),
         dispatch_event=False,
     )
+    # The event must be visible to the job before it takes the window.
+    await session.commit()
     try:
         job_id = await enqueue(
             arq,
             "interactive",
             "observe_chat",
+            _job_id=f"observe:{chat_id}",
             chat_id=chat_id,
             student_id=student.student_id,
+            trigger="requested",
         )
     except RedisError:
         return RefreshOut(

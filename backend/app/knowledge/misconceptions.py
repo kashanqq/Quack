@@ -128,6 +128,40 @@ def update_triggers(
     }
 
 
+def merge_triggers(
+    existing: dict,
+    evidence: EvidenceIn,
+    *,
+    params: KnowledgeParams,
+) -> dict:
+    """Fold one more hit into stored triggers (§5.3) without its history.
+
+    `update_triggers` counts a list of evidences from scratch; the observer
+    adds hits one at a time and the earlier evidences are not at hand, so the
+    stored `(hits, total)` pairs are extended: every total becomes the new
+    `n`, hits add up.
+    """
+    fresh = update_triggers([evidence], params=params)
+    n = int(existing.get("n", 0) or 0) + fresh["n"]
+
+    def hits_of(value) -> int:
+        if isinstance(value, list | tuple) and len(value) == 2:
+            return int(value[0])
+        return 0
+
+    merged: dict = {"n": n}
+    for key in ("by_task_type", "by_difficulty", "by_tag"):
+        old_map = existing.get(key) or {}
+        new_map = fresh[key]
+        merged[key] = {
+            name: (hits_of(old_map.get(name)) + hits_of(new_map.get(name)), n)
+            for name in set(old_map) | set(new_map)
+        }
+    for key in ("hurried", "late_session", "after_guideline"):
+        merged[key] = (hits_of(existing.get(key)) + hits_of(fresh[key]), n)
+    return merged
+
+
 def visible_label(
     state: MisconceptionStateOut,
     params: KnowledgeParams,

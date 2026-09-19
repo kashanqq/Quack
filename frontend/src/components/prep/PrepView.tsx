@@ -7,6 +7,13 @@ import { FirstHint } from "@/components/hints/FirstHint";
 import { useEffect, useRef, useState } from "react";
 import { morph } from "@/components/transition/morph";
 import { Overview } from "./Overview";
+import { prefetchRemoteOverview } from "./remotePrep";
+import {
+  openRemoteSet,
+  prefetchRemoteSets,
+  REMOTE_PREP,
+  switchRemoteSet,
+} from "./remoteSets";
 import { savedPrograms, setById, type ExamId } from "./prepData";
 import {
   acceptSet,
@@ -120,6 +127,17 @@ export function PrepView({
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [tab, current, focus?.n]);
+  const programs = savedPrograms(saved, model.demo);
+
+  useEffect(() => {
+    prefetchRemoteOverview(programs);
+  }, [programs.length]);
+
+  useEffect(() => {
+    if (REMOTE_PREP) {
+      prefetchRemoteSets(exam);
+    }
+  }, [exam]);
 
   // Asked to open the test from outside (a locked tab in the column): it runs in «Сейчас»
   const diagOpen = showDiagnostic || Boolean(externalOpenDiagnostic);
@@ -127,12 +145,9 @@ export function PrepView({
     setShowDiagnostic(false);
     onCloseExternalDiagnostic?.();
   };
-
-  const programs = savedPrograms(saved, model.demo);
   // The active set in «Сейчас» and the map are drawings: they take all the height left
   const working = tab === "overview" && current === "now" && !isDiagPending && !diagOpen && !!model.currentSet;
   const fill = programs.length > 0 && (working || (tab === "sets" && current === "map"));
-
   const intro = INTROS[current];
 
   /** One move for both levels, so a jump across the section is a single animated step */
@@ -166,6 +181,11 @@ export function PrepView({
     setModel((m) => acceptSet(m, id));
     setFocus(null);
     setToast("Сет принят — начни с первой темы на графе");
+    if (REMOTE_PREP) {
+      openRemoteSet(id, exam).catch((err) => {
+        console.error("Failed to open remote set:", err);
+      });
+    }
     go("overview", "now");
   };
 
@@ -180,6 +200,11 @@ export function PrepView({
         ? `Сет ${setById(id).number} теперь актуальный, сет ${setById(prev).number} отложен · занятия — во вкладке «Сейчас»`
         : `Сет ${setById(id).number} теперь актуальный · занятия — во вкладке «Сейчас»`
     );
+    if (REMOTE_PREP) {
+      switchRemoteSet(id, exam).catch((err) => {
+        console.error("Failed to switch remote set:", err);
+      });
+    }
   };
 
   const skipDiagnostic = () => {

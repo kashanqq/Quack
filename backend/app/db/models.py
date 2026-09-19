@@ -34,6 +34,7 @@ class User(Base):
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
     email: Mapped[str] = mapped_column(Text, unique=True)
     password_hash: Mapped[str] = mapped_column(Text)
+    name: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -366,3 +367,16 @@ class DailyAggregate(Base):
     tasks_answered: Mapped[int] = mapped_column(Integer)
     messages: Mapped[int] = mapped_column(Integer)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class StudentState(Base):
+    """Client-kept per-student key/value state (frontend `store.ts` bridge)."""
+
+    __tablename__ = "student_state"
+
+    student_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    value: Mapped[Any] = mapped_column(JSONB)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

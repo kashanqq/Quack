@@ -41,9 +41,9 @@ class KnowledgeParams(BaseModel):
     # чата он берёт за один прогон (§8.1). Ниже — наблюдатель пропустит
     # часть разговора, выше — окно не влезает в бюджет контекста.
     observer_window_max: int = 30
-    # Сколько уточняющих вопросов ассистент подбора задаёт подряд, прежде
-    # чем перейти к делу (product-logic §3.1).
-    assistant_max_questions: int = 3
+    # Сколько вопросов ассистент подбора задаёт за один ход (product-logic
+    # §3.2 «не больше двух вопросов»); постпроверка считает знаки «?».
+    assistant_max_questions: int = 2
     # Доля заполненности анкеты, с которой подбор считается осмысленным
     # (`profiles.profile_readiness`).
     assistant_readiness_threshold: float = 0.6
@@ -107,6 +107,13 @@ class Settings(BaseSettings):
 
     JWT_SECRET: SecretStr = SecretStr("quack-local-only-development-secret")
     JWT_TTL_DAYS: int = 30
+    # Browser origins allowed to call the API with the session cookie. Empty in
+    # prod when Caddy serves frontend and API from one origin.
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+    ]
 
     LLM_BASE_URL: str = ""
     LLM_API_KEY: SecretStr = SecretStr("")
@@ -128,6 +135,15 @@ class Settings(BaseSettings):
     # (наблюдатель на слоте bulk не укладывался в 30 с очереди interactive).
     JOB_TIMEOUT_DEFAULT_S: float = 30
     JOB_TIMEOUT_MAX_S: float = 300
+
+    # Фаза 3 (docs/tz/phase3-agents.md §2.5). Наблюдатель и канонизация
+    # ходят в LLM на своём слоте; таймаут наблюдателя не меньше
+    # LLM_TIMEOUT_BULK_S + 10, иначе ARQ снимет job раньше провайдера.
+    OBSERVER_SLOT: Literal["chat", "bulk"] = "bulk"
+    CTX_CACHE_TTL_S: int = 3600
+    CHAT_LOCK_TTL_S: int = 120
+    OBSERVER_JOB_TIMEOUT_S: int = 100
+    CANON_JOB_TIMEOUT_S: int = 30
 
     @property
     def job_timeout_llm_chat_s(self) -> float:

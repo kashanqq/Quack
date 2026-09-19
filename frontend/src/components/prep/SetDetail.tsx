@@ -83,9 +83,12 @@ export function SetDetail({ model, set, topic, onBack, onMakeCurrent, onModel, o
           <span className={styles.setProgress} title="Сколько тем уже держится">
             {closed(model, set)} из {set.skills.length}
             <span className={styles.segments}>
-              {order.map((id) => (
-                <span key={id} data-state={model.states[id]} title={`${skillById(id).name}: ${STATE_LABEL[model.states[id]]}`} />
-              ))}
+              {order.map((id) => {
+                const st = model.states[id] ?? "weak";
+                return (
+                  <span key={id} data-state={st} title={`${skillById(id).name}: ${STATE_LABEL[st]}`} />
+                );
+              })}
             </span>
           </span>
           <span className={left < 0 && status !== "done" ? styles.warn : styles.muted}>{when}</span>
@@ -113,6 +116,9 @@ export function SetDetail({ model, set, topic, onBack, onMakeCurrent, onModel, o
 
 /** Topics in the order they build on each other inside the set; ties keep the set's own order */
 function topicOrder(set: StudySet): string[] {
+  if (set.topics && set.topics.length > 0) {
+    return [...set.topics].sort((a, b) => a.position - b.position).map((t) => t.skill_id);
+  }
   const depth = (id: string, seen: string[] = []): number => {
     const inside = skillById(id).requires.filter((r) => set.skills.includes(r) && !seen.includes(r));
     return inside.length ? 1 + Math.max(...inside.map((r) => depth(r, [...seen, id]))) : 0;
@@ -334,10 +340,10 @@ function SetGraph({
 
         {order.map((id, i) => {
           const skill = skillById(id);
-          const state = model.states[id];
+          const state = model.states[id] ?? "weak";
           const at = pos[id];
           const due = dueOf(state, starts[i], plan[id]);
-          const trap = model.misconceptions[id].some((m) => m.status === "confirmed" || m.status === "suspected");
+          const trap = model.misconceptions[id]?.some((m) => m.status === "confirmed" || m.status === "suspected") ?? false;
           return (
             <button
               key={id}
@@ -356,7 +362,7 @@ function SetGraph({
               onClick={() => onSelect(id)}
             >
               <span className={styles.mapShapeBox}>
-                <NodeMark state={state} recall={model.recall[id]} />
+                <NodeMark state={state} recall={model.recall[id] ?? 0.4} />
               </span>
               <span className={styles.mapChip}>
                 <StateGlyph state={state} size={10} />

@@ -31,6 +31,10 @@ export type Program = {
   megacity: boolean;
   research: "сильная" | "средняя";
   exchange: string;
+  /** Came from the backend catalog: climate, city size, research and exchange are not known there */
+  remote?: boolean;
+  /** Minimum ENT math score, for programs that ask for it */
+  entMin?: number;
 };
 
 export const PROGRAMS: Program[] = [
@@ -149,7 +153,36 @@ export const PROGRAMS: Program[] = [
   },
 ];
 
-export const programById = (id: string) => PROGRAMS.find((p) => p.id === id)!;
+/**
+ * What the screens read. It starts as the demo set; with the backend on (catalog.ts) it is filled
+ * from /matching, so every screen sees the same programs without knowing where they came from.
+ */
+export const catalog = new Map<string, Program>(PROGRAMS.map((p) => [p.id, p]));
+/** The backend's verdict per program; wins over the local rules while it is present */
+export const remoteEvaluations = new Map<string, Evaluation>();
+
+/** Shown for an id the registry does not know yet (a stored card before the catalog has loaded) */
+const placeholder = (id: string): Program => ({
+  id,
+  university: "Загрузка…",
+  program: "",
+  city: "",
+  country: "",
+  region: "europe",
+  language: "",
+  englishTaught: false,
+  duration: "",
+  costEur: 0,
+  ieltsMin: 0,
+  deadline: "31 декабря",
+  warm: false,
+  megacity: false,
+  research: "средняя",
+  exchange: "",
+  remote: true,
+});
+
+export const programById = (id: string) => catalog.get(id) ?? placeholder(id);
 
 export type FactorStatus = "ok" | "below" | "unknown";
 
@@ -180,6 +213,8 @@ export function budgetOf(profile: Profile): number | undefined {
 
 /** Hard factors decide the realism level; soft traits only explain "подходит тебе". */
 export function evaluate(program: Program, profile: Profile): Evaluation {
+  const remote = remoteEvaluations.get(program.id);
+  if (remote) return remote;
   const factors: Factor[] = [];
 
   const ieltsGiven = profile.ielts && /^\d/.test(profile.ielts) ? Number(profile.ielts) : undefined;
@@ -263,6 +298,7 @@ export function compareRows(ids: string[], profile: Profile): CompareRow[] {
   const evals = programs.map((p) => evaluate(p, profile));
   const factor = (e: Evaluation, label: string) => e.factors.find((f) => f.label === label);
 
+  const remote = programs.every((p) => p.remote);
   const rows: Omit<CompareRow, "differs">[] = [
     { label: "Реалистичность", values: evals.map((e) => LEVEL_LABEL[e.level]), relevant: true },
     { label: "Город", values: programs.map((p) => `${p.city}, ${p.country}`), relevant: false },
@@ -271,8 +307,9 @@ export function compareRows(ids: string[], profile: Profile): CompareRow[] {
       values: programs.map((p, i) => `${formatEur(p.costEur)} · ${factor(evals[i], "Стоимость")!.note}`),
       relevant: true,
     },
-    { label: "IELTS", values: programs.map((p) => `от ${p.ieltsMin.toFixed(1)}`), relevant: true },
+    { label: "IELTS", values: programs.map((p) => (p.ieltsMin ? `от ${p.ieltsMin.toFixed(1)}` : "не требуется")), relevant: true },
     { label: "SAT", values: programs.map((p) => (p.satMin ? `от ${p.satMin}` : "не требуется")), relevant: true },
+    { label: "ЕНТ", values: programs.map((p) => (p.entMin ? `от ${p.entMin}` : "не требуется")), relevant: true },
     { label: "Язык", values: programs.map((p) => p.language), relevant: true },
     { label: "Подача до", values: programs.map((p) => p.deadline), relevant: true },
     { label: "Климат", values: programs.map((p) => (p.warm ? "тёплый" : "прохладный")), relevant: true },
@@ -282,7 +319,12 @@ export function compareRows(ids: string[], profile: Profile): CompareRow[] {
     { label: "Длительность", values: programs.map((p) => p.duration), relevant: false },
   ];
 
-  return rows.map((r) => ({ ...r, differs: new Set(r.values).size > 1 }));
+  // The backend catalog has no climate, city size, research or exchange data: do not invent it
+  const unknown = new Set(["Климат", "Размер города", "Наука", "Обмен"]);
+  return rows
+    .filter((r) => !(remote && unknown.has(r.label)))
+    .filter((r) => !(r.label === "ЕНТ" && programs.every((p) => !p.entMin)))
+    .map((r) => ({ ...r, differs: new Set(r.values).size > 1 }));
 }
 
 export function compareSummary(rows: CompareRow[]): { same: string[]; keyDifferences: string[] } {

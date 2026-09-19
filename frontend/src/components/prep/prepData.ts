@@ -349,7 +349,30 @@ export const SKILLS: Skill[] = [
   ...ENT_SKILLS.map((s) => ({ ...s, exam: "ent" as const })),
 ];
 
-export const skillById = (id: string) => SKILLS.find((s) => s.id === id)!;
+const REMOTE_SKILLS: Map<string, Skill> = new Map();
+
+export function registerRemoteSkills(skills: Skill[]) {
+  for (const s of skills) {
+    REMOTE_SKILLS.set(s.id, s);
+  }
+}
+
+export const skillById = (id: string): Skill => {
+  const found = REMOTE_SKILLS.get(id) ?? SKILLS.find((s) => s.id === id);
+  if (found) return found;
+  return {
+    id,
+    name: id,
+    area: "Алгебра",
+    exam: "sat",
+    weight: 5,
+    state: "weak",
+    recall: 0.5,
+    requires: [],
+    misconceptions: [],
+    evidence: [],
+  };
+};
 
 /* ---------- Sets (§4.3) ---------- */
 
@@ -375,6 +398,25 @@ export type StudySet = {
   deadline: Date;
   status: SetStatus;
   why: string;
+  rawId?: string;
+  kind?: "regular" | "review" | "consolidation";
+  topics?: Array<{
+    skill_id: string;
+    name: string;
+    kind: "topic" | "check" | "review";
+    position: number;
+    status: "open" | "closed";
+    level: "low_data" | "weak" | "shaky" | "solid" | "closed";
+    is_root: boolean;
+    misconception_labels: string[];
+    subtitle: string | null;
+  }>;
+  progress?: {
+    topics_closed: number;
+    topics_total: number;
+    tasks_answered: number;
+    tasks_correct: number;
+  };
 };
 
 const SAT_SETS: Omit<StudySet, "exam">[] = [
@@ -451,7 +493,30 @@ export const SETS: StudySet[] = [
   ...ENT_SETS.map((s) => ({ ...s, exam: "ent" as const })),
 ];
 
-export const setById = (id: string) => SETS.find((s) => s.id === id)!;
+const REMOTE_SETS: Map<string, StudySet> = new Map();
+
+export function registerRemoteSets(sets: StudySet[]) {
+  for (const s of sets) {
+    REMOTE_SETS.set(s.id, s);
+  }
+}
+
+export const setById = (id: string): StudySet => {
+  const found = REMOTE_SETS.get(id) ?? SETS.find((s) => s.id === id);
+  if (found) return found;
+  return {
+    id,
+    exam: "sat",
+    number: 1,
+    title: id,
+    area: "Подготовка",
+    skills: [],
+    start: TODAY,
+    deadline: TODAY,
+    status: "upcoming",
+    why: "",
+  };
+};
 
 /** A skill is closed for the set when it is solid. */
 export const closedCount = (set: StudySet, states: Record<string, SkillState>) =>
@@ -464,10 +529,20 @@ export const closedCount = (set: StudySet, states: Record<string, SkillState>) =
  * model, and the skill's node on the map turns green or yellow with it. A trap option names the
  * misconception it reveals.
  */
+export type TaskOption = {
+  label: string;
+  correct?: boolean;
+  trap?: string;
+  key?: string;
+};
+
 export type Task = {
   id: string;
   text: string;
-  options: { label: string; correct?: boolean; trap?: string }[];
+  figure?: string | null;
+  options: TaskOption[];
+  instanceId?: string;
+  solution?: string[];
 };
 
 export const CHECKS: Record<string, Task[]> = {
@@ -508,12 +583,17 @@ export const CHECKS: Record<string, Task[]> = {
 
 export type Milestone = {
   id: string;
+  key?: string;
   date: Date;
   title: string;
   detail: string;
   source: string | "демо";
   /** Only milestones can be ticked: they happen outside the product */
   checkable: boolean;
+  done?: boolean;
+  examId?: ExamId;
+  programId?: string;
+  kind?: string;
   /** For a registration or a test: the sitting it belongs to */
   test?: Date;
 };
@@ -589,8 +669,9 @@ export function requirements(
     });
   }
 
-  // ЕНТ is the student's own plan, not a program's demand: it is there whenever preparation is
-  if (programs.length) {
+  // ЕНТ is included only if a program requires it or is in Kazakhstan
+  const entPrograms = programs.filter((p) => p.entMin || p.country === "Казахстан");
+  if (entPrograms.length) {
     result.push({
       id: "ent",
       name: "ЕНТ · математика",
@@ -600,7 +681,7 @@ export function requirements(
       targetNote: "из 50 · профильная математика, цель на грант",
       testDate: plannedTest("ent", chosen),
       testCandidates: testCandidates("ent"),
-      programs: [],
+      programs: entPrograms,
       hasModel: true,
       ...outlook.ent,
     });
@@ -629,7 +710,7 @@ export function milestones(programs: Program[], chosen?: TestDates): Milestone[]
     );
   };
   if (programs.some((p) => p.satMin)) sitting("sat", "SAT", "College Board", "Цель по Math выставлена по сохранённым");
-  if (programs.length) sitting("ent", "ЕНТ", "НЦТ", "Профильная математика");
+  if (programs.some((p) => p.entMin || p.country === "Казахстан")) sitting("ent", "ЕНТ", "НЦТ", "Профильная математика");
   for (const p of programs) {
     list.push({
       id: `apply-${p.id}`,

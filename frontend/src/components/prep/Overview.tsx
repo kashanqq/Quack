@@ -1,10 +1,17 @@
-"use client";
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "../choice/Icon";
 import type { Program } from "../choice/programs";
 import { useQuack } from "../quack/source";
 import { routeDelay } from "../quack/standing";
+import type { BackendConflict } from "@/api/backend";
+import {
+  REMOTE_PREP,
+  fetchRemoteOverview,
+  getCachedRemoteOverview,
+  markRemoteMilestone,
+  prefetchRemoteOverview,
+  type RemotePrepOverview,
+} from "./remotePrep";
 import {
   daysBetween,
   formatDate,
@@ -27,6 +34,8 @@ import {
   type DatedExam,
   type ExamId,
   type ExamOutlook,
+  type ExamRequirement,
+  type Milestone,
 } from "./prepData";
 import { chooseTestDate, proposedSet, readiness, setReport, type PrepModel, type PrepSub, type PrepTab, type SetReport } from "./prepModel";
 import { StateGlyph } from "./SkillGraph";
@@ -64,6 +73,37 @@ type Props = {
  * the first visit, then the active set itself — its graph of topics, the chat and the mocks.
  */
 export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onModel, onToast, focus, diagnostic }: Props) {
+  const [remoteData, setRemoteData] = useState<RemotePrepOverview | null>(() => {
+    if (typeof window === "undefined" || !REMOTE_PREP) return null;
+    return getCachedRemoteOverview();
+  });
+  const [loading, setLoading] = useState(() => REMOTE_PREP && !getCachedRemoteOverview());
+
+  useEffect(() => {
+    if (!REMOTE_PREP) return;
+    let cancelled = false;
+    fetchRemoteOverview(programs)
+      .then((data) => {
+        if (!cancelled) {
+          setRemoteData(data);
+          setLoading(false);
+          if (data.doneMilestoneKeys.length) {
+            onModel({
+              ...model,
+              milestonesDone: Array.from(new Set([...model.milestonesDone, ...data.doneMilestoneKeys])),
+            });
+          }
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setLoading(false);
+        console.warn("Failed to fetch remote overview, using local fallback:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [programs.length]);
+
   // Each exam with a knowledge model has its own readiness, history and forecast
   const series = Object.fromEntries(
     EXAM_IDS.map((id) => {
@@ -71,17 +111,49 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onMo
       return [id, { readiness: now, ...forecastSeries(now, model.extraDays, id) }];
     })
   ) as Record<ExamId, { readiness: number } & ReturnType<typeof forecastSeries>>;
-  const outlook: ExamOutlook = {
+
+  const outlook: ExamOutlook = remoteData?.outlook ?? {
     sat: { readiness: series.sat.readiness, forecast: series.sat.forecast },
     ent: { readiness: series.ent.readiness, forecast: series.ent.forecast },
   };
-  const exams = requirements(programs, outlook, model.testDates, model.targets);
-  const list = milestones(programs, model.testDates);
+  const exams = remoteData
+    ? remoteData.requirements
+    : REMOTE_PREP
+    ? []
+    : requirements(programs, outlook, model.testDates, model.targets);
+  const list = remoteData
+    ? remoteData.milestones
+    : REMOTE_PREP
+    ? []
+    : milestones(programs, model.testDates);
+  const conflicts = remoteData?.conflicts ?? [];
+
+  const handleToggleMilestone = async (milestone: Milestone, done: boolean) => {
+    const key = milestone.key || milestone.id;
+    const updatedDone = done
+      ? Array.from(new Set([...model.milestonesDone, key]))
+      : model.milestonesDone.filter((k) => k !== key);
+    onModel({ ...model, milestonesDone: updatedDone });
+
+    if (REMOTE_PREP && milestone.key) {
+      try {
+        await markRemoteMilestone(milestone.key, done);
+        onToast(done ? `Отмечено: «${milestone.title}»` : `Снята отметка: «${milestone.title}»`);
+      } catch (err) {
+        console.error("Failed to mark milestone:", err);
+        onModel({ ...model, milestonesDone: model.milestonesDone });
+        onToast("Не удалось сохранить статус вехи");
+      }
+    } else {
+      onToast(done ? `Отмечено: «${milestone.title}»` : `Снята отметка: «${milestone.title}»`);
+    }
+  };
 
   if (sub === "requirements")
     return (
       <Requirements
         exams={exams}
+        loading={loading && !remoteData}
         milestoneList={list}
         done={model.milestonesDone}
         onPick={(exam, key) => {
@@ -96,13 +168,25 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onMo
           onToast(value === null ? `Цель ${EXAMS[exam].name} — снова по программам` : `Цель ${EXAMS[exam].name} — ${value}`);
         }}
       >
-        <Important model={model} milestoneList={list} onGo={onGo} onOpenSet={onOpenSet} />
+        <MilestonesSection
+          milestones={list}
+          doneKeys={model.milestonesDone}
+          onToggle={handleToggleMilestone}
+        />
+        <Important
+          model={model}
+          milestoneList={list}
+          conflicts={conflicts}
+          onGo={onGo}
+          onOpenSet={onOpenSet}
+        />
       </Requirements>
     );
   return (
     <Now
       model={model}
-      forecasts={{ sat: series.sat.forecast, ent: series.ent.forecast }}
+      exams={exams}
+      forecasts={{ sat: outlook.sat.forecast, ent: outlook.ent.forecast }}
       onGo={onGo}
       onAccept={onAccept}
       onModel={onModel}
@@ -121,6 +205,7 @@ type Pace = { id: string; name: string; level: 0 | 1 | 2 | 3; verdict: string; s
 
 function Now({
   model,
+  exams,
   forecasts,
   onGo,
   onAccept,
@@ -130,6 +215,7 @@ function Now({
   diagnostic,
 }: {
   model: PrepModel;
+  exams: ExamRequirement[];
   forecasts: Record<ExamId, Date>;
   onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
   onAccept: (setId: string) => void;
@@ -142,19 +228,30 @@ function Now({
   const current = model.currentSet ? setById(model.currentSet) : null;
   const isDiagPending = !model.diagnosticDone;
 
-  // Quack's verdict per exam; demo programs are not saved, so there only the forecast date
-  const paces: Pace[] = state.standing?.exams.length
-    ? state.standing.exams.map((e) => ({ id: e.id, name: e.name, level: e.level, verdict: e.verdict, summary: e.summary }))
-    : EXAM_IDS.map((id) => {
-        const test = plannedTest(id, model.testDates) ?? EXAMS[id].test;
-        return {
-          id,
-          name: EXAMS[id].name,
-          level: forecasts[id] <= test ? 3 : 0,
-          verdict: forecasts[id] <= test ? "Успеваешь" : "Не успеваешь",
-          summary: `прогноз на ${formatDate(forecasts[id])}, тест ${formatDate(test)}`,
-        };
-      });
+  // Quack's verdict per exam — strictly filtered to exams that are actually required
+  const paces: Pace[] = exams.map((exam) => {
+    const standingPace = state.standing?.exams.find((se) => se.id === exam.id);
+    if (standingPace) {
+      return {
+        id: standingPace.id,
+        name: standingPace.name,
+        level: standingPace.level,
+        verdict: standingPace.verdict,
+        summary: standingPace.summary,
+      };
+    }
+    const examId = exam.id as ExamId;
+    const test = exam.testDate ?? plannedTest(examId, model.testDates) ?? EXAMS[examId]?.test ?? TODAY;
+    const forecastDate = forecasts[examId] ?? EXAMS[examId]?.test ?? TODAY;
+    const onTime = forecastDate <= test;
+    return {
+      id: exam.id,
+      name: exam.name,
+      level: onTime ? 3 : 0,
+      verdict: onTime ? "Успеваешь" : "Не успеваешь",
+      summary: `прогноз на ${formatDate(forecastDate)}, тест ${formatDate(test)}`,
+    };
+  });
 
   // The test itself, in place: its result builds the route and the first set opens on the same spot
   if (diagnostic.open)
@@ -171,15 +268,17 @@ function Now({
     return (
       <div className={styles.nowWork}>
         <div className={styles.nowStrip}>
-          <ul className={styles.nowStripPaces} aria-label="Темп по экзаменам">
-            {paces.map((p) => (
-              <li key={p.id} data-pace={p.level} title={p.summary}>
-                <PixelDuck tempo={DUCK_TEMPO[p.level]} className={styles.nowStripDuck} asleep={p.level === 0} />
-                <span className={styles.nowPaceName}>{p.name}</span>
-                <strong>{p.verdict}</strong>
-              </li>
-            ))}
-          </ul>
+          {paces.length > 0 && (
+            <ul className={styles.nowStripPaces} aria-label="Темп по экзаменам">
+              {paces.map((p) => (
+                <li key={p.id} data-pace={p.level} title={p.summary}>
+                  <PixelDuck tempo={DUCK_TEMPO[p.level]} className={styles.nowStripDuck} asleep={p.level === 0} />
+                  <span className={styles.nowPaceName}>{p.name}</span>
+                  <strong>{p.verdict}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
           <span className={styles.nowStripLinks}>
             {/* Skipped at the start: the test is still there, never in the way */}
             {model.diagnosticSkipped && (
@@ -238,15 +337,17 @@ function Now({
           <h2 className={styles.nowSet}>Все сеты пройдены — осталось закрепление и тест</h2>
         )}
 
-        <ul className={styles.nowPaces}>
-          {paces.map((p) => (
-            <li key={p.id} data-pace={p.level}>
-              <PixelDuck tempo={DUCK_TEMPO[p.level]} className={styles.nowPaceDuck} asleep={p.level === 0} />
-              <span className={styles.nowPaceName}>{p.name}</span>
-              <strong>{p.verdict}</strong>
-            </li>
-          ))}
-        </ul>
+        {paces.length > 0 && (
+          <ul className={styles.nowPaces}>
+            {paces.map((p) => (
+              <li key={p.id} data-pace={p.level}>
+                <PixelDuck tempo={DUCK_TEMPO[p.level]} className={styles.nowPaceDuck} asleep={p.level === 0} />
+                <span className={styles.nowPaceName}>{p.name}</span>
+                <strong>{p.verdict}</strong>
+              </li>
+            ))}
+          </ul>
+        )}
 
         {isDiagPending ? (
           <div className={styles.nowDiagActionBlock}>
@@ -327,11 +428,13 @@ function SetReportCard({ report, pace, onChoose }: { report: SetReport; pace?: P
 function Important({
   model,
   milestoneList,
+  conflicts,
   onGo,
   onOpenSet,
 }: {
   model: PrepModel;
-  milestoneList: ReturnType<typeof milestones>;
+  milestoneList: Milestone[];
+  conflicts?: BackendConflict[];
   onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
   onOpenSet: (setId: string, topic?: string) => void;
 }) {
@@ -341,6 +444,19 @@ function Important({
     SETS.find((s) => s.skills.includes(skillId) && !model.doneSets.includes(s.id)) ??
     SETS.find((s) => s.skills.includes(skillId));
   const items: { key: string; tone: "root" | "trap" | "late" | "date"; title: string; text: string; go: () => void; action: string }[] = [];
+
+  if (conflicts && conflicts.length) {
+    for (const c of conflicts) {
+      items.push({
+        key: `conflict-${c.kind}-${c.milestone_keys.join("-")}`,
+        tone: "late",
+        title: c.text,
+        text: c.options.join(" · "),
+        go: () => onGo("overview", "requirements"),
+        action: "Сроки",
+      });
+    }
+  }
 
   for (const root of SKILLS.filter((s) => s.root && model.states[s.id] !== "solid")) {
     const above = SKILLS.filter((s) => s.requires.includes(root.id)).map((s) => s.name.toLowerCase());
@@ -382,11 +498,11 @@ function Important({
     });
   }
 
-  const next = milestoneList.find((m) => m.date >= TODAY && !model.milestonesDone.includes(m.id));
+  const next = milestoneList.find((m) => m.date >= TODAY && !model.milestonesDone.includes(m.key || m.id));
   if (next) {
     const left = daysBetween(TODAY, next.date);
     items.push({
-      key: `date-${next.id}`,
+      key: `date-${next.key || next.id}`,
       tone: "date",
       title: next.title,
       text: left === 0 ? "сегодня" : `через ${left} дн. · ${formatDate(next.date)}`,
@@ -417,6 +533,55 @@ function Important({
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+/** Milestones and deadlines interactive checklist */
+function MilestonesSection({
+  milestones,
+  doneKeys,
+  onToggle,
+}: {
+  milestones: Milestone[];
+  doneKeys: string[];
+  onToggle: (m: Milestone, done: boolean) => void;
+}) {
+  if (!milestones.length) return null;
+
+  return (
+    <section className={`${styles.canvas} ${styles.full}`} aria-label="Майлстоуны и дедлайны">
+      <header className={styles.canvasHead}>
+        <h3>Майлстоуны и дедлайны</h3>
+        <span className={styles.muted}>
+          {milestones.filter((m) => doneKeys.includes(m.key || m.id) || m.done).length} из {milestones.length}
+        </span>
+      </header>
+      <ul className={styles.important}>
+        {milestones.map((m) => {
+          const key = m.key || m.id;
+          const isDone = doneKeys.includes(key) || Boolean(m.done);
+          return (
+            <li key={key} data-tone={isDone ? "root" : "date"}>
+              <div>
+                <label className={styles.check}>
+                  <input
+                    type="checkbox"
+                    checked={isDone}
+                    onChange={(e) => onToggle(m, e.target.checked)}
+                  />
+                  <strong style={{ textDecoration: isDone ? "line-through" : "none", opacity: isDone ? 0.7 : 1 }}>
+                    {m.title}
+                  </strong>
+                </label>
+                <span className={styles.muted}>
+                  {formatDate(m.date)} {m.detail ? `· ${m.detail}` : ""} {m.source ? `· ${m.source}` : ""}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }
@@ -501,14 +666,16 @@ function TargetEditor({
 /** What each exam asks for and whether the student makes it, in words: no readiness charts or percentages */
 function Requirements({
   exams,
+  loading,
   milestoneList,
   done,
   onPick,
   onTarget,
   children,
 }: {
-  exams: ReturnType<typeof requirements>;
-  milestoneList: ReturnType<typeof milestones>;
+  exams: ExamRequirement[];
+  loading?: boolean;
+  milestoneList: Milestone[];
   done: string[];
   /** The student picks the sitting: its `dateKey` */
   onPick: (exam: DatedExam, key: string) => void;
@@ -518,15 +685,36 @@ function Requirements({
 }) {
   return (
     <div className={styles.canvasGrid}>
+      {loading && (
+        <section className={`${styles.canvas} ${styles.full}`} aria-label="Загрузка">
+          <header className={styles.canvasHead}>
+            <h3>Требования</h3>
+          </header>
+          <p className={styles.muted}>Загружаем актуальные требования к экзаменам...</p>
+        </section>
+      )}
+
+      {!loading && exams.length === 0 && (
+        <section className={`${styles.canvas} ${styles.full}`} aria-label="Экзамены не требуются">
+          <header className={styles.canvasHead}>
+            <h3>Стандартизированные экзамены не требуются</h3>
+          </header>
+          <p className={styles.muted}>
+            Для твоих сохранённых программ сдача стандартизированных экзаменов (SAT / ЕНТ) не требуется. План подготовки строится вокруг дедлайнов подачи документов.
+          </p>
+        </section>
+      )}
+
       {exams.map((exam) => {
         const margin = exam.testDate && exam.forecast ? daysBetween(exam.forecast, exam.testDate) : 0;
-        const dated = exam.id === "ielts" ? null : exam.id;
+        const isDemo = !exam.programs.length || exam.programs.some((p: Program) => p.id.startsWith("demo-"));
+        const dated = exam.id === "ielts" ? null : (exam.id as DatedExam);
         const registration = dated && exam.testDate ? milestoneList.find((m) => m.id === examMilestoneId(dated, "reg", exam.testDate!)) : undefined;
         return (
           <section key={exam.id} className={styles.canvas} aria-label={exam.name}>
             <header className={styles.canvasHead}>
               <h3>{exam.name}</h3>
-              <span className={styles.demoTag}>демо</span>
+              {isDemo && <span className={styles.demoTag}>демо</span>}
             </header>
             {dated ? (
               <TargetEditor exam={dated} requirement={exam} onTarget={onTarget} />
@@ -585,7 +773,7 @@ function Requirements({
                 <dt>Нужен для</dt>
                 {exam.programs.length ? (
                   <dd className={styles.chips}>
-                    {exam.programs.map((p) => (
+                    {exam.programs.map((p: Program) => (
                       <span key={p.id}>{p.university}</span>
                     ))}
                   </dd>

@@ -1,117 +1,156 @@
-"""Observer — output schema for the prep-chat observer (docs/tz/30-B2.md §5.4).
+"""Observer — one structured-output call over a window of the prep chat.
+
+Source: docs/tz/phase3-agents.md §3.8, §5.1 C1, §5.2 F1;
+memory-architecture §8.1.
 
 The observer reads a window of unprocessed chat messages and turns what
 happened into a list of observations; it never draws conclusions about
-skill state itself (memory-architecture §8.1) — aggregation into evidence,
-skill states and forecasts is done by rule-based code in phase 2.
-``ObservationOut`` here is only the structured-output contract the model
-must fill; nothing in this module reads from or writes to the graph.
+skill state itself — aggregation into evidence, skill states and forecasts
+is done by the rule `apply.observation`. `run` writes nothing and filters
+nothing: the event keeps exactly what the model said, the rule decides what
+to apply (confidence threshold, reference checks).
+
+The output schema lives in `app.schemas.observer` (the event payload is
+validated by `events.store`, and `schemas` may not import `agents`); it is
+re-exported here so phase-1 imports keep working.
 """
 
 from __future__ import annotations
 
-from typing import Any, Literal
+import time
 
-from pydantic import BaseModel, Field, model_validator
+import structlog
 
+from app.config import settings
 from app.llm.client import LLMLike
-from app.schemas.common import ErrorClass
+from app.llm.prompts import load_prompt
+from app.schemas.llm import LLMMessage, ModelSlot
+from app.schemas.observer import (
+    Observation,
+    ObservationKind,
+    ObservationOut,
+    ObserverContext,
+    ObserverResult,
+    ObserverWindow,
+)
 
-ObservationKind = Literal[
-    "solution_step",
-    "task_in_chat",
-    "applied",
-    "confusion",
-    "question",
-    "avoided_trap",
-    "root_hint",
-    "proposed_misconception",
-    "pace_signal",
+__all__ = [
+    "Observation",
+    "ObservationKind",
+    "ObservationOut",
+    "render_window",
+    "run",
 ]
 
-# Fields each kind must fill, beyond `kind` itself — mirrors the promises
-# made to the model in app/agents/prompts/observer_v1.md ("Виды наблюдений
-# (kind) и что для каждого обязательно заполнить"), which is the source of
-# truth here: ТЗ §5.4's own list of examples is not exhaustive (it says
-# "например"), so this table also covers applied/confusion/question/
-# avoided_trap, which the ТЗ examples don't mention but the prompt does.
-_REQUIRED_FIELDS: dict[ObservationKind, tuple[str, ...]] = {
-    "solution_step": ("outcome", "skill_id"),
-    "task_in_chat": ("instance_id", "answer"),
-    "applied": ("skill_id",),
-    "confusion": ("skill_id",),
-    "question": ("skill_id",),
-    "avoided_trap": ("skill_id", "misconception_id"),
-    "root_hint": ("skill_id", "root_skill_id"),
-    "proposed_misconception": ("name", "description", "error_class"),
-    "pace_signal": ("signal",),
+_logger = structlog.get_logger(__name__)
+
+_MESSAGE_CHARS = 2000
+_USER_TURN = "Верни наблюдения по окну выше."
+_LEVEL_WORDS = {
+    "low_data": "мало данных",
+    "weak": "слабо",
+    "shaky": "шатко",
+    "solid": "уверенно",
+    "closed": "закрыто",
 }
 
 
-class Observation(BaseModel):
-    kind: ObservationKind
-    outcome: Literal["correct", "incorrect"] | None = None
-    skill_id: str | None = None
-    misconception_id: str | None = None
-    root_skill_id: str | None = None
-    instance_id: str | None = None
-    answer: str | None = None
-    name: str | None = None
-    description: str | None = None
-    error_class: ErrorClass | None = None
-    signal: str | None = None
-    summary: str | None = Field(default=None, max_length=300)
-    event_ids: list[int]
-    # `pace_signal` is the one kind the memory-architecture §8.1 example
-    # emits without a confidence field at all (payload has only `signal`
-    # and `event_ids`) — that example must validate byte-for-byte, so
-    # confidence can't be flatly required. But §8.1's own rule ("при
-    # сомнении низкий confidence, а не пропуск") means a *missing*
-    # confidence on any other kind is a modeling mistake, not a shrug —
-    # defaulting it to 1.0 silently made a forgotten field read as
-    # maximum certainty and sail through `observer_min_confidence`. So
-    # the omission is accepted only for `pace_signal` (which never gates
-    # evidence weight downstream, §8.1's kind table has "—" for it); for
-    # the other eight kinds, a missing confidence is now a validation
-    # error. Narrowed from the earlier blanket default=1.0 — see
-    # docs/sync-log.md.
-    confidence: float | None = Field(default=None, ge=0, le=1)
+def _clip(text: str) -> str:
+    return text if len(text) <= _MESSAGE_CHARS else text[:_MESSAGE_CHARS] + "…"
 
-    @model_validator(mode="after")
-    def _check_required_for_kind(self) -> Observation:
-        missing = [
-            field_name
-            for field_name in _REQUIRED_FIELDS[self.kind]
-            if getattr(self, field_name) is None
+
+def render_window(window: ObserverWindow) -> str:
+    lines: list[str] = []
+    for message in window.messages:
+        if message.role == "user":
+            lines.append(f"[event_id={message.event_id}] ученик: {_clip(message.text)}")
+            continue
+        markup = message.markup
+        tags = []
+        if markup is not None:
+            if markup.mode:
+                tags.append(f"mode={markup.mode}")
+            if markup.hint_level is not None:
+                tags.append(f"hint={markup.hint_level}")
+            if markup.gave_task_instance_id is not None:
+                tags.append(f"task={markup.gave_task_instance_id}")
+        head = f"репетитор ({', '.join(tags)})" if tags else "репетитор"
+        lines.append(f"[event_id={message.event_id}] {head}: {_clip(message.text)}")
+    return "\n".join(lines) if lines else "нет"
+
+
+def render_tasks(window: ObserverWindow) -> str:
+    """Stem and options only — never the key or `answer_forms`."""
+    if not window.tasks:
+        return "нет"
+    blocks: list[str] = []
+    for task in window.tasks:
+        lines = [
+            f"instance_id={task.instance_id}, skill_id={task.skill_id}, "
+            f"тип={task.type}, выдана в event_id={task.issued_event_id}",
+            f"условие: {task.stem}",
         ]
-        if self.confidence is None and self.kind != "pace_signal":
-            missing.append("confidence")
-        if missing:
-            raise ValueError(
-                f"observation kind {self.kind!r} is missing required "
-                f"field(s): {', '.join(missing)}"
-            )
-        return self
+        lines.extend(f"{option.key}: {option.text}" for option in task.options)
+        blocks.append("\n".join(lines))
+    return "\n\n".join(blocks)
 
 
-class ObservationOut(BaseModel):
-    observations: list[Observation]
+def render_skills(context: ObserverContext) -> str:
+    if not context.skills:
+        return "нет"
+    return "\n".join(
+        f"{s.id} — {s.name}: {s.description} ({_LEVEL_WORDS.get(s.level, s.level)})"
+        for s in context.skills
+    )
 
 
-async def observe(client: LLMLike, window: Any, context: Any) -> ObservationOut:
-    """Run the observer over one window of chat messages (phase 2).
+def render_misconceptions(context: ObserverContext) -> str:
+    if not context.misconceptions:
+        return "нет"
+    return "\n".join(
+        f"{m.id} — {m.name}: {m.description} "
+        f"(статус у ученика: {m.status or 'нет'}; {m.scope})"
+        for m in context.misconceptions
+    )
 
-    Not implemented in phase 1 — this function stays a stub until the
-    observer is wired into the `observe_chat` job (docs/tz/30-B2.md §5.5).
-    In phase 2 it will: load `observer_v1` via `app.llm.prompts.load_prompt`,
-    render it with `window` (the unprocessed message window) and the lists
-    from `context` (topic/prerequisite skills, misconceptions, the chat's
-    `task.issued` instance if any, the previous set's summary — see
-    memory-architecture §8.1 "Вход наблюдателя"), call
-    `client.structured(messages, ObservationOut, "bulk")`, and drop
-    observations below `observer_min_confidence` before returning them for
-    the rule layer to turn into evidence. `window` and `context` are left
-    untyped here because their real shapes belong to that phase-2 wiring,
-    not to this schema module.
-    """
-    raise NotImplementedError("phase 2")
+
+async def run(
+    client: LLMLike,
+    window: ObserverWindow,
+    context: ObserverContext,
+    *,
+    slot: ModelSlot,
+) -> ObserverResult:
+    """One `structured` call; `LLMUnavailable` and provider errors propagate
+    — whether to retry is the job's decision."""
+    started = time.perf_counter()
+    prompt = load_prompt("observer")
+    system = prompt.render(
+        window=render_window(window),
+        skills=render_skills(context),
+        misconceptions=render_misconceptions(context),
+        task_instance=render_tasks(window),
+        previous_summary=context.previous_summary or "нет",
+    )
+    messages = [
+        LLMMessage(role="system", content=system),
+        LLMMessage(role="user", content=_USER_TURN),
+    ]
+    out = await client.structured(messages, ObservationOut, slot)
+    _logger.info(
+        "observer_run",
+        chat_id=str(window.chat_id),
+        window=len(window.messages),
+        tasks=len(window.tasks),
+        skills=len(context.skills),
+        misconceptions=len(context.misconceptions),
+        prompt_chars=len(system),
+        observations=len(out.observations),
+        ms=round((time.perf_counter() - started) * 1000, 1),
+    )
+    return ObserverResult(
+        out=out,
+        extractor_version=prompt.extractor_version,
+        model=settings.MODEL_BULK if slot == "bulk" else settings.MODEL_CHAT,
+        raw_count=len(out.observations),
+    )

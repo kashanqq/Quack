@@ -94,7 +94,7 @@ export function unionExams(programs: Program[]): UnionExam[] {
   );
   add(
     "ielts",
-    programs.filter((p) => p.englishTaught).map((p) => ({ program: p, threshold: p.ieltsMin }))
+    programs.filter((p) => p.englishTaught && p.ieltsMin).map((p) => ({ program: p, threshold: p.ieltsMin }))
   );
   add(
     "ent",
@@ -124,7 +124,7 @@ export function hardConflicts(programs: Program[], exams: UnionExam[], chosen?: 
     for (const program of programs) {
       const needs =
         (exam.id === "sat" && program.satMin) ||
-        (exam.id === "ielts" && program.englishTaught) ||
+        (exam.id === "ielts" && program.englishTaught && program.ieltsMin) ||
         (exam.id === "ent" && program.country === "Казахстан");
       if (!needs) continue;
 

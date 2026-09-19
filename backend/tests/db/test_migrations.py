@@ -39,6 +39,7 @@ PHASE2_TABLES = {
     "milestone_marks",
     "forecast_cache",
 }
+PHASE4_TABLES = {"student_state"}
 PHASE2_TASK_COLUMNS = {"mode", "issued_event_id", "answered_at", "correct"}
 PHASE1_TASK_COLUMNS = {
     "id",
@@ -78,7 +79,7 @@ def _alembic(
 
 
 def test_metadata_has_phase1_and_phase2_tables_and_constraints():
-    assert set(Base.metadata.tables) == EXPECTED_TABLES | PHASE2_TABLES
+    assert set(Base.metadata.tables) == EXPECTED_TABLES | PHASE2_TABLES | PHASE4_TABLES
     assert [
         column.name for column in Base.metadata.tables["saved_programs"].primary_key
     ] == [

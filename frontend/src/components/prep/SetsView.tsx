@@ -1,9 +1,16 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, useEffect } from "react";
 import { Icon } from "../choice/Icon";
-import { EXAM_IDS, EXAMS, formatShort, SETS, skillById, STATE_LABEL, type ExamId, type StudySet } from "./prepData";
+import { EXAM_IDS, EXAMS, formatShort, SETS, setById, skillById, STATE_LABEL, type ExamId, type StudySet } from "./prepData";
 import { closed, proposals, type PrepModel, type PrepSub } from "./prepModel";
+import {
+  REMOTE_PREP,
+  fetchRemoteSets,
+  getCachedRemoteSets,
+  switchRemoteSet,
+  type RemoteSetsData,
+} from "./remoteSets";
 import { RouteView } from "./RouteView";
 import { useVertical } from "./GraphCanvas";
 import { StateGlyph } from "./SkillGraph";
@@ -31,6 +38,47 @@ type Props = {
  * same thing as one line: the last passed sets lead to the one in work, and it leads to what is proposed.
  */
 export function SetsView({ model, sub, exam, onExam, onMakeCurrent, focus, onOpenSet, onGoNow, onOpenDiagnostic }: Props) {
+  const [remoteData, setRemoteData] = useState<RemoteSetsData | null>(() =>
+    REMOTE_PREP ? getCachedRemoteSets(exam) : null
+  );
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!REMOTE_PREP) return;
+    const cached = getCachedRemoteSets(exam);
+    if (cached) setRemoteData(cached);
+
+    let active = true;
+    setLoading(true);
+    fetchRemoteSets(exam)
+      .then((data) => {
+        if (active) {
+          setRemoteData(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch remote sets for", exam, err);
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [exam]);
+
+  const handleMakeCurrent = async (setId: string) => {
+    onMakeCurrent(setId);
+    if (REMOTE_PREP) {
+      try {
+        const updated = await switchRemoteSet(setId, exam);
+        setRemoteData(updated);
+      } catch (err) {
+        console.error("Failed to switch remote set:", err);
+      }
+    }
+  };
+
   const switcher = <ExamSwitch exam={exam} onExam={onExam} />;
 
   if (sub === "map") {
@@ -41,7 +89,14 @@ export function SetsView({ model, sub, exam, onExam, onMakeCurrent, focus, onOpe
             <h3>Карта навыков · {EXAMS[exam].name}</h3>
             {switcher}
           </header>
-          <SetMap key={exam} exam={exam} model={model} onOpen={onOpenSet} onTake={onMakeCurrent} />
+          <SetMap
+            key={exam}
+            exam={exam}
+            model={model}
+            remoteData={remoteData}
+            onOpen={onOpenSet}
+            onTake={handleMakeCurrent}
+          />
         </section>
       </div>
     );
@@ -54,8 +109,10 @@ export function SetsView({ model, sub, exam, onExam, onMakeCurrent, focus, onOpe
       model={model}
       focus={focus}
       onGoNow={onGoNow}
-      onTake={onMakeCurrent}
+      onTake={handleMakeCurrent}
       onOpenDiagnostic={onOpenDiagnostic}
+      remoteData={remoteData}
+      loading={loading}
     />
   );
 }
@@ -85,24 +142,33 @@ const KIND_TEXT: Record<MapKind, string> = { done: "пройден", current: "�
 function SetMap({
   exam,
   model,
+  remoteData,
   onOpen,
   onTake,
 }: {
   exam: ExamId;
   model: PrepModel;
+  remoteData?: RemoteSetsData | null;
   onOpen: (setId: string, topic?: string) => void;
   onTake: (setId: string) => void;
 }) {
   const vertical = useVertical();
   const [history, setHistory] = useState(false);
 
-  const inExam = (id: string) => SETS.find((s) => s.id === id && s.exam === exam);
+  const inExam = (id: string) => {
+    const s = setById(id);
+    return s && s.exam === exam ? s : undefined;
+  };
   // Passed in the order they were passed, the latest last — right before the one in work
-  const done = model.doneSets.filter((id) => id !== model.currentSet).flatMap((id) => inExam(id) ?? []);
+  const done = remoteData
+    ? remoteData.done
+    : model.doneSets.filter((id) => id !== model.currentSet).flatMap((id) => inExam(id) ?? []);
   const shownDone = history ? done : done.slice(-HISTORY_SHOWN);
   const hidden = done.length - shownDone.length;
-  const current = model.currentSet ? inExam(model.currentSet) ?? null : null;
-  const advised = proposals(model, exam);
+  const current = remoteData?.current ?? (model.currentSet ? inExam(model.currentSet) ?? null : null);
+  const advised = remoteData
+    ? remoteData.upcoming.map((s) => ({ set: s, reasons: s.why ? [s.why] : [] }))
+    : proposals(model, exam);
 
   const columns: { kind: MapKind; sets: StudySet[] }[] = [
     ...shownDone.map((s) => ({ kind: "done" as const, sets: [s] })),
