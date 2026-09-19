@@ -4,16 +4,15 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_student, get_rule_deps, get_session
 from app.apply import knowledge as apply_knowledge
-from app.db.models import SetSummary
 from app.db.repo import forecast as forecast_repo
 from app.db.repo import milestones as milestone_repo
 from app.db.repo import profiles as profile_repo
 from app.db.repo import programs as program_repo
+from app.db.repo import summaries as summaries_repo
 from app.errors import NotFound
 from app.events import store
 from app.events.dispatch import RuleDeps
@@ -32,13 +31,8 @@ class MilestoneMarkIn(BaseModel):
 
 
 async def _last_summary(session: AsyncSession, student_id) -> SetSummaryOut | None:
-    row = await session.scalar(
-        select(SetSummary)
-        .where(SetSummary.student_id == student_id)
-        .order_by(SetSummary.created_at.desc(), SetSummary.id.desc())
-        .limit(1)
-    )
-    return SetSummaryOut.model_validate(row, from_attributes=True) if row else None
+    """Newest report of any exam; `text` may still be None (§4.5)."""
+    return await summaries_repo.get_latest(session, student_id)
 
 
 async def _build(

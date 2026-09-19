@@ -33,10 +33,13 @@ class Ranked(BaseModel):
     realism: str = "try"
 
 
+_NEUTRAL_SOFT = 0.5
+
+
 def rank(
     profile: Profile,
     hard_results: list[HardResult],
-    soft_scores: dict[str, float],
+    soft_scores: dict[str, float | None],
     params: KnowledgeParams,
 ) -> list[Ranked]:
     """Order programs: realism level first, then weighted score descending."""
@@ -55,9 +58,14 @@ def rank(
             per_factor[factor.id] = contribution
             score += contribution
 
-        soft = soft_scores.get(h.program_id)
-        if soft is not None:
-            program_weight = weights.get("program", 2.0)
+        # Фаза 4 (§5.6): ключ есть, значение None — мягкая оценка ещё не
+        # посчитана. Вклад нейтральный (как `unknown` у жёстких факторов):
+        # отсутствие текста не должно штрафовать программу.
+        if h.program_id in soft_scores:
+            soft = soft_scores[h.program_id]
+            if soft is None:
+                soft = _NEUTRAL_SOFT
+            program_weight = weights.get(params.soft_weight_key, 2.0)
             score += program_weight * soft
             per_factor["soft"] = program_weight * soft
 

@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID
 
 import jwt
+import structlog
 from fastapi import Request
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.errors import Unauthorized
 from app.events.dispatch import RuleDeps
+from app.events.outbox import JobOutbox
 from app.schemas.auth import StudentCtx
+
+_logger = structlog.get_logger(__name__)
 
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
@@ -41,13 +45,55 @@ def get_graph(request: Request) -> Any:
 
 
 def get_rule_deps(request: Request) -> RuleDeps:
-    """Use application-owned connections and a callable UTC clock."""
+    """Use application-owned connections and a callable UTC clock.
+
+    Phase 4 (§1.4): one `JobOutbox` per request, kept on `request.state` so
+    every `RuleDeps` of that request shares it. `flush_outbox` drains it
+    after the session dependency has committed — a rolled-back request never
+    reaches the flush, so its jobs are never enqueued.
+    """
+    outbox = getattr(request.state, "job_outbox", None)
+    if outbox is None:
+        outbox = JobOutbox()
+        request.state.job_outbox = outbox
     return RuleDeps(
         graph=get_graph(request),
         redis=get_redis(request),
         params=settings.knowledge,
         now=lambda: datetime.now(UTC),
+        jobs=outbox,
     )
+
+
+async def flush_outbox(request: Request) -> AsyncIterator[None]:
+    """Enqueue the request's recorded jobs once the transaction is done.
+
+    Declared *before* `get_session` in a route's dependency list would flush
+    too early, so routes take it as a plain dependency: FastAPI tears down
+    dependencies in reverse order of resolution, and `get_session` is
+    resolved first by every route that has both.
+    """
+    try:
+        yield
+    finally:
+        await _drain(request)
+
+
+async def _drain(request: Request) -> None:
+    outbox = getattr(request.state, "job_outbox", None)
+    if outbox is None or not outbox.entries:
+        return
+    session = None
+    sessionmaker = getattr(request.app.state, "sessionmaker", None)
+    try:
+        if sessionmaker is not None:
+            session = sessionmaker()
+        await outbox.flush(session, get_arq(request))
+    except Exception:  # noqa: BLE001 — the response is already on its way
+        _logger.warning("outbox_flush_failed", exc_info=True)
+    finally:
+        if session is not None:
+            await session.close()
 
 
 def get_llm(request: Request) -> Any:

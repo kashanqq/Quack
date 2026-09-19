@@ -327,8 +327,9 @@ async def test_apply_get_topic_context_foreign_set_is_none(monkeypatch, redis):
         "get_profile",
         AsyncMock(return_value=Profile(student_id=uuid4())),
     )
+    # Фаза 4 (§4.5): контекст читает типизированный отчёт, а не только текст.
     monkeypatch.setattr(
-        apply_context.summaries_repo, "get_latest_text", AsyncMock(return_value=None)
+        apply_context.summaries_repo, "get_previous", AsyncMock(return_value=None)
     )
     assert (
         await apply_context.get_topic_context(

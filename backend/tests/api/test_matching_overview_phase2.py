@@ -43,7 +43,18 @@ def _program(index: int) -> Program:
 @pytest.fixture
 def transport(monkeypatch):
     student = StudentCtx(student_id=uuid4(), email="student@example.com")
-    session = object()
+
+    class _Session:
+        """Фаза 4: подборка читает кэш текстов и мягкие оценки — пустой
+        сессии достаточно, обе выборки возвращают «ничего нет»."""
+
+        async def scalar(self, *args, **kwargs):
+            return None
+
+        async def scalars(self, *args, **kwargs):
+            return SimpleNamespace(all=lambda: [])
+
+    session = _Session()
     clock = datetime(2026, 9, 18, tzinfo=UTC)
     rule_deps = RuleDeps(
         graph=None, redis=object(), params=KnowledgeParams(), now=lambda: clock
@@ -115,8 +126,12 @@ def test_matching_pipeline_limit_and_minimum(transport):
     body = response.json()
     assert body["total"] == 5
     assert len(body["items"]) == 3
-    assert body["items"][0]["soft_pending"] is True
+    # Фаза 4 (§5.6): резюме черт пустое — мягкого фактора нет вовсе, и
+    # ждать нечего.
+    assert body["items"][0]["soft_pending"] is False
     assert body["items"][0]["fits_text"] is None
+    assert body["items"][0]["realism_text"] is None
+    assert body["items"][0]["realism_text_status"] == "generating"
     assert body["profile_readiness"] == 0.6
     assert calls[0] == "hard" and calls[-1] == "rank"
     assert calls.count("realism") == 5
@@ -135,16 +150,19 @@ def test_matching_empty_and_compare(transport):
         matching.compare_rules,
         "compare",
         lambda *args: SimpleNamespace(
+            rows=[],
             model_dump=lambda: {
                 "rows": [],
                 "collapsed_same": [],
                 "conclusion": "LLM text",
-            }
+            },
         ),
     )
     response = client.get("/matching/compare?ids=program-1,program-2")
     assert response.status_code == 200, response.text
     assert response.json()["conclusion"] is None
+    # Текста нет — статус говорит, что он на подходе (§7.1).
+    assert response.json()["conclusion_status"] == "generating"
     assert response.json()["program_ids"] == ["program-1", "program-2"]
 
 

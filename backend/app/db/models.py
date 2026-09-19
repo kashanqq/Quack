@@ -96,6 +96,8 @@ class ProgramCache(Base):
     __table_args__ = (
         Index("ix_programs_cache_country", "country"),
         Index("ix_programs_cache_direction", "direction"),
+        Index("uq_programs_cache_normalized_url", "normalized_url", unique=True),
+        Index("ix_programs_cache_slugs", "university_slug", "direction_slug"),
     )
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
@@ -116,6 +118,11 @@ class ProgramCache(Base):
     extracted_auto: Mapped[bool]
     flagged: Mapped[bool]
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    # Фаза 4: чем запись извлечена и по какому нормализованному URL.
+    extraction: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    normalized_url: Mapped[str | None] = mapped_column(Text)
+    university_slug: Mapped[str | None] = mapped_column(Text)
+    direction_slug: Mapped[str | None] = mapped_column(Text)
 
 
 class TaskTemplate(Base):
@@ -188,6 +195,8 @@ class Set(Base):
     rebuilt_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # Снапшот ForecastOut в момент `set.opened` — «прогноз до» отчёта (§4.3).
+    opened_forecast: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
 class SetTopic(Base):
@@ -301,30 +310,54 @@ class SeenTemplate(Base):
 
 class GeneratedText(Base):
     __tablename__ = "generated_texts"
-    __table_args__ = (UniqueConstraint("kind", "input_hash"),)
+    __table_args__ = (
+        UniqueConstraint("kind", "input_hash"),
+        Index(
+            "ix_generated_texts_subject",
+            "student_id",
+            "kind",
+            "subject",
+            "created_at",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
     kind: Mapped[str] = mapped_column(Text)
     input_hash: Mapped[str] = mapped_column(Text)
-    text: Mapped[str] = mapped_column(Text)
+    # NULL, пока идёт генерация, и после провала (§1.5).
+    text: Mapped[str | None] = mapped_column(Text)
     model: Mapped[str] = mapped_column(Text)
     prompt_version: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # Общий текст (объяснение навыка) не принадлежит ученику — NULL.
+    student_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True))
+    subject: Mapped[str] = mapped_column(Text, server_default="")
+    set_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True))
+    status: Mapped[str] = mapped_column(Text, server_default="ready")
+    attempts: Mapped[int] = mapped_column(Integer, server_default="0")
+    error: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class SetSummary(Base):
     __tablename__ = "set_summaries"
+    __table_args__ = (UniqueConstraint("set_id", name="uq_set_summaries_set_id"),)
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
     student_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True))
     set_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True))
-    text: Mapped[str] = mapped_column(Text)
+    text: Mapped[str | None] = mapped_column(Text)
     stats: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    exam_id: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, server_default="ready")
+    prompt_version: Mapped[str | None] = mapped_column(Text)
+    input_hash: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Message(Base):
@@ -345,6 +378,21 @@ class Message(Base):
 
 class Recommendation(Base):
     __tablename__ = "recommendations"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'shown', 'accepted', 'declined', 'expired')",
+            name="ck_recommendations_status",
+        ),
+        # Открытая рекомендация по одной причине — ровно одна.
+        Index(
+            "uq_recommendations_open_reason",
+            "student_id",
+            "reason_hash",
+            unique=True,
+            postgresql_where=text("status IN ('pending', 'shown')"),
+        ),
+        Index("ix_recommendations_student_status", "student_id", "status"),
+    )
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
     student_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True))
@@ -355,6 +403,14 @@ class Recommendation(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reason_hash: Mapped[str] = mapped_column(Text, server_default="")
+    urgency: Mapped[str] = mapped_column(Text, server_default="normal")
+    position: Mapped[int] = mapped_column(Integer, server_default="0")
+    exam_id: Mapped[str | None] = mapped_column(Text)
+    shown_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    batch_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True))
+    decision_event_id: Mapped[int | None] = mapped_column(BigInteger)
 
 
 class DailyAggregate(Base):
@@ -366,3 +422,64 @@ class DailyAggregate(Base):
     tasks_answered: Mapped[int] = mapped_column(Integer)
     messages: Mapped[int] = mapped_column(Integer)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class StudentAggregate(Base):
+    """One row per student — the window summary of `daily_aggregates` (§9.1)."""
+
+    __tablename__ = "student_aggregates"
+
+    student_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    as_of_event_id: Mapped[int] = mapped_column(BigInteger)
+
+
+class SoftMatch(Base):
+    """Soft fit of one trait summary to one program (§5.5).
+
+    Deliberately not keyed by student: two students with an identical summary
+    share the row, and that is the point — one model call serves both.
+    """
+
+    __tablename__ = "soft_matches"
+    __table_args__ = (Index("ix_soft_matches_program", "program_id"),)
+
+    summary_hash: Mapped[str] = mapped_column(Text, primary_key=True)
+    program_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    prompt_version: Mapped[str] = mapped_column(Text, primary_key=True)
+    score: Mapped[float | None] = mapped_column(Float)
+    text: Mapped[str | None] = mapped_column(Text)
+    caveat: Mapped[str | None] = mapped_column(Text)
+    matched_traits: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
+    confidence: Mapped[str | None] = mapped_column(Text)
+    model: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class JobOutbox(Base):
+    """Jobs that could not be enqueued because Redis was down (§1.4)."""
+
+    __tablename__ = "job_outbox"
+    __table_args__ = (
+        Index(
+            "ix_job_outbox_pending",
+            "created_at",
+            postgresql_where=text("enqueued_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    queue: Mapped[str] = mapped_column(Text)
+    fn_name: Mapped[str] = mapped_column(Text)
+    job_id: Mapped[str] = mapped_column(Text)
+    kwargs: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    defer_by: Mapped[int] = mapped_column(Integer, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    enqueued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

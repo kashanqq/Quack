@@ -11,6 +11,8 @@ from app.schemas.roadmap import ExamRequirementOut
 
 _MANUAL_TARGET_FIELDS: dict[ExamId, str] = {
     "SAT_MATH": "sat_target",
+    # Фаза 4: поле анкеты появилось вместе с вариантом «снизить цель».
+    "ENT_MATH": "ent_target",
 }
 _SELF_ESTIMATE_FIELDS: dict[ExamId, str] = {
     "SAT_MATH": "sat_score",

@@ -71,10 +71,34 @@ def _set(student_id, *, status="upcoming", position=0, skills=("skill-a",)):
 
 
 class _Session:
-    """Stands in for AsyncSession: routes commit before queueing a job."""
+    """Stands in for AsyncSession: routes commit before queueing a job.
+
+    Фаза 4 добавила чтения кэша текстов и отчётов по сету прямо в этих
+    маршрутах — пустых ответов достаточно, ни один сценарий здесь их не
+    проверяет.
+    """
 
     async def commit(self):
         pass
+
+    async def flush(self):
+        pass
+
+    async def scalar(self, *args, **kwargs):
+        return None
+
+    async def scalars(self, *args, **kwargs):
+        from types import SimpleNamespace as _NS
+
+        return _NS(all=lambda: [])
+
+    async def get(self, *args, **kwargs):
+        return None
+
+    async def execute(self, *args, **kwargs):
+        from types import SimpleNamespace as _NS
+
+        return _NS(one=lambda: (0, 0), rowcount=0, all=lambda: [])
 
 
 @pytest.fixture

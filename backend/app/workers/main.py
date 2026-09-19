@@ -6,11 +6,13 @@ from typing import Any
 
 import redis.asyncio as redis_async
 import structlog
+from arq import cron
 from arq.connections import RedisSettings
 
 from app.config import settings
 from app.db.engine import close_engine, create_engine, create_sessionmaker
 from app.events import handlers  # noqa: F401 (jobs dispatch through the rule table)
+from app.events.outbox import JobOutbox
 from app.loader import optional_layer as _optional_layer
 from app.workers import registry
 from app.workers.queue import enqueue
@@ -49,9 +51,29 @@ async def startup(ctx: dict[str, Any]) -> None:
         ctx["llm"] = (
             llm_module.LLMClient(settings, redis) if llm_module is not None else None
         )
+        # Фаза 4 (§1.4): в воркере тот же outbox, что и в запросе; задача
+        # флашит его сама сразу после своего коммита.
+        ctx["jobs"] = JobOutbox()
     except BaseException:
         await shutdown(ctx)
         raise
+
+
+async def startup_bulk(ctx: dict[str, Any]) -> None:
+    """Bulk worker start: infrastructure plus the missed-cron catch-up.
+
+    A cron that never fired because the worker was down is compensated once
+    at startup (§9.7) — the aggregate window is two weeks wide, so one run
+    covers any realistic outage.
+    """
+    await startup(ctx)
+    infra = _optional_layer("app.workers.jobs_infra")
+    if infra is None:
+        return
+    try:
+        await infra.catch_up(ctx)
+    except Exception:  # noqa: BLE001 — a missed cron must not block the worker
+        _logger.warning("cron_catch_up_failed", exc_info=True)
 
 
 async def load_embedder(ctx: dict[str, Any]) -> None:
@@ -106,9 +128,27 @@ class WorkerInteractive:
     queue_name = "interactive"
     max_tries = 3
     job_timeout = 30
+    keep_result = settings.JOB_KEEP_RESULT_S
     on_startup = startup_interactive
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
+
+
+def _cron_jobs() -> list[Any]:
+    """Three schedules (§1.2); absent B3 infra means no crons at all."""
+    infra = _optional_layer("app.workers.jobs_infra")
+    if infra is None:
+        return []
+    interval = max(1, settings.knowledge.recs_interval_h)
+    return [
+        cron(infra.daily_aggregates_cron, hour=3, minute=0),  # UTC
+        cron(
+            infra.recommendations_batch_cron,
+            hour=set(range(0, 24, interval)),
+            minute=15,
+        ),
+        cron(infra.outbox_replay_cron, minute=set(range(0, 60, 10))),
+    ]
 
 
 class WorkerBulk:
@@ -116,6 +156,10 @@ class WorkerBulk:
     queue_name = "bulk"
     max_tries = 3
     job_timeout = 90
-    on_startup = startup
+    # Два фоновых воркера при LLM_RPM_BULK=10 не упираются в лимит (§10.3).
+    max_jobs = settings.BULK_MAX_JOBS
+    keep_result = settings.JOB_KEEP_RESULT_S
+    cron_jobs = _cron_jobs()
+    on_startup = startup_bulk
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)

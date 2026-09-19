@@ -33,6 +33,8 @@ from app.schemas.events import (
     ObserverRequestedPayload,
     ProfileUpdatedPayload,
     ProgramSavedPayload,
+    RecommendationAcceptedPayload,
+    RecommendationDeclinedPayload,
     SetCompletedPayload,
     SetDeadlineChangedPayload,
     SetOpenedPayload,
@@ -40,6 +42,7 @@ from app.schemas.events import (
     TaskAnsweredPayload,
     TaskIssuedPayload,
     TaskSkippedPayload,
+    TextOpenedPayload,
     TopicCompletedPayload,
     TopicOpenedPayload,
 )
@@ -72,6 +75,11 @@ _PAYLOAD_MODELS: dict[EventType, type[BaseModel]] = {
     EventType.job_failed: JobFailedPayload,
     EventType.misconception_canonized: MisconceptionCanonizedPayload,
     EventType.misconception_personal_created: MisconceptionPersonalCreatedPayload,
+    # Phase 4 (§14.8) — no new event types, only the agreed payload shapes.
+    EventType.recommendation_accepted: RecommendationAcceptedPayload,
+    EventType.recommendation_declined: RecommendationDeclinedPayload,
+    EventType.guideline_opened: TextOpenedPayload,
+    EventType.explanation_opened: TextOpenedPayload,
 }
 _json_payload = TypeAdapter(dict[str, Any])
 _logger = structlog.get_logger(__name__)
@@ -304,3 +312,22 @@ async def latest_before(
         .limit(1)
     )
     return Event.model_validate(row) if row is not None else None
+
+
+async def list_active_students(
+    session: AsyncSession, since: datetime, limit: int = 200
+) -> list[UUID]:
+    """Students with any event since `since` — the cron's working set (§2.2).
+
+    The bound is deliberate (§10.3): a cron that fans out to more than 200
+    students logs and leaves the rest to the next run rather than flooding
+    the bulk queue.
+    """
+    rows = await session.scalars(
+        select(EventRow.student_id)
+        .where(EventRow.occurred_at >= since)
+        .group_by(EventRow.student_id)
+        .order_by(func.max(EventRow.id).desc())
+        .limit(limit)
+    )
+    return list(rows.all())

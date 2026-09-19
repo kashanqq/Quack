@@ -13,6 +13,7 @@ from app.api.deps import get_arq, get_current_student, get_rule_deps, get_sessio
 from app.apply import sets as apply_sets
 from app.db.repo import forecast as forecast_repo
 from app.db.repo import sets as set_repo
+from app.db.repo import summaries as summaries_repo
 from app.errors import Conflict, NotFound, ValidationFailed
 from app.events import dispatch, store, version
 from app.events.dispatch import RuleDeps
@@ -28,6 +29,7 @@ from app.schemas.events import (
     TopicCompletedPayload,
     TopicOpenedPayload,
 )
+from app.schemas.roadmap import SetSummaryOut
 from app.schemas.sets import SetEditIn, SetOut, SetsByExam, SetSwitchIn, TopicOut
 from app.workers.queue import enqueue
 
@@ -134,6 +136,20 @@ async def get_set(
     item = await _owned_set(session, student.student_id, set_id)
     await _version(response, deps, student.student_id)
     return item
+
+
+@router.get("/{set_id}/summary", response_model=SetSummaryOut)
+async def get_set_summary(
+    set_id: UUID,
+    student: Annotated[StudentCtx, Depends(get_current_student)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> SetSummaryOut:
+    """The end-of-set report: statistics always, text when it is ready (§4.5)."""
+    await _owned_set(session, student.student_id, set_id)
+    summary = await summaries_repo.get(session, set_id)
+    if summary is None:
+        raise NotFound("set summary not found")
+    return summary
 
 
 @router.post("/{set_id}/open", response_model=SetOut)

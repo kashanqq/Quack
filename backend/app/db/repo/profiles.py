@@ -22,6 +22,8 @@ QUESTIONNAIRE_PATHS = frozenset(
         "academics.sat_score",
         "academics.sat_target",
         "academics.sat_date",
+        "academics.ent_target",
+        "academics.ent_date",
         "academics.ielts_score",
         "academics.ielts_target",
         "preferences.countries",

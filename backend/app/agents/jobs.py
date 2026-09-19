@@ -774,29 +774,35 @@ async def _personal_id(graph: Any, student_id: UUID, name: str) -> str:
     return candidate
 
 
+# --- phase 4 jobs (implemented in `agents/jobs_phase4.py`) ---
+
+# Задачи фазы 4 живут в соседнем модуле, чтобы этот файл остался читаемым;
+# реестр воркера знает только имена, поэтому их достаточно ре-экспортировать.
+from app.agents.jobs_phase4 import (  # noqa: E402
+    compare_text,
+    extract_program,
+    pregenerate_set,
+    realism_texts,
+    search_programs,
+    set_summary,
+    soft_match,
+)
+
+__all__ = [
+    "canonize_misconception",
+    "compare_text",
+    "extract_program",
+    "observe_chat",
+    "pregenerate_set",
+    "propose_personal_nodes",
+    "realism_texts",
+    "search_programs",
+    "set_summary",
+    "soft_match",
+]
+
+
 # --- later phases ---
-
-
-async def pregenerate_set(
-    ctx: dict, request_id: str, set_id: UUID, student_id: UUID
-) -> None:
-    """Pre-generate guidelines and explanations for every topic in a set so
-    they're ready before the student opens them.
-
-    Queue: `bulk` (tech-stack §2.5). Trigger: `set.opened`. Phase 4.
-    """
-    raise NotImplementedError("phase 4")
-
-
-async def set_summary(
-    ctx: dict, request_id: str, set_id: UUID, student_id: UUID
-) -> None:
-    """Build the short end-of-set report — what's closed, which skills
-    firmed up, which misconceptions resolved (product-logic §4.1).
-
-    Queue: `interactive` (tech-stack §2.5). Trigger: `set.completed`. Phase 4.
-    """
-    raise NotImplementedError("phase 4")
 
 
 async def propose_personal_nodes(
@@ -808,23 +814,3 @@ async def propose_personal_nodes(
     Queue: `interactive` (tech-stack §2.5). Trigger: `set.opened`. Phase 6.
     """
     raise NotImplementedError("phase 6")
-
-
-async def soft_match(
-    ctx: dict, request_id: str, student_id: UUID, program_ids: list[str]
-) -> None:
-    """Score soft fit between the student's trait summary and each given
-    program's environment text (product-logic §3.3).
-
-    Queue: `bulk` (tech-stack §2.5). Phase 4.
-    """
-    raise NotImplementedError("phase 4")
-
-
-async def extract_program(ctx: dict, request_id: str, url: str) -> None:
-    """Fetch the program page at `url` and extract `Program` fields via
-    `MODEL_BULK` structured output (tech-stack §4.6, product-logic §5.1).
-
-    Queue: `bulk` (tech-stack §2.5). Phase 4.
-    """
-    raise NotImplementedError("phase 4")

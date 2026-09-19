@@ -40,7 +40,7 @@ def test_health_all_storage_ok(monkeypatch, fake_llm, llm_status):
             "postgres": "ok",
             "neo4j": "ok",
             "redis": "ok",
-            "search": "skipped",
+            "search": "ok",
         },
         "llm_status": llm_status,
         "version": "dev",

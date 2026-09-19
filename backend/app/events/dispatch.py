@@ -1,7 +1,7 @@
 """Transactional Phase 2 event handler registry and dispatcher."""
 
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
@@ -12,6 +12,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import KnowledgeParams
+from app.events.outbox import JobOutbox
 from app.schemas.events import Event, EventType
 
 
@@ -21,6 +22,10 @@ class RuleDeps:
     redis: Redis
     params: KnowledgeParams
     now: Callable[[], datetime]
+    # Фаза 4 (§1.4): обработчик только записывает намерение поставить задачу;
+    # транспорт флашит его после коммита. Значение по умолчанию оставляет
+    # конструкторы фаз 1–3 рабочими — их обработчики задач не ставят.
+    jobs: JobOutbox = field(default_factory=JobOutbox)
 
 
 GraphUnavailable = object()
