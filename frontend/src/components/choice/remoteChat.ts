@@ -5,13 +5,15 @@
 import { api, ApiError } from "@/api/client";
 import { backend, type BackendProfile } from "@/api/backend";
 import { postSSE } from "@/api/stream";
-import type { Profile } from "./assistant";
+import { PRIORITY_KEYS, type Profile, type PriorityKey } from "./assistant";
 
 /* ---------- Profile: backend questionnaire -> the panel's slots ---------- */
 
 const EUROPE = new Set(["DE", "NL", "PL", "FR"]);
 const COUNTRY_NAME: Record<string, string> = { KZ: "Казахстан", US: "США", SG: "Сингапур", JP: "Япония", CA: "Канада" };
 const GRANT: Record<string, string> = { only_grant: "только грант", preferred: "желательно", not_needed: "не нужен" };
+const DEPTH: Record<string, string> = { short: "коротко", normal: "обычная", deep: "глубоко" };
+const HINT: Record<string, string> = { minimal: "минимум", normal: "обычный", generous: "щедро" };
 
 /** The generated schema marks every defaulted field optional, so each level is read defensively */
 type Field<T> = { value?: T | null } | undefined;
@@ -20,7 +22,7 @@ const val = <T,>(f: Field<T>): T | undefined => f?.value ?? undefined;
 /** What the panel shows for a backend profile. Slots the backend does not know stay empty. */
 export function backendToProfile(p: BackendProfile): Profile {
   const q = p.questionnaire;
-  const out: Profile = { soft: [...(p.traits?.verbatim ?? [])] };
+  const out: Profile = { soft: [...(p.traits?.verbatim ?? [])], priorities: [...PRIORITY_KEYS] };
 
   const grade = val(q?.level?.grade);
   if (grade) out.grade = `${grade} класс`;
@@ -43,6 +45,22 @@ export function backendToProfile(p: BackendProfile): Profile {
   if (ielts) out.ielts = String(ielts);
   const ent = val(q?.academics?.ent_trial_score);
   if (ent) out.ent = String(ent);
+
+  const required = val(q?.constraints?.required) ?? [];
+  if (required.length) out.requiredNote = required.join(", ");
+  const excluded = val(q?.constraints?.excluded) ?? [];
+  if (excluded.length) out.excludedNote = excluded.join(", ");
+
+  const ranking = val(q?.priorities?.ranking) as PriorityKey[] | undefined;
+  if (ranking?.length === PRIORITY_KEYS.length) out.priorities = ranking;
+
+  const hours = val(q?.pace?.hours_per_week);
+  if (hours) out.paceHours = `${hours} ч/нед`;
+  const depth = val(q?.pace?.explanation_depth);
+  if (depth) out.paceDepth = DEPTH[depth] ?? depth;
+  const hint = val(q?.pace?.hint_level);
+  if (hint) out.paceHint = HINT[hint] ?? hint;
+
   return out;
 }
 

@@ -7,7 +7,7 @@
 // at rough fixed rates for display only: the catalog is demo data.
 
 import { backend, type BackendMatch, type BackendMatching, type BackendProgram } from "@/api/backend";
-import type { Profile } from "./assistant";
+import { PRIORITY_KEYS, type PriorityKey, type Profile } from "./assistant";
 import { catalog, formatEur, remoteEvaluations, type Evaluation, type Factor, type Level, type Program } from "./programs";
 
 export const REMOTE = process.env.NEXT_PUBLIC_DATA_SOURCE === "remote";
@@ -135,16 +135,45 @@ export function ingest(matching: BackendMatching): string[] {
 }
 
 /**
- * The backend ranks by score and treats a stated country or direction as one factor among many, so
- * a cheap program abroad can outrank a fitting one. The picks put what matches the student's country
- * and direction first and keep the backend's order within each group.
+ * The backend ranks by score and treats every factor equally, so §3.3's "weights from the student's
+ * priorities" has to happen here. Each priority key gets a 0..1 fit for a program; keys earlier in
+ * the student's ranking count for more. Ranking and research/mobility have no signal from the
+ * backend today (no university-rating or environment data in `Program`), so they stay neutral (0.5)
+ * until that data exists — this does not fabricate a factor the backend cannot back with a source.
  */
-export function prioritize(ids: string[]): string[] {
-  const misses = (id: string) =>
-    (remoteEvaluations.get(id)?.factors ?? []).filter((f) => (f.label === "Страна" || f.label === "Направление") && f.status === "below").length;
+function priorityFit(key: PriorityKey, id: string, maxCost: number): number {
+  const ev = remoteEvaluations.get(id);
+  const misses = (label: string) => (ev?.factors ?? []).some((f) => f.label === label && f.status === "below");
+  switch (key) {
+    case "location":
+      return misses("Страна") || misses("Город") ? 0 : 1;
+    case "program":
+      return misses("Направление") ? 0 : 1;
+    case "cost": {
+      const cost = catalog.get(id)?.costEur;
+      if (cost === undefined || !maxCost) return 0.5;
+      return 1 - cost / maxCost;
+    }
+    case "realism": {
+      const level = ev?.level;
+      return level === "realistic" ? 1 : level === "try" ? 0.5 : level === "unlikely" ? 0 : 0.5;
+    }
+    default:
+      return 0.5; // ranking / research / mobility: без источника от бэка
+  }
+}
+
+export function prioritize(ids: string[], priorities?: PriorityKey[]): string[] {
+  const order = priorities?.length === PRIORITY_KEYS.length ? priorities : PRIORITY_KEYS;
+  const weightOf = (key: PriorityKey) => order.length - order.indexOf(key);
+  const maxCost = Math.max(0, ...ids.map((id) => catalog.get(id)?.costEur ?? 0));
   return ids
-    .map((id, i) => ({ id, i, m: misses(id) }))
-    .sort((a, b) => a.m - b.m || a.i - b.i)
+    .map((id, i) => ({
+      id,
+      i,
+      score: PRIORITY_KEYS.reduce((sum, key) => sum + weightOf(key) * priorityFit(key, id, maxCost), 0),
+    }))
+    .sort((a, b) => b.score - a.score || a.i - b.i)
     .map((x) => x.id);
 }
 
@@ -208,6 +237,21 @@ export function profileOps(p: Profile): [string, unknown][] {
   add("academics.ielts_score", num(p.ielts));
   const ent = num(p.ent);
   add("academics.ent_trial_score", ent !== undefined && ent <= 50 ? ent : undefined);
+
+  add("constraints.required", p.requiredNote ? p.requiredNote.split(",").map((s) => s.trim()).filter(Boolean) : undefined);
+  add("constraints.excluded", p.excludedNote ? p.excludedNote.split(",").map((s) => s.trim()).filter(Boolean) : undefined);
+
+  if (p.priorities.length === PRIORITY_KEYS.length && !PRIORITY_KEYS.every((k, i) => p.priorities[i] === k)) {
+    add("priorities.ranking", p.priorities);
+  }
+
+  const hoursMatch = p.paceHours?.match(/(\d+(?:\.\d+)?)/);
+  add("pace.hours_per_week", hoursMatch ? Number(hoursMatch[1]) : undefined);
+  const DEPTH_IN: Record<string, string> = { коротко: "short", обычная: "normal", глубоко: "deep" };
+  add("pace.explanation_depth", p.paceDepth ? DEPTH_IN[p.paceDepth] : undefined);
+  const HINT_IN: Record<string, string> = { минимум: "minimal", обычный: "normal", щедро: "generous" };
+  add("pace.hint_level", p.paceHint ? HINT_IN[p.paceHint] : undefined);
+
   return ops;
 }
 
@@ -232,6 +276,12 @@ const FIELD_PATHS: Record<string, string[]> = {
   sat: ["academics.sat_score"],
   ielts: ["academics.ielts_score"],
   ent: ["academics.ent_trial_score"],
+  requiredNote: ["constraints.required"],
+  excludedNote: ["constraints.excluded"],
+  priorities: ["priorities.ranking"],
+  paceHours: ["pace.hours_per_week"],
+  paceDepth: ["pace.explanation_depth"],
+  paceHint: ["pace.hint_level"],
 };
 
 /**

@@ -27,6 +27,9 @@ export type BackendTaskRequestIn = Schemas["TaskRequestIn"];
 export type BackendAnswerIn = Schemas["AnswerIn"];
 export type BackendAnswerResult = Schemas["AnswerResult"];
 export type BackendTaskSkipIn = Schemas["TaskSkipIn"];
+export type BackendMockOut = Schemas["MockOut"];
+export type BackendMockStartIn = Schemas["MockStartIn"];
+export type BackendMockResultOut = Schemas["MockResultOut"];
 
 export const backend = {
   profile: {
@@ -86,6 +89,13 @@ export const backend = {
   },
   prep: {
     version: () => api.get<BackendKnowledgeVersion>("/prep/knowledge/version"),
+  },
+  mocks: {
+    start: (body: BackendMockStartIn) => api.post<BackendMockOut>("/mocks", body),
+    get: (runId: string) => api.get<BackendMockOut>(`/mocks/${encodeURIComponent(runId)}`),
+    answer: (runId: string, body: Omit<BackendAnswerIn, "instance_id"> & { instance_id: string }) =>
+      api.post<BackendMockOut>(`/mocks/${encodeURIComponent(runId)}/answer`, body),
+    finish: (runId: string) => api.post<BackendMockResultOut>(`/mocks/${encodeURIComponent(runId)}/finish`),
   },
 };
 

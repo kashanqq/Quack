@@ -15,6 +15,7 @@ import {
   placeholderFor,
   planReply,
   readiness,
+  sanitizeProfile,
   type FieldKey,
   type Profile,
 } from "./assistant";
@@ -195,7 +196,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     try {
       const stored = store.get<Workspace>(WORKSPACE_KEY);
       if (stored) {
-        profileRef.current = stored.profile ?? EMPTY_PROFILE;
+        profileRef.current = sanitizeProfile(stored.profile);
         setProfile(profileRef.current);
         setConfirmed(Boolean(stored.confirmed));
         setPicks(stored.picks ?? []);
@@ -676,7 +677,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     if (!mounted.current) return;
 
     for (const ids of cards) {
-      const known = prioritize(ids.filter((pid) => catalog.get(pid)?.remote));
+      const known = prioritize(ids.filter((pid) => catalog.get(pid)?.remote), profileRef.current.priorities);
       if (!known.length) continue;
       setPicks(known);
       setSidebarTab("picks");
@@ -714,13 +715,16 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
       try {
         const loaded = await loadCatalog();
         bumpCatalog((n) => n + 1);
-        ids = prioritize(loaded.ids).slice(0, 5);
+        ids = prioritize(loaded.ids, profileRef.current.priorities).slice(0, 5);
         if (!ids.length) {
           await assistantSay(loaded.emptyReason ?? "Пока не нашёл подходящих программ. Расскажи, что для тебя важно, — и я поищу ещё.");
           return;
         }
       } catch {
+        // §6.3 «поиск недоступен»: подбор продолжает работать на кэше и полу проверенных программ,
+        // но об этом стоит сказать явно, а не молча подсунуть демо-подборку.
         ids = recommend(profileRef.current);
+        await assistantSay("Не удалось обновить список с сервера — показаны только проверенные программы из кэша.");
       }
     } else {
       ids = recommend(profileRef.current);
