@@ -100,4 +100,40 @@ async def record_answer(
         dispatch_event=False,
     )
     results = await dispatch.dispatch(session, event, deps)
-    return AnswerResult.model_validate(results["apply_task_answered"])
+    if "apply_task_answered" not in results:
+        # The dispatcher refused to project: Neo4j is down, or an older event
+        # of this student is still unapplied and this one must not overtake it
+        # (§11 A2). The answer itself is already durable, so the student keeps
+        # the grade and is told the knowledge update is owed.
+        _queue_recovery(deps, student.student_id, event.id)
+        from app.tasks.answer import grade as grade_fn
+
+        return AnswerResult(
+            grade=grade_fn(row, body.answer),
+            solution=row.solution_rendered,
+            state_after=None,
+            misconception_change=None,
+            state_words="",
+            knowledge_version=0,
+            projection_status="pending",
+        )
+    result = AnswerResult.model_validate(results["apply_task_answered"])
+    if result.projection_status == "pending":
+        _queue_recovery(deps, student.student_id, event.id)
+    return result
+
+
+def _queue_recovery(deps: RuleDeps, student_id: UUID, event_id: int) -> None:
+    """One durable catch-up intent per student (§13.3).
+
+    The id is deterministic, so a burst of answers during an outage records
+    one intent, not one per answer. Anything it does not reach — events that
+    arrived after its watermark — the ten-minute sweep picks up.
+    """
+    deps.jobs.enqueue(
+        "bulk",
+        "recover_graph_events",
+        job_id=f"graph-recover:{student_id}",
+        student_id=str(student_id),
+        through_event_id=event_id,
+    )

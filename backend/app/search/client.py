@@ -173,13 +173,29 @@ async def _tavily_allowed(redis: Any) -> bool:
     return True
 
 
+#: How long one recorded search outcome is considered current (phase 5 §10).
+#: Long enough that a quiet night does not read as an outage, short enough
+#: that a stale success cannot vouch for a provider that died hours ago.
+SEARCH_STATUS_TTL_S = 24 * 3600
+
+
 async def note_error(redis: Any, error: str | None) -> None:
-    """`/health.checks.search` reads this key (§6.2)."""
+    """`/health.checks.search` reads these keys (§6.2, phase 5 §10).
+
+    Success is recorded too, not only failure: without it health cannot tell
+    "no search has run yet" from "search works", and phase 5 forbids
+    reporting the first as the second.
+    """
     if redis is None:
         return
     try:
         if error is None:
             await redis.delete(keys.search_last_error())
+            await redis.set(
+                keys.search_last_ok(),
+                datetime.now(UTC).isoformat(),
+                ex=SEARCH_STATUS_TTL_S,
+            )
         else:
             await redis.set(keys.search_last_error(), error[:200], ex=300)
     except (RedisError, OSError):

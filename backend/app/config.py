@@ -219,6 +219,16 @@ class Settings(BaseSettings):
     # задача не поставится, поэтому окно короткое (§1.3).
     JOB_KEEP_RESULT_S: int = 60
 
+    # --- Фаза 5 (§13.3, D09). Технические значения под один VPS, не SLA. ---
+    # Сколько намерений разбирает один прогон `outbox_replay`.
+    OUTBOX_REPLAY_BATCH: int = 100
+    # Размер одной порции событий восстановления графа и потолок на задачу:
+    # `recover_graph_events` живёт 90 с, порция должна укладываться с запасом.
+    RECOVERY_BATCH: int = 25
+    RECOVERY_MAX_PER_JOB: int = 200
+    # Догон графа при старте воркера (bulk). Выключается в тестах.
+    RECOVERY_SWEEP_ON_STARTUP: bool = True
+
     TAVILY_API_KEY: SecretStr = SecretStr("")
     EMBEDDING_MODEL: str = "intfloat/multilingual-e5-small"
     EMBEDDING_DIM: int = Field(default=384, gt=0)

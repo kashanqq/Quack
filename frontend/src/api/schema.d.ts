@@ -1052,6 +1052,12 @@ export interface components {
             state_words: string;
             /** Knowledge Version */
             knowledge_version: number;
+            /**
+             * Projection Status
+             * @default applied
+             * @enum {string}
+             */
+            projection_status: "applied" | "pending";
         };
         /** AssistantMarkup */
         AssistantMarkup: {
@@ -1063,6 +1069,26 @@ export interface components {
             hint_level?: number | null;
             /** Referenced Skill Ids */
             referenced_skill_ids?: string[];
+        };
+        /**
+         * AvailabilityOut
+         * @description How honest a read model is right now (phase 5, D03).
+         *
+         *     Additive and optional everywhere it appears: a client that ignores it
+         *     keeps working, and a client that reads it can stop presenting a static
+         *     ordering or an unrefreshed cache as a live answer. `as_of_event_id` is
+         *     only ever a version we actually know — never a guess at "the latest".
+         */
+        AvailabilityOut: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "live" | "cached" | "static" | "unavailable";
+            /** Reason */
+            reason?: ("graph_unavailable" | "projection_pending" | "search_unavailable") | null;
+            /** As Of Event Id */
+            as_of_event_id?: number | null;
         };
         /** ChatMessageIn */
         ChatMessageIn: {
@@ -1507,6 +1533,7 @@ export interface components {
             misconceptions: components["schemas"]["MisconceptionStateOut"][];
             /** Roots */
             roots: components["schemas"]["RootCauseOut"][];
+            availability?: components["schemas"]["AvailabilityOut"] | null;
         };
         /** KnowledgeVersionOut */
         KnowledgeVersionOut: {
@@ -1568,6 +1595,7 @@ export interface components {
             forecast_used: boolean;
             /** Empty Reason */
             empty_reason: string | null;
+            availability?: components["schemas"]["AvailabilityOut"] | null;
         };
         /** MessageOut */
         MessageOut: {
@@ -2585,6 +2613,7 @@ export interface components {
             upcoming: components["schemas"]["SetOut"][];
             /** Done */
             done: components["schemas"]["SetOut"][];
+            availability?: components["schemas"]["AvailabilityOut"] | null;
         };
         /** SkillDelta */
         SkillDelta: {

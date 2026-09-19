@@ -17,6 +17,7 @@ from starlette.responses import Response
 
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
+from app.api.commit import commit_request
 from app.api.deps import flush_outbox, get_current_student
 from app.api.diagnostic import router as diagnostic_router
 from app.api.health import router as health_router
@@ -100,9 +101,9 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     configure_logging(settings.LOG_LEVEL)
     logger = structlog.get_logger(__name__)
-    # `flush_outbox` — глобальная зависимость: FastAPI разрешает её раньше
-    # маршрутных и закрывает позже, то есть уже после коммита сессии. Так
-    # задача ставится ровно тогда, когда воркер сможет увидеть её данные.
+    # `flush_outbox` — страховка для маршрутов со своей сессией (SSE-чат):
+    # на обычном пути транзакцию и намерения задач закрывает
+    # `commit_request` в middleware ниже, ещё до отправки ответа (§10).
     app = FastAPI(
         title="Quack API",
         lifespan=lifespan,
@@ -136,6 +137,19 @@ def create_app() -> FastAPI:
                 )
             else:
                 response = await call_next(request)
+            # Фаза 5 (§10): коммит здесь, а не в teardown зависимости.
+            # `call_next` уже вернул ответ обработчика, но наружу он ещё не
+            # ушёл, поэтому «принято» и «долговечно» совпадают по порядку.
+            try:
+                await commit_request(request, response.status_code)
+            except Exception:  # noqa: BLE001
+                logger.exception("request_commit_failed", request_id=request_id)
+                response = JSONResponse(
+                    status_code=500,
+                    content={
+                        "error": {"code": "internal", "message": "Internal error"}
+                    },
+                )
             status = response.status_code
             response.headers["X-Request-Id"] = request_id
             return response

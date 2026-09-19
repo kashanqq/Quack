@@ -11,6 +11,7 @@ from fastapi import Request
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api import commit as commit_module
 from app.config import settings
 from app.errors import Unauthorized
 from app.events.dispatch import RuleDeps
@@ -21,14 +22,25 @@ _logger = structlog.get_logger(__name__)
 
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
-    """Commit a successful request and roll back a failed one."""
+    """Provide the request transaction; roll it back if the request failed.
+
+    The **commit** deliberately does not live here. A `yield` dependency is
+    torn down after the response has already been sent, so committing here
+    would mean acknowledging work before it is durable — phase 5 §10 wants the
+    opposite order. `app/api/commit.py::commit_request`, called from the HTTP
+    middleware, commits it (together with the request's job intents, §9.2)
+    between the endpoint and the response; the session is parked on
+    `request.state` for it to find.
+    """
     async with request.app.state.sessionmaker() as session:
+        setattr(request.state, commit_module.SESSION_ATTR, session)
         try:
             yield session
-            await session.commit()
         except BaseException:
             await session.rollback()
             raise
+        finally:
+            setattr(request.state, commit_module.SESSION_ATTR, None)
 
 
 def get_redis(request: Request) -> Redis:
@@ -48,9 +60,10 @@ def get_rule_deps(request: Request) -> RuleDeps:
     """Use application-owned connections and a callable UTC clock.
 
     Phase 4 (§1.4): one `JobOutbox` per request, kept on `request.state` so
-    every `RuleDeps` of that request shares it. `flush_outbox` drains it
-    after the session dependency has committed — a rolled-back request never
-    reaches the flush, so its jobs are never enqueued.
+    every `RuleDeps` of that request shares it. `commit_request` writes the
+    recorded intents into the request transaction and delivers them after the
+    commit — a rolled-back request never reaches either step, so its jobs are
+    neither written nor enqueued.
     """
     outbox = getattr(request.state, "job_outbox", None)
     if outbox is None:
@@ -66,12 +79,12 @@ def get_rule_deps(request: Request) -> RuleDeps:
 
 
 async def flush_outbox(request: Request) -> AsyncIterator[None]:
-    """Enqueue the request's recorded jobs once the transaction is done.
+    """Safety net for a route that records jobs without `get_session`.
 
-    Declared *before* `get_session` in a route's dependency list would flush
-    too early, so routes take it as a plain dependency: FastAPI tears down
-    dependencies in reverse order of resolution, and `get_session` is
-    resolved first by every route that has both.
+    `commit_request` persists and delivers on the normal path, so this usually
+    finds nothing left. It stays because a route that builds its own session
+    (the SSE chat transport) still needs its intents to reach the queue, and
+    because a streaming response finishes after the commit point.
     """
     try:
         yield
@@ -81,14 +94,14 @@ async def flush_outbox(request: Request) -> AsyncIterator[None]:
 
 async def _drain(request: Request) -> None:
     outbox = getattr(request.state, "job_outbox", None)
-    if outbox is None or not outbox.entries:
+    if outbox is None or not (outbox.entries or outbox.ready):
         return
-    session = None
     sessionmaker = getattr(request.app.state, "sessionmaker", None)
+    session = None
     try:
-        if sessionmaker is not None:
+        if sessionmaker is not None and outbox.entries:
             session = sessionmaker()
-        await outbox.flush(session, get_arq(request))
+        await outbox.flush(session, get_arq(request), sessionmaker)
     except Exception:  # noqa: BLE001 — the response is already on its way
         _logger.warning("outbox_flush_failed", exc_info=True)
     finally:

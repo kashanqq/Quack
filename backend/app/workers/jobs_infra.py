@@ -4,19 +4,31 @@ Thin wrappers over `app.apply.*` — the rules live there, these only open a
 session, handle the phase-4 retry policy and write `job.failed` when the
 last try is gone (§2.1). They belong to B3 because nothing in them is a
 knowledge-model decision.
+
+Phase 5 adds the two recovery jobs, and they keep the same shape: the outbox
+replay only *delivers* durable intents, and `recover_graph_events` only
+re-runs the ordinary dispatcher in the right order. Neither decides anything
+about a student's knowledge.
 """
 
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import structlog
 from arq import Retry
 
 from app import keys
+from app.apply._lock import student_lock
 from app.config import settings
+from app.db.repo import outbox as outbox_repo
+from app.events import dispatch as dispatcher
+from app.events import (
+    handlers,  # noqa: F401 — registers the B1 rules
+    recovery,
+)
 from app.events import outbox as outbox_module
 from app.events import store as events_store
 from app.events.dispatch import RuleDeps
@@ -157,30 +169,233 @@ async def recommendations_batch(
     )
 
 
-# --- outbox_replay (§1.4) ---
+# --- outbox_replay (§1.4; phase 5 §13.2) ---
+
+_DEPENDENCY_RECHECK_S = 60
+_GRAPH_RETRY_S = 60
 
 
 async def outbox_replay(ctx: dict[str, Any], request_id: str) -> None:
-    """Re-enqueue what Redis refused while it was down."""
+    """Deliver every durable intent that is due, and reclaim dead leases.
+
+    Phase 5 makes this the single recovery path for background work. It
+    claims `pending` rows, `waiting_dependency` rows whose `not_before` has
+    passed, and rows whose worker lease expired (a crashed worker). If the
+    dependency a row waits on is still down the row is parked again rather
+    than delivered, and no attempt is spent — an outage costs time, not work
+    (AC03).
+
+    It generates no content of its own. Duplicate deliveries are fine, the
+    consumers are idempotent; duplicate *effects* are not.
+    """
     structlog.contextvars.bind_contextvars(request_id=request_id)
+    now = datetime.now(UTC)
+    statuses = await _dependency_status(ctx)
+    delivered = 0
     async with ctx["sessionmaker"]() as session:
-        rows = await outbox_module.pending(session)
-        if not rows:
-            return
-        done: list[int] = []
-        for row in rows:
+        claimed = await outbox_repo.claim_due(
+            session, now, limit=settings.OUTBOX_REPLAY_BATCH
+        )
+        for intent in claimed:
+            if intent.dependency and statuses.get(intent.dependency) is False:
+                await outbox_repo.mark_waiting(
+                    session,
+                    intent.id,
+                    lease_token=intent.lease_token,
+                    dependency=intent.dependency,  # type: ignore[arg-type]
+                    defer_s=_DEPENDENCY_RECHECK_S,
+                    now=now,
+                )
+                continue
+            # A fresh token goes out *with* this delivery and is adopted only
+            # if ARQ takes it. Rotating it first would fence a retry of the
+            # previous delivery that is still perfectly valid.
+            token = uuid4()
             entry = outbox_module.OutboxEntry(
-                queue=row.queue,  # type: ignore[arg-type]
-                fn_name=row.fn_name,
-                job_id=row.job_id,
-                defer_by=row.defer_by,
-                kwargs=dict(row.kwargs or {}),
+                queue=intent.queue,  # type: ignore[arg-type]
+                fn_name=intent.fn_name,
+                job_id=intent.job_id,
+                defer_by=0,
+                kwargs=dict(intent.kwargs),
+                intent_id=intent.id,
+                lease_token=token,
             )
             if await outbox_module._enqueue_one(ctx["redis"], entry):
-                done.append(row.id)
-        await outbox_module.mark_enqueued(session, done)
+                await outbox_repo.mark_enqueued(
+                    session,
+                    intent.id,
+                    lease_s=outbox_module.LEASE_S,
+                    now=now,
+                    lease_token=token,
+                )
+                delivered += 1
         await session.commit()
-    _logger.info("outbox_replay", pending=len(rows), enqueued=len(done))
+    _logger.info("outbox_replay", claimed=len(claimed), enqueued=delivered)
+
+
+async def _dependency_status(ctx: dict[str, Any]) -> dict[str, bool]:
+    """Is each dependency back? Bounded probes only — never a generation."""
+    status: dict[str, bool] = {"redis": True}
+    llm = ctx.get("llm")
+    if llm is not None:
+        try:
+            status["llm"] = await llm.status() != "down"
+        except Exception:  # noqa: BLE001
+            status["llm"] = False
+    graph = ctx.get("neo4j")
+    if graph is None:
+        status["graph"] = False
+    else:
+        try:
+            async with graph.session() as session:
+                await (await session.run("RETURN 1")).consume()
+            status["graph"] = True
+        except Exception:  # noqa: BLE001
+            status["graph"] = False
+    try:
+        status["search"] = not await ctx["redis"].get(keys.search_last_error())
+    except Exception:  # noqa: BLE001
+        status["search"] = True
+    return status
+
+
+# --- recover_graph_events (§13.3) ---
+
+
+async def recover_graph_events(
+    ctx: dict[str, Any],
+    request_id: str,
+    student_id: str,
+    through_event_id: int,
+) -> None:
+    """Project one student's pending events into the graph, oldest first.
+
+    Not new business logic: every event goes through the ordinary dispatcher,
+    so the B1 rules decide exactly what they would have decided at the time.
+    What this adds is order, a bounded batch and a watermark — without one, a
+    student who keeps answering would hold the job open forever.
+
+    A poison event stops *this student* with its id in the log and in
+    `job.failed`; it is not skipped with a pretend `processed_at`, and the
+    events behind it keep waiting, because their state depends on it (§16).
+    Other students are unaffected.
+    """
+    structlog.contextvars.bind_contextvars(request_id=request_id)
+    student = uuid_of(student_id)
+    watermark = int(through_event_id)
+    if watermark <= 0:
+        return
+    if ctx.get("neo4j") is None:
+        raise Retry(defer=_GRAPH_RETRY_S)
+
+    applied = 0
+    after_id = 0
+    async with student_lock(ctx["redis"], student) as got_lock:
+        if not got_lock:
+            # D10: a graph mutation without the student lock can interleave
+            # with a live answer. Waiting is always the safe direction.
+            raise Retry(defer=_LOCK_RETRY_S)
+        # After a Redis restart the version counter may read an old value; a
+        # context cached under that number would look current (D04).
+        await _drop_personal_caches(ctx, student)
+        while applied < settings.RECOVERY_MAX_PER_JOB:
+            async with ctx["sessionmaker"]() as session:
+                batch = await recovery.backlog(
+                    session,
+                    student,
+                    through_event_id=watermark,
+                    after_id=after_id,
+                    limit=settings.RECOVERY_BATCH,
+                )
+                if not batch:
+                    break
+                blocked = None
+                for event in batch:
+                    try:
+                        await dispatcher.dispatch(session, event, rule_deps(ctx))
+                    except Exception as exc:  # noqa: BLE001 — poison event
+                        await session.rollback()
+                        await record_failure(
+                            ctx,
+                            "recover_graph_events",
+                            student,
+                            {"event_id": event.id, "type": event.type.value},
+                            str(exc),
+                        )
+                        raise
+                    if event.processed_at is None:
+                        # The graph refused this one. Stop before the events
+                        # whose state depends on it.
+                        blocked = event.id
+                        break
+                    after_id = event.id
+                    applied += 1
+                await session.commit()
+            if blocked is not None:
+                _logger.warning(
+                    "recovery_blocked", event_id=blocked, student_id=str(student)
+                )
+                raise Retry(defer=_GRAPH_RETRY_S)
+    _logger.info(
+        "recover_graph_events",
+        student_id=str(student),
+        applied=applied,
+        through_event_id=watermark,
+    )
+
+
+async def _drop_personal_caches(ctx: dict[str, Any], student_id: UUID) -> None:
+    """D04: drop this student's derived caches instead of trusting a counter.
+
+    `knowledge_version` lives in Redis. If Redis came back from an older
+    snapshot the counter can repeat a value some cached context was tagged
+    with, and that context would then be served as current. Deleting the
+    personal keys is the cheap, always-correct answer — every one of them is
+    rebuildable from Postgres and the graph.
+    """
+    doomed = [
+        keys.knowledge_version(str(student_id)),
+        keys.pace(str(student_id)),
+        keys.matching_snapshot(str(student_id)),
+        *(keys.forecast(str(student_id), exam) for exam in ("SAT_MATH", "ENT_MATH")),
+    ]
+    try:
+        await ctx["redis"].delete(*doomed)
+        async for key in ctx["redis"].scan_iter(
+            match=keys.ctx_topic(str(student_id), "*"), count=100
+        ):
+            await ctx["redis"].delete(key)
+    except Exception:  # noqa: BLE001 — Redis down: the caches are gone anyway
+        _logger.warning("cache_invalidation_failed", student_id=str(student_id))
+
+
+async def recovery_sweep(ctx: dict[str, Any]) -> None:
+    """Startup and cron sweep: one recovery job per student with a backlog."""
+    from app.workers.queue import enqueue
+
+    async with ctx["sessionmaker"]() as session:
+        marks = [
+            (student_id, await recovery.watermark(session, student_id))
+            for student_id, _oldest in await recovery.students_with_backlog(session)
+        ]
+    queued = 0
+    for student_id, mark in marks:
+        if mark <= 0:
+            continue
+        try:
+            await enqueue(
+                ctx["redis"],
+                "bulk",
+                "recover_graph_events",
+                _job_id=f"graph-recover:{student_id}",
+                student_id=str(student_id),
+                through_event_id=mark,
+            )
+            queued += 1
+        except Exception:  # noqa: BLE001 — the next sweep retries
+            _logger.warning("recovery_enqueue_failed", student_id=str(student_id))
+    if marks:
+        _logger.info("recovery_sweep", students=len(marks), queued=queued)
 
 
 # --- crons (§1.2) ---
@@ -280,3 +495,8 @@ async def _release(redis: Any, key: str) -> None:
 async def outbox_replay_cron(ctx: dict[str, Any]) -> None:
     """Cron wrapper: `outbox_replay` takes a `request_id`, a cron does not."""
     await outbox_replay(ctx, request_id="cron")
+
+
+async def recovery_sweep_cron(ctx: dict[str, Any]) -> None:
+    """Cron wrapper: `recovery_sweep` takes no `request_id`, a cron does not."""
+    await recovery_sweep(ctx)

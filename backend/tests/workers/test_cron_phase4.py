@@ -74,12 +74,14 @@ def enqueued(monkeypatch):
     return calls
 
 
-def test_three_crons_on_the_bulk_worker():
+def test_the_bulk_worker_crons():
+    """Три расписания фазы 4 плюс догон графа фазы 5 (§13.3)."""
     names = [job.name for job in workers_main.WorkerBulk.cron_jobs]
     assert names == [
         "cron:daily_aggregates_cron",
         "cron:recommendations_batch_cron",
         "cron:outbox_replay_cron",
+        "cron:recovery_sweep_cron",
     ]
 
 
