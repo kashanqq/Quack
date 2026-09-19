@@ -648,6 +648,13 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     }
     if (!mounted.current) return;
 
+    // The backend withdrew the text but the picks themselves are real: show them without the scare
+    if (failed && cards.length && failed.startsWith("Ответ отозван")) {
+      failed = null;
+      answer = "Вот что подобрал по твоему профилю — подробности в карточках.";
+      updateMsg(id, { typing: false, text: answer });
+    }
+
     if (failed) {
       updateMsg(id, {
         typing: false,
