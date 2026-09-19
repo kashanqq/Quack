@@ -3,6 +3,7 @@
 // (skill map, sets, forecast, milestones) is a fixed demo scenario flagged as "демо" in the UI.
 
 import { PROGRAMS, programById, type Program } from "../choice/programs";
+import { ENT_AREAS, ENT_SETS, ENT_SKILLS } from "./entContent";
 
 /* ---------- Dates ---------- */
 
@@ -63,16 +64,17 @@ export function monthStarts(from: Date, to: Date): Date[] {
 /* ---------- Exams with a knowledge model ---------- */
 
 /**
- * Every exam the section prepares for has its own skills, sets, readiness and forecast. The screens
- * show one exam at a time and switch between them, so the map never mixes maths with English.
+ * Every exam the section prepares for has its own skills, sets, readiness and forecast: SAT Math and
+ * ЕНТ по профильной математике. The screens show one exam at a time and switch between them. IELTS is
+ * not planned here — it is only a score the student tells us in «Выборе».
  */
-export type ExamId = "sat" | "ielts";
+export type ExamId = "sat" | "ent";
 
-export const EXAM_IDS: ExamId[] = ["sat", "ielts"];
+export const EXAM_IDS: ExamId[] = ["sat", "ent"];
 
 export const EXAMS: Record<ExamId, { name: string; test: Date; routeFrom: Date; routeTo: Date }> = {
   sat: { name: "SAT Math", test: day(11, 7), routeFrom: day(9, 1), routeTo: day(11, 12) },
-  ielts: { name: "IELTS Academic", test: day(12, 12), routeFrom: day(9, 1), routeTo: day(12, 17) },
+  ent: { name: "ЕНТ · математика", test: day(1, 20, 2027), routeFrom: day(9, 1), routeTo: day(1, 25, 2027) },
 };
 
 /* ---------- Skill map (§5.2) ---------- */
@@ -120,7 +122,7 @@ export type Skill = {
 /** Areas are the lanes of the map and the groups of the set list, per exam. */
 export const AREAS: Record<ExamId, string[]> = {
   sat: ["Алгебра", "Продвинутая математика", "Анализ данных", "Геометрия и тригонометрия"],
-  ielts: ["Listening", "Reading", "Writing", "Speaking"],
+  ent: ENT_AREAS,
 };
 
 const SAT_SKILLS: Omit<Skill, "exam">[] = [
@@ -306,145 +308,9 @@ const SAT_SKILLS: Omit<Skill, "exam">[] = [
   },
 ];
 
-const IELTS_SKILLS: Omit<Skill, "exam">[] = [
-  {
-    id: "l-detail",
-    name: "Детали и формы",
-    area: "Listening",
-    weight: 12,
-    state: "solid",
-    recall: 0.82,
-    requires: [],
-    misconceptions: [],
-    evidence: [{ source: "замер", text: "Section 1: 9 из 10, ошибка в написании фамилии", date: day(9, 5) }],
-  },
-  {
-    id: "l-maps",
-    name: "Карты и схемы",
-    area: "Listening",
-    weight: 8,
-    state: "shaky",
-    recall: 0.5,
-    requires: ["l-detail"],
-    misconceptions: [],
-    evidence: [{ source: "замер", text: "План здания: 3 из 5 — путает «напротив» и «рядом с»", date: day(9, 5) }],
-  },
-  {
-    id: "l-lecture",
-    name: "Лекция: главная мысль",
-    area: "Listening",
-    weight: 10,
-    state: "lowData",
-    recall: 0.45,
-    requires: ["l-detail"],
-    misconceptions: [],
-    evidence: [],
-  },
-  {
-    id: "r-scan",
-    name: "Поиск информации",
-    area: "Reading",
-    weight: 10,
-    state: "solid",
-    recall: 0.85,
-    requires: [],
-    misconceptions: [],
-    evidence: [{ source: "замер", text: "Matching information: 6 из 7", date: day(9, 5) }],
-  },
-  {
-    id: "r-tfng",
-    name: "True / False / Not Given",
-    area: "Reading",
-    weight: 12,
-    state: "weak",
-    recall: 0.35,
-    requires: ["r-scan"],
-    misconceptions: [
-      {
-        id: "tfng-false",
-        text: "Ставит False, когда в тексте ответа просто нет",
-        status: "confirmed",
-        observations: 3,
-        trigger: "когда утверждение звучит правдоподобно",
-      },
-    ],
-    evidence: [
-      { source: "замер", text: "TFNG: 2 из 6, все ошибки — False вместо Not Given", date: day(9, 5) },
-      { source: "чат", text: "«если в тексте этого нет, значит неправда»", date: day(9, 11) },
-    ],
-  },
-  {
-    id: "r-headings",
-    name: "Заголовки абзацев",
-    area: "Reading",
-    weight: 8,
-    state: "shaky",
-    recall: 0.5,
-    requires: ["r-scan"],
-    misconceptions: [],
-    evidence: [{ source: "замер", text: "3 из 5: выбирает заголовок по совпавшему слову", date: day(9, 5) }],
-  },
-  {
-    id: "w-task1",
-    name: "Task 1: описание графика",
-    area: "Writing",
-    weight: 12,
-    state: "shaky",
-    recall: 0.5,
-    requires: [],
-    misconceptions: [],
-    evidence: [{ source: "замер", text: "Черновик без обзора (overview) — потолок 5.5 по Task Achievement", date: day(9, 6) }],
-  },
-  {
-    id: "w-coherence",
-    name: "Связность и связки",
-    area: "Writing",
-    weight: 6,
-    state: "shaky",
-    recall: 0.48,
-    requires: [],
-    root: true,
-    misconceptions: [],
-    evidence: [{ source: "замер", text: "Абзацы без главной мысли, связки подряд: moreover, furthermore", date: day(9, 6) }],
-  },
-  {
-    id: "w-task2",
-    name: "Task 2: эссе",
-    area: "Writing",
-    weight: 16,
-    state: "weak",
-    recall: 0.3,
-    requires: ["w-coherence"],
-    misconceptions: [],
-    evidence: [{ source: "замер", text: "Эссе на 5.0: мысль теряется ко второму абзацу — идёт от связности", date: day(9, 6) }],
-  },
-  {
-    id: "s-part1",
-    name: "Part 1: короткие ответы",
-    area: "Speaking",
-    weight: 6,
-    state: "solid",
-    recall: 0.88,
-    requires: [],
-    misconceptions: [],
-    evidence: [{ source: "замер", text: "Отвечает развёрнуто, без пауз", date: day(9, 7) }],
-  },
-  {
-    id: "s-part2",
-    name: "Part 2: монолог 2 минуты",
-    area: "Speaking",
-    weight: 10,
-    state: "lowData",
-    recall: 0.4,
-    requires: ["s-part1"],
-    misconceptions: [],
-    evidence: [],
-  },
-];
-
 export const SKILLS: Skill[] = [
   ...SAT_SKILLS.map((s) => ({ ...s, exam: "sat" as const })),
-  ...IELTS_SKILLS.map((s) => ({ ...s, exam: "ielts" as const })),
+  ...ENT_SKILLS.map((s) => ({ ...s, exam: "ent" as const })),
 ];
 
 export const skillById = (id: string) => SKILLS.find((s) => s.id === id)!;
@@ -456,14 +322,14 @@ export type SetStatus = "done" | "current" | "upcoming" | "review";
 export const SET_STATUS_LABEL: Record<SetStatus, string> = {
   done: "пройден",
   current: "текущий",
-  upcoming: "предстоит",
+  upcoming: "не начат",
   review: "закрепление",
 };
 
 export type StudySet = {
   id: string;
   exam: ExamId;
-  /** Counted within its exam: SAT and IELTS each start from set 1 */
+  /** Counted within its exam: SAT and ЕНТ each start from set 1 */
   number: number;
   title: string;
   /** Area the set is filed under on the Sets tab */
@@ -544,68 +410,9 @@ const SAT_SETS: Omit<StudySet, "exam">[] = [
   },
 ];
 
-/* IELTS runs alongside SAT: its sets overlap the maths ones in time and end before the December test. */
-const IELTS_SETS: Omit<StudySet, "exam">[] = [
-  {
-    id: "i1",
-    number: 1,
-    title: "Reading: TFNG и заголовки",
-    area: "Reading",
-    skills: ["r-scan", "r-tfng", "r-headings"],
-    start: day(9, 21),
-    deadline: day(10, 12),
-    status: "upcoming",
-    why: "True / False / Not Given — подтверждённая ловушка и самый большой вес в Reading",
-  },
-  {
-    id: "i2",
-    number: 2,
-    title: "Writing: связность и эссе",
-    area: "Writing",
-    skills: ["w-coherence", "w-task2"],
-    start: day(10, 13),
-    deadline: day(11, 2),
-    status: "upcoming",
-    why: "Связность — корень: из-за неё эссе не поднимается выше 5.5",
-  },
-  {
-    id: "i3",
-    number: 3,
-    title: "Listening: карты и лекции",
-    area: "Listening",
-    skills: ["l-detail", "l-maps", "l-lecture"],
-    start: day(11, 3),
-    deadline: day(11, 17),
-    status: "upcoming",
-    why: "Детали уже держатся — на них строятся карты и лекция",
-  },
-  {
-    id: "i4",
-    number: 4,
-    title: "Task 1 и монолог",
-    area: "Speaking",
-    skills: ["w-task1", "s-part1", "s-part2"],
-    start: day(11, 18),
-    deadline: day(11, 29),
-    status: "upcoming",
-    why: "Оба про описание: график на письме и тема на две минуты вслух",
-  },
-  {
-    id: "i5",
-    number: 5,
-    title: "Пробный IELTS целиком",
-    area: "Reading",
-    skills: ["r-tfng", "w-task2", "s-part2"],
-    start: day(11, 30),
-    deadline: day(12, 7),
-    status: "review",
-    why: "Последняя неделя — без новых навыков, полный тест на время",
-  },
-];
-
 export const SETS: StudySet[] = [
   ...SAT_SETS.map((s) => ({ ...s, exam: "sat" as const })),
-  ...IELTS_SETS.map((s) => ({ ...s, exam: "ielts" as const })),
+  ...ENT_SETS.map((s) => ({ ...s, exam: "ent" as const })),
 ];
 
 export const setById = (id: string) => SETS.find((s) => s.id === id)!;
@@ -657,72 +464,6 @@ export const CHECKS: Record<string, Task[]> = {
       id: "t1",
       text: "Треугольники подобны с коэффициентом 3. Во сколько раз площадь большего больше?",
       options: [{ label: "3", trap: "Взял коэффициент вместо его квадрата" }, { label: "6" }, { label: "9", correct: true }, { label: "27" }],
-    },
-  ],
-  "r-scan": [
-    {
-      id: "rs1",
-      text: "Текст: «The museum, founded in 1872, moved to its current building in 1905». Когда музей переехал?",
-      options: [{ label: "1872", trap: "Взял первую дату, не дочитав предложение" }, { label: "1905", correct: true }, { label: "Не сказано" }],
-    },
-  ],
-  "r-tfng": [
-    {
-      id: "tf1",
-      text: "Текст: «Most visitors arrive by train». Утверждение: «The museum is free to visit». Ответ?",
-      options: [
-        { label: "True" },
-        { label: "False", trap: "False вместо Not Given: в тексте этого нет" },
-        { label: "Not Given", correct: true },
-      ],
-    },
-    {
-      id: "tf2",
-      text: "Текст: «The bridge was completed two years behind schedule». Утверждение: «The bridge was finished on time». Ответ?",
-      options: [{ label: "True" }, { label: "False", correct: true }, { label: "Not Given", trap: "Not Given, хотя текст прямо противоречит" }],
-    },
-  ],
-  "r-headings": [
-    {
-      id: "rh1",
-      text: "Абзац о том, почему города сажают деревья: тень, воздух, дешевле кондиционеров. Лучший заголовок?",
-      options: [
-        { label: "The history of city parks", trap: "Выбрал заголовок по совпавшему слову, а не по мысли" },
-        { label: "Practical benefits of urban trees", correct: true },
-        { label: "How air conditioners work" },
-      ],
-    },
-  ],
-  "w-coherence": [
-    {
-      id: "wc1",
-      text: "Какая связка подходит: «Prices rose sharply. ___, demand stayed the same»?",
-      options: [{ label: "Moreover", trap: "Связка добавления там, где нужен контраст" }, { label: "However", correct: true }, { label: "Therefore" }],
-    },
-  ],
-  "w-task2": [
-    {
-      id: "wt1",
-      text: "Тема: «Some think students should study abroad». С чего по критериям лучше начать эссе?",
-      options: [
-        { label: "С истории образования за границей", trap: "Вступление уходит от вопроса" },
-        { label: "Перефразировать тему и сразу дать свою позицию", correct: true },
-        { label: "С цитаты известного человека" },
-      ],
-    },
-  ],
-  "w-task1": [
-    {
-      id: "w1",
-      text: "Что обязательно должно быть в Task 1, чтобы подняться выше 5.5?",
-      options: [{ label: "Все числа с графика" }, { label: "Обзор главных тенденций (overview)", correct: true }, { label: "Своё мнение", trap: "Мнение в Task 1 не нужно" }],
-    },
-  ],
-  "l-maps": [
-    {
-      id: "lm1",
-      text: "На записи: «The café is opposite the library». Где кафе на плане?",
-      options: [{ label: "Рядом с библиотекой, стена к стене", trap: "Путает «opposite» и «next to»" }, { label: "Через проход, лицом к библиотеке", correct: true }, { label: "За библиотекой" }],
     },
   ],
 };
@@ -786,18 +527,18 @@ export function requirements(programs: Program[], outlook: ExamOutlook): ExamReq
     });
   }
 
+  // ЕНТ is the student's own plan, not a program's demand: it is there whenever preparation is
   if (programs.length) {
-    const top = Math.max(...programs.map((p) => p.ieltsMin));
     result.push({
-      id: "ielts",
-      name: "IELTS Academic",
-      target: top.toFixed(1),
-      targetNote: `нужен всем сохранённым · выше всех у ${programs.find((p) => p.ieltsMin === top)!.university}`,
-      testDate: EXAMS.ielts.test,
-      testCandidates: [EXAMS.ielts.test, day(1, 16, 2027)],
-      programs,
+      id: "ent",
+      name: "ЕНТ · математика",
+      target: "40",
+      targetNote: "из 50 · профильная математика, цель на грант",
+      testDate: EXAMS.ent.test,
+      testCandidates: [EXAMS.ent.test, day(6, 20, 2027)],
+      programs: [],
       hasModel: true,
-      ...outlook.ielts,
+      ...outlook.ent,
     });
   }
 
@@ -814,8 +555,8 @@ export function milestones(programs: Program[]): Milestone[] {
   }
   if (programs.length) {
     list.push(
-      { id: "ielts-reg", date: day(11, 12), title: "Регистрация на IELTS", detail: "Тест 12 декабря · British Council", source: "демо", checkable: true },
-      { id: "ielts-test", date: day(12, 12), title: "IELTS — тест", detail: "Ближайший слот в Алматы", source: "демо", checkable: true }
+      { id: "ent-reg", date: day(12, 20), title: "Регистрация на ЕНТ", detail: "Тест 20 января · НЦТ", source: "демо", checkable: true },
+      { id: "ent-test", date: day(1, 20, 2027), title: "ЕНТ — тест", detail: "Профильная математика", source: "демо", checkable: true }
     );
   }
   for (const p of programs) {
@@ -831,28 +572,13 @@ export function milestones(programs: Program[]): Milestone[] {
   return list.sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
-/** Conflicts between milestones, each with ways to resolve it. */
-export function conflicts(list: Milestone[]): { id: string; text: string; options: string[] }[] {
-  const ielts = list.find((m) => m.id === "ielts-test");
-  if (!ielts) return [];
-  // Results arrive about 13 days after the test
-  const results = new Date(ielts.date.getTime() + 13 * 86_400_000);
-  return list
-    .filter((m) => m.id.startsWith("apply-") && m.date < results)
-    .map((m) => ({
-      id: `conflict-${m.id}`,
-      text: `${m.title} — до ${formatDate(m.date)}, а результат IELTS придёт только к ${formatDate(results)}`,
-      options: ["Сдать IELTS раньше — 21 ноября", "Подать без результата и дослать, если программа позволяет"],
-    }));
-}
-
 /* ---------- Readiness forecast ---------- */
 
 export type ForecastPoint = { date: Date; value: number; kind: "actual" | "forecast" };
 
 /**
  * The demo history of each exam, the readiness it starts from, and when it would reach 100% from
- * there. IELTS starts later and lower and aims at the December test.
+ * there. ЕНТ starts lower and aims at the January test.
  */
 const FORECAST_BASE: Record<ExamId, { history: [Date, number][]; baseline: number; done: Date }> = {
   sat: {
@@ -866,14 +592,14 @@ const FORECAST_BASE: Record<ExamId, { history: [Date, number][]; baseline: numbe
     baseline: 54,
     done: day(11, 3),
   },
-  ielts: {
+  ent: {
     history: [
-      [day(9, 5), 24],
-      [day(9, 10), 31],
-      [day(9, 15), 37],
+      [day(9, 4), 22],
+      [day(9, 10), 29],
+      [day(9, 15), 34],
     ],
-    baseline: 41,
-    done: day(12, 1),
+    baseline: 38,
+    done: day(1, 8, 2027),
   },
 };
 

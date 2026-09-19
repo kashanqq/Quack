@@ -2,7 +2,9 @@ import type { CSSProperties } from "react";
 import styles from "./layout.module.css";
 
 export type IconName =
+  | "arrow-down"
   | "arrow-left"
+  | "arrow-up"
   | "book-open-check"
   | "calendar-days"
   | "calendar-plus"

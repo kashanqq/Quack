@@ -127,6 +127,8 @@ export const copy = {
 
   // The globe block under the journey.
   quack: {
+    // One line over the globe. *Starred* words are the accent.
+    heading: "В ваших *руках* весь *мир!*",
     globe: {
       label: "Глобус со странами, где есть университеты",
       hint: "Покрути глобус и нажми на подсвеченную страну — посмотри, куда можно поступить",
@@ -141,7 +143,9 @@ export const copy = {
 
   layers: {
     heading: "Что внутри",
-    lead: "Шесть частей, из которых собран Quack!. Листай — и они раскроются по одной.",
+    lead: "Шесть частей, из которых собран Quack!.",
+    // Under the lead, so it is plain the layers can be picked.
+    hint: "Наведи или нажми на слой",
     items: [
       {
         name: "Твой экран",

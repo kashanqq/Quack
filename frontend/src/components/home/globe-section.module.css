@@ -1,12 +1,35 @@
-/* The globe block under the journey: the globe on the centre line, a lane of
-   ducks down each side. The lanes are absolutely placed and take no width. */
+/* The globe block under the journey: a one-line heading and the globe on the
+   centre line, a lane of ducks down each side. The lanes are absolutely placed
+   and take no width. */
 
 .section {
   position: relative;
   z-index: 1;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
   padding: 96px 16px;
+}
+
+/* Same type as the journey heading, so the two blocks read as one story. */
+.headingWrap {
+  max-width: 100%;
+  text-align: center;
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(21px, 4.6vw, 40px);
+  font-weight: 400;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.accent {
+  color: var(--accent);
+  font-style: normal;
 }
 
 .globeWrap {

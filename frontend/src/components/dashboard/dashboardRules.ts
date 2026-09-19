@@ -32,7 +32,7 @@ type ExamSpec = {
 export const EXAMS: Record<ExamId, ExamSpec> = {
   sat: { id: "sat", name: "SAT Math", unit: "из 800", resultLag: 13, dates: [day(11, 7), day(12, 5), day(3, 14, 2027)] },
   ielts: { id: "ielts", name: "IELTS Academic", unit: "из 9.0", resultLag: 13, dates: [day(11, 21), day(12, 12), day(1, 16, 2027)] },
-  ent: { id: "ent", name: "ЕНТ · профильная математика", unit: "из 140", resultLag: 1, dates: [day(6, 20, 2027)] },
+  ent: { id: "ent", name: "ЕНТ · математика", unit: "из 50", resultLag: 1, dates: [day(1, 20, 2027), day(6, 20, 2027)] },
 };
 
 /* ---------- 1. Union engine ---------- */
@@ -86,7 +86,7 @@ export function unionExams(programs: Program[]): UnionExam[] {
   );
   add(
     "ent",
-    programs.filter((p) => p.country === "Казахстан").map((p) => ({ program: p, threshold: 120 }))
+    programs.filter((p) => p.country === "Казахстан").map((p) => ({ program: p, threshold: 40 }))
   );
 
   return result;

@@ -179,6 +179,17 @@
   text-transform: uppercase;
 }
 
+/* A label with the help duck at its right end */
+.sectionLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.railDuck {
+  padding: 4px 0 0;
+}
+
 .tabs {
   display: flex;
   gap: 4px;
