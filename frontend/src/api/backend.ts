@@ -21,7 +21,12 @@ export type BackendSetsByExam = Schemas["SetsByExam"];
 export type BackendSetOut = Schemas["SetOut"];
 export type BackendTopicOut = Schemas["TopicOut"];
 export type BackendSetProgress = Schemas["SetProgress"];
-export type BackendSetEditIn = Schemas["SetEditIn"];
+export type BackendTaskInstanceOut = Schemas["TaskInstanceOut"];
+export type BackendOptionOut = Schemas["OptionOut"];
+export type BackendTaskRequestIn = Schemas["TaskRequestIn"];
+export type BackendAnswerIn = Schemas["AnswerIn"];
+export type BackendAnswerResult = Schemas["AnswerResult"];
+export type BackendTaskSkipIn = Schemas["TaskSkipIn"];
 
 export const backend = {
   profile: {
@@ -61,6 +66,23 @@ export const backend = {
       complete: (setId: string, skillId: string) =>
         api.post<BackendSetOut>(`/sets/${encodeURIComponent(setId)}/topics/${encodeURIComponent(skillId)}/complete`),
     },
+  },
+  tasks: {
+    issue: (body: BackendTaskRequestIn) =>
+      api.post<BackendTaskInstanceOut>("/tasks", body),
+    answer: (instanceId: string, body: Omit<BackendAnswerIn, "instance_id">) =>
+      api.post<BackendAnswerResult>(`/tasks/${encodeURIComponent(instanceId)}/answer`, {
+        instance_id: instanceId,
+        ...body,
+      }),
+    skip: (instanceId: string, reason: "skipped" | "timed_out", timeSpentSec: number) =>
+      api.post<void>(`/tasks/${encodeURIComponent(instanceId)}/skip`, {
+        instance_id: instanceId,
+        reason,
+        time_spent_sec: timeSpentSec,
+      }),
+    solution: (instanceId: string) =>
+      api.get<{ solution: string[] }>(`/tasks/${encodeURIComponent(instanceId)}/solution`),
   },
   prep: {
     version: () => api.get<BackendKnowledgeVersion>("/prep/knowledge/version"),

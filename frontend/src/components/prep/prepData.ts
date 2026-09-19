@@ -529,10 +529,20 @@ export const closedCount = (set: StudySet, states: Record<string, SkillState>) =
  * model, and the skill's node on the map turns green or yellow with it. A trap option names the
  * misconception it reveals.
  */
+export type TaskOption = {
+  label: string;
+  correct?: boolean;
+  trap?: string;
+  key?: string;
+};
+
 export type Task = {
   id: string;
   text: string;
-  options: { label: string; correct?: boolean; trap?: string }[];
+  figure?: string | null;
+  options: TaskOption[];
+  instanceId?: string;
+  solution?: string[];
 };
 
 export const CHECKS: Record<string, Task[]> = {
