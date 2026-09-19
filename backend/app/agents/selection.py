@@ -528,8 +528,10 @@ class UpdateProfileArgs(BaseModel):
             "whole list; for 'traits.summary' it is the full replacement "
             "text of the running preference summary. "
             "For 'preferences.grant_need', allowed values are strictly: "
-            "'only_grant' (только грант), 'preferred' (желательно), 'not_needed' (не нужен). "
-            "For 'academics.sat_score', write the math section score (up to 800, e.g. 650 for 1300 total)."
+            "'only_grant' (только грант), 'preferred' (желательно), "
+            "'not_needed' (не нужен). "
+            "For 'academics.sat_score', write the math section score "
+            "(up to 800, e.g. 650 for 1300 total)."
         )
     )
     by: Literal["assistant", "user"] = Field(
@@ -557,7 +559,16 @@ def _coerce(profile: Profile, path: str, value: Any) -> tuple[Any, Any]:
                 value = "preferred" if value else "not_needed"
             elif isinstance(value, str):
                 v = value.lower().strip()
-                if v in ("true", "yes", "need", "grant", "желательно", "нужен", "хотелось бы", "хочу"):
+                if v in (
+                    "true",
+                    "yes",
+                    "need",
+                    "grant",
+                    "желательно",
+                    "нужен",
+                    "хотелось бы",
+                    "хочу",
+                ):
                     value = "preferred"
                 elif v in ("false", "no", "not_needed", "не нужен", "нет"):
                     value = "not_needed"

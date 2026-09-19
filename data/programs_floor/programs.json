@@ -1089,9 +1089,17 @@
     "language": "Spanish / English",
     "duration_months": 48,
     "tuition_per_year": 1500,
-    "living_per_year": null,
+    "living_per_year": 9000,
     "currency": "EUR",
     "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 550,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 550",
+        "source": null
+      },
       {
         "type": "language",
         "exam_id": null,
@@ -1136,7 +1144,7 @@
     "language": "English",
     "duration_months": 36,
     "tuition_per_year": 2900,
-    "living_per_year": null,
+    "living_per_year": 9000,
     "currency": "EUR",
     "requirements": [
       {
@@ -1191,7 +1199,7 @@
     "language": "English",
     "duration_months": 36,
     "tuition_per_year": 2800,
-    "living_per_year": null,
+    "living_per_year": 9000,
     "currency": "EUR",
     "requirements": [
       {
@@ -1246,9 +1254,17 @@
     "language": "Portuguese / English",
     "duration_months": 36,
     "tuition_per_year": 3400,
-    "living_per_year": null,
+    "living_per_year": 9000,
     "currency": "EUR",
     "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 550,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 550",
+        "source": null
+      },
       {
         "type": "language",
         "exam_id": null,
@@ -1293,9 +1309,17 @@
     "language": "Portuguese",
     "duration_months": 36,
     "tuition_per_year": 7000,
-    "living_per_year": null,
+    "living_per_year": 9000,
     "currency": "EUR",
     "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 550,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 550",
+        "source": null
+      },
       {
         "type": "language",
         "exam_id": null,
@@ -1340,7 +1364,7 @@
     "language": "German",
     "duration_months": 36,
     "tuition_per_year": 1500,
-    "living_per_year": null,
+    "living_per_year": 9000,
     "currency": "EUR",
     "requirements": [
       {
