@@ -3930,3 +3930,22 @@
   color: var(--text-dim);
   cursor: pointer;
 }
+
+/* Waiting for the plan: the transition duck, centred */
+.setsLoading {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 16px;
+  padding-top: 24px;
+  min-height: 320px;
+}
+
+.setsLoading > :first-child {
+  justify-self: stretch;
+}
+
+.setsLoadingDuck {
+  width: 64px;
+  margin-top: 64px;
+}

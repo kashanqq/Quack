@@ -19,6 +19,7 @@ from app.apply.targets import p_target_for
 from app.db.repo import forecast as forecast_repo
 from app.db.repo import profiles as profiles_repo
 from app.db.repo import sets as sets_repo
+from app.errors import NotFound
 from app.events import store as events_store
 from app.events.dispatch import RuleDeps
 from app.events.version import bump
@@ -83,8 +84,6 @@ async def open_set(
     """
     target = await sets_repo.get_set(session, student_id, set_id)
     if target is None:
-        from app.errors import NotFound
-
         raise NotFound("set not found")
 
     for s in await sets_repo.list_sets(session, student_id, target.exam_id):
@@ -115,6 +114,16 @@ async def on_set_change(session: AsyncSession, event: Event, deps: RuleDeps) -> 
     ):
         return
     exam_id: ExamId = event.exam_id or "SAT_MATH"
+    if event.type == EventType.set_switched_by_user:
+        # Выбранный сет сначала становится текущим: rebuild удаляет все
+        # upcoming и сохраняет только current, так что без этого выбор сета
+        # удалял сам выбранный сет.
+        target = (event.payload or {}).get("to_set_id") or event.set_id
+        if target is not None:
+            try:
+                await open_set(session, deps, event.student_id, UUID(str(target)))
+            except NotFound:
+                _logger.info("switch_target_missing", set_id=str(target))
     await rebuild_sets(session, deps, event.student_id, exam_id)
 
 

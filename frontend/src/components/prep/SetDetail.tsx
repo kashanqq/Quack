@@ -220,8 +220,11 @@ function SetGraph({
     return () => observer.disconnect();
   }, []);
 
-  const from = set.start.getTime();
-  const to = set.deadline.getTime();
+  // A set can start and end on the same day (a short set, or dates the server has not spread yet):
+  // keep a one-day window so positions never divide by zero, and fall back to today for a bad date
+  const valid = (d: Date) => (Number.isFinite(d?.getTime?.()) ? d.getTime() : TODAY.getTime());
+  const from = valid(set.start);
+  const to = Math.max(valid(set.deadline), from + 86_400_000);
   const n = order.length;
   const starts = order.map((_, i) => new Date(from + ((to - from) * i) / n));
 

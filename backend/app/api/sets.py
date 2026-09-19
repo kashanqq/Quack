@@ -114,6 +114,40 @@ async def _read_sets(
     )
 
 
+async def _with_names(sets: SetsByExam, deps: RuleDeps, exam_id: ExamId) -> SetsByExam:
+    """Topics are stored by skill id; the screen needs the skill's name.
+
+    The graph holds the names (seed data). Without it the id stays — the
+    same soft-fail as the rest of the read path.
+    """
+    if deps.graph is None:
+        return sets
+    from app.graph.queries import canonical as canonical_q
+
+    try:
+        weights = await canonical_q.list_exam_skills(deps.graph, exam_id)
+    except Exception:  # noqa: BLE001
+        return sets
+    names = {w.skill.id: w.skill.name for w in weights if w.skill.name}
+
+    def named(item: SetOut | None) -> SetOut | None:
+        if item is None:
+            return None
+        topics = [
+            t.model_copy(update={"name": names.get(t.skill_id, t.name)})
+            for t in item.topics
+        ]
+        return item.model_copy(update={"topics": topics})
+
+    return sets.model_copy(
+        update={
+            "current": named(sets.current),
+            "upcoming": [named(i) for i in sets.upcoming],
+            "done": [named(i) for i in sets.done],
+        }
+    )
+
+
 async def _record(session: AsyncSession, deps: RuleDeps, event_in: EventIn) -> dict:
     event = await store.append(session, deps.redis, event_in, dispatch_event=False)
     return await dispatch.dispatch(session, event, deps)
@@ -128,7 +162,15 @@ async def list_sets(
     deps: Annotated[RuleDeps, Depends(get_rule_deps)],
 ) -> SetsByExam:
     current = await _read_sets(session, student.student_id, exam_id, deps)
-    if current.current is None and not current.upcoming and not current.done:
+    # Пусто или только «закрепление» (план, собранный до того, как
+    # непроверенные навыки стали идти в сеты) — пересобираем.
+    no_regular = not any(
+        item.kind != "consolidation"
+        for item in [*current.upcoming, *([current.current] if current.current else [])]
+    )
+    if (current.current is None and not current.upcoming and not current.done) or (
+        no_regular and not current.done
+    ):
         rebuilt = await apply_sets.rebuild_sets(
             session, deps, student.student_id, exam_id
         )
@@ -136,7 +178,7 @@ async def list_sets(
         # label instead of returning an unmarked empty answer (§11 A3).
         current = rebuilt.model_copy(update={"availability": current.availability})
     await _version(response, deps, student.student_id)
-    return current
+    return await _with_names(current, deps, exam_id)
 
 
 @router.post("/switch", response_model=SetsByExam)

@@ -141,7 +141,19 @@ export function PrepView({
 
   useEffect(() => {
     if (REMOTE_PREP) {
-      prefetchRemoteSets(exam);
+      // The server's plan is the truth: a current set remembered from before a rebuild (or from the
+      // demo data) that the server no longer has is replaced by the server's current one
+      fetchRemoteSets(exam, true)
+        .then((data) => {
+          const ids = [data.current, ...data.upcoming, ...data.done].filter(Boolean).map((s) => s!.id);
+          if (!ids.length) return;
+          setModel((prev) =>
+            prev.currentSet && !ids.includes(prev.currentSet) && setById(prev.currentSet).exam === exam
+              ? { ...prev, currentSet: data.current?.id ?? null }
+              : prev
+          );
+        })
+        .catch(() => {});
       fetchRemoteKnowledge(exam).then((data) => {
         if (data) {
           setModel((prev) => applyRemoteKnowledgeToModel(prev, data, exam));
