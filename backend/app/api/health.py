@@ -1,20 +1,34 @@
-"""Public, bounded dependency health checks."""
+"""Public, bounded dependency health checks.
+
+Phase 5 (§10, §19) tightens two of them:
+
+- `search` reports the last *recorded* provider result, and says `skipped`
+  when it cannot know — a health poll must never spend the monthly search
+  budget, and it must not claim `ok` just because nothing was written yet.
+- `graph_pending` is the whole recoverable backlog, not the last hour and not
+  the observer's open window over chat messages. An answer stuck since
+  yesterday is exactly the number an operator needs before a demo.
+
+`status` stays `ok`/`degraded` with HTTP 200 for compatibility. A `degraded`
+200 is not a successful release smoke — that judgement belongs to the deploy
+workflow, which also checks `version` against the released SHA (§22).
+"""
 
 import asyncio
 import inspect
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
-from sqlalchemy import func, select, text
+from sqlalchemy import text
 
 from app import keys
 from app.config import settings
-from app.db.models import Event
 
 router = APIRouter()
+
+_CHECK_TIMEOUT_S = 2
 
 
 class HealthOut(BaseModel):
@@ -49,30 +63,53 @@ async def _redis(request: Request) -> bool:
 
 
 async def _graph_pending(request: Request) -> int | None:
-    """Count recently ingested events awaiting graph dispatch."""
+    """The full backlog of events still waiting for the personal graph."""
+    from app.events import recovery
+
     sessionmaker = getattr(request.app.state, "sessionmaker", None)
     if sessionmaker is None:
         return None
-    since = datetime.now(UTC) - timedelta(hours=1)
     async with sessionmaker() as session:
-        return await session.scalar(
-            select(func.count())
-            .select_from(Event)
-            .where(Event.processed_at.is_(None), Event.ingested_at >= since)
+        return await recovery.pending_count(session)
+
+
+async def _jobs_pending(request: Request) -> int | None:
+    """Durable job intents that have not finished yet (§19)."""
+    from app.db.models import JobOutbox
+    from app.db.repo import outbox as outbox_repo
+
+    sessionmaker = getattr(request.app.state, "sessionmaker", None)
+    if sessionmaker is None:
+        return None
+    from sqlalchemy import func, select
+
+    async with sessionmaker() as session:
+        return int(
+            await session.scalar(
+                select(func.count())
+                .select_from(JobOutbox)
+                .where(JobOutbox.status.in_(outbox_repo.ACTIVE))
+            )
+            or 0
         )
 
 
 async def _search(request: Request) -> Literal["ok", "down", "skipped"]:
-    """Phase 4 (§6.2): the last search error, not a live provider call.
+    """The last search result the background jobs recorded, never a live call.
 
     Health must stay cheap and must not spend the monthly search budget, so
-    the background jobs record their failures in Redis and this only reads.
+    the jobs write their outcome to Redis and this only reads it. Three
+    honest answers: `down` if the last attempt failed, `ok` if one succeeded,
+    and `skipped` when nothing is known — no attempt yet, or Redis is not
+    answering. `skipped` is never dressed up as `ok`.
     """
     client = getattr(request.app.state, "redis", None)
     if client is None:
         return "skipped"
     try:
-        return "down" if await client.get(keys.search_last_error()) else "ok"
+        if await client.get(keys.search_last_error()):
+            return "down"
+        return "ok" if await client.get(keys.search_last_ok()) else "skipped"
     except Exception:
         return "skipped"
 
@@ -81,9 +118,22 @@ async def _bounded_check(
     check: Callable[[Request], Awaitable[bool]], request: Request
 ) -> Literal["ok", "down"]:
     try:
-        return "ok" if await asyncio.wait_for(check(request), timeout=2) else "down"
+        return (
+            "ok"
+            if await asyncio.wait_for(check(request), timeout=_CHECK_TIMEOUT_S)
+            else "down"
+        )
     except Exception:
         return "down"
+
+
+async def _bounded_count(
+    check: Callable[[Request], Awaitable[int | None]], request: Request
+) -> int | None:
+    try:
+        return await asyncio.wait_for(check(request), timeout=_CHECK_TIMEOUT_S)
+    except Exception:
+        return None
 
 
 async def _llm_status(request: Request) -> Literal["ok", "degraded", "down"]:
@@ -93,7 +143,7 @@ async def _llm_status(request: Request) -> Literal["ok", "degraded", "down"]:
     try:
         result = client.status()
         if inspect.isawaitable(result):
-            result = await asyncio.wait_for(result, timeout=2)
+            result = await asyncio.wait_for(result, timeout=_CHECK_TIMEOUT_S)
         return result if result in {"ok", "degraded", "down"} else "down"
     except Exception:
         return "down"
@@ -107,19 +157,20 @@ async def health(request: Request) -> HealthOut:
         _bounded_check(_redis, request),
         _llm_status(request),
     )
-    checks = {
+    checks: dict[str, Literal["ok", "down", "skipped"] | int] = {
         "postgres": postgres,
         "neo4j": neo4j,
         "redis": redis,
         "search": await _search(request),
     }
     if postgres == "ok":
-        try:
-            pending = await asyncio.wait_for(_graph_pending(request), timeout=2)
-            if pending is not None and pending > 0:
-                checks["graph_pending"] = pending
-        except Exception:
-            pass  # The existing storage health status is determined above.
+        for name, probe in (
+            ("graph_pending", _graph_pending),
+            ("jobs_pending", _jobs_pending),
+        ):
+            count = await _bounded_count(probe, request)
+            if count:
+                checks[name] = count
     storage_ok = all(value == "ok" for value in (postgres, neo4j, redis))
     return HealthOut(
         status="ok" if storage_ok else "degraded",

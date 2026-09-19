@@ -28,16 +28,30 @@ jobs:
         run: uv sync --frozen
 
       - name: Ruff lint
-        run: uv run --frozen ruff check . ../scripts/seed.py
+        run: uv run --frozen ruff check . ../scripts/seed.py ../scripts/check_release.py
 
       - name: Ruff format
-        run: uv run --frozen ruff format --check . ../scripts/seed.py
+        run: uv run --frozen ruff format --check . ../scripts/seed.py ../scripts/check_release.py
 
       - name: Unit tests
         run: uv run --frozen pytest -m "not integration"
 
       - name: Phase 2 tests
         run: uv run --frozen pytest -m phase2
+
+      - name: Phase 5 tests
+        run: uv run --frozen pytest -m phase5
+
+      - name: Alembic history is linear and reversible
+        # Одна голова: две ветки миграций молча расходятся на проде.
+        run: |
+          heads="$(uv run --frozen alembic heads | grep -c . || true)"
+          if [[ "$heads" != "1" ]]; then
+            echo "::error::alembic must have exactly one head, found $heads"
+            uv run --frozen alembic heads
+            exit 1
+          fi
+          uv run --frozen alembic history --verbose > /dev/null
 
       - name: Validate seed data
         run: uv run --frozen python ../scripts/seed.py --validate

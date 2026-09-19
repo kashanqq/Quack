@@ -1,0 +1,61 @@
+{
+  "version": "1",
+  "note": "Phase 5 (§11 A5, D06). Two demo accounts for the defence run. Every step below is an INPUT, never a result: the profile fields and the saved programs are what a student would enter, and the requirements, the conflict, the plan and the forecast are whatever the rules derive from them. Nothing here writes a knowledge state, a grade or a conflict directly.",
+  "users": {
+    "prepared": {
+      "email": "demo@quack.kz",
+      "password": "quack-demo",
+      "role": "The account the five-minute walkthrough starts from: profile filled in, three programs saved, one real deadline conflict."
+    },
+    "clean": {
+      "email": "demo-clean@quack.kz",
+      "password": "quack-clean-2026",
+      "role": "Untouched account for the live path: registration, the six-task check, the first topic. It gets no answers, no knowledge states and no completed diagnostic."
+    }
+  },
+  "prepared": {
+    "profile": [
+      {"path": "level.grade", "value": 11, "by": "user"},
+      {"path": "level.admission_year", "value": 2027, "by": "user"},
+      {"path": "direction.field", "value": "Mathematics", "by": "user"},
+      {"path": "direction.alternatives", "value": ["Computer Science"], "by": "user"},
+      {"path": "academics.sat_target", "value": 700, "by": "user"},
+      {"path": "academics.sat_date", "value": "2027-03-13", "by": "user"},
+      {"path": "academics.ent_target", "value": 120, "by": "user"},
+      {"path": "academics.ent_date", "value": "2027-06-20", "by": "user"},
+      {"path": "preferences.countries", "value": ["KZ", "DE"], "by": "user"},
+      {"path": "preferences.language", "value": "English", "by": "user"},
+      {"path": "preferences.budget_per_year", "value": 3000000, "by": "user"},
+      {"path": "preferences.currency", "value": "KZT", "by": "user"},
+      {"path": "preferences.grant_need", "value": "preferred", "by": "user"},
+      {"path": "priorities.ranking", "value": ["realism", "cost", "program"], "by": "user"},
+      {"path": "pace.hours_per_week", "value": 8, "by": "user"},
+      {"path": "pace.explanation_depth", "value": "normal", "by": "user"},
+      {"path": "pace.hint_level", "value": "normal", "by": "user"}
+    ],
+    "traits": [
+      "Готовлюсь сам, вечером после школы.",
+      "Хочу поступать на математику, запасной вариант — информатика."
+    ],
+    "saved_programs": ["demo-kz-01", "demo-de-01", "demo-kz-02"],
+    "expected": {
+      "conflict_kind": "same_day_applications",
+      "conflict_date": "2027-04-10",
+      "why": "demo-kz-01 and demo-de-01 both have a document requirement and an application deadline on 2027-04-10 in data/programs_floor/programs.json. The conflict is derived by app/roadmap/conflicts.py from those two records — if the seed data changes, the expectation must change with it, not the other way round.",
+      "min_requirements": 1,
+      "min_milestones": 3
+    },
+    "warm": {
+      "exams": ["SAT_MATH"],
+      "compare_program_ids": ["demo-kz-01", "demo-de-01"],
+      "why": "Pre-generation and matching texts for exactly what the walkthrough opens; everything else stays cold so the warm-up does not eat the provider budget."
+    }
+  },
+  "clean": {
+    "diagnostic": {
+      "exam_id": "SAT_MATH",
+      "n_tasks": 6,
+      "why": "The six-task check is requested per run through the existing n_tasks parameter. diag_max is NOT lowered globally — that would change the product for every student, not just the demo (§11 A5)."
+    }
+  }
+}

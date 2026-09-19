@@ -5,15 +5,16 @@ the same way the job does, reports what the cache holds, and — only if
 nothing is on its way — records a pre-generation job in the outbox.
 """
 
-from typing import Annotated
+import inspect
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response
 from redis.exceptions import RedisError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import keys
-from app.api.deps import get_current_student, get_rule_deps, get_session
+from app import fallbacks, keys
+from app.api.deps import get_current_student, get_llm, get_rule_deps, get_session
 from app.apply import texts as apply_texts
 from app.db.repo import sets as sets_repo
 from app.db.repo import texts as texts_repo
@@ -44,6 +45,7 @@ async def get_text(
     student: Annotated[StudentCtx, Depends(get_current_student)],
     session: Annotated[AsyncSession, Depends(get_session)],
     deps: Annotated[RuleDeps, Depends(get_rule_deps)],
+    llm: Annotated[Any, Depends(get_llm)],
     kind: TextKindQuery = "guideline",
 ) -> GeneratedTextOut:
     item = await _owned(session, student.student_id, set_id)
@@ -55,66 +57,42 @@ async def get_text(
     digest, _ = await apply_texts.current_hash(
         session, deps, student.student_id, set_id, skill_id, kind, version, model
     )
-    if digest is None:
-        # Входы не читаются (граф лежит) — сказать «генерируется» честнее,
-        # чем показать текст под чужим хэшем.
-        return GeneratedTextOut(
-            kind=kind,  # type: ignore[arg-type]
-            subject=skill_id,
-            set_id=set_id,
-            status="generating",
-            input_hash="",
-            reason="not_generated",
-        )
-
     owner = apply_texts.owner_of(kind, student.student_id)
-    current, last = await texts_repo.get_current(session, owner, kind, skill_id, digest)
-    out = _project(kind, skill_id, set_id, digest, current, last)
-    if out.status in ("generating", "failed", "stale") and current is None:
-        await _ensure_job(session, deps, student.student_id, set_id, kind, digest)
+    current = last = None
+    if digest is not None:
+        current, last = await texts_repo.get_current(
+            session, owner, kind, skill_id, digest
+        )
+    # Ownership is checked above, before `last_ready` is looked up: a
+    # guideline belongs to one student and must never leak through the stale
+    # branch (T02).
+    out = fallbacks.select_text(
+        kind=kind,
+        subject=skill_id,
+        set_id=set_id,
+        current_hash=digest,
+        current=current,
+        last_ready=last,
+        llm_status=await _llm_status(llm),
+    )
+    if digest is not None and out.status in ("generating", "failed", "stale"):
+        if current is None:
+            await _ensure_job(session, deps, student.student_id, set_id, kind, digest)
     return out
 
 
-def _project(
-    kind: str,
-    skill_id: str,
-    set_id: UUID,
-    digest: str,
-    current,
-    last,
-) -> GeneratedTextOut:
-    """The §3.5 table, one place."""
-    base = {
-        "kind": kind,
-        "subject": skill_id,
-        "set_id": set_id,
-        "input_hash": digest,
-    }
-    if current is not None and current.status == "ready" and current.text:
-        return GeneratedTextOut(
-            **base,
-            status="ready",
-            text=current.text,
-            mark="generated",
-            prompt_version=current.prompt_version,
-            generated_at=current.created_at,
-        )
-    if last is not None and last.text:
-        return GeneratedTextOut(
-            **base,
-            status="stale",
-            text=last.text,
-            mark="saved_version",
-            prompt_version=last.prompt_version,
-            generated_at=last.created_at,
-        )
-    if current is not None and current.status == "failed":
-        return GeneratedTextOut(
-            **base, status="failed", reason=current.error or "llm_unavailable"
-        )
-    if current is not None:
-        return GeneratedTextOut(**base, status="generating")
-    return GeneratedTextOut(**base, status="generating", reason="not_generated")
+async def _llm_status(llm: Any) -> str:
+    """The shared status, read once per request; unknown reads as `ok`.
+
+    Guessing `down` would mark every current text as saved for no reason.
+    """
+    if llm is None:
+        return "ok"
+    try:
+        status = llm.status()
+        return await status if inspect.isawaitable(status) else status
+    except Exception:  # noqa: BLE001 — a status probe never fails a read
+        return "ok"
 
 
 async def _ensure_job(

@@ -25,6 +25,7 @@ from arq.worker import Function, func
 
 from app.config import settings
 from app.loader import optional_layer as _optional_layer
+from app.workers.durable import durable
 
 
 async def ping(ctx: dict[str, Any], request_id: str) -> str:
@@ -58,6 +59,8 @@ _INFRA_JOBS: tuple[tuple[str, str, float, float | None, int], ...] = (
     ("daily_aggregates", "bulk", 90, _KEEP, 3),
     ("recommendations_batch", "bulk", 90, _KEEP, 3),
     ("outbox_replay", "bulk", 30, 0, 1),
+    # Фаза 5 (§13.3): догон графовой проекции после восстановления Neo4j.
+    ("recover_graph_events", "bulk", 90, _KEEP, 3),
 )
 
 
@@ -71,7 +74,10 @@ def _registered(
     if coroutine is None:
         return None
     return func(
-        coroutine,
+        # Фаза 5 (§13.1): долговечный жизненный цикл задачи живёт в Postgres,
+        # а не в счётчике попыток ARQ. Обёртка снимает транспортные ключи,
+        # доменная сигнатура задачи не меняется.
+        durable(coroutine, name=name, max_tries=max_tries),
         name=name,
         timeout=min(timeout, settings.JOB_TIMEOUT_MAX_S),
         keep_result=keep_result,

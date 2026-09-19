@@ -74,6 +74,18 @@ async def startup_bulk(ctx: dict[str, Any]) -> None:
         await infra.catch_up(ctx)
     except Exception:  # noqa: BLE001 — a missed cron must not block the worker
         _logger.warning("cron_catch_up_failed", exc_info=True)
+    # Фаза 5 (§13.3): всё, что осталось неприменённым и недоставленным, пока
+    # воркер был мёртв, разбирается сразу при старте, а не через десять минут
+    # до следующего крона — восстановление не должно ждать расписания.
+    try:
+        await infra.outbox_replay(ctx, request_id="startup")
+    except Exception:  # noqa: BLE001
+        _logger.warning("outbox_replay_startup_failed", exc_info=True)
+    if settings.RECOVERY_SWEEP_ON_STARTUP:
+        try:
+            await infra.recovery_sweep(ctx)
+        except Exception:  # noqa: BLE001
+            _logger.warning("recovery_sweep_failed", exc_info=True)
 
 
 async def load_embedder(ctx: dict[str, Any]) -> None:
@@ -148,6 +160,9 @@ def _cron_jobs() -> list[Any]:
             minute=15,
         ),
         cron(infra.outbox_replay_cron, minute=set(range(0, 60, 10))),
+        # Фаза 5: догон графа идёт вразбивку с разбором outbox, чтобы две
+        # восстановительные волны не стартовали одной минутой.
+        cron(infra.recovery_sweep_cron, minute=set(range(5, 60, 10))),
     ]
 
 

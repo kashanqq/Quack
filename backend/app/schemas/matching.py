@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from app.schemas.common import (
+    AvailabilityOut,
     FactorStatus,
     GeneratedTextStatus,
     Realism,
@@ -55,6 +56,10 @@ class MatchingOut(BaseModel):
     profile_readiness: float
     forecast_used: bool
     empty_reason: str | None
+    # Phase 5 (D03): `mode="cached"` with `reason="search_unavailable"` says
+    # the list is what the cache and the verified floor hold, not a fresh
+    # search. The hard factors and the comparison table stay usable (§10).
+    availability: AvailabilityOut | None = None
 
 
 class CompareRow(BaseModel):

@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, Field
 
-from app.schemas.common import ExamId, SetStatus, SkillLevel, TopicKind
+from app.schemas.common import AvailabilityOut, ExamId, SetStatus, SkillLevel, TopicKind
 from app.schemas.knowledge import ForecastOut
 
 
@@ -50,6 +50,10 @@ class SetsByExam(BaseModel):
     current: SetOut | None
     upcoming: list[SetOut]
     done: list[SetOut]
+    # Phase 5 (D03): additive and optional. `mode="static"` says the plan is
+    # the persisted one and the graph could not be asked; `forecast` is then
+    # `None`, never a zero dressed up as a prediction (§11 A3).
+    availability: AvailabilityOut | None = None
 
 
 class SetSwitchIn(BaseModel):

@@ -50,7 +50,19 @@ async def dispatch(
 
     results: dict[str, Any] = {}
     graph_unavailable = deps.graph is None
-    for handler in _handlers.get(event.type, ()):
+    deferred = not graph_unavailable and await _overtakes_backlog(session, event)
+    if deferred:
+        # Фаза 5 (§11 A2): у ученика есть более раннее неприменённое событие
+        # того же рода. Спроецировать это — значит посчитать состояние из
+        # неверной базы, а затем «догнать» старое поверх нового. Событие
+        # остаётся неприменённым, порядок восстановит `recover_graph_events`.
+        _logger.warning(
+            "event_deferred_behind_backlog",
+            event_id=event.id,
+            type=event.type.value,
+        )
+        graph_unavailable = True
+    for handler in () if deferred else _handlers.get(event.type, ()):
         try:
             result = await handler(session, event, deps)
         except (ServiceUnavailable, SessionExpired):
@@ -71,7 +83,7 @@ async def dispatch(
             )
             raise
         results[handler.__name__] = result
-        if result is GraphUnavailable:
+        if result is GraphUnavailable or _projection_pending(result):
             graph_unavailable = True
 
     if graph_unavailable:
@@ -86,3 +98,32 @@ async def dispatch(
         handlers=len(results),
     )
     return results
+
+
+def _projection_pending(result: Any) -> bool:
+    """The phase-5 way a handler says "kept, but not projected" (D03).
+
+    `GraphUnavailable` says nothing back to the caller; a handler that must
+    still return a result — a graded answer — sets `projection_status` on it
+    instead. Either way the event keeps `processed_at IS NULL` and stays in
+    the recovery backlog.
+    """
+    return getattr(result, "projection_status", None) == "pending"
+
+
+async def _overtakes_backlog(session: AsyncSession, event: Event) -> bool:
+    """Would applying this event jump ahead of an older unapplied one?
+
+    Only asked for the graph-mutating types (`events.recovery.RECOVERABLE`):
+    a `set.opened` that only queues a pre-generation is free to run while an
+    answer is still waiting for Neo4j.
+    """
+    from app.events import recovery
+
+    if event.id is None or not recovery.is_recoverable(event.type):
+        return False
+    try:
+        return await recovery.has_backlog_before(session, event.student_id, event.id)
+    except Exception:  # noqa: BLE001 — the ordering check must not fail a write
+        _logger.warning("backlog_check_failed", event_id=event.id, exc_info=True)
+        return False

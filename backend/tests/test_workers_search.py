@@ -58,6 +58,8 @@ async def test_llm_jobs_declare_their_own_timeout():
             "daily_aggregates",
             "recommendations_batch",
             "outbox_replay",
+            # Фаза 5 (§13.3).
+            "recover_graph_events",
         }
     )
     assert by_name["observe_chat"].timeout_s == settings.OBSERVER_JOB_TIMEOUT_S
@@ -76,6 +78,7 @@ async def test_llm_jobs_declare_their_own_timeout():
         "daily_aggregates",
         "recommendations_batch",
         "outbox_replay",
+        "recover_graph_events",
     ]
     assert by_name["set_summary"] in INTERACTIVE
     assert JOB_QUEUES["set_summary"] == "interactive"

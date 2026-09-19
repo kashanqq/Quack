@@ -66,6 +66,12 @@ def search_last_error() -> str:
     return "quack:search:last_error"
 
 
+def search_last_ok() -> str:
+    """Last successful provider result — `/health` distinguishes "no data
+    yet" from "working" without calling the provider (phase 5 §10)."""
+    return "quack:search:last_ok"
+
+
 def search_status(search_id: str) -> str:
     return f"quack:search:status:{search_id}"
 

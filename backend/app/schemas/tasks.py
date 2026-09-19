@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from app.schemas.common import ExamId, TaskMode, TaskType
+from app.schemas.common import ExamId, ProjectionStatus, TaskMode, TaskType
 from app.schemas.knowledge import MisconceptionChange
 
 
@@ -133,3 +133,8 @@ class AnswerResult(BaseModel):
     misconception_change: MisconceptionChange | None = None
     state_words: str
     knowledge_version: int
+    # Phase 5 (D03), additive with a default so no existing client breaks.
+    # `pending` means the answer and its grade are stored and final, and only
+    # the knowledge projection is still owed — `state_after` is `None` and
+    # `state_words` says nothing rather than something invented.
+    projection_status: ProjectionStatus = "applied"

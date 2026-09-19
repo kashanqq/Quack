@@ -31,11 +31,28 @@ class _Session:
     """Everything these routes read is monkeypatched; the session only has
     to exist and to commit."""
 
+    def __init__(self) -> None:
+        self.added: list = []
+
     async def commit(self):
         pass
 
     async def flush(self):
         pass
+
+    def add(self, row):
+        # Фаза 5: маршрут пишет намерение задачи в ту же транзакцию (§9.2).
+        row.id = len(self.added) + 1
+        self.added.append(row)
+
+    async def close(self):
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_args):
+        return None
 
     async def scalar(self, *args, **kwargs):
         return None
@@ -348,6 +365,9 @@ def test_the_outbox_is_flushed_only_after_the_response():
 
     with TestClient(app) as client:
         client.app.state.arq = _Arq()
+        # Тест не должен трогать настоящую базу: `_drain` берёт sessionmaker
+        # приложения, а с ним в `job_outbox` оседали бы строки прогонов.
+        client.app.state.sessionmaker = _Session
         response = client.post("/programs/search", json={"query": "math in Spain"})
     assert response.status_code == 202
     [(fn_name, kwargs)] = enqueued

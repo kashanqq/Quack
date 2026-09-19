@@ -50,6 +50,14 @@ class Event(Base):
             postgresql_where=text("processed_at IS NULL"),
         ),
         Index("ix_events_type", "type"),
+        # Phase 5 (§9.2): the recovery backlog of one student, and the
+        # `graph_pending` counter, are both keyset reads over this index.
+        Index(
+            "ix_events_unprocessed",
+            "student_id",
+            "id",
+            postgresql_where=text("processed_at IS NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -462,14 +470,52 @@ class SoftMatch(Base):
 
 
 class JobOutbox(Base):
-    """Jobs that could not be enqueued because Redis was down (§1.4)."""
+    """Durable intent to run one background job (§9.2 phase 5).
+
+    Phase 4 wrote a row only when Redis refused the enqueue, which leaves the
+    window between `COMMIT` and `enqueue_job` uncovered: the process can die
+    there and the job is simply lost. Phase 5 records the intent *inside* the
+    transaction that wrote the event, and delivery to ARQ happens after the
+    commit — so a lost delivery is always recoverable from Postgres.
+
+    `status` is the durable lifecycle, not anything a student sees:
+    `pending → enqueued → running → succeeded`, with `waiting_dependency`
+    for an outage (which must not spend `attempts`) and `failed` only after
+    the business attempts are gone.
+    """
 
     __tablename__ = "job_outbox"
     __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending','enqueued','running','waiting_dependency',"
+            "'succeeded','failed','cancelled')",
+            name="ck_job_outbox_status",
+        ),
+        CheckConstraint(
+            "dependency IS NULL OR dependency IN ('llm','graph','search','redis')",
+            name="ck_job_outbox_dependency",
+        ),
+        CheckConstraint("attempts >= 0", name="ck_job_outbox_attempts"),
         Index(
             "ix_job_outbox_pending",
             "created_at",
             postgresql_where=text("enqueued_at IS NULL"),
+        ),
+        Index("ix_job_outbox_due", "status", "not_before", "id"),
+        Index(
+            "ix_job_outbox_lease",
+            "lease_until",
+            "id",
+            postgresql_where=text("status IN ('enqueued','running')"),
+        ),
+        Index(
+            "uq_job_outbox_active",
+            "queue",
+            "job_id",
+            unique=True,
+            postgresql_where=text(
+                "status IN ('pending','enqueued','running','waiting_dependency')"
+            ),
         ),
     )
 
@@ -483,3 +529,16 @@ class JobOutbox(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     enqueued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # --- phase 5 (§9.2) ---
+    status: Mapped[str] = mapped_column(Text, server_default="pending")
+    dependency: Mapped[str | None] = mapped_column(Text)
+    attempts: Mapped[int] = mapped_column(Integer, server_default="0")
+    not_before: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    lease_token: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    last_error_code: Mapped[str | None] = mapped_column(Text)

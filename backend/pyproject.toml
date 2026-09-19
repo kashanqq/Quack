@@ -57,4 +57,5 @@ markers = [
     "phase2: tests for the second implementation phase",
     "phase3: tests for the third implementation phase (agents)",
     "phase4: tests for the fourth implementation phase (background and Quack)",
+    "phase5: tests for the fifth implementation phase (resilience, demo, deploy)",
 ]
