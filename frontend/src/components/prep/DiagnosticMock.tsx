@@ -1,12 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "../choice/Icon";
 import {
   DIAGNOSTIC_8_QUESTIONS,
   evaluateDiagnostic,
+  type DiagnosticQuestion,
   type DiagnosticResultSummary,
 } from "./diagnosticData";
+import {
+  adaptBackendTaskToDiagnosticQuestion,
+  adaptDiagnosticResult,
+  fetchActiveOrStartDiagnostic,
+  finishDiagnosticRun,
+  submitDiagnosticAnswer,
+} from "./remoteDiagnostic";
+import { REMOTE_PREP } from "./remoteSets";
+import type { ExamId } from "./prepData";
+import type { BackendDiagnosticOut, BackendTaskInstanceOut } from "@/api/backend";
 import styles from "./prep.module.css";
 
 type Props = {
@@ -14,33 +25,138 @@ type Props = {
   /** Without it the test cannot be left, only finished or skipped (the first visit) */
   onClose?: () => void;
   onSkip?: () => void;
+  exam?: ExamId;
+};
+
+type AnswerRecord = {
+  optionIndex: number;
+  correct: boolean;
+  trap?: string;
 };
 
 /**
  * Обязательный входной мок-тест на 8 вопросов для новых пользователей.
- * Прототип замера: 8 ключевых вопросов по алгебре, геометрии и анализу данных.
- * Определяет стартовую готовность, ловушки и калибрует персональный маршрут.
- * Идёт прямо во вкладке «Сейчас»: после итога на том же месте открывается граф первого сета.
+ * В remote-режиме подключается к /diagnostic и динамически калибрует маршрут.
+ * В local-режиме работает автономно на 8 базовых вопросах.
  */
-export function DiagnosticMock({ onComplete, onClose, onSkip }: Props) {
+export function DiagnosticMock({ onComplete, onClose, onSkip, exam = "sat" }: Props) {
+  const [run, setRun] = useState<BackendDiagnosticOut | null>(null);
+  const [questions, setQuestions] = useState<DiagnosticQuestion[]>(DIAGNOSTIC_8_QUESTIONS);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [answers, setAnswers] = useState<Record<string, AnswerRecord>>({});
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isFinished, setIsFinished] = useState(false);
+  const [remoteSummary, setRemoteSummary] = useState<DiagnosticResultSummary | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [pendingNextTask, setPendingNextTask] = useState<BackendTaskInstanceOut | null>(null);
+  const startTimeRef = useRef<number>(Date.now());
 
-  const total = DIAGNOSTIC_8_QUESTIONS.length;
-  const currentQ = DIAGNOSTIC_8_QUESTIONS[currentIndex];
+  // Initialize remote diagnostic run if REMOTE_PREP is active
+  useEffect(() => {
+    if (!REMOTE_PREP) return;
 
-  const handleSelect = (optionIndex: number) => {
-    if (selectedOption !== null) return; // уже ответил на текущий вопрос
+    let cancelled = false;
+    fetchActiveOrStartDiagnostic(exam)
+      .then((activeRun) => {
+        if (cancelled || !activeRun) return;
+        setRun(activeRun);
+        if (activeRun.next_task) {
+          const firstQ = adaptBackendTaskToDiagnosticQuestion(activeRun.next_task);
+          setQuestions([firstQ]);
+          setCurrentIndex(0);
+          startTimeRef.current = Date.now();
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to init remote diagnostic, falling back to local:", err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [exam]);
+
+  const total = run ? 8 : questions.length;
+  const currentQ = questions[currentIndex] || DIAGNOSTIC_8_QUESTIONS[0];
+
+  const handleSelect = async (optionIndex: number) => {
+    if (selectedOption !== null || submitting) return;
     setSelectedOption(optionIndex);
-    setAnswers((prev) => ({ ...prev, [currentQ.id]: optionIndex }));
+
+    if (REMOTE_PREP && run) {
+      setSubmitting(true);
+      const answerKey = currentQ.options[optionIndex]?.key || String.fromCharCode(65 + optionIndex);
+      const timeSpentSec = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
+      const updatedRun = await submitDiagnosticAnswer(run.run_id, currentQ.id, answerKey, timeSpentSec);
+      setSubmitting(false);
+
+      if (updatedRun) {
+        setRun(updatedRun);
+        const isCorrect = Boolean(updatedRun.state.last_grade_correct);
+        const trapText =
+          updatedRun.state.trap_hits.length > (run.state.trap_hits?.length ?? 0)
+            ? updatedRun.state.trap_hits[updatedRun.state.trap_hits.length - 1]
+            : undefined;
+
+        setAnswers((prev) => ({
+          ...prev,
+          [currentQ.id]: {
+            optionIndex,
+            correct: isCorrect,
+            trap: trapText,
+          },
+        }));
+        setPendingNextTask(updatedRun.next_task);
+        return;
+      }
+    }
+
+    // Local fallback evaluation
+    const opt = currentQ.options[optionIndex];
+    setAnswers((prev) => ({
+      ...prev,
+      [currentQ.id]: {
+        optionIndex,
+        correct: Boolean(opt?.correct),
+        trap: opt?.trap,
+      },
+    }));
   };
 
-  const handleNext = () => {
-    if (currentIndex < total - 1) {
+  const handleNext = async () => {
+    if (REMOTE_PREP && run) {
+      if (pendingNextTask && currentIndex < total - 1) {
+        const nextQ = adaptBackendTaskToDiagnosticQuestion(pendingNextTask);
+        setQuestions((prev) => {
+          if (prev.some((q) => q.id === nextQ.id)) return prev;
+          return [...prev, nextQ];
+        });
+        setCurrentIndex((prev) => prev + 1);
+        setSelectedOption(null);
+        setPendingNextTask(null);
+        startTimeRef.current = Date.now();
+        return;
+      }
+
+      // Finish diagnostic on backend
+      setSubmitting(true);
+      const result = await finishDiagnosticRun(run.run_id);
+      setSubmitting(false);
+
+      if (result) {
+        const score = Object.values(answers).filter((a) => a.correct).length;
+        const summary = adaptDiagnosticResult(result, currentIndex + 1, score);
+        setRemoteSummary(summary);
+      }
+      setIsFinished(true);
+      return;
+    }
+
+    // Local flow
+    if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
-      setSelectedOption(answers[DIAGNOSTIC_8_QUESTIONS[currentIndex + 1].id] ?? null);
+      const nextAns = answers[questions[currentIndex + 1]?.id];
+      setSelectedOption(nextAns ? nextAns.optionIndex : null);
     } else {
       setIsFinished(true);
     }
@@ -51,10 +167,31 @@ export function DiagnosticMock({ onComplete, onClose, onSkip }: Props) {
     setAnswers({});
     setSelectedOption(null);
     setIsFinished(false);
+    setRemoteSummary(null);
+    setPendingNextTask(null);
+    startTimeRef.current = Date.now();
+    if (REMOTE_PREP) {
+      fetchActiveOrStartDiagnostic(exam).then((newRun) => {
+        if (newRun && newRun.next_task) {
+          setRun(newRun);
+          setQuestions([adaptBackendTaskToDiagnosticQuestion(newRun.next_task)]);
+        }
+      });
+    }
   };
 
-  const summary = evaluateDiagnostic(answers);
-  const percent = Math.round((summary.score / total) * 100);
+  // Build summary for local or remote
+  const localAnswersMap: Record<string, number> = {};
+  for (const [id, rec] of Object.entries(answers)) {
+    localAnswersMap[id] = rec.optionIndex;
+  }
+  const localSummary = evaluateDiagnostic(localAnswersMap);
+  const summary: DiagnosticResultSummary = remoteSummary ?? {
+    ...localSummary,
+    score: Object.values(answers).filter((a) => a.correct).length,
+    total,
+  };
+  const percent = Math.round((summary.score / Math.max(summary.total, 1)) * 100);
 
   return (
     <section className={styles.diagnosticInline} aria-labelledby="diag-title">
@@ -66,7 +203,7 @@ export function DiagnosticMock({ onComplete, onClose, onSkip }: Props) {
               <span className={styles.diagnosticTag}>
                 <Icon name="sparkles" size={12} /> Входной замер
               </span>
-              <span className={styles.diagnosticSubtitle}>8 вопросов · калибровка маршрута</span>
+              <span className={styles.diagnosticSubtitle}>{total} вопросов · калибровка маршрута</span>
             </div>
             <h3 id="diag-title" className={styles.diagnosticTitle}>
               {isFinished ? "Итог входного замера" : `Вопрос ${currentIndex + 1} из ${total}`}
@@ -98,24 +235,25 @@ export function DiagnosticMock({ onComplete, onClose, onSkip }: Props) {
           </div>
         </header>
 
-        {/* Индикатор прогресса (8 точек) */}
+        {/* Индикатор прогресса */}
         {!isFinished && (
           <div className={styles.diagnosticDots} aria-label="Прогресс по вопросам">
-            {DIAGNOSTIC_8_QUESTIONS.map((q, idx) => {
-              const answeredIndex = answers[q.id];
+            {Array.from({ length: total }).map((_, idx) => {
+              const q = questions[idx];
+              const answered = q ? answers[q.id] : undefined;
               const isCurrent = idx === currentIndex;
               let dotState = "empty";
-              if (answeredIndex !== undefined) {
-                dotState = q.options[answeredIndex]?.correct ? "correct" : "wrong";
+              if (answered !== undefined) {
+                dotState = answered.correct ? "correct" : "wrong";
               } else if (isCurrent) {
                 dotState = "current";
               }
               return (
                 <span
-                  key={q.id}
+                  key={idx}
                   className={styles.diagnosticDot}
                   data-state={dotState}
-                  title={`Вопрос ${idx + 1}: ${q.skillName}`}
+                  title={`Вопрос ${idx + 1}`}
                 />
               );
             })}
@@ -135,21 +273,28 @@ export function DiagnosticMock({ onComplete, onClose, onSkip }: Props) {
 
               <p className={styles.diagnosticQuestionText}>{currentQ.question}</p>
 
-              {/* 4 варианта ответа */}
+              {/* Варианты ответа */}
               <div className={styles.diagnosticOptionsGrid}>
                 {currentQ.options.map((opt, oIdx) => {
                   const isPicked = selectedOption === oIdx;
                   let stateClass = "";
                   if (selectedOption !== null) {
-                    if (opt.correct) stateClass = styles.optCorrect;
-                    else if (isPicked) stateClass = styles.optWrong;
+                    const ansRec = answers[currentQ.id];
+                    if (ansRec) {
+                      if (ansRec.correct && isPicked) stateClass = styles.optCorrect;
+                      else if (!ansRec.correct && isPicked) stateClass = styles.optWrong;
+                    } else if (opt.correct) {
+                      stateClass = styles.optCorrect;
+                    } else if (isPicked) {
+                      stateClass = styles.optWrong;
+                    }
                   }
 
                   return (
                     <button
                       key={oIdx}
                       type="button"
-                      disabled={selectedOption !== null}
+                      disabled={selectedOption !== null || submitting}
                       className={`${styles.diagnosticOptionBtn} ${stateClass} ${isPicked ? styles.optSelected : ""}`}
                       onClick={() => handleSelect(oIdx)}
                     >
@@ -157,7 +302,7 @@ export function DiagnosticMock({ onComplete, onClose, onSkip }: Props) {
                         {String.fromCharCode(65 + oIdx)}
                       </span>
                       <span className={styles.diagnosticOptionLabel}>{opt.label}</span>
-                      {selectedOption !== null && opt.correct && (
+                      {selectedOption !== null && answers[currentQ.id]?.correct && isPicked && (
                         <Icon name="check" size={15} className={styles.optCheckIcon} />
                       )}
                     </button>
@@ -168,10 +313,10 @@ export function DiagnosticMock({ onComplete, onClose, onSkip }: Props) {
               {/* Пояснение и предупреждение о ловушке после ответа */}
               {selectedOption !== null && (
                 <div className={styles.diagnosticFeedback}>
-                  {currentQ.options[selectedOption]?.trap && (
+                  {answers[currentQ.id]?.trap && (
                     <div className={styles.diagnosticTrapAlert}>
                       <Icon name="triangle-alert" size={14} />
-                      <span>Ловушка: {currentQ.options[selectedOption].trap}</span>
+                      <span>Ловушка: {answers[currentQ.id].trap}</span>
                     </div>
                   )}
 
@@ -196,11 +341,13 @@ export function DiagnosticMock({ onComplete, onClose, onSkip }: Props) {
               )}
               <button
                 type="button"
-                disabled={selectedOption === null}
+                disabled={selectedOption === null || submitting}
                 className={styles.primary}
                 onClick={handleNext}
               >
-                {currentIndex < total - 1 ? (
+                {submitting ? (
+                  "Сверяем..."
+                ) : currentIndex < total - 1 ? (
                   <>
                     Следующий вопрос <Icon name="chevron-right" size={16} />
                   </>
@@ -217,12 +364,14 @@ export function DiagnosticMock({ onComplete, onClose, onSkip }: Props) {
           <div className={styles.diagnosticResultBody}>
             <div className={styles.diagnosticScoreCard}>
               <div className={styles.diagnosticScoreNum}>
-                <strong>{summary.score}</strong> / {total}
+                <strong>{summary.score}</strong> / {summary.total}
               </div>
               <p className={styles.diagnosticPercent}>{percent}% верных ответов</p>
 
               <p className={styles.diagnosticVerdict}>
-                {percent >= 75
+                {summary.words
+                  ? summary.words
+                  : percent >= 75
                   ? "Отличная база! Сильные стороны зафиксированы. Ассистент ускорит стартовые сеты и сфокусируется на продвинутых темах."
                   : percent >= 50
                   ? "Хороший старт! Выявлены ключевые темы и ловушки — ассистент скорректировал маршрут для закрытия слабых мест."

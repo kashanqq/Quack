@@ -9,6 +9,7 @@ import { morph } from "@/components/transition/morph";
 import { Overview } from "./Overview";
 import { prefetchRemoteOverview } from "./remotePrep";
 import {
+  fetchRemoteSets,
   openRemoteSet,
   prefetchRemoteSets,
   REMOTE_PREP,
@@ -241,13 +242,22 @@ export function PrepView({
       const next = { ...m, diagnosticDone: true, diagnosticSkipped: false, states: { ...m.states, ...summary.statesUpdate } };
       // The first test builds the route: its top set becomes the first one in work. A retake leaves the choice alone.
       if (m.diagnosticDone && m.currentSet) return next;
-      const top = rankSets(next, "sat")[0]?.set;
+      const top = rankSets(next, exam)[0]?.set;
       return top ? acceptSet(next, top.id) : next;
     });
     closeDiagnostic();
     setFocus(null);
     onDiagnosticStatusChange?.(true);
-    setToast(`Входной замер завершён: ${summary.score} из 8. Маршрут собран — начни с первой темы на графе`);
+    setToast(`Входной замер завершён: ${summary.score} из ${summary.total}. Маршрут собран — начни с первой темы на графе`);
+
+    if (REMOTE_PREP) {
+      fetchRemoteKnowledge(exam, true).then((data) => {
+        if (data) {
+          setModel((prev) => applyRemoteKnowledgeToModel(prev, data, exam));
+        }
+      });
+      fetchRemoteSets(exam, true).catch(() => {});
+    }
   };
 
   return (

@@ -35,6 +35,13 @@ export type BackendEvidenceListOut = Schemas["EvidenceListOut"];
 export type BackendEvidenceOut = Schemas["EvidenceOut"];
 export type BackendRefreshIn = Schemas["RefreshIn"];
 export type BackendRefreshOut = Schemas["RefreshOut"];
+export type BackendDiagnosticOut = Schemas["DiagnosticOut"];
+export type BackendDiagnosticResult = Schemas["DiagnosticResult"];
+export type BackendDiagnosticStartIn = Schemas["DiagnosticStartIn"];
+export type BackendDiagnosticState = Schemas["DiagnosticState"];
+export type BackendMockOut = Schemas["MockOut"];
+export type BackendMockResultOut = Schemas["MockResultOut"];
+export type BackendMockStartIn = Schemas["MockStartIn"];
 
 export const backend = {
   profile: {
@@ -104,6 +111,26 @@ export const backend = {
       ),
     refresh: (body: BackendRefreshIn) =>
       api.post<BackendRefreshOut>("/knowledge/refresh", body),
+  },
+  diagnostic: {
+    start: (body: BackendDiagnosticStartIn) =>
+      api.post<BackendDiagnosticOut>("/diagnostic", body),
+    active: (examId: "SAT_MATH" | "ENT_MATH") =>
+      api.get<BackendDiagnosticOut>(`/diagnostic/active?exam_id=${examId}`),
+    answer: (runId: string, body: BackendAnswerIn) =>
+      api.post<BackendDiagnosticOut>(`/diagnostic/${encodeURIComponent(runId)}/answer`, body),
+    finish: (runId: string) =>
+      api.post<BackendDiagnosticResult>(`/diagnostic/${encodeURIComponent(runId)}/finish`),
+  },
+  mocks: {
+    start: (body: BackendMockStartIn) =>
+      api.post<BackendMockOut>("/mocks", body),
+    get: (runId: string) =>
+      api.get<BackendMockOut>(`/mocks/${encodeURIComponent(runId)}`),
+    answer: (runId: string, body: BackendAnswerIn) =>
+      api.post<BackendMockOut>(`/mocks/${encodeURIComponent(runId)}/answer`, body),
+    finish: (runId: string) =>
+      api.post<BackendMockResultOut>(`/mocks/${encodeURIComponent(runId)}/finish`),
   },
   prep: {
     version: () => api.get<BackendKnowledgeVersion>("/prep/knowledge/version"),

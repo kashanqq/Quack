@@ -253,9 +253,11 @@ function Now({
   });
 
   // The test itself, in place: its result builds the route and the first set opens on the same spot
+  const targetExam: ExamId = (exams.find((e) => e.id === "ent" || e.id === "sat")?.id as ExamId) ?? "sat";
   if (diagnostic.open)
     return (
       <DiagnosticMock
+        exam={targetExam}
         onComplete={diagnostic.onComplete}
         onClose={diagnostic.onClose}
         onSkip={isDiagPending ? diagnostic.onSkip : undefined}
