@@ -211,23 +211,28 @@ sequenceDiagram
 ```python
 class TagStat(BaseModel):
     tag: str
-    n_templates: int          # всего шаблонов родителя с этим тегом
-    n_unseen: int             # из них с n_seen = 0 у ученика
-    difficulties: list[int]   # встречающиеся сложности
+    n_templates: int  # всего шаблонов родителя с этим тегом
+    n_unseen: int  # из них с n_seen = 0 у ученика
+    difficulties: list[int]  # встречающиеся сложности
+
 
 class SkillSlice(BaseModel):
     skill_id: str
     name: str
-    level: SkillLevel         # knowledge.words — словами, без p/conf
+    level: SkillLevel  # knowledge.words — словами, без p/conf
     n_incorrect_30d: int
-    tag_stats: list[TagStat]  # только теги с n_templates >= 1, сортировка по n_unseen desc
-    existing_personal: list[str]   # id уже существующих узлов под этим родителем
+    tag_stats: list[
+        TagStat
+    ]  # только теги с n_templates >= 1, сортировка по n_unseen desc
+    existing_personal: list[str]  # id уже существующих узлов под этим родителем
+
 
 class RootCauseRef(BaseModel):
     from_skill_id: str
     root_skill_id: str
-    confidence_sum: float     # Σ за root_window_days
+    confidence_sum: float  # Σ за root_window_days
     sources: list[Literal["diagnostic", "observer", "rule"]]
+
 
 class MiscTriggerRef(BaseModel):
     misconception_id: str
@@ -236,13 +241,14 @@ class MiscTriggerRef(BaseModel):
     by_tag: dict[str, float]  # доли из triggers.by_tag, только n >= trigger_min_n
     by_difficulty: dict[str, float]
 
+
 class PersonalNodesInput(BaseModel):
     exam_id: ExamId
     set_id: UUID
-    skills: list[SkillSlice]                  # навыки сета, ≤ set_size + проверки
-    root_causes_30d: list[RootCauseRef]       # ROOT_CAUSE за root_window_days
+    skills: list[SkillSlice]  # навыки сета, ≤ set_size + проверки
+    root_causes_30d: list[RootCauseRef]  # ROOT_CAUSE за root_window_days
     confirmed_triggers: list[MiscTriggerRef]  # только confirmed (MA §5.2)
-    max_nodes: int                            # = personal_nodes_max_per_set
+    max_nodes: int  # = personal_nodes_max_per_set
 ```
 
 `suspected` и `disputed` во вход не попадают (MA §5.2: сборщику сетов — нет).
@@ -255,13 +261,17 @@ class TaskFilter(BaseModel):
     tags: list[str] = Field(min_length=1, max_length=3)
     difficulty: list[int] | None = Field(default=None, max_length=4)
 
+
 class PersonalNodeProposal(BaseModel):
     model_config = ConfigDict(extra="forbid")
     parent_skill_id: str
     name: str = Field(min_length=3, max_length=60)
     description: str = Field(min_length=10, max_length=300)
     task_filter: TaskFilter
-    reason: str = Field(min_length=10, max_length=300)   # на что опирается: теги триггеров, корни
+    reason: str = Field(
+        min_length=10, max_length=300
+    )  # на что опирается: теги триггеров, корни
+
 
 class PersonalNodesOut(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -287,28 +297,48 @@ class PersonalNodesOut(BaseModel):
 class ProposalSnapshot:
     parent_skill_id: str
     exam_id: ExamId
-    parent_templates: list[TaskTemplateSpec]      # шаблоны родителя (канонические + одобренные runtime, §3.5)
-    seen: dict[str, int]                           # template_id -> n_seen ученика
-    existing: list[PersonalSkillRef]               # активные узлы ученика под этим родителем
-    known_skill_ids: frozenset[str]                # навыки текущего сета
+    parent_templates: list[
+        TaskTemplateSpec
+    ]  # шаблоны родителя (канонические + одобренные runtime, §3.5)
+    seen: dict[str, int]  # template_id -> n_seen ученика
+    existing: list[PersonalSkillRef]  # активные узлы ученика под этим родителем
+    known_skill_ids: frozenset[str]  # навыки текущего сета
+
 
 class Verdict(BaseModel):
     accepted: bool
-    reason: Literal["ok", "unknown_parent", "unknown_tag", "too_few_unseen",
-                    "duplicate", "overlap", "limit_parent", "empty_filter"]
-    template_ids: list[str]        # все шаблоны родителя, прошедшие фильтр
-    unseen_template_ids: list[str] # из них n_seen = 0
+    reason: Literal[
+        "ok",
+        "unknown_parent",
+        "unknown_tag",
+        "too_few_unseen",
+        "duplicate",
+        "overlap",
+        "limit_parent",
+        "empty_filter",
+    ]
+    template_ids: list[str]  # все шаблоны родителя, прошедшие фильтр
+    unseen_template_ids: list[str]  # из них n_seen = 0
     node_id: str
 
-def filter_templates(templates: list[TaskTemplateSpec], f: TaskFilter) -> list[TaskTemplateSpec]:
+
+def filter_templates(
+    templates: list[TaskTemplateSpec], f: TaskFilter
+) -> list[TaskTemplateSpec]:
     """Шаблон проходит, если tags ⊆ template.tags (все теги фильтра) и
     difficulty is None или template.difficulty ∈ difficulty."""
+
 
 def personal_node_id(student_id: UUID, parent_skill_id: str, f: TaskFilter) -> str:
     """ps.{student_id.hex[:12]}.{parent_skill_id}.{sha1(canonical_json(sorted tags, sorted difficulty))[:8]}"""
 
-def validate_proposal(student_id: UUID, p: PersonalNodeProposal,
-                      snap: ProposalSnapshot, params: KnowledgeParams) -> Verdict: ...
+
+def validate_proposal(
+    student_id: UUID,
+    p: PersonalNodeProposal,
+    snap: ProposalSnapshot,
+    params: KnowledgeParams,
+) -> Verdict: ...
 ```
 
 Правила `validate_proposal`, по порядку, первое сработавшее даёт отказ:
@@ -335,8 +365,10 @@ class SkillPersonalCreatedPayload(_Payload):
     description: str
     task_filter: TaskFilter
     reason: str
-    template_ids: list[str]          # снимок фильтра на момент создания
-    unseen_template_ids: list[str]   # снимок n_seen = 0 — нужен для детерминированного replay
+    template_ids: list[str]  # снимок фильтра на момент создания
+    unseen_template_ids: list[
+        str
+    ]  # снимок n_seen = 0 — нужен для детерминированного replay
     prompt_version: str
 ```
 
@@ -462,24 +494,30 @@ class ReplayReport(BaseModel):
     student_id: UUID
     through_event_id: int
     dry_run: bool
-    status: Literal["applied", "rolled_back", "dry_run_ok", "dry_run_degraded", "failed"]
+    status: Literal[
+        "applied", "rolled_back", "dry_run_ok", "dry_run_degraded", "failed"
+    ]
     events_total: int
     events_applied: int
-    events_skipped: dict[str, int]          # reason -> count: superseded_observation, retracted, not_replayable
+    events_skipped: dict[
+        str, int
+    ]  # reason -> count: superseded_observation, retracted, not_replayable
     metrics_before: ReplayMetrics
     metrics_after: ReplayMetrics
-    degradation: list[str]                  # сработавшие правила деградации
+    degradation: list[str]  # сработавшие правила деградации
     duration_ms: int
     error: str | None = None
 
+
 class ReplayMetrics(BaseModel):
-    brier: float | None                     # None, если моков < replay_min_mocks_for_brier
+    brier: float | None  # None, если моков < replay_min_mocks_for_brier
     n_mocks: int
     n_confirmed: int
     n_resolved: int
     n_evidence: int
     n_personal_skills: int
-    per_skill_p: dict[str, float]           # p_recall(now) по каноническим навыкам, для diff
+    per_skill_p: dict[str, float]  # p_recall(now) по каноническим навыкам, для diff
+
 
 async def rebuild(
     deps: ReplayDeps,
@@ -538,22 +576,28 @@ flowchart TD
 
 ```python
 class SnapNode(BaseModel):
-    key: str                      # локальный ключ в снапшоте (elementId не переносим)
+    key: str  # локальный ключ в снапшоте (elementId не переносим)
     labels: list[str]
     props: dict[str, Any]
 
+
 class SnapRel(BaseModel):
     type: str
-    start: str                    # key узла снапшота или "canon:Skill:<id>" / "canon:TaskTemplate:<id>" / "canon:Misconception:<id>"
+    start: str  # key узла снапшота или "canon:Skill:<id>" / "canon:TaskTemplate:<id>" / "canon:Misconception:<id>"
     end: str
     props: dict[str, Any]
+
 
 class PersonalLayerSnapshot(BaseModel):
     student_id: UUID
     taken_at: datetime
-    nodes: list[SnapNode]         # KnowledgeState, MisconceptionState, Evidence, PersonalSkill, Misconception{scope:personal}, AppliedEvent
-    rels: list[SnapRel]           # HAS_STATE, FOR, PREVIOUS, HAS_MISC_STATE, OF, SUPPORTS, ROOT_CAUSE, FROM_TEMPLATE, PART_OF, ABOUT, HAS_PERSONAL_SKILL
-    checksum: str                 # sha256 канонического JSON
+    nodes: list[
+        SnapNode
+    ]  # KnowledgeState, MisconceptionState, Evidence, PersonalSkill, Misconception{scope:personal}, AppliedEvent
+    rels: list[
+        SnapRel
+    ]  # HAS_STATE, FOR, PREVIOUS, HAS_MISC_STATE, OF, SUPPORTS, ROOT_CAUSE, FROM_TEMPLATE, PART_OF, ABOUT, HAS_PERSONAL_SKILL
+    checksum: str  # sha256 канонического JSON
 ```
 
 Снапшот пишется в `replay_snapshots` (PG, JSONB, gzip при > 1 МБ) **до** удаления, в отдельной закоммиченной транзакции. Без записанного снапшота удаление запрещено.
@@ -710,39 +754,52 @@ API оператора (роутер `app/api/admin.py`, новый):
 
 ```python
 class BenchMessage(BaseModel):
-    event_id: int                       # локальная нумерация внутри фрагмента
+    event_id: int  # локальная нумерация внутри фрагмента
     role: Literal["user", "assistant"]
     text: str
     markup: MessageAssistantPayload | None = None
 
-class BenchSlice(BaseModel):            # то, что наблюдатель получает на вход (MA §8.1 п.2–5)
+
+class BenchSlice(BaseModel):  # то, что наблюдатель получает на вход (MA §8.1 п.2–5)
     exam_id: ExamId
     topic_skill_id: str
-    skills: list[SkillRef]              # id, name, description, level словами
+    skills: list[SkillRef]  # id, name, description, level словами
     misconceptions: list[MisconceptionRef]
     task_instance: dict | None = None
     previous_summary: str | None = None
 
+
 class GoldObservation(BaseModel):
-    kind: Literal["solution_step", "task_in_chat", "applied", "confusion", "question",
-                  "avoided_trap", "root_hint", "proposed_misconception", "pace_signal"]
+    kind: Literal[
+        "solution_step",
+        "task_in_chat",
+        "applied",
+        "confusion",
+        "question",
+        "avoided_trap",
+        "root_hint",
+        "proposed_misconception",
+        "pace_signal",
+    ]
     skill_id: str | None = None
     misconception_id: str | None = None
     root_skill_id: str | None = None
     outcome: Literal["correct", "incorrect", "partial"] | None = None
     event_ids: list[int]
-    required: bool = True               # false — допустимо, но не обязательно (не штрафует recall)
+    required: bool = True  # false — допустимо, но не обязательно (не штрафует recall)
+
 
 class BenchFragment(BaseModel):
-    id: str                             # "frag.sat.abs.001"
-    tags: list[str]                     # "explain_mode", "solution", "no_signal", "injection"...
+    id: str  # "frag.sat.abs.001"
+    tags: list[str]  # "explain_mode", "solution", "no_signal", "injection"...
     messages: list[BenchMessage]
     slice: BenchSlice
-    gold: list[GoldObservation]         # пусто — «в фрагменте нечего наблюдать»
+    gold: list[GoldObservation]  # пусто — «в фрагменте нечего наблюдать»
     notes: str | None = None
 
+
 class ObserverBenchmark(BaseModel):
-    version: str                        # "2026-09-20.1"
+    version: str  # "2026-09-20.1"
     fragments: list[BenchFragment] = Field(min_length=20, max_length=40)
 ```
 
@@ -811,9 +868,9 @@ class EvalReport(BaseModel):
     model: str
     dataset_version: str
     dataset_sha256: str
-    prompt_sha256: str                 # sha256 файла app/agents/prompts/<version>.md
+    prompt_sha256: str  # sha256 файла app/agents/prompts/<version>.md
     repeats: int
-    per_kind: dict[str, KindMetrics]   # precision, recall, f1, tp, fp, fn
+    per_kind: dict[str, KindMetrics]  # precision, recall, f1, tp, fp, fn
     micro: KindMetrics
     invalid_ref_rate: float
     hallucination_rate: float
@@ -869,16 +926,19 @@ class EvalReport(BaseModel):
 
 ```python
 class RouteSpec(BaseModel):
-    difficulty: list[int]                     # допустимые сложности ветки
-    difficulty_shares: dict[str, float]       # доли внутри ветки, Σ = 1
-    scaled_cap: int                           # потолок шкального балла при этой ветке
+    difficulty: list[int]  # допустимые сложности ветки
+    difficulty_shares: dict[str, float]  # доли внутри ветки, Σ = 1
+    scaled_cap: int  # потолок шкального балла при этой ветке
+
 
 class Section(BaseModel):
-    ...                                       # существующие поля без изменений
+    ...  # существующие поля без изменений
     adaptive: bool
-    module_stage: int | None = None           # 1, 2; None — не часть многоэтапного теста
-    routing_threshold: int | None = None      # только у stage=1 при adaptive-следующем
-    routes: dict[Literal["easy", "hard"], RouteSpec] | None = None   # только у adaptive=True
+    module_stage: int | None = None  # 1, 2; None — не часть многоэтапного теста
+    routing_threshold: int | None = None  # только у stage=1 при adaptive-следующем
+    routes: dict[Literal["easy", "hard"], RouteSpec] | None = (
+        None  # только у adaptive=True
+    )
 ```
 
 Изменения в `data/exam_formats/sat_math.json` (B1):
@@ -915,31 +975,38 @@ class Section(BaseModel):
 MockKind = Literal["mock_set", "mock_topic", "mock_misconception", "mock_full"]
 Route = Literal["easy", "hard"]
 
+
 def assemble_module(
     section: Section,
     templates_by_skill: dict[str, list[TaskTemplateSpec]],
     seen: dict[str, int],
     rng: random.Random,
     *,
-    route: Route | None = None,          # None для stage 1
+    route: Route | None = None,  # None для stage 1
     exclude_template_ids: frozenset[str] = frozenset(),
 ) -> ModulePick: ...
 
+
 class ModulePick(BaseModel):
-    items: list[tuple[str, str]]         # (skill_id, template_id), ровно section.n_items
-    shortfall: dict[str, int]            # сложность -> скольких не хватило (заполнено соседней)
+    items: list[tuple[str, str]]  # (skill_id, template_id), ровно section.n_items
+    shortfall: dict[str, int]  # сложность -> скольких не хватило (заполнено соседней)
+
 
 def route_after_module1(raw_m1: int, section_m1: Section) -> Route:
     return "hard" if raw_m1 >= section_m1.routing_threshold else "easy"
 
-def scale_adaptive(raw_m1: int, raw_m2: int, route: Route, exam_format: ExamFormat) -> ScaledEstimate: ...
+
+def scale_adaptive(
+    raw_m1: int, raw_m2: int, route: Route, exam_format: ExamFormat
+) -> ScaledEstimate: ...
+
 
 class ScaledEstimate(BaseModel):
     raw_total: int
-    scaled: int | None                   # None, если scale_table отсутствует
+    scaled: int | None  # None, если scale_table отсутствует
     route: Route
     cap: int
-    note: str                            # всегда «оценочно»
+    note: str  # всегда «оценочно»
 ```
 
 Алгоритм `assemble_module`:
@@ -1080,7 +1147,11 @@ flowchart LR
 #### 3.5.5 Схема `TaskTemplateDraft` (B2, `app/schemas/llm.py`)
 
 ```python
-ALLOWED_TYPES_BY_EXAM = {"SAT_MATH": {"mcq4", "numeric"}, "ENT_MATH": {"mcq5", "multi_select"}}
+ALLOWED_TYPES_BY_EXAM = {
+    "SAT_MATH": {"mcq4", "numeric"},
+    "ENT_MATH": {"mcq5", "multi_select"},
+}
+
 
 class ParamDraft(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -1091,10 +1162,12 @@ class ParamDraft(BaseModel):
     def one_of(self):  # ровно одно из range/choices; |границы| ≤ 1000; low < high
         ...
 
+
 class DistractorDraft(BaseModel):
     model_config = ConfigDict(extra="forbid")
     expr: str = Field(max_length=120)
-    misconception_id: str | None      # null — «случайный»
+    misconception_id: str | None  # null — «случайный»
+
 
 class TaskTemplateDraft(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -1102,9 +1175,9 @@ class TaskTemplateDraft(BaseModel):
     difficulty: int = Field(ge=1, le=5)
     tags: list[str] = Field(min_length=1, max_length=4)
     time_reference_sec: int = Field(ge=30, le=240)
-    params: dict[str, ParamDraft] = Field(min_length=1, max_length=5)   # имена: ^[a-z]$
-    constraints: list[str] = Field(max_length=6)                        # каждое ≤ 120 символов
-    stem: str = Field(min_length=10, max_length=600)                    # плейсхолдеры {a}
+    params: dict[str, ParamDraft] = Field(min_length=1, max_length=5)  # имена: ^[a-z]$
+    constraints: list[str] = Field(max_length=6)  # каждое ≤ 120 символов
+    stem: str = Field(min_length=10, max_length=600)  # плейсхолдеры {a}
     correct: str | list[str]
     distractors: list[DistractorDraft] = Field(max_length=5)
     omission_traps: list[OmissionTrap] | None = None
@@ -1120,14 +1193,22 @@ class TaskTemplateDraft(BaseModel):
 ```python
 class DraftVerdict(BaseModel):
     ok: bool
-    errors: list[str]                  # машинные коды + краткий текст для повтора модели
-    spec: TaskTemplateSpec | None      # готовая спецификация при ok
+    errors: list[str]  # машинные коды + краткий текст для повтора модели
+    spec: TaskTemplateSpec | None  # готовая спецификация при ok
     fingerprint: str | None
 
-def validate_draft(draft: TaskTemplateDraft, *, skill_id: str, exam_id: ExamId,
-                   library: list[MisconceptionRef], tag_vocabulary: set[str],
-                   existing: list[TaskTemplateSpec], exam_format: ExamFormat,
-                   n_seeds: int = 50) -> DraftVerdict: ...
+
+def validate_draft(
+    draft: TaskTemplateDraft,
+    *,
+    skill_id: str,
+    exam_id: ExamId,
+    library: list[MisconceptionRef],
+    tag_vocabulary: set[str],
+    existing: list[TaskTemplateSpec],
+    exam_format: ExamFormat,
+    n_seeds: int = 50,
+) -> DraftVerdict: ...
 ```
 
 Шаги, все обязательны:
@@ -1170,11 +1251,11 @@ def validate_draft(draft: TaskTemplateDraft, *, skill_id: str, exam_id: ExamId,
 
 ```python
 class TemplateGeneratedPayload(_Payload):
-    template: TaskTemplateSpec          # id = f"tpl.gen.{skill_id}.{fingerprint[:10]}"
+    template: TaskTemplateSpec  # id = f"tpl.gen.{skill_id}.{fingerprint[:10]}"
     fingerprint: str
     model: str
     prompt_version: str
-    validation: dict[str, Any]          # n_seeds, distinct_answers, attempts
+    validation: dict[str, Any]  # n_seeds, distinct_answers, attempts
     trigger: Literal["topic", "diagnostic", "personal_node", "mock"]
 ```
 
@@ -1264,7 +1345,9 @@ def numsys_convert(params: dict, rng: random.Random) -> GeneratedParts: ...
 @register("ent_cs.logic.truth_table_count")
 def truth_table_count(params: dict, rng: random.Random) -> GeneratedParts: ...
 @register("ent_cs.algo.trace_loop")
-def trace_loop(params: dict, rng: random.Random) -> GeneratedParts: ...   # шаблон кода с параметрами, результат считается интерпретацией ограниченного DSL, не exec
+def trace_loop(
+    params: dict, rng: random.Random
+) -> GeneratedParts: ...  # шаблон кода с параметрами, результат считается интерпретацией ограниченного DSL, не exec
 @register("ent_cs.net.transfer_time")
 def transfer_time(params: dict, rng: random.Random) -> GeneratedParts: ...
 ```
@@ -1294,7 +1377,7 @@ def transfer_time(params: dict, rng: random.Random) -> GeneratedParts: ...
 
 ```python
 transfer_matrix: dict[str, float] = {
-    "SAT_MATH|ENT_MATH": 0.6,   # = transfer_cross_exam, обратная совместимость
+    "SAT_MATH|ENT_MATH": 0.6,  # = transfer_cross_exam, обратная совместимость
     "ENT_MATH|ENT_CS": 0.4,
     "SAT_MATH|ENT_CS": 0.4,
 }
@@ -1329,16 +1412,21 @@ transfer_matrix: dict[str, float] = {
 
 ```python
 class ResearchInfo(BaseModel):
-    has_undergrad_research: bool | None = None     # исследовательские программы для бакалавров
+    has_undergrad_research: bool | None = (
+        None  # исследовательские программы для бакалавров
+    )
     lab_count: int | None = Field(default=None, ge=0)
     notable_labs: list[str] = Field(default_factory=list, max_length=5)
-    source: str                                    # URL
+    source: str  # URL
     checked_at: date
     is_demo: bool
     extracted_auto: bool = False
 
+
 class MobilityInfo(BaseModel):
-    exchange_programs: list[str] = Field(default_factory=list, max_length=20)   # "Erasmus+", "Semester in Singapore"
+    exchange_programs: list[str] = Field(
+        default_factory=list, max_length=20
+    )  # "Erasmus+", "Semester in Singapore"
     has_erasmus: bool | None = None
     partner_count: int | None = Field(default=None, ge=0)
     partner_countries: list[str] = Field(default_factory=list, max_length=40)
@@ -1347,8 +1435,9 @@ class MobilityInfo(BaseModel):
     is_demo: bool
     extracted_auto: bool = False
 
+
 class Program(BaseModel):
-    ...                                            # существующие поля без изменений
+    ...  # существующие поля без изменений
     research: ResearchInfo | None = None
     mobility: MobilityInfo | None = None
 ```
@@ -1359,6 +1448,7 @@ class Program(BaseModel):
 def research_score(p: Program) -> float | None:
     """None, если research is None или все поля None.
     0.5·[has_undergrad_research] + 0.5·min(1, lab_count / research_lab_norm), по доступным полям с перенормировкой."""
+
 
 def mobility_score(p: Program) -> float | None:
     """None при отсутствии данных.
@@ -1378,15 +1468,22 @@ def mobility_score(p: Program) -> float | None:
 
 ```python
 class QueryDatasetArgs(BaseModel):
-    ...                                                 # существующие фильтры: страны, направление, бюджет, язык
+    ...  # существующие фильтры: страны, направление, бюджет, язык
     has_undergrad_research: bool | None = None
     min_lab_count: int | None = Field(default=None, ge=0)
     has_erasmus: bool | None = None
-    exchange_program: str | None = None                 # подстрока, без учёта регистра
-    exchange_country: str | None = None                 # страна-партнёр
+    exchange_program: str | None = None  # подстрока, без учёта регистра
+    exchange_country: str | None = None  # страна-партнёр
     group_by: Literal["country", "direction", "none"] = "none"
-    metrics: list[Literal["count", "with_research", "with_erasmus",
-                          "median_partner_count", "median_lab_count"]] = ["count"]
+    metrics: list[
+        Literal[
+            "count",
+            "with_research",
+            "with_erasmus",
+            "median_partner_count",
+            "median_lab_count",
+        ]
+    ] = ["count"]
 ```
 
 Результат для каждой группы: `{key, count, with_research, with_erasmus, median_partner_count, median_lab_count, unknown_research, unknown_mobility, sources: list[str]}`.
@@ -1502,14 +1599,19 @@ CREATE INDEX ix_notification_log_student_sent ON notification_log (student_id, s
    class NotifyCandidate(BaseModel):
        kind: Literal["milestone_3d", "milestone_1d", "pace_behind"]
        critical: bool
-       reason_hash: str          # sha256(kind, entity_id, date/as_of)
-       title: str                # без чисел, которых нет во входе
-       action_url: str           # относительный путь во фронт
+       reason_hash: str  # sha256(kind, entity_id, date/as_of)
+       title: str  # без чисел, которых нет во входе
+       action_url: str  # относительный путь во фронт
        entity_id: str
 
-   def notification_candidates(milestones: list[MilestoneOut], forecasts: list[ForecastOut],
-                               current_sets: list[SetOut], today: date,
-                               params: KnowledgeParams) -> list[NotifyCandidate]: ...
+
+   def notification_candidates(
+       milestones: list[MilestoneOut],
+       forecasts: list[ForecastOut],
+       current_sets: list[SetOut],
+       today: date,
+       params: KnowledgeParams,
+   ) -> list[NotifyCandidate]: ...
    ```
 
    - Веха (`MilestoneOut`, не отмечена `done`), до даты ровно 3 дня → `milestone_3d`, ровно 1 день → `milestone_1d`. Дни считаются в `activity_tz`. `critical=True` для `kind ∈ {registration, application}` и `milestone_1d`.
@@ -1608,9 +1710,9 @@ Rate-limit на создание подписок: 5 в час на ученик
 `app/events/handlers.py` (frozen) — новые строки регистрации:
 
 ```python
-on(EventType.set_opened)(apply.personal_nodes.on_set_opened_enqueue)        # S1
+on(EventType.set_opened)(apply.personal_nodes.on_set_opened_enqueue)  # S1
 on(EventType.skill_personal_created)(apply.personal_nodes.on_personal_created)
-on(EventType.template_generated)(apply.templates.on_template_generated)      # S5
+on(EventType.template_generated)(apply.templates.on_template_generated)  # S5
 ```
 
 ### 4.3 Redis (`app/keys.py`, frozen, B3)
