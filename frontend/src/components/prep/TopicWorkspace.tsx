@@ -23,6 +23,8 @@ import type { ExamId } from "./prepData";
 async function pullKnowledge(base: PrepModel, exam: ExamId): Promise<PrepModel | null> {
   if (!REMOTE_PREP) return null;
   const data = await fetchRemoteKnowledge(exam, true).catch(() => null);
+  // Answers rebuild the plan on the server: the sets screen gets the new order too
+  fetchRemoteSets(exam, true).catch(() => {});
   return data ? applyRemoteKnowledgeToModel(base, data, exam) : null;
 }
 import {
