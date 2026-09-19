@@ -4,8 +4,9 @@ Source: memory-architecture-quack.md §2.2, §2.4, 20-B1.md §2.4.
 Every query starts with MATCH (st:Student {id: $student_id}) — see
 00-contracts.md §3.2.
 
-Real functions: ensure_student, get_states, get_state, upsert_state, merge_evidence.
-Stubs (phase 2): get_misc_states, upsert_misc_state, add_root_cause, list_evidence.
+Evidence is keyed by (event_id, skill_id, ordinal) and carries the observation
+context as ``ctx_*`` properties; KnowledgeState writes are idempotent in
+``source_event_id``, so a repeated dispatch of one event changes nothing.
 """
 
 from __future__ import annotations
@@ -17,7 +18,15 @@ from neo4j import AsyncDriver
 
 from app.graph import labels as L
 from app.knowledge.hlr import recall_p
-from app.schemas.knowledge import EvidenceIn, KnowledgeStateOut
+from app.schemas.knowledge import (
+    EvidenceContext,
+    EvidenceIn,
+    EvidenceOut,
+    KnowledgeStateOut,
+    MisconceptionChange,
+    MisconceptionStateOut,
+    RootCauseOut,
+)
 
 # --- real ---
 
@@ -88,11 +97,23 @@ async def upsert_state(
     """Create a new KnowledgeState, link it via PREVIOUS to the current one (if any).
 
     HAS_STATE moves from old to new; old keeps PREVIOUS -> new (newest first).
+
+    Idempotent in ``source_event_id``: if a state for this (skill, exam) was
+    already written by this very event — current or already pushed down the
+    PREVIOUS chain — the call is a no-op. Without that guard a repeated
+    dispatch of one ``task.answered`` doubled the counters, since every call
+    unconditionally CREATEd a node.
     """
     query = f"""
     MATCH (st:{L.STUDENT} {{id: $student_id}})
     MERGE (s:{L.SKILL} {{id: $skill_id}})
     WITH st, s
+    OPTIONAL MATCH (same:{L.KNOWLEDGE_STATE} {{
+        student_id: $student_id, skill_id: $skill_id,
+        exam_id: $exam_id, source_event_id: $source_event_id
+    }})
+    WITH st, s, same
+    WHERE same IS NULL
     OPTIONAL MATCH (st)-[old_rel:{L.HAS_STATE}]->(old:{L.KNOWLEDGE_STATE})
     WHERE old.exam_id = $exam_id AND old.skill_id = $skill_id
     CREATE (new:{L.KNOWLEDGE_STATE} {{
@@ -132,50 +153,152 @@ async def upsert_state(
         )
 
 
+_EVIDENCE_MERGE = f"""
+MATCH (st:{L.STUDENT} {{id: $student_id}})
+MERGE (s:{L.SKILL} {{id: $skill_id}})
+MERGE (e:{L.EVIDENCE} {{event_id: $event_id, skill_id: $skill_id,
+                        ordinal: $ordinal}})
+ON CREATE SET
+    e.exam_id = $exam_id, e.kind = $kind, e.tier = $tier,
+    e.source = $source, e.weight = $weight, e.direction = $direction,
+    e.share = $share,
+    e.difficulty_factor = $difficulty_factor, e.summary = $summary,
+    e.observed_at = datetime($observed_at),
+    e.extractor_version = $extractor_version,
+    e.student_id = $student_id,
+    e.ctx_instance_id = $ctx_instance_id,
+    e.ctx_message_id = $ctx_message_id,
+    e.ctx_mode = $ctx_mode,
+    e.ctx_task_type = $ctx_task_type,
+    e.ctx_difficulty = $ctx_difficulty,
+    e.ctx_tags = $ctx_tags,
+    e.ctx_time_ratio = $ctx_time_ratio,
+    e.ctx_session_minute = $ctx_session_minute,
+    e.ctx_after_guideline = $ctx_after_guideline,
+    e.ctx_hint_level_before = $ctx_hint_level_before,
+    e.ctx_topic_skill_id = $ctx_topic_skill_id,
+    e.ctx_session_id = $ctx_session_id
+MERGE (st)-[:{L.HAS_EVIDENCE}]->(e)
+MERGE (e)-[:{L.SUPPORTS} {{direction: $direction}}]->(s)
+RETURN e.event_id AS event_id, e.skill_id AS skill_id, e.ordinal AS ordinal
+"""
+
+
+def _evidence_params(student_id: UUID, ev: EvidenceIn) -> dict:
+    ctx = ev.context or EvidenceContext()
+    return dict(
+        student_id=str(student_id),
+        skill_id=ev.skill_id,
+        event_id=ev.event_id,
+        ordinal=ev.ordinal,
+        exam_id=ev.exam_id,
+        kind=ev.kind,
+        tier=ev.tier,
+        source=ev.source,
+        weight=ev.weight,
+        direction=ev.direction,
+        share=ev.share,
+        difficulty_factor=ev.difficulty_factor,
+        summary=ev.summary,
+        observed_at=ev.observed_at.isoformat(),
+        extractor_version=ev.extractor_version,
+        ctx_instance_id=_str_or_none(ctx.instance_id),
+        ctx_message_id=_str_or_none(ctx.message_id),
+        ctx_mode=ctx.mode,
+        ctx_task_type=ctx.task_type,
+        ctx_difficulty=ctx.difficulty,
+        ctx_tags=list(ctx.tags or []),
+        ctx_time_ratio=ctx.time_ratio,
+        ctx_session_minute=ctx.session_minute,
+        ctx_after_guideline=ctx.after_guideline,
+        ctx_hint_level_before=ctx.hint_level_before,
+        ctx_topic_skill_id=ctx.topic_skill_id,
+        ctx_session_id=_str_or_none(ctx.session_id),
+    )
+
+
 async def merge_evidence(driver: AsyncDriver, student_id: UUID, ev: EvidenceIn) -> str:
-    """MERGE Evidence on (event_id, skill_id). Idempotent — second call is a no-op."""
-    query = f"""
-    MATCH (st:{L.STUDENT} {{id: $student_id}})
-    MERGE (s:{L.SKILL} {{id: $skill_id}})
-    MERGE (e:{L.EVIDENCE} {{event_id: $event_id, skill_id: $skill_id}})
-    ON CREATE SET
-        e.exam_id = $exam_id, e.kind = $kind, e.tier = $tier,
-        e.source = $source, e.weight = $weight, e.direction = $direction,
-        e.difficulty_factor = $difficulty_factor, e.summary = $summary,
-        e.observed_at = datetime($observed_at),
-        e.extractor_version = $extractor_version
-    MERGE (st)-[:{L.HAS_EVIDENCE}]->(e)
-    MERGE (e)-[:{L.SUPPORTS} {{direction: $direction}}]->(s)
-    RETURN e.event_id AS event_id, e.skill_id AS skill_id
+    """MERGE Evidence on (event_id, skill_id, ordinal) — idempotent.
+
+    The key carries ``ordinal`` because one event can produce more than one
+    piece of evidence for the same skill (the answer and the misconception it
+    hit, §8.2 step 5); on (event_id, skill_id) alone the second MERGE found
+    the first node and the misconception hit replaced the answer.
+
+    The observation context (§10.5) is stored on the node as ``ctx_*``
+    properties, so ``list_evidence`` can unfold a belief back to the task
+    instance or the chat message it came from.
     """
     async with driver.session() as session:
-        result = await session.run(
-            query,
-            student_id=str(student_id),
-            skill_id=ev.skill_id,
-            event_id=ev.event_id,
-            exam_id=ev.exam_id,
-            kind=ev.kind,
-            tier=ev.tier,
-            source=ev.source,
-            weight=ev.weight,
-            direction=ev.direction,
-            difficulty_factor=ev.difficulty_factor,
-            summary=ev.summary,
-            observed_at=ev.observed_at.isoformat(),
-            extractor_version=ev.extractor_version,
-        )
+        result = await session.run(_EVIDENCE_MERGE, **_evidence_params(student_id, ev))
         rec = await result.single()
     assert rec is not None
-    return f"{rec['event_id']}:{rec['skill_id']}"
+    return evidence_id(int(rec["event_id"]), rec["skill_id"], int(rec["ordinal"]))
 
 
-# --- stubs (phase 2) ---
+def evidence_id(event_id: int, skill_id: str, ordinal: int = 0) -> str:
+    """The stable id of one Evidence node: ``{event_id}:{skill_id}:{ordinal}``."""
+    return f"{event_id}:{skill_id}:{ordinal}"
 
 
-async def get_misc_states(driver: AsyncDriver, student_id: UUID, skill_ids: list[str]):
-    """Phase 2: misconception states for a set of skills."""
-    raise NotImplementedError("phase 2")
+def parse_evidence_id(value: str) -> tuple[int, str, int]:
+    """Inverse of :func:`evidence_id`; accepts the phase-1 two-part form."""
+    parts = value.split(":")
+    if len(parts) == 2:
+        return int(parts[0]), parts[1], 0
+    if len(parts) != 3:
+        raise ValueError(f"malformed evidence id: {value!r}")
+    return int(parts[0]), parts[1], int(parts[2])
+
+
+# --- phase 2: misconceptions, roots, history ---
+
+
+async def get_misc_states(
+    driver: AsyncDriver, student_id: UUID, skill_ids: list[str]
+) -> list[MisconceptionStateOut]:
+    """Misconception states for a set of skills — memory-architecture §5."""
+    if not skill_ids:
+        return []
+    query = f"""
+    MATCH (st:{L.STUDENT} {{id: $student_id}})
+          -[:{L.HAS_MISC_STATE}]->(ms:{L.MISCONCEPTION_STATE})
+          -[:{L.OF_MISCONCEPTION}]->(m:{L.MISCONCEPTION})
+    OPTIONAL MATCH (m)-[:{L.ABOUT}]->(s:{L.SKILL})
+    WITH st, ms, m, collect(DISTINCT s.id) AS skill_ids
+    WHERE any(sid IN skill_ids WHERE sid IN $skill_ids)
+    RETURN m.id AS misconception_id, m.name AS name,
+           ms.status AS status,
+           ms.occurrence_count AS occurrence_count,
+           ms.strong_count AS strong_count,
+           ms.consecutive_avoided AS consecutive_avoided,
+           ms.triggers AS triggers,
+           ms.first_seen_at AS first_seen_at,
+           ms.updated_at AS updated_at,
+           skill_ids
+    ORDER BY m.id
+    """
+    out: list[MisconceptionStateOut] = []
+    async with driver.session() as session:
+        result = await session.run(
+            query, student_id=str(student_id), skill_ids=skill_ids
+        )
+        async for rec in result:
+            out.append(
+                MisconceptionStateOut(
+                    misconception_id=rec["misconception_id"],
+                    name=rec["name"],
+                    status=rec["status"],
+                    occurrence_count=int(rec["occurrence_count"]),
+                    strong_count=int(rec["strong_count"]),
+                    consecutive_avoided=int(rec["consecutive_avoided"]),
+                    triggers=_parse_triggers(rec["triggers"]),
+                    first_seen_at=rec["first_seen_at"].to_native(),
+                    updated_at=rec["updated_at"].to_native(),
+                    skill_ids=list(rec["skill_ids"] or []),
+                )
+            )
+    return out
 
 
 async def upsert_misc_state(
@@ -184,9 +307,74 @@ async def upsert_misc_state(
     misconception_id: str,
     status: str,
     counters: dict,
-):
-    """Phase 2: update MisconceptionState (occurrence_count, strong_count, ...)."""
-    raise NotImplementedError("phase 2")
+    triggers: dict | None = None,
+) -> MisconceptionStateOut:
+    """Create or update MisconceptionState — memory-architecture §5.
+
+    MERGE по (student_id, misconception_id). counters: occurrence_count,
+    strong_count, consecutive_avoided. triggers сериализуется в JSON-строку.
+    """
+    import json as _json
+
+    triggers_json = _json.dumps(triggers or {}, ensure_ascii=False)
+    occurrence_count = int(counters.get("occurrence_count", 0))
+    strong_count = int(counters.get("strong_count", 0))
+    consecutive_avoided = int(counters.get("consecutive_avoided", 0))
+    now = datetime.now(UTC).isoformat()
+
+    query = f"""
+    MATCH (st:{L.STUDENT} {{id: $student_id}})
+    MATCH (m:{L.MISCONCEPTION} {{id: $misconception_id}})
+    MERGE (st)-[:{L.HAS_MISC_STATE}]->
+        (ms:{L.MISCONCEPTION_STATE} {{misconception_id: $misconception_id}})
+    ON CREATE SET ms.first_seen_at = datetime($now), ms.created_at = datetime($now)
+    SET ms.status = $status,
+        ms.occurrence_count = $occurrence_count,
+        ms.strong_count = $strong_count,
+        ms.consecutive_avoided = $consecutive_avoided,
+        ms.triggers = $triggers,
+        ms.updated_at = datetime($now),
+        ms.student_id = $student_id
+    MERGE (ms)-[:{L.OF_MISCONCEPTION}]->(m)
+    WITH ms, m
+    OPTIONAL MATCH (m)-[:{L.ABOUT}]->(s:{L.SKILL})
+    WITH ms, m, collect(DISTINCT s.id) AS skill_ids
+    RETURN m.id AS misconception_id, m.name AS name,
+           ms.status AS status,
+           ms.occurrence_count AS occurrence_count,
+           ms.strong_count AS strong_count,
+           ms.consecutive_avoided AS consecutive_avoided,
+           ms.triggers AS triggers,
+           ms.first_seen_at AS first_seen_at,
+           ms.updated_at AS updated_at,
+           skill_ids
+    """
+    async with driver.session() as session:
+        result = await session.run(
+            query,
+            student_id=str(student_id),
+            misconception_id=misconception_id,
+            status=status,
+            occurrence_count=occurrence_count,
+            strong_count=strong_count,
+            consecutive_avoided=consecutive_avoided,
+            triggers=triggers_json,
+            now=now,
+        )
+        rec = await result.single()
+    assert rec is not None
+    return MisconceptionStateOut(
+        misconception_id=rec["misconception_id"],
+        name=rec["name"],
+        status=rec["status"],
+        occurrence_count=int(rec["occurrence_count"]),
+        strong_count=int(rec["strong_count"]),
+        consecutive_avoided=int(rec["consecutive_avoided"]),
+        triggers=_parse_triggers(rec["triggers"]),
+        first_seen_at=rec["first_seen_at"].to_native(),
+        updated_at=rec["updated_at"].to_native(),
+        skill_ids=list(rec["skill_ids"] or []),
+    )
 
 
 async def add_root_cause(
@@ -195,19 +383,198 @@ async def add_root_cause(
     root_skill_id: str,
     confidence: float,
     source: str,
-):
-    """Phase 2: create ROOT_CAUSE edge from evidence to root skill."""
-    raise NotImplementedError("phase 2")
+) -> bool:
+    """Create ROOT_CAUSE edge from Evidence to a Skill — memory-architecture §6.
+
+    evidence_id format: "{event_id}:{skill_id}:{ordinal}" (как возвращает
+    merge_evidence); двухчастная форма фазы 1 читается как ordinal = 0.
+    MERGE по (evidence_id, root_skill_id) — повторный вызов не создаёт дублей.
+    Возвращает True, если ребро создано этим вызовом (правило наблюдателя не
+    считает повтор применённым наблюдением).
+    """
+    query = f"""
+    MATCH (e:{L.EVIDENCE})
+    WHERE e.event_id = $event_id AND e.skill_id = $from_skill
+          AND coalesce(e.ordinal, 0) = $ordinal
+    MATCH (r:{L.SKILL} {{id: $root_skill_id}})
+    MERGE (e)-[rc:{L.ROOT_CAUSE} {{root_skill_id: $root_skill_id}}]->(r)
+    WITH rc, rc.created_at IS NULL AS created
+    SET rc.confidence = $confidence,
+        rc.source = $source,
+        rc.created_at = coalesce(rc.created_at, datetime())
+    RETURN created
+    """
+    event_id_value, from_skill, ordinal = parse_evidence_id(evidence_id)
+    async with driver.session() as session:
+        result = await session.run(
+            query,
+            event_id=event_id_value,
+            from_skill=from_skill,
+            ordinal=ordinal,
+            root_skill_id=root_skill_id,
+            confidence=confidence,
+            source=source,
+        )
+        rec = await result.single()
+    return bool(rec["created"]) if rec is not None else False
 
 
 async def list_evidence(
     driver: AsyncDriver, student_id: UUID, skill_id: str, limit: int = 50
-):
-    """Phase 2: all Evidence for a skill, newest first (for 'why do you think so')."""
-    raise NotImplementedError("phase 2")
+) -> list[EvidenceOut]:
+    """All Evidence for a skill, newest first — memory-architecture §10.5."""
+    query = f"""
+    MATCH (st:{L.STUDENT} {{id: $student_id}})
+          -[:{L.HAS_EVIDENCE}]->(e:{L.EVIDENCE})
+    WHERE e.skill_id = $skill_id
+    RETURN e.event_id AS event_id, coalesce(e.ordinal, 0) AS ordinal,
+           e.skill_id AS skill_id, e.kind AS kind,
+           e.tier AS tier, e.source AS source, e.weight AS weight,
+           e.direction AS direction, e.observed_at AS observed_at,
+           e.summary AS summary,
+           e.ctx_instance_id AS instance_id,
+           e.ctx_message_id AS message_id
+    ORDER BY e.observed_at DESC, e.event_id DESC, ordinal ASC
+    LIMIT $limit
+    """
+    out: list[EvidenceOut] = []
+    async with driver.session() as session:
+        result = await session.run(
+            query,
+            student_id=str(student_id),
+            skill_id=skill_id,
+            limit=limit,
+        )
+        async for rec in result:
+            out.append(
+                EvidenceOut(
+                    evidence_id=evidence_id(
+                        int(rec["event_id"]), rec["skill_id"], int(rec["ordinal"])
+                    ),
+                    event_id=int(rec["event_id"]),
+                    ordinal=int(rec["ordinal"]),
+                    skill_id=rec["skill_id"],
+                    kind=rec["kind"],
+                    tier=int(rec["tier"]),
+                    source=rec["source"],
+                    weight=float(rec["weight"]),
+                    direction=int(rec["direction"]),
+                    observed_at=rec["observed_at"].to_native(),
+                    summary=rec["summary"],
+                    instance_id=_to_uuid(rec["instance_id"]),
+                    message_id=_to_uuid(rec["message_id"]),
+                )
+            )
+    return out
 
 
-# --- helpers ---
+async def list_root_causes(
+    driver: AsyncDriver, student_id: UUID, window_days: int
+) -> list[RootCauseOut]:
+    """All ROOT_CAUSE edges from this student's Evidence in the last window_days."""
+    query = f"""
+    MATCH (st:{L.STUDENT} {{id: $student_id}})
+          -[:{L.HAS_EVIDENCE}]->(e:{L.EVIDENCE})-[rc:{L.ROOT_CAUSE}]->(r:{L.SKILL})
+    WHERE e.observed_at >= datetime() - duration({{days: $window_days}})
+    RETURN e.skill_id AS from_skill_id,
+           r.id AS root_skill_id,
+           rc.confidence AS confidence,
+           rc.source AS source,
+           rc.created_at AS created_at
+    ORDER BY rc.created_at DESC
+    """
+    out: list[RootCauseOut] = []
+    async with driver.session() as session:
+        result = await session.run(
+            query, student_id=str(student_id), window_days=window_days
+        )
+        async for rec in result:
+            out.append(
+                RootCauseOut(
+                    from_skill_id=rec["from_skill_id"],
+                    root_skill_id=rec["root_skill_id"],
+                    confidence=float(rec["confidence"]),
+                    source=rec["source"],
+                    created_at=rec["created_at"].to_native(),
+                )
+            )
+    return out
+
+
+async def get_state_history(
+    driver: AsyncDriver,
+    student_id: UUID,
+    skill_id: str,
+    exam_id: str,
+    n: int = 3,
+) -> list[KnowledgeStateOut]:
+    """Last n KnowledgeStates for (student, skill, exam), newest first.
+
+    Walks PREVIOUS from the current state.
+    """
+    query = f"""
+    MATCH (st:{L.STUDENT} {{id: $student_id}})-[:{L.HAS_STATE}]->(k:{L.KNOWLEDGE_STATE})
+    MATCH (k)-[:{L.FOR_SKILL}]->(s:{L.SKILL} {{id: $skill_id}})
+    WHERE k.exam_id = $exam_id
+    WITH k
+    MATCH path = (k)-[:{L.PREVIOUS}*0..{int(n) - 1}]->(prev:{L.KNOWLEDGE_STATE})
+    RETURN DISTINCT prev
+    LIMIT $n
+    """
+    out: list[KnowledgeStateOut] = []
+    now = datetime.now(UTC)
+    async with driver.session() as session:
+        result = await session.run(
+            query,
+            student_id=str(student_id),
+            skill_id=skill_id,
+            exam_id=exam_id,
+            n=n,
+        )
+        async for rec in result:
+            node = rec["prev"]
+            data = dict(node)
+            out.append(_row_to_state(_dict_to_row(data), now=now))
+    return out
+
+
+def _parse_triggers(value) -> dict:
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    import json as _json
+
+    try:
+        return _json.loads(value)
+    except (ValueError, TypeError):
+        return {}
+
+
+def _str_or_none(value) -> str | None:
+    """Neo4j stores no UUID type — context ids go in as strings."""
+    return None if value is None else str(value)
+
+
+def _to_uuid(value) -> UUID | None:
+    if value is None:
+        return None
+    if isinstance(value, UUID):
+        return value
+    try:
+        return UUID(str(value))
+    except (ValueError, AttributeError):
+        return None
+
+
+def _dict_to_row(data: dict) -> dict:
+    """Wrap a plain dict into a simple attribute-accessor for _row_to_state."""
+
+    class _Row(dict):
+        def __getattr__(self, item):
+            return self[item]
+
+    return _Row(data)
 
 
 def _row_to_state(rec, *, now: datetime) -> KnowledgeStateOut:
@@ -228,4 +595,206 @@ def _row_to_state(rec, *, now: datetime) -> KnowledgeStateOut:
         has_strong=bool(rec["has_strong"]),
         last_observed_at=rec["last_observed_at"].to_native(),
         created_at=rec["created_at"].to_native(),
+    )
+
+
+# --- phase 3: observer writes (docs/tz/phase3-agents.md §3.10, F6) ---
+
+
+async def list_evidence_keys_for_event(
+    driver: AsyncDriver, student_id: UUID, event_id: int
+) -> set[tuple[str, int]]:
+    """`(skill_id, ordinal)` of every Evidence already written by one event —
+    the idempotency guard of `apply.observation` on a repeated dispatch."""
+    query = f"""
+    MATCH (st:{L.STUDENT} {{id: $student_id}})
+          -[:{L.HAS_EVIDENCE}]->(e:{L.EVIDENCE} {{event_id: $event_id}})
+    RETURN e.skill_id AS skill_id, coalesce(e.ordinal, 0) AS ordinal
+    """
+    out: set[tuple[str, int]] = set()
+    async with driver.session() as session:
+        result = await session.run(query, student_id=str(student_id), event_id=event_id)
+        async for rec in result:
+            out.add((rec["skill_id"], int(rec["ordinal"])))
+    return out
+
+
+_CHAT_STATE_CREATE = f"""
+MATCH (st:{L.STUDENT} {{id: $student_id}})
+MERGE (s:{L.SKILL} {{id: $skill_id}})
+WITH st, s
+OPTIONAL MATCH (same:{L.KNOWLEDGE_STATE} {{
+    student_id: $student_id, skill_id: $skill_id,
+    exam_id: $exam_id, source_event_id: $source_event_id
+}})
+WHERE coalesce(same.source_ordinal, 0) = $source_ordinal
+WITH st, s, same
+WHERE same IS NULL
+OPTIONAL MATCH (st)-[old_rel:{L.HAS_STATE}]->(old:{L.KNOWLEDGE_STATE})
+WHERE old.exam_id = $exam_id AND old.skill_id = $skill_id
+CREATE (new:{L.KNOWLEDGE_STATE} {{
+    skill_id: $skill_id, exam_id: $exam_id,
+    p_at_obs: $p_at_obs, half_life_h: $half_life_h,
+    confidence: $confidence, evidence_mass: $evidence_mass,
+    n_correct: $n_correct, n_incorrect: $n_incorrect, n_partial: $n_partial,
+    has_strong: $has_strong, student_id: $student_id,
+    last_observed_at: datetime($last_observed_at),
+    created_at: datetime($created_at),
+    source_event_id: $source_event_id,
+    source_ordinal: $source_ordinal
+}})
+CREATE (new)-[:{L.FOR_SKILL}]->(s)
+CREATE (st)-[:{L.HAS_STATE}]->(new)
+FOREACH (_ IN CASE WHEN old IS NULL THEN [] ELSE [1] END |
+    CREATE (new)-[:{L.PREVIOUS}]->(old)
+    DELETE old_rel
+)
+"""
+
+
+def _state_params(
+    student_id: UUID, state: KnowledgeStateOut, source_event_id: int, ordinal: int
+) -> dict:
+    return dict(
+        student_id=str(student_id),
+        skill_id=state.skill_id,
+        exam_id=state.exam_id,
+        p_at_obs=state.p_at_obs,
+        half_life_h=state.half_life_h,
+        confidence=state.confidence,
+        evidence_mass=state.evidence_mass,
+        n_correct=state.n_correct,
+        n_incorrect=state.n_incorrect,
+        n_partial=state.n_partial,
+        has_strong=state.has_strong,
+        last_observed_at=state.last_observed_at.isoformat(),
+        created_at=state.created_at.isoformat(),
+        source_event_id=source_event_id,
+        source_ordinal=ordinal,
+    )
+
+
+_MISC_STATE_MERGE = f"""
+MATCH (st:{L.STUDENT} {{id: $student_id}})
+MATCH (m:{L.MISCONCEPTION} {{id: $misconception_id}})
+MERGE (st)-[:{L.HAS_MISC_STATE}]->
+    (ms:{L.MISCONCEPTION_STATE} {{misconception_id: $misconception_id}})
+ON CREATE SET ms.first_seen_at = datetime($now), ms.created_at = datetime($now)
+SET ms.status = $status,
+    ms.occurrence_count = $occurrence_count,
+    ms.strong_count = $strong_count,
+    ms.consecutive_avoided = $consecutive_avoided,
+    ms.triggers = $triggers,
+    ms.updated_at = datetime($now),
+    ms.student_id = $student_id
+MERGE (ms)-[:{L.OF_MISCONCEPTION}]->(m)
+RETURN ms.misconception_id AS misconception_id
+"""
+
+
+async def apply_chat_observation_tx(
+    driver: AsyncDriver,
+    student_id: UUID,
+    evidence: EvidenceIn,
+    new_state: KnowledgeStateOut,
+    misc: MisconceptionChange | None,
+    triggers: dict | None,
+    source_event_id: int,
+    *,
+    cross_state: KnowledgeStateOut | None = None,
+) -> str:
+    """Write one chat observation in one Neo4j transaction.
+
+    MERGE `Evidence{event_id, skill_id, ordinal}` with its context, CREATE the
+    next `KnowledgeState` (+ `PREVIOUS`, + the cross-exam state for a shared
+    skill), MERGE the `MisconceptionState`. Either all of it lands or none —
+    a half-applied observation would be skipped as `already_applied` on the
+    next dispatch while its state change is missing.
+
+    The state is keyed by `(source_event_id, ordinal)`: two observations of
+    one skill in one event are two consecutive states, and a replay of the
+    same observation writes nothing.
+    """
+    import json as _json
+
+    ev_params = _evidence_params(student_id, evidence)
+    state_params = _state_params(
+        student_id, new_state, source_event_id, evidence.ordinal
+    )
+    cross_params = (
+        _state_params(student_id, cross_state, source_event_id, evidence.ordinal)
+        if cross_state is not None
+        else None
+    )
+    misc_params = None
+    if misc is not None:
+        misc_params = dict(
+            student_id=str(student_id),
+            misconception_id=misc.misconception_id,
+            status=misc.to_status,
+            occurrence_count=int(misc.counters.get("occurrence_count", 0)),
+            strong_count=int(misc.counters.get("strong_count", 0)),
+            consecutive_avoided=int(misc.counters.get("consecutive_avoided", 0)),
+            triggers=_json.dumps(triggers or {}, ensure_ascii=False),
+            now=datetime.now(UTC).isoformat(),
+        )
+
+    async def work(tx) -> str:
+        result = await tx.run(_EVIDENCE_MERGE, **ev_params)
+        rec = await result.single()
+        if rec is None:
+            raise LookupError(f"student {student_id} not in graph")
+        await (await tx.run(_CHAT_STATE_CREATE, **state_params)).consume()
+        if cross_params is not None:
+            await (await tx.run(_CHAT_STATE_CREATE, **cross_params)).consume()
+        if misc_params is not None:
+            misc_rec = await (await tx.run(_MISC_STATE_MERGE, **misc_params)).single()
+            if misc_rec is None:
+                raise LookupError(f"misconception {misc_params['misconception_id']}")
+        return evidence_id(int(rec["event_id"]), rec["skill_id"], int(rec["ordinal"]))
+
+    async with driver.session() as session:
+        return await session.execute_write(work)
+
+
+async def latest_incorrect_evidence(
+    driver: AsyncDriver, student_id: UUID, skill_id: str
+) -> EvidenceOut | None:
+    """Newest Evidence with `direction = -1` for one skill — what a
+    `root_hint` from the observer is attached to (§6)."""
+    query = f"""
+    MATCH (st:{L.STUDENT} {{id: $student_id}})
+          -[:{L.HAS_EVIDENCE}]->(e:{L.EVIDENCE})
+    WHERE e.skill_id = $skill_id AND e.direction = -1
+    RETURN e.event_id AS event_id, coalesce(e.ordinal, 0) AS ordinal,
+           e.skill_id AS skill_id, e.kind AS kind,
+           e.tier AS tier, e.source AS source, e.weight AS weight,
+           e.direction AS direction, e.observed_at AS observed_at,
+           e.summary AS summary,
+           e.ctx_instance_id AS instance_id,
+           e.ctx_message_id AS message_id
+    ORDER BY e.observed_at DESC, e.event_id DESC, ordinal DESC
+    LIMIT 1
+    """
+    async with driver.session() as session:
+        result = await session.run(query, student_id=str(student_id), skill_id=skill_id)
+        rec = await result.single()
+    if rec is None:
+        return None
+    return EvidenceOut(
+        evidence_id=evidence_id(
+            int(rec["event_id"]), rec["skill_id"], int(rec["ordinal"])
+        ),
+        event_id=int(rec["event_id"]),
+        ordinal=int(rec["ordinal"]),
+        skill_id=rec["skill_id"],
+        kind=rec["kind"],
+        tier=int(rec["tier"]),
+        source=rec["source"],
+        weight=float(rec["weight"]),
+        direction=int(rec["direction"]),
+        observed_at=rec["observed_at"].to_native(),
+        summary=rec["summary"],
+        instance_id=_to_uuid(rec["instance_id"]),
+        message_id=_to_uuid(rec["message_id"]),
     )

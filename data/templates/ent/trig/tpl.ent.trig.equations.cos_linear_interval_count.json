@@ -1,0 +1,61 @@
+{
+  "id": "tpl.ent.trig.equations.cos_linear_interval_count",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 2,
+  "skill_id": "ent.trig.equations",
+  "tags": [
+    "cosine",
+    "linear",
+    "interval",
+    "root_selection"
+  ],
+  "time_reference_sec": 120,
+  "kind": "template",
+  "params": {
+    "k": {
+      "range": [
+        1,
+        3
+      ],
+      "choices": null
+    },
+    "a": {
+      "range": [
+        2,
+        5
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "a > k"
+  ],
+  "stem": "Решите уравнение cos(x) = {k}/{a}. Найдите количество корней этого уравнения на промежутке [0; 2*pi].",
+  "correct": "2",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "1",
+      "misconception_id": "lib.trig_period_missing"
+    },
+    {
+      "expr": "0",
+      "misconception_id": null
+    },
+    {
+      "expr": "4",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Уравнение cos(x) = {k}/{a} имеет решения, так как 0 < {k}/{a} < 1.",
+    "На промежутке [0; 2*pi] функция cos(x) принимает каждое положительное значение, меньшее 1, ровно два раза: один раз в первой четверти и один раз в четвёртой.",
+    "Следовательно, уравнение cos(x) = {k}/{a} имеет ровно два корня на указанном промежутке.",
+    "Ответ: {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

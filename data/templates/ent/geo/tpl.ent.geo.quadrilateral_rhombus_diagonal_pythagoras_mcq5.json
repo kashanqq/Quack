@@ -1,0 +1,68 @@
+{
+  "id": "tpl.ent.geo.quadrilateral_rhombus_diagonal_pythagoras_mcq5",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 4,
+  "skill_id": "ent.geo.quadrilateral",
+  "tags": [
+    "rhombus",
+    "diagonal",
+    "pythagoras"
+  ],
+  "time_reference_sec": 120,
+  "kind": "template",
+  "params": {
+    "d1": {
+      "range": [
+        6,
+        16
+      ],
+      "choices": null
+    },
+    "d2": {
+      "range": [
+        8,
+        20
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "d1 % 2 == 0",
+    "d2 % 2 == 0",
+    "d1 != d2",
+    "d1 > d2"
+  ],
+  "stem": "Диагонали ромба равны {d1} и {d2}. Найдите сторону ромба.",
+  "correct": "sqrt((d1/2)**2 + (d2/2)**2)",
+  "distractors": [
+    {
+      "expr": "sqrt(d1**2 + d2**2)",
+      "misconception_id": "lib.pythagoras_leg_hypotenuse"
+    },
+    {
+      "expr": "sqrt(d1**2 - d2**2)",
+      "misconception_id": "lib.pythagoras_leg_hypotenuse"
+    },
+    {
+      "expr": "(d1 + d2) / 2",
+      "misconception_id": "lib.area_perimeter_mix"
+    },
+    {
+      "expr": "d1 + d2",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Диагонали ромба пересекаются под прямым углом и делятся точкой пересечения пополам.",
+    "Половины диагоналей равны {d1}/2 и {d2}/2.",
+    "Сторона ромба — гипотенуза прямоугольного треугольника с катетами {d1}/2 и {d2}/2.",
+    "По теореме Пифагора: a = √(({d1}/2)² + ({d2}/2)²).",
+    "Ответ: вариант {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

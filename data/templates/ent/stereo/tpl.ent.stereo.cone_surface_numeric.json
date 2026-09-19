@@ -1,0 +1,60 @@
+{
+  "id": "tpl.ent.stereo.cone_surface_numeric",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 3,
+  "skill_id": "ent.stereo.cone_sphere",
+  "tags": [
+    "cone",
+    "surface_area",
+    "lateral_surface"
+  ],
+  "time_reference_sec": 120,
+  "kind": "template",
+  "params": {
+    "r": {
+      "range": [
+        3,
+        10
+      ],
+      "choices": null
+    },
+    "l": {
+      "range": [
+        5,
+        15
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "l > r",
+    "l % 2 == 0",
+    "r % 2 == 0"
+  ],
+  "stem": "Радиус основания конуса равен {r}, а образующая равна {l}. Найдите площадь боковой поверхности конуса.",
+  "correct": "pi*r*l",
+  "distractors": [],
+  "omission_traps": [],
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "pi*r*l + pi*r**2",
+      "misconception_id": "lib.lateral_vs_total_surface"
+    },
+    {
+      "expr": "pi*r**2*l",
+      "misconception_id": null
+    },
+    {
+      "expr": "2*pi*r*l",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Площадь боковой поверхности конуса равна S_бок = π·r·l, где r — радиус основания, l — образующая.",
+    "Подставляем значения: S_бок = π·{r}·{l} = {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

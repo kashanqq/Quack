@@ -29,9 +29,18 @@ def knowledge_version(student_id: str) -> str:
     return f"quack:knowledge:version:{student_id}"
 
 
+def forecast(student_id: str, exam_id: str) -> str:
+    return f"quack:forecast:{student_id}:{exam_id}"
+
+
 def ctx_topic(student_id: str, skill_id: str) -> str:
     return f"quack:ctx:topic:{student_id}:{skill_id}"
 
 
 def lock(name: str) -> str:
     return f"quack:lock:{name}"
+
+
+def matching_snapshot(student_id: str) -> str:
+    """Last matching the selection assistant showed (docs/tz/phase3 §3.3)."""
+    return f"quack:matching:snapshot:{student_id}"

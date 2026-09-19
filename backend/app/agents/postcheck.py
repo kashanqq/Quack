@@ -7,9 +7,12 @@ right to state a figure the tools never returned. `check_facts` is the
 mechanical half of that: it only compares text against tool output: it
 does not know *why* a number is wrong, only that it wasn't returned.
 
-Phase 1 scope: this is a standalone pure function only. Wiring it into the
-assistant's tool-calling loop as the last step before `done` (tech-stack
-§4.3: "Последний шаг перед done") is phase 2.
+Phase 3 (docs/tz/phase3-agents.md §3.6, F17): both agents call it after the
+tool loop and before `done`. `scope="exam_facts"` is the tutor's narrower
+sweep (dates, percents, and numbers only in sentences about the exam or
+admission — a tutor's own algebra is not a dataset fact); `extra_values`
+adds what the student said and what the system prompt showed as
+authoritative; `max_questions` is the selection assistant's "≤ 2 questions".
 
 This module must stay free of I/O: no app.db, app.graph, app.llm,
 sqlalchemy, neo4j, redis or openai imports — only the standard library,
@@ -20,7 +23,9 @@ enforces this by import.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -75,9 +80,28 @@ _DATE_RU_NOYEAR_RE = re.compile(
 _MONTH_WORD_RE = re.compile(rf"\b({_MONTH_ALT})\b", re.IGNORECASE)
 
 
+# A number in the tutor's reply is a *fact* only inside a sentence about the
+# exam or admission (§3.6); everywhere else it is the maths of the task.
+_EXAM_FACT_MARKERS = re.compile(
+    r"балл|заданий|задания|минут|модул|секци|раздел|шкал|максимум|проходн|"
+    r"порог|дедлайн|регистрац|подач|стоимост|цена|тенге|доллар|евро|"
+    r"CHF|USD|EUR|KZT",
+    re.IGNORECASE,
+)
+_SENTENCE_RE = re.compile(r"[^.!?\n]+(?:[.!?]+|$)")
+# Characters that make a number part of an expression rather than a fact:
+# "x = 3", "2x − 6", "3/4".
+_MATH_NEIGHBOURS = set("=+−-*/^<>≤≥×÷") | set(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+)
+
+Scope = Literal["all", "exam_facts"]
+
+
 class PostcheckResult(BaseModel):
     ok: bool
     mismatches: list[str]
+    questions: int = 0
 
 
 def _overlaps(a: tuple[int, int], b: tuple[int, int]) -> bool:
@@ -146,8 +170,11 @@ def _extract_dates(
     return found
 
 
-def _extract_numbers(text: str, exclude_spans: list[tuple[int, int]]) -> list[float]:
-    numbers: list[float] = []
+def _extract_numbers(
+    text: str, exclude_spans: list[tuple[int, int]]
+) -> list[tuple[float, bool, tuple[int, int]]]:
+    """(value, is_percent, span) of every checkable number in `text`."""
+    numbers: list[tuple[float, bool, tuple[int, int]]] = []
     for m in _NUMBER_RE.finditer(text):
         span = m.span()
         if any(_overlaps(span, s) for s in exclude_spans):
@@ -165,8 +192,27 @@ def _extract_numbers(text: str, exclude_spans: list[tuple[int, int]]) -> list[fl
             and int(value) in _STANDALONE_YEAR_RANGE
         ):
             continue
-        numbers.append(value)
+        numbers.append((value, has_percent, span))
     return numbers
+
+
+def _fact_sentence_spans(text: str) -> list[tuple[int, int]]:
+    return [
+        m.span()
+        for m in _SENTENCE_RE.finditer(text)
+        if _EXAM_FACT_MARKERS.search(m.group(0))
+    ]
+
+
+def _is_math(text: str, span: tuple[int, int]) -> bool:
+    """The number sits in an expression: its nearest non-space neighbour is
+    an operator or a variable."""
+    before = text[: span[0]].rstrip()
+    after = text[span[1] :].lstrip()
+    return bool(
+        (before and before[-1] in _MATH_NEIGHBOURS)
+        or (after and after[0] in _MATH_NEIGHBOURS)
+    )
 
 
 def _walk(value: object) -> list[object]:
@@ -217,12 +263,20 @@ def _format_date(value: date | tuple[int, int]) -> str:
     return f"{month:02d}-{day:02d}"
 
 
-def check_facts(text: str, tool_results: list[ToolResult]) -> PostcheckResult:
+def check_facts(
+    text: str,
+    tool_results: list[ToolResult],
+    *,
+    scope: Scope = "all",
+    extra_values: Iterable[float | date] = (),
+    max_questions: int | None = None,
+) -> PostcheckResult:
     """Check that every number/date in `text` is backed by `tool_results`.
 
     Numbers: integers and decimals, including space-grouped thousands
     (``1 500``), currency-adjacent (``1 500 CHF``) and percentages — matched
-    with formatting stripped, so ``1500`` and ``1 500`` are the same value.
+    with formatting stripped, so ``1500`` and ``1 500`` are the same value;
+    a percentage also matches its fraction (``85%`` ↔ ``0.85``).
     A bare, unformatted number from 2024-2030 is never checked (a stray
     "в 2027 году" would otherwise false-positive against every tool call).
 
@@ -232,20 +286,49 @@ def check_facts(text: str, tool_results: list[ToolResult]) -> PostcheckResult:
 
     `tool_results` values are collected recursively (dicts and lists to any
     depth); string values that parse as ISO dates are normalized to `date`
-    before comparison. Empty `tool_results` with numbers/dates in `text`
-    is a mismatch (a figure stated without ever calling a tool); text with
-    no numbers or dates is always `ok=True`.
+    before comparison. A result with an `error` contributes nothing.
+    `extra_values` are authoritative too (profile fields shown to the model,
+    numbers the student typed this turn). Empty `tool_results` with numbers or
+    dates in `text` is a mismatch (a figure stated without ever calling a
+    tool); text with no numbers or dates is always `ok=True`.
+
+    `scope="exam_facts"` checks every date and every percentage, and other
+    numbers only in sentences that talk about the exam or admission, skipping
+    numbers inside expressions. `max_questions` fails a reply with more
+    question marks than that.
     """
     dates_in_text = _extract_dates(text)
     date_spans = [span for span, _ in dates_in_text]
     numbers_in_text = _extract_numbers(text, date_spans)
+    if scope == "exam_facts":
+        fact_spans = _fact_sentence_spans(text)
+        numbers_in_text = [
+            (value, pct, span)
+            for value, pct, span in numbers_in_text
+            if pct
+            or (
+                any(_overlaps(span, s) for s in fact_spans) and not _is_math(text, span)
+            )
+        ]
 
-    result_numbers, result_dates = _collect_result_values(tool_results)
+    result_numbers, result_dates = _collect_result_values(
+        [r for r in tool_results if r.error is None]
+    )
+    for extra in extra_values:
+        if isinstance(extra, date):
+            result_dates.add(extra)
+        elif isinstance(extra, int | float) and not isinstance(extra, bool):
+            result_numbers.append(float(extra))
 
     mismatches: list[str] = []
 
-    for value in numbers_in_text:
-        if not any(abs(value - rv) < 1e-6 for rv in result_numbers):
+    for value, is_percent, _span in numbers_in_text:
+        candidates = [value, value / 100] if is_percent else [value]
+        if not any(
+            abs(candidate - rv) < 1e-6
+            for candidate in candidates
+            for rv in result_numbers
+        ):
             mismatches.append(_format_number(value))
 
     for _span, value in dates_in_text:
@@ -257,4 +340,23 @@ def check_facts(text: str, tool_results: list[ToolResult]) -> PostcheckResult:
         if not matched:
             mismatches.append(_format_date(value))
 
-    return PostcheckResult(ok=not mismatches, mismatches=mismatches)
+    questions = text.count("?")
+    if max_questions is not None and questions > max_questions:
+        mismatches.append(f"questions>{max_questions}")
+
+    return PostcheckResult(
+        ok=not mismatches, mismatches=mismatches, questions=questions
+    )
+
+
+def numbers_and_dates(text: str) -> list[float | date]:
+    """Every number and full date in free text — what the student said this
+    turn, passed back as `extra_values`."""
+    dates = _extract_dates(text)
+    values: list[float | date] = [
+        value for _span, value in dates if isinstance(value, date)
+    ]
+    values.extend(
+        value for value, _pct, _span in _extract_numbers(text, [s for s, _ in dates])
+    )
+    return values

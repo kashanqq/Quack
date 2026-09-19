@@ -1,0 +1,66 @@
+{
+  "id": "tpl.ent.stereo.pyramid_regular_surface",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 3,
+  "skill_id": "ent.stereo.pyramid",
+  "tags": [
+    "regular_pyramid",
+    "surface_area",
+    "apothem"
+  ],
+  "time_reference_sec": 120,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        4,
+        10
+      ],
+      "choices": null
+    },
+    "l": {
+      "range": [
+        5,
+        13
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "a % 2 == 0",
+    "l > a/2"
+  ],
+  "stem": "В правильной четырёхугольной пирамиде сторона основания равна {a}, апофема равна {l}. Найдите площадь полной поверхности пирамиды.",
+  "correct": "a*a + 2*a*l",
+  "distractors": [
+    {
+      "expr": "2*a*l",
+      "misconception_id": "lib.lateral_vs_total_surface"
+    },
+    {
+      "expr": "a*a + 4*a*l",
+      "misconception_id": null
+    },
+    {
+      "expr": "a*a + 2*a*sqrt(l*l - (a/2)*(a/2))",
+      "misconception_id": "lib.apothem_vs_height"
+    },
+    {
+      "expr": "a*a + 2*a*l/3",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Площадь основания — квадрат со стороной {a}: S_осн = {a}².",
+    "Боковая поверхность правильной пирамиды равна S_бок = (1/2)·P_осн·l, где P_осн = 4·{a} — периметр основания.",
+    "S_бок = (1/2)·4·{a}·{l} = 2·{a}·{l}.",
+    "Полная поверхность: S_полн = S_осн + S_бок = {a}² + 2·{a}·{l}.",
+    "Ответ: вариант {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

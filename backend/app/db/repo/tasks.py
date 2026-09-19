@@ -3,9 +3,10 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models import Event as EventRow
 from app.db.models import (
     SeenTemplate,
 )
@@ -57,8 +58,21 @@ async def upsert_template(session: AsyncSession, spec: TaskTemplateSpec) -> None
 
 
 async def insert_instance(
-    session: AsyncSession, student_id: UUID, inst: TaskInstance
+    session: AsyncSession,
+    student_id: UUID,
+    inst: TaskInstance,
+    *,
+    mode: str | None = None,
+    issued_event_id: int | None = None,
 ) -> None:
+    """Persist one generated instance.
+
+    ``mode`` and ``issued_event_id`` are stored here, not patched afterwards:
+    the answer route reads ``mode`` back to validate the answer against the
+    mode the task was issued in, and ``issued_event_id`` is what ties the
+    instance to its ``task.issued`` event (the observer window and
+    `explain_belief` walk that link).
+    """
     session.add(
         InstanceRow(
             **inst.model_dump(exclude={"options", "trap_answers", "solution_rendered"}),
@@ -66,9 +80,18 @@ async def insert_instance(
             options=[item.model_dump(mode="json") for item in inst.options],
             trap_answers=[item.model_dump(mode="json") for item in inst.trap_answers],
             solution_rendered=inst.solution_rendered,
+            mode=mode,
+            issued_event_id=issued_event_id,
         )
     )
     await session.flush()
+
+
+async def get_answered_at(session: AsyncSession, instance_id: UUID) -> datetime | None:
+    """When this instance was answered, or None — the replay guard of §8.2."""
+    return await session.scalar(
+        select(InstanceRow.answered_at).where(InstanceRow.id == instance_id)
+    )
 
 
 async def get_instance(
@@ -112,3 +135,169 @@ async def get_seen(
         .where(SeenTemplate.student_id == student_id, TemplateRow.skill_id == skill_id)
     )
     return dict(rows.all())
+
+
+async def list_templates_for_skills(
+    session: AsyncSession, skill_ids: list[str]
+) -> dict[str, list[TaskTemplateSpec]]:
+    if not skill_ids:
+        return {}
+    rows = (
+        await session.scalars(
+            select(TemplateRow)
+            .where(TemplateRow.skill_id.in_(skill_ids))
+            .order_by(TemplateRow.skill_id, TemplateRow.id)
+        )
+    ).all()
+    grouped: dict[str, list[TaskTemplateSpec]] = {}
+    for row in rows:
+        grouped.setdefault(row.skill_id, []).append(
+            TaskTemplateSpec.model_validate(row.spec)
+        )
+    return grouped
+
+
+async def get_seen_many(
+    session: AsyncSession, student_id: UUID, skill_ids: list[str]
+) -> dict[str, int]:
+    if not skill_ids:
+        return {}
+    rows = await session.execute(
+        select(SeenTemplate.template_id, SeenTemplate.n_seen)
+        .join(TemplateRow, TemplateRow.id == SeenTemplate.template_id)
+        .where(
+            SeenTemplate.student_id == student_id,
+            TemplateRow.skill_id.in_(skill_ids),
+        )
+    )
+    return dict(rows.all())
+
+
+async def mark_answered(
+    session: AsyncSession,
+    instance_id: UUID,
+    answered_at: datetime,
+    correct: bool,
+) -> None:
+    await session.execute(
+        update(InstanceRow)
+        .where(InstanceRow.id == instance_id)
+        .values(answered_at=answered_at, correct=correct)
+    )
+    await session.flush()
+
+
+async def last_grades_for_skill(
+    session: AsyncSession, student_id: UUID, skill_id: str, limit: int = 2
+) -> list[bool]:
+    """Last answered grades for one skill, oldest first — input to `pick_template`."""
+    rows = (
+        await session.scalars(
+            select(InstanceRow.correct)
+            .where(
+                InstanceRow.student_id == student_id,
+                InstanceRow.skill_id == skill_id,
+                InstanceRow.answered_at.is_not(None),
+                InstanceRow.correct.is_not(None),
+            )
+            .order_by(InstanceRow.answered_at.desc())
+            .limit(limit)
+        )
+    ).all()
+    return [bool(value) for value in reversed(rows)]
+
+
+async def list_instances(
+    session: AsyncSession, student_id: UUID, ids: list[UUID]
+) -> list[TaskInstance]:
+    if not ids:
+        return []
+    rows = (
+        await session.scalars(
+            select(InstanceRow).where(
+                InstanceRow.student_id == student_id, InstanceRow.id.in_(ids)
+            )
+        )
+    ).all()
+    fields = TaskInstance.model_fields
+    by_id = {
+        row.id: TaskInstance.model_validate(
+            {name: getattr(row, name) for name in fields}
+        )
+        for row in rows
+    }
+    return [by_id[instance_id] for instance_id in ids if instance_id in by_id]
+
+
+async def list_open_chat_instances(
+    session: AsyncSession, student_id: UUID, chat_id: UUID
+) -> list[TaskInstance]:
+    """Instances handed over in this chat (`task.issued.chat_id`) and not yet
+    answered — the tasks the observer may see answered in its window, even
+    when `task.issued` itself was processed with an earlier window."""
+    rows = (
+        await session.scalars(
+            select(InstanceRow)
+            .join(EventRow, EventRow.id == InstanceRow.issued_event_id)
+            .where(
+                InstanceRow.student_id == student_id,
+                InstanceRow.answered_at.is_(None),
+                EventRow.chat_id == chat_id,
+            )
+            .order_by(InstanceRow.issued_event_id)
+        )
+    ).all()
+    fields = TaskInstance.model_fields
+    return [
+        TaskInstance.model_validate({name: getattr(row, name) for name in fields})
+        for row in rows
+    ]
+
+
+async def issued_event_ids(
+    session: AsyncSession, student_id: UUID, instance_ids: list[UUID]
+) -> dict[UUID, int]:
+    """instance id -> id of its `task.issued` event (instances without one are
+    left out)."""
+    if not instance_ids:
+        return {}
+    rows = await session.execute(
+        select(InstanceRow.id, InstanceRow.issued_event_id).where(
+            InstanceRow.student_id == student_id,
+            InstanceRow.id.in_(instance_ids),
+            InstanceRow.issued_event_id.is_not(None),
+        )
+    )
+    return {instance_id: int(event_id) for instance_id, event_id in rows.all()}
+
+
+async def chat_outcomes(
+    session: AsyncSession, student_id: UUID, chat_id: UUID
+) -> list[bool]:
+    """Grades of the answered tasks issued in this chat, oldest answer first —
+    what the tutor counts consecutive failures from."""
+    rows = (
+        await session.scalars(
+            select(InstanceRow.correct)
+            .join(EventRow, EventRow.id == InstanceRow.issued_event_id)
+            .where(
+                InstanceRow.student_id == student_id,
+                InstanceRow.answered_at.is_not(None),
+                InstanceRow.correct.is_not(None),
+                EventRow.chat_id == chat_id,
+            )
+            .order_by(InstanceRow.answered_at)
+        )
+    ).all()
+    return [bool(value) for value in rows]
+
+
+async def get_outcome(
+    session: AsyncSession, student_id: UUID, instance_id: UUID
+) -> bool | None:
+    """`correct` of one answered instance, None while unanswered."""
+    return await session.scalar(
+        select(InstanceRow.correct).where(
+            InstanceRow.id == instance_id, InstanceRow.student_id == student_id
+        )
+    )

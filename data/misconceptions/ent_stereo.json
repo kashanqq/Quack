@@ -1,0 +1,34 @@
+[
+  {
+    "id": "lib.volume_third_dropped",
+    "name": "Забывает треть в объёме пирамиды и конуса",
+    "description": "Ученик считает объём пирамиды или конуса как произведение площади основания на высоту, не деля на три, — то есть берёт формулу призмы или цилиндра.",
+    "error_class": "procedural",
+    "skill_ids": ["ent.stereo.pyramid", "ent.stereo.cone_sphere"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.lateral_vs_total_surface",
+    "name": "Путает боковую и полную поверхность",
+    "description": "Ученик на вопрос о полной поверхности даёт боковую, не прибавляя площади оснований, или наоборот — прибавляет основания там, где спрашивают только боковую.",
+    "error_class": "attention",
+    "skill_ids": ["ent.stereo.prism", "ent.stereo.cylinder"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.apothem_vs_height",
+    "name": "Подставляет апофему или образующую вместо высоты",
+    "description": "Ученик берёт апофему пирамиды или образующую конуса как высоту тела, не связывая их с высотой теоремой Пифагора, из-за чего объём выходит завышенным.",
+    "error_class": "conceptual",
+    "skill_ids": ["ent.stereo.pyramid", "ent.stereo.cone_sphere"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.sphere_formula_swap",
+    "name": "Меняет местами формулы объёма и поверхности шара",
+    "description": "Ученик берёт 4πR² там, где нужен объём (4/3)πR³, или наоборот подставляет кубическую формулу в вопрос о площади поверхности.",
+    "error_class": "conceptual",
+    "skill_ids": ["ent.stereo.cone_sphere"],
+    "exam_specific": null
+  }
+]

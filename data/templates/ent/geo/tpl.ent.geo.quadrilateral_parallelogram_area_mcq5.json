@@ -1,0 +1,62 @@
+{
+  "id": "tpl.ent.geo.quadrilateral_parallelogram_area_mcq5",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 2,
+  "skill_id": "ent.geo.quadrilateral",
+  "tags": [
+    "parallelogram",
+    "area"
+  ],
+  "time_reference_sec": 60,
+  "kind": "template",
+  "params": {
+    "base": {
+      "range": [
+        6,
+        15
+      ],
+      "choices": null
+    },
+    "height": {
+      "range": [
+        4,
+        12
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "base != height"
+  ],
+  "stem": "Сторона параллелограмма равна {base}, высота, проведённая к этой стороне, равна {height}. Найдите площадь параллелограмма.",
+  "correct": "base * height",
+  "distractors": [
+    {
+      "expr": "2 * (base + height)",
+      "misconception_id": "lib.area_perimeter_mix"
+    },
+    {
+      "expr": "base * height / 2",
+      "misconception_id": "lib.area_half_dropped"
+    },
+    {
+      "expr": "base + height",
+      "misconception_id": "lib.area_perimeter_mix"
+    },
+    {
+      "expr": "base * height + 2 * (base + height)",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Площадь параллелограмма равна произведению стороны на высоту, проведённую к этой стороне.",
+    "S = {base} · {height}.",
+    "Ответ: вариант {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

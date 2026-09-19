@@ -5,7 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from app.schemas.common import ExamId, TaskType
+from app.schemas.common import ExamId, TaskMode, TaskType
+from app.schemas.knowledge import MisconceptionChange
 
 
 class ParamSpec(BaseModel):
@@ -70,6 +71,45 @@ class TaskInstance(BaseModel):
     tags: list[str]
 
 
+class OptionOut(BaseModel):
+    key: str
+    text: str
+
+
+class TaskInstanceOut(BaseModel):
+    id: UUID
+    template_id: str
+    exam_id: ExamId
+    type: TaskType
+    skill_id: str
+    stem_rendered: str
+    options: list[OptionOut]
+    figure_url: str | None
+    time_reference_sec: int
+    difficulty: int
+    tags: list[str]
+    mode: TaskMode
+    provenance: Literal["template", "manual"]
+
+
+class TaskRequestIn(BaseModel):
+    skill_id: str | None
+    set_id: UUID | None
+    mode: TaskMode = "topic"
+    with_trap: str | None
+    exclude_seen: bool = True
+    # Запрошенная сложность по шкале экзамена (1–5). Её заполняет репетитор
+    # через `get_task(GetTaskArgs.difficulty)`; пусто — сложность выбирается
+    # по последним ответам ученика (tasks.select).
+    difficulty: int | None = None
+
+
+class TaskSkipIn(BaseModel):
+    instance_id: UUID
+    reason: Literal["skipped", "timed_out"]
+    time_spent_sec: int
+
+
 class Grade(BaseModel):
     correct: bool
     matched_misconception_id: str | None = None
@@ -90,4 +130,6 @@ class AnswerResult(BaseModel):
     grade: Grade
     solution: list[str]
     state_after: Any = None
-    misconception_change: str | None = None
+    misconception_change: MisconceptionChange | None = None
+    state_words: str
+    knowledge_version: int

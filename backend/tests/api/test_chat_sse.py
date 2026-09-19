@@ -39,7 +39,10 @@ def _setup(monkeypatch, script):
     saved_events = []
     saved_messages = []
 
-    async def append(_session, _redis, event):
+    async def append(_session, _redis, event, deps=None, *, dispatch_event=True):
+        # Реплики чата — окно наблюдателя: транспорт обязан просить
+        # «не диспетчеризовать» явно, а не полагаться на deps=None.
+        assert dispatch_event is False
         saved_events.append(event)
         return SimpleNamespace(id=len(saved_events))
 

@@ -1,0 +1,62 @@
+{
+  "id": "tpl.ent.alg.quadratic_factor_numeric",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 3,
+  "skill_id": "math.alg.quadratic_roots",
+  "tags": [
+    "factorization",
+    "roots",
+    "numeric"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "r1": {
+      "range": [
+        -6,
+        6
+      ],
+      "choices": null
+    },
+    "r2": {
+      "range": [
+        -6,
+        6
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "r1 != r2",
+    "r1 != 0",
+    "r2 != 0",
+    "r1 + r2 != 0"
+  ],
+  "stem": "Корни квадратного уравнения x² + px + q = 0 равны {r1} и {r2}. Найдите значение коэффициента p.",
+  "correct": "-(r1 + r2)",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "r1 + r2",
+      "misconception_id": "lib.vieta_sign_confusion"
+    },
+    {
+      "expr": "r1 * r2",
+      "misconception_id": "lib.vieta_sign_confusion"
+    },
+    {
+      "expr": "-(r1 * r2)",
+      "misconception_id": "lib.vieta_sign_confusion"
+    }
+  ],
+  "solution": [
+    "По теореме Виета для уравнения x² + px + q = 0 сумма корней равна −p.",
+    "Сумма данных корней равна {r1} + {r2}.",
+    "Следовательно, −p = {r1} + {r2}, откуда p = −({r1} + {r2}) = {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

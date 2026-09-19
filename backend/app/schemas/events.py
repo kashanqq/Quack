@@ -1,17 +1,15 @@
 """Shared event and Phase 1 payload contracts."""
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.schemas.common import ExamId
-
-TaskMode = Literal[
-    "topic", "mock_set", "mock_topic", "mock_misconception", "diagnostic", "chat"
-]
+from app.schemas.common import ErrorClass, ExamId, MockKind, TaskMode
+from app.schemas.diagnostic import DiagnosticResult, DiagnosticState
+from app.schemas.observer import Observation
 
 
 class EventType(StrEnum):
@@ -37,6 +35,7 @@ class EventType(StrEnum):
     misconception_undisputed = "misconception.undisputed"
     skill_personal_created = "skill.personal_created"
     misconception_personal_created = "misconception.personal_created"
+    misconception_canonized = "misconception.canonized"
     profile_updated = "profile.updated"
     program_saved = "program.saved"
     program_removed = "program.removed"
@@ -113,3 +112,125 @@ class ProfileUpdatedPayload(_Payload):
 
 class ProgramSavedPayload(_Payload):
     program_id: str
+
+
+class TaskSkippedPayload(_Payload):
+    instance_id: UUID
+    mode: TaskMode
+    time_spent_sec: int
+
+
+class DiagnosticProgressPayload(_Payload):
+    run_id: UUID
+    state: DiagnosticState
+
+
+class DiagnosticCompletedPayload(_Payload):
+    run_id: UUID
+    result: DiagnosticResult
+
+
+class MockStartedPayload(_Payload):
+    run_id: UUID
+    kind: MockKind
+    exam_id: ExamId
+    predicted_before: float | None
+
+
+class MockCompletedPayload(_Payload):
+    run_id: UUID
+    raw_score: float
+    scaled_score: float | None
+    predicted_before: float | None
+
+
+class SetOpenedPayload(_Payload):
+    set_id: UUID
+    skill_ids: list[str]
+
+
+class SetCompletedPayload(_Payload):
+    set_id: UUID
+
+
+class SetSwitchedByUserPayload(_Payload):
+    from_set_id: UUID | None
+    to_set_id: UUID
+
+
+class SetDeadlineChangedPayload(_Payload):
+    set_id: UUID
+    old: date
+    new: date
+
+
+class TopicOpenedPayload(_Payload):
+    set_id: UUID
+    skill_id: str
+
+
+class TopicCompletedPayload(_Payload):
+    set_id: UUID
+    skill_id: str
+
+
+class MisconceptionDisputedPayload(_Payload):
+    misconception_id: str
+
+
+class MilestoneDonePayload(_Payload):
+    milestone_key: str
+    done: bool
+
+
+# --- phase 3: observer, canonization, job failures (phase3-agents §5.1 C5) ---
+
+
+class ObservationExtractedPayload(_Payload):
+    """The observer's output, whole — including observations the rule will
+    later skip (low confidence, unknown ids): the event records what the model
+    said, the rule decides what to apply."""
+
+    observations: list[Observation]
+    window_from_event_id: int | None
+    window_to_event_id: int | None
+    topic_skill_id: str | None
+    set_id: UUID
+    exam_id: ExamId
+    model: str
+    raw_count: int
+
+
+class ObserverRequestedPayload(_Payload):
+    reason: Literal["button"] = "button"
+
+
+class JobFailedPayload(_Payload):
+    job: str
+    job_id: str | None
+    reason: str
+    args: dict[str, Any]
+
+
+class MisconceptionCanonizedPayload(_Payload):
+    source_event_id: int
+    ordinal: int
+    skill_id: str
+    canonical_id: str
+    similarity: float
+    decided_by: Literal["threshold", "model"]
+    name: str
+    description: str
+    error_class: ErrorClass
+
+
+class MisconceptionPersonalCreatedPayload(_Payload):
+    misconception_id: str
+    source_event_id: int
+    ordinal: int
+    skill_id: str
+    name: str
+    description: str
+    error_class: ErrorClass
+    embedding: list[float]
+    best_similarity: float | None

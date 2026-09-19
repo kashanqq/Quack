@@ -1,0 +1,38 @@
+{
+  "id": "tpl.sat.geo.triangles.hypotenuse",
+  "exam_id": "SAT_MATH",
+  "type": "mcq4",
+  "difficulty": 3,
+  "skill_id": "sat.geo.triangles",
+  "tags": [
+    "geo",
+    "triangles",
+    "hypotenuse"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "A right triangle has legs 6 and 8. What is its hypotenuse?",
+  "correct": "10",
+  "distractors": [
+    {
+      "expr": "14",
+      "misconception_id": "lib.geo.pythagorean_sum"
+    },
+    {
+      "expr": "7",
+      "misconception_id": null
+    },
+    {
+      "expr": "100",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Use the triangles rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

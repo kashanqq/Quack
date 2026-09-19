@@ -1,0 +1,73 @@
+{
+  "id": "tpl.ent.alg.quadratic_vieta_multi",
+  "exam_id": "ENT_MATH",
+  "type": "multi_select",
+  "difficulty": 3,
+  "skill_id": "math.alg.quadratic_roots",
+  "tags": [
+    "vieta",
+    "roots",
+    "sign"
+  ],
+  "time_reference_sec": 120,
+  "kind": "template",
+  "params": {
+    "p": {
+      "range": [
+        -8,
+        8
+      ],
+      "choices": null
+    },
+    "q": {
+      "range": [
+        -12,
+        12
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "p*p - 4*q > 0",
+    "p != 0",
+    "q != 0"
+  ],
+  "stem": "Дано уравнение x² + {p}x + {q} = 0. Выберите все верные утверждения о его корнях x₁ и x₂.",
+  "correct": [
+    "сумма корней равна коэффициенту при x, взятому с противоположным знаком",
+    "произведение корней равно свободному члену"
+  ],
+  "distractors": [
+    {
+      "expr": "сумма корней равна коэффициенту при x без изменения знака",
+      "misconception_id": "lib.vieta_sign_confusion"
+    },
+    {
+      "expr": "произведение корней равно свободному члену с противоположным знаком",
+      "misconception_id": "lib.vieta_sign_confusion"
+    },
+    {
+      "expr": "дискриминант уравнения отрицательный",
+      "misconception_id": "lib.quadratic_no_check"
+    }
+  ],
+  "omission_traps": [
+    {
+      "omit": "сумма корней равна коэффициенту при x, взятому с противоположным знаком",
+      "misconception_id": "lib.vieta_sign_confusion"
+    },
+    {
+      "omit": "произведение корней равно свободному члену",
+      "misconception_id": "lib.vieta_sign_confusion"
+    }
+  ],
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "По теореме Виета для уравнения x² + {p}x + {q} = 0 сумма корней равна -{p}, а произведение равно {q}.",
+    "Дискриминант данного уравнения D = p² − 4q положителен по условию, поэтому корни действительные и различные.",
+    "Следовательно, верными являются утверждения: сумма корней равна −p (то есть коэффициенту при x с противоположным знаком), а произведение равно q (свободному члену)."
+  ],
+  "generator": null,
+  "figure": null
+}

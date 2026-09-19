@@ -10,6 +10,7 @@ import pytest_asyncio
 from app.graph.queries.kb import get_admission_route, list_facts_about
 from app.graph.schema import apply_schema
 from app.seed.knowledge_base import seed_knowledge_base
+from tests.conftest import wipe_graph
 
 pytestmark = [
     pytest.mark.phase1,
@@ -23,6 +24,7 @@ DATA = Path(__file__).resolve().parents[3] / "data"
 
 @pytest_asyncio.fixture(scope="module", loop_scope="module")
 async def seeded_kb(graph):
+    await wipe_graph(graph)
     await apply_schema(graph, 384)
     await seed_knowledge_base(graph, DATA / "knowledge_base")
     yield graph

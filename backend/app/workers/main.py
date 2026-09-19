@@ -1,17 +1,30 @@
 """ARQ queues and shared infrastructure lifecycle."""
 
+import asyncio
 import inspect
-from typing import Any, Literal
-from uuid import uuid4
+from typing import Any
 
 import redis.asyncio as redis_async
 import structlog
-from arq.connections import ArqRedis, RedisSettings
+from arq.connections import RedisSettings
 
 from app.config import settings
 from app.db.engine import close_engine, create_engine, create_sessionmaker
-from app.main import _optional_layer
+from app.events import handlers  # noqa: F401 (jobs dispatch through the rule table)
+from app.loader import optional_layer as _optional_layer
 from app.workers import registry
+from app.workers.queue import enqueue
+
+__all__ = [
+    "WorkerBulk",
+    "WorkerInteractive",
+    "enqueue",
+    "shutdown",
+    "startup",
+    "startup_interactive",
+]
+
+_logger = structlog.get_logger(__name__)
 
 
 async def startup(ctx: dict[str, Any]) -> None:
@@ -41,6 +54,29 @@ async def startup(ctx: dict[str, Any]) -> None:
         raise
 
 
+async def load_embedder(ctx: dict[str, Any]) -> None:
+    """The sentence embedder for canonization (phase3 3.12, tech-stack 8.3).
+
+    Loaded and warmed up once per interactive worker, off the event loop. A
+    failure leaves `ctx["embedder"] = None`: the worker still starts, and
+    `canonize_misconception` records `job.failed{embedder_unavailable}`.
+    """
+    try:
+        from app.embeddings import Embedder
+
+        embedder = Embedder(settings.EMBEDDING_MODEL, settings.EMBEDDING_DIM)
+        await asyncio.to_thread(embedder.embed, ["warmup"])
+        ctx["embedder"] = embedder
+    except Exception:  # noqa: BLE001
+        _logger.warning("embedder_unavailable", exc_info=True)
+        ctx["embedder"] = None
+
+
+async def startup_interactive(ctx: dict[str, Any]) -> None:
+    await startup(ctx)
+    await load_embedder(ctx)
+
+
 async def shutdown(ctx: dict[str, Any]) -> None:
     llm = ctx.pop("llm", None)
     if llm is not None:
@@ -62,20 +98,7 @@ async def shutdown(ctx: dict[str, Any]) -> None:
     if engine is not None:
         await close_engine(engine)
     ctx.pop("sessionmaker", None)
-
-
-async def enqueue(
-    redis: ArqRedis,
-    queue: Literal["interactive", "bulk"],
-    fn_name: str,
-    **kwargs: Any,
-) -> str | None:
-    if queue not in {"interactive", "bulk"}:
-        raise ValueError("queue must be interactive or bulk")
-    request_id = structlog.contextvars.get_contextvars().get("request_id")
-    kwargs["request_id"] = request_id or uuid4().hex[:16]
-    job = await redis.enqueue_job(fn_name, _queue_name=queue, **kwargs)
-    return job.job_id if job is not None else None
+    ctx.pop("embedder", None)
 
 
 class WorkerInteractive:
@@ -83,7 +106,7 @@ class WorkerInteractive:
     queue_name = "interactive"
     max_tries = 3
     job_timeout = 30
-    on_startup = startup
+    on_startup = startup_interactive
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
 

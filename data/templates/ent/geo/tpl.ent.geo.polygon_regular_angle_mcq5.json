@@ -1,0 +1,56 @@
+{
+  "id": "tpl.ent.geo.polygon_regular_angle_mcq5",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 2,
+  "skill_id": "ent.geo.polygon",
+  "tags": [
+    "regular_polygon",
+    "interior_angle"
+  ],
+  "time_reference_sec": 75,
+  "kind": "template",
+  "params": {
+    "n": {
+      "range": [
+        5,
+        12
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "180*(n - 2) % n == 0"
+  ],
+  "stem": "Найдите величину одного внутреннего угла правильного {n}-угольника. Ответ дайте в градусах.",
+  "correct": "180*(n - 2)/n",
+  "distractors": [
+    {
+      "expr": "180/n",
+      "misconception_id": "lib.polygon_angle_sum"
+    },
+    {
+      "expr": "360/n",
+      "misconception_id": null
+    },
+    {
+      "expr": "180*(n - 1)/n",
+      "misconception_id": null
+    },
+    {
+      "expr": "180*(n - 2)",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Сумма внутренних углов правильного n-угольника равна 180°·(n − 2).",
+    "Так как все углы правильного многоугольника равны, один угол равен 180°·(n − 2)/n.",
+    "Подставляем n = {n}: 180°·({n} − 2)/{n}.",
+    "Ответ: вариант {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

@@ -1,0 +1,70 @@
+{
+  "id": "tpl.ent.alg.ineq_abs_value",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 3,
+  "skill_id": "ent.alg.inequalities",
+  "tags": [
+    "absolute_value_inequality",
+    "interval_method"
+  ],
+  "time_reference_sec": 100,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        1,
+        4
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        1,
+        5
+      ],
+      "choices": null
+    },
+    "c": {
+      "range": [
+        2,
+        6
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "c > b"
+  ],
+  "stem": "Найдите наибольшее целое число, удовлетворяющее неравенству |{a}x − {b}| ≤ {c}.",
+  "correct": "floor((b + c)/a)",
+  "distractors": [
+    {
+      "expr": "floor((b - c)/a)",
+      "misconception_id": "lib.abs_sign_drop"
+    },
+    {
+      "expr": "floor((c - b)/a)",
+      "misconception_id": "lib.abs_single_branch"
+    },
+    {
+      "expr": "floor((b + c)/a) + 1",
+      "misconception_id": "lib.inequality_endpoint"
+    },
+    {
+      "expr": "floor((b - c)/a) - 1",
+      "misconception_id": "lib.abs_sign_drop"
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Неравенство |{a}x − {b}| ≤ {c} эквивалентно двойному неравенству: −{c} ≤ {a}x − {b} ≤ {c}.",
+    "Прибавим {b} ко всем частям: {b} − {c} ≤ {a}x ≤ {b} + {c}.",
+    "Разделим на {a}: ({b} − {c})/{a} ≤ x ≤ ({b} + {c})/{a}.",
+    "Наибольшее целое число, не превосходящее ({b} + {c})/{a}, равно floor(({b} + {c})/{a}) = {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

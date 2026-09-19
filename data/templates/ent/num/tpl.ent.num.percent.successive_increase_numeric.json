@@ -1,0 +1,78 @@
+{
+  "id": "tpl.ent.num.percent.successive_increase_numeric",
+  "exam_id": "ENT_MATH",
+  "type": "numeric",
+  "difficulty": 2,
+  "skill_id": "ent.num.percent",
+  "tags": [
+    "percent",
+    "successive",
+    "increase"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "base": {
+      "range": null,
+      "choices": [
+        400,
+        500,
+        600,
+        800,
+        1000,
+        1200,
+        1500,
+        2000
+      ]
+    },
+    "p1": {
+      "range": null,
+      "choices": [
+        10,
+        20,
+        25,
+        30,
+        40,
+        50
+      ]
+    },
+    "p2": {
+      "range": null,
+      "choices": [
+        10,
+        20,
+        25,
+        30,
+        40,
+        50
+      ]
+    }
+  },
+  "constraints": [
+    "p1 != p2"
+  ],
+  "stem": "Цену товара сначала повысили на {p1}%, а затем новую цену повысили ещё на {p2}%. На сколько процентов увеличилась первоначальная цена товара?",
+  "correct": "p1 + p2 + p1 * p2 / 100",
+  "distractors": [],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": [
+    {
+      "expr": "p1 + p2",
+      "misconception_id": "lib.percent_of_not_increase"
+    },
+    {
+      "expr": "p1 * p2 / 100",
+      "misconception_id": null
+    }
+  ],
+  "solution": [
+    "Пусть первоначальная цена равна P. После первого повышения на {p1}% цена становится P · (1 + {p1}/100).",
+    "После второго повышения на {p2}% новая цена умножается на (1 + {p2}/100): P · (1 + {p1}/100) · (1 + {p2}/100).",
+    "Раскроем скобки: (1 + {p1}/100) · (1 + {p2}/100) = 1 + {p1}/100 + {p2}/100 + {p1}·{p2}/10000.",
+    "Общий множитель роста равен 1 + ({p1} + {p2})/100 + {p1}·{p2}/10000, поэтому процентное увеличение составляет {p1} + {p2} + {p1}·{p2}/100 процентов.",
+    "Ответ: {answer}%."
+  ],
+  "generator": null,
+  "figure": null
+}

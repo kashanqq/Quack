@@ -1,0 +1,34 @@
+[
+  {
+    "id": "lib.pythagoras_leg_hypotenuse",
+    "name": "Путает катет и гипотенузу в теореме Пифагора",
+    "description": "Ученик складывает квадраты там, где нужно вычитать: ищет катет как √(a² + b²), хотя гипотенуза в условии уже дана, и квадрат гипотенузы должен стоять слева.",
+    "error_class": "conceptual",
+    "skill_ids": ["ent.geo.triangle"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.inscribed_angle_double",
+    "name": "Вписанный угол приравнивает к центральному",
+    "description": "Ученик считает вписанный угол равным дуге или центральному углу, опирающемуся на ту же дугу, забывая, что вписанный вдвое меньше.",
+    "error_class": "conceptual",
+    "skill_ids": ["ent.geo.circle"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.area_half_dropped",
+    "name": "Забывает половину в формуле площади",
+    "description": "Ученик считает площадь треугольника как произведение основания на высоту, а площадь трапеции — как сумму оснований на высоту, теряя множитель 1/2.",
+    "error_class": "procedural",
+    "skill_ids": ["ent.geo.quadrilateral", "ent.geo.triangle"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.polygon_angle_sum",
+    "name": "Сумма углов многоугольника без вычитания двойки",
+    "description": "Ученик считает сумму углов n-угольника как 180°·n вместо 180°·(n − 2), а угол правильного n-угольника — как 180°/n.",
+    "error_class": "conceptual",
+    "skill_ids": ["ent.geo.polygon"],
+    "exam_specific": null
+  }
+]

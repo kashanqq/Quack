@@ -1,0 +1,57 @@
+{
+  "id": "tpl.ent.geo.circle_inscribed_angle_mcq5",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 2,
+  "skill_id": "ent.geo.circle",
+  "tags": [
+    "inscribed_angle",
+    "central_angle",
+    "arc"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {
+    "arc_deg": {
+      "range": [
+        40,
+        160
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "arc_deg % 2 == 0"
+  ],
+  "stem": "В окружности центральный угол AOB опирается на дугу AB, равную {arc_deg}°. Найдите вписанный угол ACB, опирающийся на ту же дугу AB.",
+  "correct": "arc_deg/2",
+  "distractors": [
+    {
+      "expr": "arc_deg",
+      "misconception_id": "lib.inscribed_angle_double"
+    },
+    {
+      "expr": "2*arc_deg",
+      "misconception_id": "lib.inscribed_angle_double"
+    },
+    {
+      "expr": "180 - arc_deg/2",
+      "misconception_id": null
+    },
+    {
+      "expr": "90 - arc_deg/2",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Вписанный угол ACB и центральный угол AOB опираются на одну и ту же дугу AB.",
+    "Центральный угол равен градусной мере дуги: ∠AOB = {arc_deg}°.",
+    "Вписанный угол равен половине дуги, на которую он опирается: ∠ACB = {arc_deg}° / 2.",
+    "Ответ: вариант {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

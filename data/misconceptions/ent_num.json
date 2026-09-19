@@ -1,0 +1,26 @@
+[
+  {
+    "id": "lib.log_odz_skip",
+    "name": "Забывает ОДЗ в логарифмических уравнениях",
+    "description": "Ученик решает уравнение, но не проверяет, что аргумент логарифма положителен.",
+    "error_class": "procedural",
+    "skill_ids": ["ent.num.logarithm", "ent.func.logarithm"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.power_rules_swap",
+    "name": "Путает правила действий со степенями",
+    "description": "Ученик меняет местами правила: при умножении степеней с одинаковым основанием перемножает показатели (a^m · a^n считает как a^(m·n)), при возведении степени в степень — складывает их ((a^m)^n считает как a^(m+n)), при делении — делит показатели вместо вычитания.",
+    "error_class": "procedural",
+    "skill_ids": ["ent.num.powers"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.progression_term_off_by_one",
+    "name": "Путает номер члена и число шагов прогрессии",
+    "description": "Ученик считает n-й член арифметической прогрессии как a1 + n·d вместо a1 + (n−1)·d: от первого члена до n-го делается на один шаг меньше, чем номер члена.",
+    "error_class": "attention",
+    "skill_ids": ["ent.num.progression"],
+    "exam_specific": null
+  }
+]

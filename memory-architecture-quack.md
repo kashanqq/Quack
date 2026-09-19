@@ -148,6 +148,7 @@ events (
 | `topic.opened`, `topic.completed` | topic\_skill\_id | контекст, триггер наблюдателя |
 | `misconception.disputed` / `.undisputed` | misconception\_id | да |
 | `skill.personal_created`, `misconception.personal_created` | описание узла | да |
+| `misconception.canonized` | source\_event\_id, ordinal, skill\_id, canonical\_id, similarity, decided\_by | да — предложенное заблуждение сведено к существующему (§5.4) |
 | `profile.updated` | field, value, by (assistant / user) | приоры; подборка |
 | `program.saved` / `program.removed` | program\_id | требования, вехи |
 | `milestone.done` | milestone\_id | вехи |

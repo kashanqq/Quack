@@ -102,6 +102,7 @@ events (
 | `topic.opened`, `topic.completed` | topic\_skill\_id | контекст, триггер наблюдателя |
 | `misconception.disputed` / `.undisputed` | misconception\_id | да |
 | `skill.personal_created`, `misconception.personal_created` | описание узла | да |
+| `misconception.canonized` | source\_event\_id, ordinal, skill\_id, canonical\_id, similarity, decided\_by | да — предложенное заблуждение сведено к существующему (§5.4) |
 | `profile.updated` | field, value, by (assistant / user) | приоры; подборка |
 | `program.saved` / `program.removed` | program\_id | требования, вехи |
 | `milestone.done` | milestone\_id | вехи |
@@ -952,10 +953,25 @@ Summary по топику отдельно не нужен — контекст 
 | `min_templates_personal` | 3 | §7 |
 | `observer_every_n` | 6 | §8.1 |
 | `observer_min_confidence` | 0.7 | §8.1 |
+| `observer_window_max` | 30 сообщений | §8.1 верхняя граница окна наблюдателя |
 | `diag_base` / `diag_reserve` / `diag_max` | 8 / 4 / 12 | §8.4 |
 | `set_size` | 3 топика | §10.1 |
 | `chat_window` | 10 сообщений | §9.1 |
 | `context_budget_tokens` | 3000 | §9.2 |
+| `context_set_multiplier` | 1.5 | §9.3 контекст чата сета — те же слоты, шире |
+| `assistant_max_questions` | 2 | §9.1 вопросов в одном ответе подбора; постпроверка считает «?» (фаза 3) |
+| `assistant_readiness_threshold` | 0.6 | §9.1 заполненность анкеты для подбора |
+| `tutor_escalate_after_failures` | 2 | §9.4 когда репетитор спускается к предпосылке |
+
+Настройки процесса (`Settings`, переопределяются переменными окружения, фаза 3):
+
+| Параметр | Значение | Где |
+| :---- | :---- | :---- |
+| `OBSERVER_SLOT` | `bulk` | §8.1, §5.4 слот модели наблюдателя и канонизации |
+| `CTX_CACHE_TTL_S` | 3600 | §9.2 кэш сырья контекста топика в Redis |
+| `CHAT_LOCK_TTL_S` | 120 | один ход чата одновременно |
+| `OBSERVER_JOB_TIMEOUT_S` | 100 (≥ `LLM_TIMEOUT_BULK_S` + 10) | §8.1 таймаут `observe_chat` |
+| `CANON_JOB_TIMEOUT_S` | 30 | §5.4 таймаут `canonize_misconception` |
 
 ---
 
@@ -966,8 +982,8 @@ Summary по топику отдельно не нужен — контекст 
 3. Формат шаблона: JSON с выражениями или Python-функция на шаблон. Второе проще проверять, первое — проще редактировать без кода `[B2]`.  
 4. Хранить полную цепочку `PREVIOUS` или сэмплировать старше 30 дней — на хакатоне хранить всё.  
 5. Eval наблюдателя — стретч; минимум 10 фрагментов вручную перед защитой.  
-6. Контекст чата на уровне сета — те же слоты ×1.5 или отдельная сборка.  
-7. Что показывает кнопка «обновить модель знаний», когда наблюдатель ничего не нашёл.
+6. ~~Контекст чата на уровне сета — те же слоты ×1.5 или отдельная сборка.~~ Решено (19.09.2026): те же слоты, умноженные на `context_set_multiplier` = 1.5; отдельной сборки нет.  
+7. ~~Что показывает кнопка «обновить модель знаний», когда наблюдатель ничего не нашёл.~~ Решено (19.09.2026): пустое окно — не ошибка, `POST /knowledge/refresh` отвечает `status: "empty"`; ошибка отделена полем `failed_reason` (`llm_unavailable`, `queue_unavailable`, `job_not_enqueued`).
 
 ---
 

@@ -1,0 +1,58 @@
+{
+  "id": "tpl.ent.geo.triangle_median_ratio_mcq5",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 4,
+  "skill_id": "ent.geo.triangle",
+  "tags": [
+    "median",
+    "centroid",
+    "ratio"
+  ],
+  "time_reference_sec": 120,
+  "kind": "template",
+  "params": {
+    "median_length": {
+      "range": [
+        12,
+        30
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "median_length % 3 == 0"
+  ],
+  "stem": "В треугольнике ABC медиана AM равна {median_length}. Точка O — точка пересечения медиан. Найдите длину отрезка AO.",
+  "correct": "2*median_length/3",
+  "distractors": [
+    {
+      "expr": "median_length/3",
+      "misconception_id": null
+    },
+    {
+      "expr": "median_length/2",
+      "misconception_id": null
+    },
+    {
+      "expr": "median_length",
+      "misconception_id": null
+    },
+    {
+      "expr": "3*median_length/2",
+      "misconception_id": null
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Медианы треугольника пересекаются в одной точке и делятся ею в отношении 2:1, считая от вершины.",
+    "Точка O — точка пересечения медиан, поэтому AO : OM = 2 : 1.",
+    "Длина всей медианы AM = {median_length}, значит AO = (2/3) · AM.",
+    "Подставляем: AO = (2/3) · {median_length}.",
+    "Ответ: вариант {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

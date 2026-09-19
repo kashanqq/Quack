@@ -177,6 +177,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/chat/prep/observe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Observation
+         * @description Queue the observer on this chat now; poll `GET /chat/prep/observations`
+         *     with the returned `since_event_id` for the result.
+         */
+        post: operations["request_observation_chat_prep_observe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/prep/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Observations Diff
+         * @description What the observer found after `since_event_id` in this chat.
+         */
+        get: operations["observations_diff_chat_prep_observations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/prep/knowledge/version": {
         parameters: {
             query?: never;
@@ -1299,6 +1340,69 @@ export interface components {
             /** Misconception Id */
             misconception_id: string | null;
         };
+        /** ObservationView */
+        ObservationView: {
+            /** Event Id */
+            event_id: number;
+            /** Ordinal */
+            ordinal: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "solution_step" | "task_in_chat" | "applied" | "confusion" | "question" | "avoided_trap" | "root_hint" | "proposed_misconception" | "pace_signal";
+            /** Skill Id */
+            skill_id: string | null;
+            /** Skill Name */
+            skill_name: string | null;
+            /** Misconception Id */
+            misconception_id: string | null;
+            /** Summary */
+            summary: string | null;
+            /** Confidence */
+            confidence: number | null;
+            /** Applied */
+            applied: boolean;
+            /** Message Ids */
+            message_ids: string[];
+        };
+        /** ObservationsDiffOut */
+        ObservationsDiffOut: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "done" | "failed";
+            /** Observations */
+            observations: components["schemas"]["ObservationView"][];
+            /** Skills */
+            skills: components["schemas"]["SkillStateView"][];
+            /** Misconceptions */
+            misconceptions: components["schemas"]["MisconceptionStateOut"][];
+            /** Knowledge Version */
+            knowledge_version: number;
+            /** Failed Reason */
+            failed_reason?: string | null;
+        };
+        /** ObserveRequestIn */
+        ObserveRequestIn: {
+            /**
+             * Set Id
+             * Format: uuid
+             */
+            set_id: string;
+            /** Topic Skill Id */
+            topic_skill_id?: string | null;
+        };
+        /** ObserveRequestedOut */
+        ObserveRequestedOut: {
+            /** Job Id */
+            job_id: string | null;
+            /** Since Event Id */
+            since_event_id: number;
+            /** Knowledge Version */
+            knowledge_version: number;
+        };
         /** OptionOut */
         OptionOut: {
             /** Key */
@@ -2334,6 +2438,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_observation_chat_prep_observe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObserveRequestIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObserveRequestedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    observations_diff_chat_prep_observations_get: {
+        parameters: {
+            query: {
+                set_id: string;
+                since_event_id?: number;
+                topic_skill_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservationsDiffOut"];
                 };
             };
             /** @description Validation Error */

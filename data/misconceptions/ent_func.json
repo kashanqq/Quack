@@ -1,0 +1,26 @@
+[
+  {
+    "id": "lib.exp_base_confusion",
+    "name": "Путаница оснований в показательных уравнениях",
+    "description": "Ученик приводит степени к разным основаниям или неверно применяет свойства степеней при сложении показателей.",
+    "error_class": "conceptual",
+    "skill_ids": ["ent.func.exponential", "sat.adv.exponential"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.vertex_sign_drop",
+    "name": "Теряет минус в абсциссе вершины параболы",
+    "description": "Ученик теряет знак минус в формулах вершины параболы: абсциссу считает как b/(2a) вместо −b/(2a), ординату — как c + b²/(4a) вместо c − b²/(4a).",
+    "error_class": "conceptual",
+    "skill_ids": ["ent.func.quadratic"],
+    "exam_specific": null
+  },
+  {
+    "id": "lib.derivative_power_rule_slip",
+    "name": "Не выносит показатель при дифференцировании степени",
+    "description": "Ученик ошибается в правиле дифференцирования степени (x^n)′ = n·x^(n−1): либо забывает множитель n, либо оставляет показатель прежним, либо уменьшает его дважды.",
+    "error_class": "procedural",
+    "skill_ids": ["ent.func.derivative"],
+    "exam_specific": null
+  }
+]

@@ -1,0 +1,40 @@
+{
+  "id": "tpl.sat.psda.two_var_data.intercept",
+  "exam_id": "SAT_MATH",
+  "type": "numeric",
+  "difficulty": 4,
+  "skill_id": "sat.psda.two_var_data",
+  "tags": [
+    "psda",
+    "two_var_data",
+    "intercept"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "For x = 1, 2, 3, y = 4, 7, 10. What is the y-intercept of the line?",
+  "correct": "1",
+  "distractors": [],
+  "solution": [
+    "Use the two var data rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null,
+  "answer_forms": [
+    "integer",
+    "fraction",
+    "decimal:2"
+  ],
+  "trap_answers": [
+    {
+      "expr": "3",
+      "misconception_id": "lib.psda.intercept_first"
+    },
+    {
+      "expr": "4",
+      "misconception_id": null
+    }
+  ]
+}

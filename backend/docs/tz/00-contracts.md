@@ -557,6 +557,5 @@ HealthOut(status: Literal\["ok","degraded"\], checks: dict\[str, Literal\["ok","
 3. **Реализация** в ветках `phase1/B1`, `phase1/B2`, `phase1/B3` по подзадачам через `tz-executor`. Каждая подзадача ссылается на тест, который должна позеленить.  
 4. **Мерж** B3 → B1 → B2. CI: ruff, `pytest -m "not integration"`, `seed.py --validate`, `openapi-typescript` diff.  
 5. **Общий прогон** `make test && make test-int` на `main` — B3. Чужой тест упал → чинит тот, чей мерж сломал.  
-6. **Graphify** на `main` — один коммит B3. Локальный вывод у остальных в `.gitignore`.  
 7. **Синк**: `sync-log.md` разбирается, контракты правятся одним PR, миграция если нужна, ТЗ фазы 2\.
 

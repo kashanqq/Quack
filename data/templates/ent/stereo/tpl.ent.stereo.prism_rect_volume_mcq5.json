@@ -1,0 +1,72 @@
+{
+  "id": "tpl.ent.stereo.prism_rect_volume_mcq5",
+  "exam_id": "ENT_MATH",
+  "type": "mcq5",
+  "difficulty": 1,
+  "skill_id": "ent.stereo.prism",
+  "tags": [
+    "rectangular_prism",
+    "volume",
+    "units"
+  ],
+  "time_reference_sec": 60,
+  "kind": "template",
+  "params": {
+    "a": {
+      "range": [
+        2,
+        9
+      ],
+      "choices": null
+    },
+    "b": {
+      "range": [
+        3,
+        12
+      ],
+      "choices": null
+    },
+    "c": {
+      "range": [
+        4,
+        15
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [
+    "a != b",
+    "b != c",
+    "a != c"
+  ],
+  "stem": "Найдите объём прямоугольного параллелепипеда с рёбрами {a} см, {b} см и {c} см.",
+  "correct": "a*b*c",
+  "distractors": [
+    {
+      "expr": "2*(a*b + b*c + a*c)",
+      "misconception_id": null
+    },
+    {
+      "expr": "a*b + b*c + a*c",
+      "misconception_id": null
+    },
+    {
+      "expr": "a*b*c/1000",
+      "misconception_id": "lib.volume_units"
+    },
+    {
+      "expr": "a*b*c/100",
+      "misconception_id": "lib.volume_units"
+    }
+  ],
+  "omission_traps": null,
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Объём прямоугольного параллелепипеда равен произведению трёх его измерений: V = a · b · c.",
+    "Подставляем данные рёбра: V = {a} · {b} · {c} см³.",
+    "Ответ: вариант {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}

@@ -1,0 +1,40 @@
+{
+  "id": "tpl.sat.psda.probability.without_replacement",
+  "exam_id": "SAT_MATH",
+  "type": "numeric",
+  "difficulty": 4,
+  "skill_id": "sat.psda.probability",
+  "tags": [
+    "psda",
+    "probability",
+    "without_replacement"
+  ],
+  "time_reference_sec": 90,
+  "kind": "template",
+  "params": {},
+  "constraints": [],
+  "stem": "A bag has 2 red and 3 blue balls. Without replacement, what is P(red then blue)?",
+  "correct": "3/10",
+  "distractors": [],
+  "solution": [
+    "Use the probability rule.",
+    "The value is {answer}."
+  ],
+  "generator": null,
+  "figure": null,
+  "answer_forms": [
+    "integer",
+    "fraction",
+    "decimal:2"
+  ],
+  "trap_answers": [
+    {
+      "expr": "6/25",
+      "misconception_id": "lib.psda.prob_replacement"
+    },
+    {
+      "expr": "2/5",
+      "misconception_id": null
+    }
+  ]
+}

@@ -26,10 +26,30 @@ _MCQ_NEEDED = {"mcq4": 3, "mcq5": 4}
 _KEY_LETTERS = ["A", "B", "C", "D", "E"]
 _MAX_SEED_ATTEMPTS = 200
 _VALIDATE_FAILURE_RATE = 0.10
+_EVAL_ERRORS = (TemplateError, TypeError, ValueError, AttributeError)
+
+
+def _eval_or_literal(expr: str, params: dict):
+    """Try sympy; on failure or non-scalar (Tuple/Rel/Boolean) → keep text as-is.
+
+    Позволяет использовать в шаблонах текстовые варианты ответов
+    (например, «y = 3x - 1», «Infinitely many», «(3, 2)»).
+    """
+    try:
+        val = eval_expr(expr, params)
+    except _EVAL_ERRORS:
+        return expr
+    if getattr(val, "is_Tuple", False):
+        return expr
+    if getattr(val, "rel_op", None) is not None:
+        return expr
+    if getattr(val, "is_Boolean", False):
+        return expr
+    return val
 
 
 def sample_params(spec: TaskTemplateSpec, rng: random.Random) -> dict | None:
-    """Sample params; return first satisfying constraints."""
+    """Sample params until constraints hold; up to _MAX_SEED_ATTEMPTS tries."""
     if not spec.params:
         return {} if check_constraints(spec.constraints, {}) else None
     for _ in range(_MAX_SEED_ATTEMPTS):
@@ -57,13 +77,12 @@ def generate_instance(
         student_misc = set()
     rng = random.Random(f"{spec.id}:{seed}")
 
-    # --- params / correct / distractors ---
     if spec.generator:
         fn = GENERATORS.get(spec.generator)
         if fn is None:
             raise TemplateError(f"unknown generator {spec.generator!r}")
         data = fn(rng)
-        params: dict = data.get("params", {})
+        params = data["params"]
         correct_val = data["correct"]
         distractor_specs = data.get("distractors", spec.distractors)
     else:
@@ -74,9 +93,8 @@ def generate_instance(
         if isinstance(spec.correct, list):
             correct_val = list(spec.correct)
         else:
-            correct_val = eval_expr(spec.correct, params)
+            correct_val = _eval_or_literal(spec.correct, params)
 
-    # --- build options and answer ---
     if spec.type in ("mcq4", "mcq5"):
         options, answer, trap_options = _build_mcq(
             rng, params, correct_val, distractor_specs, spec.type, student_misc
@@ -90,7 +108,6 @@ def generate_instance(
     else:
         raise TemplateError(f"unsupported type {spec.type}")
 
-    # --- stem and solution ---
     stem_rendered = render_stem(spec.stem, params)
     answer_text = answer if isinstance(answer, str) else ", ".join(answer)
     solution_rendered = [
@@ -123,18 +140,14 @@ def validate_template(spec: TaskTemplateSpec, n_seeds: int = 50) -> list[str]:
     """Return a list of errors (empty = template accepted). See §3.4."""
     errors: list[str] = []
 
-    # 1. Symbolic check: distractors not equal to correct as expressions.
     if spec.type in ("mcq4", "mcq5"):
         dummy = _dummy_params(spec)
         if dummy is not None:
             try:
-                correct_expr = eval_expr(spec.correct, dummy)
+                correct_expr = _eval_or_literal(spec.correct, dummy)
                 seen: list[object] = []
                 for d in spec.distractors:
-                    try:
-                        d_expr = eval_expr(d.expr, dummy)
-                    except TemplateError:
-                        continue
+                    d_expr = _eval_or_literal(d.expr, dummy)
                     if equal_values(d_expr, correct_expr):
                         errors.append(f"distractors collapse: {d.expr} == correct")
                         break
@@ -144,15 +157,14 @@ def validate_template(spec: TaskTemplateSpec, n_seeds: int = 50) -> list[str]:
                         )
                         break
                     seen.append(d_expr)
-            except TemplateError:
+            except _EVAL_ERRORS:
                 pass
 
-    # 2. Seed run.
     failures = 0
     for s in range(n_seeds):
         try:
             generate_instance(spec, seed=s)
-        except TemplateError:
+        except _EVAL_ERRORS:
             failures += 1
     if failures > int(n_seeds * _VALIDATE_FAILURE_RATE):
         errors.append(f"seed failure rate: {failures}/{n_seeds}")
@@ -190,10 +202,7 @@ def _build_mcq(
     needed = _MCQ_NEEDED[spec_type]
     computed: list[tuple[DistractorSpec, object]] = []
     for d in distractor_specs:
-        try:
-            val = eval_expr(d.expr, params)
-        except TemplateError:
-            continue
+        val = _eval_or_literal(d.expr, params)
         if equal_values(val, correct_val):
             continue
         if any(equal_values(val, c[1]) for c in computed):
@@ -287,12 +296,14 @@ def _build_numeric(
     correct_val: object,
     spec: TaskTemplateSpec,
 ) -> tuple[list[Option], str, list[Option]]:
-    answer = to_canonical(correct_val)
+    answer = (
+        to_canonical(correct_val) if not isinstance(correct_val, str) else correct_val
+    )
     trap_options: list[Option] = []
     for i, t in enumerate(spec.trap_answers or []):
         try:
             val = eval_expr(t.expr, params)
-        except TemplateError:
+        except _EVAL_ERRORS:
             continue
         text = render_value(val, "auto")
         trap_options.append(

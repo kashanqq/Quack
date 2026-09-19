@@ -1,19 +1,14 @@
-"""Pydantic models for the knowledge layer.
-
-TEMPORARY: this file is B3's zone (see 00-contracts.md §6), but B3 hasn't
-shipped it yet and pure modules (app.knowledge.*, app.tasks.*) may not
-import from app.graph.* (00-contracts.md §4.4). B1 placed it here as a
-stopgap so tests and pure code can run — see docs/sync-log.md.
-
-On sync: merge with B3's version and delete this note.
-"""
+"""Shared knowledge-layer contracts for Phases 1 and 2."""
 
 from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Any, Literal
+from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import AwareDatetime, BaseModel
+
+from app.schemas.common import SkillLevel
 
 ExamId = Literal["SAT_MATH", "ENT_MATH"]
 Tier = Literal[1, 2, 3]
@@ -24,6 +19,7 @@ TaskType = Literal["mcq4", "mcq5", "multi_select", "numeric"]
 ErrorClass = Literal["computational", "conceptual", "attention", "procedural"]
 Direction = Literal[1, -1, 0]
 EvidenceSource = Literal["task", "mock", "diagnostic", "chat", "self_report"]
+MisconceptionStatus = Literal["suspected", "confirmed", "resolved", "disputed"]
 
 
 class SkillRef(BaseModel):
@@ -70,6 +66,16 @@ class KnowledgeStateOut(BaseModel):
 
 
 class EvidenceContext(BaseModel):
+    """What the evidence was observed in — the "до сообщения" chain of §10.5.
+
+    ``instance_id`` / ``message_id`` are what ``explain_belief`` unfolds an
+    observation back into: the task the student answered, or the chat message
+    the observer read it from. They are written to the Evidence node as
+    ``ctx_*`` properties by ``personal.merge_evidence``.
+    """
+
+    instance_id: UUID | None = None
+    message_id: UUID | None = None
     task_type: TaskType | None = None
     difficulty: int | None = None
     tags: list[str] | None = None
@@ -85,6 +91,12 @@ class EvidenceContext(BaseModel):
 class EvidenceIn(BaseModel):
     event_id: int
     skill_id: str
+    # Several pieces of evidence can come out of one event for one skill —
+    # the answer itself and the misconception it hit, or one observation per
+    # window message. ``ordinal`` separates them inside (event_id, skill_id),
+    # which is otherwise the MERGE key in the graph: without it the second
+    # one silently overwrites the first.
+    ordinal: int = 0
     exam_id: ExamId
     kind: str
     tier: Tier
@@ -157,3 +169,90 @@ class FactOut(BaseModel):
     source: str | None = None
     checked_at: date | None = None
     is_demo: bool
+
+
+class MisconceptionStateOut(BaseModel):
+    """State of one misconception for one student — memory-architecture §5."""
+
+    misconception_id: str
+    name: str
+    status: MisconceptionStatus
+    occurrence_count: int
+    strong_count: int
+    consecutive_avoided: int
+    triggers: dict[str, Any]
+    first_seen_at: AwareDatetime
+    updated_at: AwareDatetime
+    skill_ids: list[str]
+    visible_label: str = ""
+
+
+class EvidenceOut(BaseModel):
+    evidence_id: str
+    event_id: int
+    ordinal: int = 0
+    skill_id: str
+    kind: str
+    tier: Tier
+    source: EvidenceSource
+    weight: float
+    direction: Direction
+    observed_at: AwareDatetime
+    summary: str | None
+    instance_id: UUID | None
+    message_id: UUID | None
+
+
+class RootCauseOut(BaseModel):
+    """One edge from evidence to a root skill — memory-architecture §6."""
+
+    from_skill_id: str
+    root_skill_id: str
+    confidence: float
+    source: Literal["diagnostic", "observer", "rule"]
+    created_at: AwareDatetime
+
+
+class SkillStateView(BaseModel):
+    skill_id: str
+    name: str
+    area_id: str
+    exam_id: ExamId
+    weight: float
+    p_target: float
+    level: SkillLevel
+    p_recall: float
+    confidence: float
+    trend: Literal["up", "flat", "down"]
+    due_at: AwareDatetime | None
+    is_root: bool
+    n_evidence: int
+
+
+class ForecastOut(BaseModel):
+    exam_id: ExamId
+    predicted_raw: float
+    predicted_scaled: float | None
+    coverage: float
+    hours_needed: float
+    ready_by: date | None
+    test_date: date | None
+    on_track: bool | None
+    as_of_event_id: int
+    note: str
+
+
+class MisconceptionChange(BaseModel):
+    misconception_id: str
+    from_status: MisconceptionStatus | None
+    to_status: MisconceptionStatus
+    counters: dict[str, Any]
+
+
+class ReconcileResult(BaseModel):
+    evidence: list[EvidenceIn]
+    state_after: KnowledgeStateOut
+    cross_exam_state: KnowledgeStateOut | None
+    misconception_change: MisconceptionChange | None
+    root_causes: list[RootCauseOut]
+    words: str

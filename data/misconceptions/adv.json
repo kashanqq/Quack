@@ -1,0 +1,10 @@
+[
+  {
+    "id": "lib.radical_no_check",
+    "name": "Не проверяет посторонние корни после возведения в квадрат",
+    "description": "Ученик возводит обе стороны в квадрат и принимает все решения, не отсеивая те, что не входят в ОДЗ.",
+    "error_class": "procedural",
+    "skill_ids": ["sat.adv.radical_eq", "sat.alg.rational_eq"],
+    "exam_specific": null
+  }
+]

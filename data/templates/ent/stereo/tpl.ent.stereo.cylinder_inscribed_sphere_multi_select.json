@@ -1,0 +1,68 @@
+{
+  "id": "tpl.ent.stereo.cylinder_inscribed_sphere_multi_select",
+  "exam_id": "ENT_MATH",
+  "type": "multi_select",
+  "difficulty": 4,
+  "skill_id": "ent.stereo.cylinder",
+  "tags": [
+    "cylinder",
+    "inscribed_sphere",
+    "volume",
+    "surface_area"
+  ],
+  "time_reference_sec": 150,
+  "kind": "template",
+  "params": {
+    "r": {
+      "range": [
+        3,
+        8
+      ],
+      "choices": null
+    }
+  },
+  "constraints": [],
+  "stem": "В цилиндр вписан шар, касающийся обоих оснований и боковой поверхности цилиндра. Радиус основания цилиндра равен r = {r}. Выберите все верные утверждения.",
+  "correct": [
+    "Высота цилиндра равна диаметру шара.",
+    "Объём цилиндра равен 2π·r³.",
+    "Площадь боковой поверхности цилиндра равна 4π·r²."
+  ],
+  "distractors": [
+    {
+      "expr": "Объём шара равен 2π·r³.",
+      "misconception_id": "lib.sphere_formula_swap"
+    },
+    {
+      "expr": "Площадь поверхности шара равна (4/3)π·r³.",
+      "misconception_id": "lib.sphere_formula_swap"
+    },
+    {
+      "expr": "Объём цилиндра равен π·r³.",
+      "misconception_id": null
+    },
+    {
+      "expr": "Площадь полной поверхности цилиндра равна 4π·r².",
+      "misconception_id": "lib.lateral_vs_total_surface"
+    }
+  ],
+  "omission_traps": [
+    {
+      "omit": "Высота цилиндра равна диаметру шара.",
+      "misconception_id": "lib.apothem_vs_height"
+    }
+  ],
+  "answer_forms": null,
+  "trap_answers": null,
+  "solution": [
+    "Если шар вписан в цилиндр и касается обоих оснований, то высота цилиндра равна диаметру шара, то есть 2r.",
+    "Объём цилиндра: V = π·r²·h = π·r²·2r = 2π·r³.",
+    "Площадь боковой поверхности цилиндра: S_бок = 2π·r·h = 2π·r·2r = 4π·r².",
+    "Площадь полной поверхности цилиндра: S_полн = 2π·r·(r + h) = 2π·r·(r + 2r) = 6π·r².",
+    "Объём шара радиуса r равен (4/3)π·r³, а площадь его поверхности равна 4π·r².",
+    "Верные утверждения: высота цилиндра равна диаметру шара; объём цилиндра равен 2π·r³; площадь боковой поверхности цилиндра равна 4π·r².",
+    "Ответ: варианты {answer}."
+  ],
+  "generator": null,
+  "figure": null
+}
