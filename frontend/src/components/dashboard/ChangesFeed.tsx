@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Icon } from "../choice/Icon";
 import type { Signal } from "../quack/contract";
 import styles from "./dashboard.module.css";
@@ -12,6 +13,9 @@ type Props = {
   /** New for this visit: fresh now, or fresh when the student opened Quack */
   isNew: (signal: Signal) => boolean;
   onTarget: (target: Target) => void;
+  /** Ticked milestones: a date signal about one of them offers «Уже сделал» until it is ticked */
+  done: string[];
+  onMark: (milestone: string, done: boolean) => void;
 };
 
 const TONE_ICON = { up: "trending-up", down: "trending-down", info: "info" } as const;
@@ -33,9 +37,19 @@ function ago(iso: string) {
 }
 
 /** Why the Quack! button glowed: every change since the last visit, then the ones already seen. */
-export function ChangesFeed({ fresh, history, isNew, onTarget }: Props) {
+export function ChangesFeed({ fresh, history, isNew, onTarget, done, onMark }: Props) {
   const key = (s: Signal) => `${s.id}@${s.at}`;
-  const items = [...fresh, ...history].filter((s, i, all) => all.findIndex((x) => key(x) === key(s)) === i).slice(0, SHOWN);
+  // A signal ticked on this visit goes out of the standing at once; it stays here, ticked, so it can be undone
+  const [ticked, setTicked] = useState<Signal[]>([]);
+  // A signal that went and came back (a tick taken back) is shown once, as it stands now
+  const items = [...ticked, ...fresh, ...history].filter((s, i, all) => all.findIndex((x) => x.id === s.id) === i).slice(0, SHOWN);
+
+  const mark = (s: Signal, value: boolean) => {
+    // Taken back: the standing raises the signal again by itself, so the kept copy goes
+    if (value) setTicked((list) => (list.some((t) => key(t) === key(s)) ? list : [s, ...list]));
+    else setTicked((list) => list.filter((t) => t.milestone !== s.milestone));
+    onMark(s.milestone!, value);
+  };
   const newCount = items.filter(isNew).length;
 
   return (
@@ -67,18 +81,33 @@ export function ChangesFeed({ fresh, history, isNew, onTarget }: Props) {
                 <p className={styles.feedTitle}>{s.title}</p>
                 {s.detail && <p className={styles.feedDetail}>{s.detail}</p>}
                 <p className={styles.feedMeta}>{[s.cause, ago(s.at)].filter(Boolean).join(" · ")}</p>
+                {s.milestone && done.includes(s.milestone) && (
+                  <p className={styles.markDone}>
+                    <Icon name="check" size={14} /> Отмечено как сделанное ·{" "}
+                    <button type="button" className={styles.inlineLink} onClick={() => mark(s, false)}>
+                      вернуть
+                    </button>
+                  </p>
+                )}
               </div>
-              {s.target && s.target !== "profile" && (
-                <button
-                  type="button"
-                  className={styles.feedGo}
-                  aria-label={TARGET_LABEL[s.target]}
-                  title={TARGET_LABEL[s.target]}
-                  onClick={() => onTarget(s.target!)}
-                >
-                  <Icon name="chevron-right" size={16} />
-                </button>
-              )}
+              <div className={styles.feedActions}>
+                {s.milestone && !done.includes(s.milestone) && (
+                  <button type="button" className={styles.markButton} onClick={() => mark(s, true)}>
+                    <Icon name="check" size={14} /> Уже сделал
+                  </button>
+                )}
+                {s.target && s.target !== "profile" && (
+                  <button
+                    type="button"
+                    className={styles.feedGo}
+                    aria-label={TARGET_LABEL[s.target]}
+                    title={TARGET_LABEL[s.target]}
+                    onClick={() => onTarget(s.target!)}
+                  >
+                    <Icon name="chevron-right" size={16} />
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ol>

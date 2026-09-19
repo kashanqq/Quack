@@ -91,8 +91,9 @@ function modelPace(u: UnionExam, { today, prep, forecast, delay }: Ctx): ExamPac
         following
           ? `Ближайшая дата — ${formatDate(following)}, регистрация до ${formatDate(addDays(following, -REGISTRATION_LEAD))}`
           : "Других дат в этом году нет — нужен слот на следующий год",
-        "Если ты уже зарегистрировался — отметь это в «Подготовке → Вехи», и прогноз вернётся",
+        "Если ты уже зарегистрировался — нажми «Уже зарегистрировался» или напиши об этом в чате, и прогноз вернётся",
       ],
+      mark: { milestone: `${u.exam.id}-reg`, label: "Уже зарегистрировался" },
     };
   }
 
@@ -186,8 +187,8 @@ export function chanceOf(program: Program, profile: Profile, predictedMath: numb
 
 /* ---------- Dates: coming up, slept through, in conflict ---------- */
 
-/** Dates the student can tick off in «Подготовке → Вехи»; only those can be missed. */
-function markableId(event: CalendarEvent, programs: Program[]): string | undefined {
+/** Dates the student can tick off (in the calendar, the Quack feed or the chat); only those can be missed. */
+export function markableId(event: CalendarEvent, programs: Program[]): string | undefined {
   const exam = Object.values(EXAMS).find((x) => event.title === `Регистрация на ${x.name}` || event.title === x.name);
   const program = programs.find((p) => event.title === `Подача · ${p.university}`);
   const id = exam ? `${exam.id}-${event.kind === "registration" ? "reg" : "test"}` : program ? `apply-${program.id}` : undefined;
@@ -214,7 +215,8 @@ function alertsFor(events: CalendarEvent[], conflicts: Conflict[], programs: Pro
           level: "urgent",
           kind: "missed",
           title: `Пропущено: ${lowerFirst(e.title)}`,
-          detail: `Срок был ${formatDate(e.date)}, а отметки нет. Если всё сделано — отметь веху в «Подготовке»`,
+          detail: `Срок был ${formatDate(e.date)}, а отметки нет. Если всё сделано — нажми «Уже сделал» или отметь в календаре`,
+          milestone: done,
         });
       }
     } else if (left <= 7) {
@@ -223,6 +225,7 @@ function alertsFor(events: CalendarEvent[], conflicts: Conflict[], programs: Pro
         id: `soon-${left <= 2 ? 2 : 7}-${e.title}`,
         level: left <= 2 ? "urgent" : "notice",
         kind: "deadline",
+        milestone: done,
         title: `${e.title} — ${left === 0 ? "сегодня" : `через ${left} дн.`}`,
         detail: formatDate(e.date),
       });
@@ -278,7 +281,7 @@ export function computeStanding({ profile, saved, prep }: QuackInputs, today = T
     asOf: iso(today),
     readiness: now,
     pace: worst
-      ? { level: worst.level, verdict: worst.verdict, summary: `${worst.name}: ${lowerFirst(worst.summary)}`, advice: worst.advice, exam: worst.id }
+      ? { level: worst.level, verdict: worst.verdict, summary: `${worst.name}: ${lowerFirst(worst.summary)}`, advice: worst.advice, exam: worst.id, mark: worst.mark }
       : null,
     exams: paces,
     programs: programs.map((p) => chanceOf(p, profile, forecastScore(now))),
