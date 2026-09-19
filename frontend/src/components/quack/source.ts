@@ -26,9 +26,10 @@ let instance: QuackSource | null = null;
 
 export function quackSource(): QuackSource {
   if (!instance) {
-    const isRemote =
-      process.env.NEXT_PUBLIC_QUACK_SOURCE === "remote" ||
-      process.env.NEXT_PUBLIC_DATA_SOURCE === "remote";
+    // Only an explicit switch: the backend's /quack API (phase 4) does not speak remoteSource's contract
+    // yet (/quack/state + SSE), so with DATA_SOURCE=remote the browser still recomputes — from the
+    // profile, saved programs and realism that now come from the backend.
+    const isRemote = process.env.NEXT_PUBLIC_QUACK_SOURCE === "remote";
     instance = isRemote
       ? remoteSource(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000")
       : localSource();

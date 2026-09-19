@@ -126,7 +126,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const [picks, setPicks] = useState<string[]>([]);
   const [saved, setSaved] = useState<string[]>([]);
   // The catalog registry is filled outside React (catalog.ts); bumping this re-reads it
-  const [, bumpCatalog] = useState(0);
+  const [catalogVersion, bumpCatalog] = useState(0);
   const [compare, setCompare] = useState<string[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [view, setView] = useState<"chat" | "compare">("chat");
@@ -848,9 +848,19 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   // Profile and saved programs are sources of truth: every change is recomputed at once,
   // and whatever moved since the last visit makes the Quack! button glow
+  // With the backend, realism arrives with the catalog: a new verdict is recomputed too (catalogVersion)
   useEffect(() => {
     if (workspaceLoaded) reportToQuack({ profile, saved });
-  }, [reportToQuack, workspaceLoaded, profile, saved]);
+  }, [reportToQuack, workspaceLoaded, profile, saved, catalogVersion]);
+
+  // Answers in preparation move the backend's forecast and with it the realism of saved programs:
+  // opening Quack or coming back from preparation asks for the fresh verdicts
+  useEffect(() => {
+    if (!REMOTE || !workspaceLoaded || mode === "prep") return;
+    loadCatalog()
+      .then(() => bumpCatalog((n) => n + 1))
+      .catch(() => undefined);
+  }, [workspaceLoaded, mode]);
 
   // Seen a moment after Quack opens, so the glow does not vanish before it is noticed
   const freshKey = quackState.fresh.map((s) => `${s.id}@${s.at}`).join("|");
