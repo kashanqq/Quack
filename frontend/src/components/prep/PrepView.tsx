@@ -19,6 +19,7 @@ import {
   acceptSet,
   initialModel,
   makeCurrent,
+  skipTest,
   rankSets,
   reviveModel,
   subFor,
@@ -95,16 +96,17 @@ export function PrepView({
 
   const isDiagPending = !model.diagnosticDone;
 
-  // Без входного замера доступна исключительно вкладка «Сейчас»
+  // Без входного замера открыты «Сейчас» и «Требования»: цели и дату теста можно выбрать до замера
+  const openBeforeTest = (s: PrepSub) => s === "now" || s === "requirements";
   useEffect(() => {
     if (isDiagPending) {
       if (tab !== "overview") onTab("overview");
-      if (sub !== "now") onSub("now");
+      if (!openBeforeTest(sub)) onSub("now");
     }
   }, [isDiagPending, tab, sub, onTab, onSub]);
 
   // A sub-tab belongs to its tab; switching tabs falls back to the first one
-  const current = isDiagPending ? "now" : subFor(tab, sub);
+  const current = isDiagPending ? (openBeforeTest(sub) ? sub : "now") : subFor(tab, sub);
 
   useEffect(() => {
     onDiagnosticStatusChange?.(Boolean(model.diagnosticDone));
@@ -125,7 +127,6 @@ export function PrepView({
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [tab, current, focus?.n]);
-
   const programs = savedPrograms(saved, model.demo);
 
   useEffect(() => {
@@ -147,7 +148,6 @@ export function PrepView({
   // The active set in «Сейчас» and the map are drawings: they take all the height left
   const working = tab === "overview" && current === "now" && !isDiagPending && !diagOpen && !!model.currentSet;
   const fill = programs.length > 0 && (working || (tab === "sets" && current === "map"));
-
   const intro = INTROS[current];
 
   /** One move for both levels, so a jump across the section is a single animated step */
@@ -208,10 +208,11 @@ export function PrepView({
   };
 
   const skipDiagnostic = () => {
-    setModel((m) => ({ ...m, diagnosticDone: true, diagnosticSkipped: true }));
+    setModel(skipTest);
     closeDiagnostic();
+    setFocus(null);
     onDiagnosticStatusChange?.(true);
-    setToast("Входной тест пропущен — применены базовые оценки знаний. Все вкладки открыты.");
+    setToast("Первый сет собран по твоему профилю. Замер можно пройти позже — ссылка над графом");
   };
 
   const completeDiagnostic = (summary: DiagnosticResultSummary) => {

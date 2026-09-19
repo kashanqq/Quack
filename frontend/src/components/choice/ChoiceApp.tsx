@@ -31,7 +31,7 @@ import { ChatMessage, type ChatMsg } from "./ChatMessage";
 import { CompareView } from "./CompareView";
 import { CustomScrollbar } from "./CustomScrollbar";
 import { milestoneIntent } from "./milestoneIntent";
-import { chosenTestDates, doneMilestones, markMilestone, pickTestDate } from "../prep/milestoneMarks";
+import { chosenTestDates, doneMilestones, markMilestone, pickTestDate, skipEntranceTest } from "../prep/milestoneMarks";
 import { EXAMS, formatDate, plannedTest, registrationBy } from "../prep/prepData";
 import { ProfilePanel } from "./ProfilePanel";
 import { ProgramCards, ProgramDrawer, type ProgramActions } from "./ProgramUi";
@@ -338,7 +338,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const addUserMessage = (text: string) =>
     setMessages((list) => [...list, { id: ++idRef.current, role: "user", text, confirm: "none", editable: false }]);
 
-  async function assistantSay(text: string, summary = false, extra?: Pick<ChatItem, "milestone" | "testDate">) {
+  async function assistantSay(text: string, summary = false, extra?: Pick<ChatItem, "milestone" | "testDate" | "offer">) {
     const id = ++idRef.current;
     const reduced = prefersReducedMotion();
     setMessages((list) => [...list, { id, role: "assistant", text: "", typing: true, confirm: "none", editable: false, ...extra }]);
@@ -402,8 +402,8 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   function toggleSave(id: string) {
     const has = saved.includes(id);
-    // The first save is when the other sections start to matter: say so once, briefly
-    if (!has && !saved.length) setToast("Сохранено. Под неё уже собирается «Подготовка»");
+    const offer = !has && !saved.length && !diagDone && stage === "chat" && !busyRef.current;
+    if (!has && !saved.length && !offer) setToast("Сохранено. Под неё уже собирается «Подготовка»");
     setSaved((list) => (has ? list.filter((x) => x !== id) : list.includes(id) ? list : [...list, id]));
     if (REMOTE && catalog.get(id)?.remote) {
       (has ? backend.saved.remove(id) : backend.saved.add(id))
@@ -415,6 +415,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
           setToast("Не получилось сохранить. Попробуй ещё раз");
         });
     }
+    if (offer) void offerTest();
   }
 
   const programActions: ProgramActions = {
@@ -508,6 +509,35 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     updateMsg(messageId, { milestone: { ...mark, undone: true } });
   }
 
+  /** Optional, never in the way: taking it opens it in «Подготовке», putting it off starts from the profile */
+  async function offerTest() {
+    setBusyState(true);
+    await assistantSay(
+      "Сохранено — «Подготовка» уже собирается под эту программу. Хочешь пройти входной замер? 8 вопросов, пара минут: найдём, с какого уровня строить сеты. Можно и позже — тогда первый сет соберу по твоему профилю.",
+      false,
+      { offer: { kind: "diagnostic" } }
+    );
+    if (mounted.current) setBusyState(false);
+  }
+
+  async function answerOffer(messageId: number, answer: "start" | "later") {
+    if (busyRef.current) return;
+    updateMsg(messageId, { offer: { kind: "diagnostic", answered: answer } });
+    if (answer === "start") {
+      morph(() => {
+        setMode("prep");
+        setPrepTab("overview");
+        setPrepSub("now");
+        setLaunchDiag(true);
+      });
+      return;
+    }
+    skipEntranceTest();
+    setDiagDone(true);
+    setBusyState(true);
+    await assistantSay("Хорошо. Первый сет собрал по твоему профилю — он уже в «Подготовке → Сейчас». Замер можно пройти там в любой момент.");
+    if (mounted.current) setBusyState(false);
+  }
   function undoTestDate(messageId: number) {
     const pick = messages.find((m) => m.id === messageId)?.testDate;
     if (!pick || pick.undone) return;
@@ -934,11 +964,11 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
               morph(() => {
                 setMode("prep");
                 if (!diagDone) {
+                  // «Требования» are open before the entrance test: the test date is picked there
+                  const open = tab === "overview" && (!sub || sub === "now" || sub === "requirements");
                   setPrepTab("overview");
-                  setPrepSub("now");
-                  if (tab !== "overview" || (sub && sub !== "now")) {
-                    setLaunchDiag(true);
-                  }
+                  setPrepSub(open && sub ? sub : "now");
+                  if (!open) setLaunchDiag(true);
                 } else {
                   setPrepTab(tab);
                   if (sub) setPrepSub(sub);
@@ -1022,6 +1052,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
                         onEditSave={onEditSave}
                         onUndoMilestone={undoMilestone}
                         onUndoTestDate={undoTestDate}
+                        onOffer={diagDone ? undefined : answerOffer}
                       />
                     )
                   )}

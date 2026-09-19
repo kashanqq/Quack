@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "../choice/Icon";
-import type { Signal } from "../quack/contract";
+import type { ConflictOption, Signal } from "../quack/contract";
 import styles from "./dashboard.module.css";
 
 type Target = NonNullable<Signal["target"]>;
@@ -16,7 +16,14 @@ type Props = {
   /** Ticked milestones: a date signal about one of them offers «Уже сделал» until it is ticked */
   done: string[];
   onMark: (milestone: string, done: boolean) => void;
+  /** A way out of a date conflict taken; returns how to take it back */
+  onConflict: (conflictId: string, option: ConflictOption) => () => void;
+  /** Conflicts settled on earlier visits: id → the way out chosen, and taking it back */
+  resolved: Record<string, string>;
+  onUnresolve: (conflictId: string) => void;
 };
+
+const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
 const TONE_ICON = { up: "trending-up", down: "trending-down", info: "info" } as const;
 const TARGET_LABEL: Record<Target, string> = {
@@ -37,10 +44,24 @@ function ago(iso: string) {
 }
 
 /** Why the Quack! button glowed: every change since the last visit, then the ones already seen. */
-export function ChangesFeed({ fresh, history, isNew, onTarget, done, onMark }: Props) {
+export function ChangesFeed({ fresh, history, isNew, onTarget, done, onMark, onConflict, resolved, onUnresolve }: Props) {
   const key = (s: Signal) => `${s.id}@${s.at}`;
   // A signal ticked on this visit goes out of the standing at once; it stays here, ticked, so it can be undone
   const [ticked, setTicked] = useState<Signal[]>([]);
+  // A conflict settled on this visit: which way out, and how to take it back
+  const [settled, setSettled] = useState<Record<string, { label: string; undo: () => void }>>({});
+
+  const settle = (s: Signal, option: ConflictOption) => {
+    const undo = onConflict(s.conflict!.id, option);
+    setTicked((list) => (list.some((t) => key(t) === key(s)) ? list : [s, ...list]));
+    setSettled((all) => ({ ...all, [s.id]: { label: option.label, undo } }));
+  };
+
+  const unsettle = (s: Signal) => {
+    settled[s.id]?.undo();
+    setTicked((list) => list.filter((t) => t.id !== s.id));
+    setSettled(({ [s.id]: _gone, ...rest }) => rest);
+  };
   // A signal that went and came back (a tick taken back) is shown once, as it stands now
   const items = [...ticked, ...fresh, ...history].filter((s, i, all) => all.findIndex((x) => x.id === s.id) === i).slice(0, SHOWN);
 
@@ -89,6 +110,28 @@ export function ChangesFeed({ fresh, history, isNew, onTarget, done, onMark }: P
                     </button>
                   </p>
                 )}
+                {/* A date conflict: its ways out, one press each — or the one taken, with a way back */}
+                {s.conflict &&
+                  (settled[s.id] || resolved[s.conflict.id] ? (
+                    <p className={styles.markDone}>
+                      <Icon name="check" size={14} /> Решено: {lowerFirst(settled[s.id]?.label ?? resolved[s.conflict.id])} ·{" "}
+                      <button
+                        type="button"
+                        className={styles.inlineLink}
+                        onClick={() => (settled[s.id] ? unsettle(s) : onUnresolve(s.conflict!.id))}
+                      >
+                        вернуть
+                      </button>
+                    </p>
+                  ) : (
+                    <div className={styles.feedOptions}>
+                      {s.conflict.options.map((o) => (
+                        <button key={o.label} type="button" className={styles.markButton} onClick={() => settle(s, o)}>
+                          {o.label}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
               </div>
               <div className={styles.feedActions}>
                 {s.milestone && !done.includes(s.milestone) && (

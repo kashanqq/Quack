@@ -3,6 +3,7 @@
 
 import {
   SETS,
+  setById,
   SKILLS,
   TODAY,
   type Evidence,
@@ -61,6 +62,10 @@ export type PrepModel = {
   milestonesDone: string[];
   /** The test date the student picked per exam; the nearest one while nothing is picked */
   testDates?: TestDates;
+  /** A target the student set by hand per exam; the highest bar of the saved programs while absent */
+  targets?: Partial<Record<DatedExam, number>>;
+  /** Skill states when the set in work was taken: the set report says what grew since */
+  startStates?: Record<string, SkillState>;
   resolvedConflicts: Record<string, string>;
   /** Show the section on demo programs when nothing is saved */
   demo: boolean;
@@ -214,8 +219,54 @@ export function readiness(model: PrepModel, exam: ExamId = "sat"): number {
   return Math.round((got / total) * 100);
 }
 
+/** How the set's topics stood when it was taken: its report compares with this */
+const snapshot = (model: PrepModel, id: string) =>
+  Object.fromEntries(setById(id).skills.map((s) => [s, model.states[s]])) as Record<string, SkillState>;
+
 export function acceptSet(model: PrepModel, id: string): PrepModel {
-  return { ...model, currentSet: id, postponed: (model.postponed ?? []).filter((s) => s !== id), reportFor: null };
+  return {
+    ...model,
+    currentSet: id,
+    postponed: (model.postponed ?? []).filter((s) => s !== id),
+    reportFor: null,
+    startStates: snapshot(model, id),
+  };
+}
+
+/**
+ * The entrance test is optional (product-logic §4.2): without it the first set is built from what is known
+ * of the student — for now the starting estimates of the demo model, later the profile on the backend.
+ */
+export function skipTest(model: PrepModel): PrepModel {
+  const next = { ...model, diagnosticDone: true, diagnosticSkipped: true };
+  if (next.currentSet) return next;
+  const top = rankSets(next, "sat")[0]?.set;
+  return top ? acceptSet(next, top.id) : next;
+}
+
+/** What the passed set did, from the model alone: the numbers of the report, its words are the backend's */
+export type SetReport = {
+  set: StudySet;
+  closed: string[];
+  /** Topics that moved up since the set was taken */
+  stronger: { id: string; from: SkillState; to: SkillState }[];
+  /** Traps of the set's topics now «исправлено, следим» */
+  fixed: { skill: string; text: string }[];
+};
+
+export function setReport(model: PrepModel): SetReport | null {
+  if (!model.reportFor || model.currentSet) return null;
+  const set = setById(model.reportFor);
+  const rank: Record<SkillState, number> = { lowData: 0, weak: 0, shaky: 1, solid: 2 };
+  const start = model.startStates ?? {};
+  return {
+    set,
+    closed: set.skills.filter((id) => model.states[id] === "solid"),
+    stronger: set.skills
+      .filter((id) => start[id] && rank[model.states[id]] > rank[start[id]])
+      .map((id) => ({ id, from: start[id], to: model.states[id] })),
+    fixed: set.skills.flatMap((id) => model.misconceptions[id].filter((m) => m.status === "resolved").map((m) => ({ skill: id, text: m.text }))),
+  };
 }
 
 /**
@@ -227,7 +278,7 @@ export function makeCurrent(model: PrepModel, id: string): PrepModel {
   const prev = model.currentSet;
   const kept = (model.postponed ?? []).filter((s) => s !== id && s !== prev);
   const postponed = prev && prev !== id && !doneSets.includes(prev) ? [prev, ...kept] : kept;
-  return { ...model, currentSet: id, doneSets, postponed, reportFor: null };
+  return { ...model, currentSet: id, doneSets, postponed, reportFor: null, startStates: snapshot(model, id) };
 }
 
 const UP: Record<SkillState, SkillState> = { weak: "shaky", lowData: "shaky", shaky: "solid", solid: "solid" };
