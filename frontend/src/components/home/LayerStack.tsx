@@ -1,275 +1,113 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { copy } from "./copy";
-import { PixelDuck } from "@/components/duck/PixelDuck";
 import styles from "./layers.module.css";
 
 const LAYERS = copy.layers.items;
 const N = LAYERS.length;
-
-/** Scroll distance spent on each layer, in viewport heights: two or three wheel notches. */
-const PER_LAYER_VH = 0.4;
-/** Once the scroll has been still this long, the nearest layer is brought fully into focus. */
-const SNAP_IDLE_MS = 140;
-/** A nudge smaller than this share of a step settles back on the same layer. */
-const SNAP_SLACK = 0.12;
-/** The wheel is held for at least this long after it turns a layer, and until it has been quiet for WHEEL_QUIET_MS. */
-const WHEEL_LOCK_MS = 550;
-const WHEEL_QUIET_MS = 200;
-/** How far apart neighbouring layers sit, as a share of the layer width. */
-const GAP = 0.36;
-/** Extra room the neighbours make for the one in focus, as a share of the width. */
-const SPREAD = 0.2;
-/** Size of the layer in focus relative to the rest. Images are laid out at the focused
-    size and only ever scaled down, so the one in focus is drawn at full resolution. */
-const FOCUS_SCALE = 1.3;
-/** Blur and dimming of a layer one step away from focus; further ones get no worse. */
-const BLUR_PX = 5;
-const DIM = 0.45;
+/** Where each layer sits down the stack, in gaps. */
+const slot = (i: number) => i;
 
 /**
- * "Под основой": the six layers Quack! is built from, one on top of the other.
+ * "Что внутри": the six layers Quack! is built from, stacked close together on
+ * one screen, each bobbing gently on its own beat.
  *
- * The section is several screens tall and its stage is sticky, so scrolling
- * moves a focus down the stack instead of moving the page. The layer in focus
- * grows and sharpens with its description beside it; the neighbours step
- * aside, blurred. Positions are written straight to the DOM every frame, so
- * scrolling never re-renders React — only the focused index is state.
+ * Pointing at a layer (or tapping it on a touch screen) brings it forward and a
+ * little larger, blurs the rest, and shows its description beside it —
+ * alternating sides, the way the stack was first drawn. The layers themselves
+ * overlap, so each one is picked through an invisible band level with it.
  */
 export function LayerStack() {
   const sectionRef = useRef<HTMLElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
-  const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const ladderRef = useRef<HTMLDivElement>(null);
-  const builderRef = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState<number | null>(null);
   const t = copy.layers;
 
+  // A tap outside the stack puts a picked layer back.
   useEffect(() => {
-    const section = sectionRef.current;
-    const stage = stageRef.current;
-    if (!section || !stage) return;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    let frame = 0;
-    let target = 0;
-    let pos = 0;
-    let last = -1;
-
-    const place = () => {
-      // The rendered width is the focused one; spacing is measured on the resting size.
-      const w = (layerRefs.current[0]?.offsetWidth ?? 0) / FOCUS_SCALE;
-      for (let i = 0; i < N; i++) {
-        const el = layerRefs.current[i];
-        if (!el) continue;
-        const d = i - pos;
-        const near = Math.max(0, 1 - Math.abs(d));
-        const away = Math.min(Math.abs(d), 1);
-        // The focused layer sits in the middle; the rest queue above and below it,
-        // pushed a little further out so the big one has room.
-        const y = d * GAP * w + Math.max(-1, Math.min(1, d)) * SPREAD * w;
-        const scale = (1 + (FOCUS_SCALE - 1) * near) / FOCUS_SCALE;
-        el.style.transform = `translate(-50%, -50%) translateY(${y.toFixed(1)}px) scale(${scale.toFixed(3)})`;
-        el.style.filter = reduced ? "" : `blur(${(away * BLUR_PX).toFixed(2)}px)`;
-        el.style.opacity = (1 - away * DIM).toFixed(3);
-        // Upper layers cover lower ones, as in a real stack, but the focused one always wins.
-        el.style.zIndex = String(near > 0.5 ? 50 : N - i);
-      }
-      // The ladder runs with the stack, so its rungs slide past the builder, who stays
-      // level with the layer in focus.
-      if (ladderRef.current) ladderRef.current.style.backgroundPositionY = `${(-pos * GAP * w).toFixed(1)}px`;
+    if (active === null) return;
+    const onDown = (e: PointerEvent) => {
+      if (!sectionRef.current?.contains(e.target as Node)) setActive(null);
     };
-
-    const tick = () => {
-      pos += (target - pos) * (reduced ? 1 : 0.14);
-      if (Math.abs(target - pos) < 0.001) pos = target;
-      place();
-      if (builderRef.current) builderRef.current.dataset.climbing = String(pos !== target);
-      const idx = Math.round(pos);
-      if (idx !== last) {
-        last = idx;
-        setActive(idx);
-      }
-      frame = pos === target ? 0 : requestAnimationFrame(tick);
-    };
-
-    // Where the page has to be for layer i to be exactly in focus.
-    const scrollFor = (i: number) => {
-      const run = section.offsetHeight - window.innerHeight;
-      return section.getBoundingClientRect().top + window.scrollY + (run * i) / (N - 1);
-    };
-
-    // After the wheel stops, finish the move onto a layer, so nobody has to nudge the
-    // page into place by hand. The move always goes the way the reader was
-    // scrolling — never back against it — unless they barely left a layer.
-    let idle = 0;
-    let lastY = window.scrollY;
-    let dir = 0;
-    const snap = () => {
-      const rect = section.getBoundingClientRect();
-      const run = rect.height - window.innerHeight;
-      const raw = run > 0 ? -rect.top / run : -1;
-      // Only while the stage is pinned; entering and leaving the section scroll freely.
-      if (raw <= 0 || raw >= 1) return;
-      const at = raw * (N - 1);
-      const i = dir > 0 ? Math.ceil(at - SNAP_SLACK) : dir < 0 ? Math.floor(at + SNAP_SLACK) : Math.round(at);
-      const top = scrollFor(Math.max(0, Math.min(N - 1, i)));
-      if (Math.abs(top - window.scrollY) > 2) window.scrollTo({ top, behavior: reduced ? "auto" : "smooth" });
-    };
-
-    const onScroll = () => {
-      const y = window.scrollY;
-      if (y !== lastY) dir = Math.sign(y - lastY);
-      lastY = y;
-      const rect = section.getBoundingClientRect();
-      const run = rect.height - window.innerHeight;
-      const p = run > 0 ? Math.max(0, Math.min(1, -rect.top / run)) : 0;
-      target = p * (N - 1);
-      if (!frame) frame = requestAnimationFrame(tick);
-      clearTimeout(idle);
-      idle = window.setTimeout(snap, SNAP_IDLE_MS);
-    };
-
-    onScroll();
-    pos = target;
-    place();
-    // While the stage is pinned, the wheel turns exactly one layer per flick: the
-    // page is moved by script, and the rest of the flick (extra notches, trackpad
-    // inertia) is swallowed until the wheel has been quiet for a moment. At the
-    // first and last layer the wheel is let through, so the page can be left.
-    let wheelLocked = false;
-    let lockUntil = 0;
-    let quiet = 0;
-    const unlock = () => {
-      const wait = lockUntil - performance.now();
-      if (wait > 0) quiet = window.setTimeout(unlock, wait);
-      else wheelLocked = false;
-    };
-    const onWheel = (e: WheelEvent) => {
-      const rect = section.getBoundingClientRect();
-      const run = rect.height - window.innerHeight;
-      if (run <= 0) return;
-      const raw = -rect.top / run;
-      const d = Math.sign(e.deltaY);
-      if (!d || raw < -0.001 || raw > 1.001) return;
-      const at = raw * (N - 1);
-      const next = d > 0 ? Math.floor(at + 0.01) + 1 : Math.ceil(at - 0.01) - 1;
-      if (next < 0 || next > N - 1) return;
-
-      e.preventDefault();
-      clearTimeout(quiet);
-      quiet = window.setTimeout(unlock, WHEEL_QUIET_MS);
-      if (wheelLocked) return;
-      wheelLocked = true;
-      lockUntil = performance.now() + WHEEL_LOCK_MS;
-      dir = d;
-      window.scrollTo({ top: scrollFor(next), behavior: reduced ? "auto" : "smooth" });
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("wheel", onWheel, { passive: false });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      cancelAnimationFrame(frame);
-      clearTimeout(idle);
-      clearTimeout(quiet);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, []);
-
-  /** Scrolls the page so that layer `i` is the one in focus. */
-  const jumpTo = (i: number) => {
-    const section = sectionRef.current;
-    if (!section) return;
-    const run = section.offsetHeight - window.innerHeight;
-    const top = section.getBoundingClientRect().top + window.scrollY + (run * i) / (N - 1);
-    window.scrollTo({ top, behavior: "smooth" });
-  };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [active]);
 
   return (
-    <section
-      ref={sectionRef}
-      id="how-it-works"
-      className={styles.section}
-      style={{ height: `${100 + PER_LAYER_VH * 100 * (N - 1)}vh` }}
-      aria-labelledby="layers-heading"
-    >
-      <div ref={stageRef} className={styles.stage}>
-        <header className={styles.head}>
-          <h2 id="layers-heading" className={styles.heading}>
-            {t.heading}
-          </h2>
-          <p className={styles.lead}>{t.lead}</p>
-        </header>
+    <section ref={sectionRef} id="how-it-works" className={styles.section} aria-labelledby="layers-heading">
+      <header className={styles.head}>
+        <h2 id="layers-heading" className={styles.heading}>
+          {t.heading}
+        </h2>
+        <p className={styles.lead}>{t.lead}</p>
+        <p className={styles.hint}>{t.hint}</p>
+      </header>
 
-        {/* The index along the bottom doubles as navigation. */}
-        <ol className={styles.rail}>
-          {LAYERS.map((layer, i) => (
-            <li key={layer.name}>
-              <button
-                type="button"
-                className={styles.railItem}
-                data-active={i === active}
-                aria-current={i === active}
-                onClick={() => jumpTo(i)}
-                data-aura
-              >
-                <span className={styles.railNum}>L{i + 1}</span>
-                {layer.name}
-              </button>
-            </li>
-          ))}
-        </ol>
-
-        <div className={styles.stack} aria-hidden="true">
-          {/* A builder duck on a ladder beside the stack, climbing as the focus moves. */}
-          <div ref={ladderRef} className={styles.ladder} />
-          <div ref={builderRef} className={styles.builder}>
-            <PixelDuck tempo="steady">
-              <rect x={8} y={0} width={4} height={1} fill="var(--accent)" />
-              <rect x={7} y={1} width={7} height={1} fill="var(--accent)" />
-            </PixelDuck>
-          </div>
+      <div className={styles.wrap} data-picked={active !== null} onMouseLeave={() => setActive(null)}>
+        <div className={styles.stack}>
           {LAYERS.map((layer, i) => (
             <div
               key={layer.name}
-              ref={(el) => {
-                layerRefs.current[i] = el;
-              }}
               className={styles.layer}
+              data-active={i === active}
+              style={{ "--i": i, "--y": slot(i), zIndex: i === active ? 50 : N - i } as CSSProperties}
+              aria-hidden="true"
             >
-              <img src={`/assets/layers/layer-${i + 1}.webp`} alt="" draggable={false} />
+              <div className={styles.bob}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- a plain cut-out, sized by CSS */}
+                <img src={`/assets/layers/layer-${i + 1}.webp`} alt="" draggable={false} />
+              </div>
             </div>
+          ))}
+
+          {LAYERS.map((layer, i) => (
+            <button
+              key={layer.name}
+              type="button"
+              className={styles.band}
+              // Each band runs from halfway to the layer above to halfway to the one below.
+              style={{ "--from": i && (slot(i - 1) + slot(i)) / 2, "--to": (slot(i) + slot(i + 1)) / 2 } as CSSProperties}
+              aria-label={layer.name}
+              aria-expanded={i === active}
+              aria-controls={`layer-card-${i}`}
+              onMouseEnter={() => setActive(i)}
+              onFocus={() => setActive(i)}
+              onClick={(e) => {
+                // A mouse already picked it on hover; a tap toggles.
+                if (e.nativeEvent instanceof PointerEvent && e.nativeEvent.pointerType === "mouse") return;
+                setActive((a) => (a === i ? null : i));
+              }}
+            />
           ))}
         </div>
 
-        {/* Descriptions alternate sides, the way the stack was first drawn. */}
-        {LAYERS.map((layer, i) => (
-          <article
-            key={layer.name}
-            className={styles.card}
-            data-side={i % 2 === 0 ? "left" : "right"}
-            data-active={i === active}
-            aria-hidden={i !== active}
-          >
-            <p className={styles.cardNum}>
-              L{i + 1} <span>/ {N}</span>
-            </p>
-            <h3 className={styles.cardTitle}>{layer.name}</h3>
-            <p className={styles.cardTagline}>{layer.tagline}</p>
-            <p className={styles.cardText}>{layer.text}</p>
-            {layer.tags && (
-              <ul className={styles.tags}>
-                {layer.tags.map((tag) => (
-                  <li key={tag}>{tag}</li>
-                ))}
-              </ul>
-            )}
-          </article>
-        ))}
+        <div className={styles.cards}>
+          {LAYERS.map((layer, i) => (
+            <article
+              key={layer.name}
+              id={`layer-card-${i}`}
+              className={styles.card}
+              style={{ "--i": i, "--y": slot(i) } as CSSProperties}
+              data-side={i % 2 === 0 ? "left" : "right"}
+              data-active={i === active}
+              aria-hidden={i !== active}
+            >
+              <p className={styles.cardNum}>
+                L{i + 1} <span>/ {N}</span>
+              </p>
+              <h3 className={styles.cardTitle}>{layer.name}</h3>
+              <p className={styles.cardTagline}>{layer.tagline}</p>
+              <p className={styles.cardText}>{layer.text}</p>
+              {layer.tags && (
+                <ul className={styles.tags}>
+                  {layer.tags.map((tag) => (
+                    <li key={tag}>{tag}</li>
+                  ))}
+                </ul>
+              )}
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );

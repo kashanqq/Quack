@@ -1549,62 +1549,14 @@
   border-radius: 12px;
 }
 
-.marketLead {
-  display: grid;
-  gap: 10px;
-  padding: 18px 20px;
-  background: var(--canvas-bg);
-  border: 1px solid rgba(255, 122, 0, 0.45);
-  border-radius: var(--radius);
-  box-shadow: 0 0 0 4px rgba(255, 122, 0, 0.06);
-  animation: rise 0.3s var(--ease-out) both;
-}
 
-.marketLead[data-status="proposed"] {
-  border-style: dashed;
-}
 
-.marketLeadHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 16px;
-  font-size: 13px;
-}
 
-.marketLeadHead .eyebrow {
-  margin: 0;
-  color: var(--accent-label);
-}
 
-.marketLeadTitle {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 500;
-}
 
-.marketLead .why {
-  margin: 0;
-}
 
-.marketLeadFoot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px 20px;
-}
 
-.marketLeadFoot .actions {
-  margin: 0;
-}
 
-.marketGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
-}
 
 .setCard .actions {
   align-items: center;
@@ -1678,300 +1630,478 @@
 
 /* ---------- Маршрут: the student's own plan, optional ---------- */
 
-.routeEmpty {
+
+
+
+
+
+
+
+/* ---------- Маршрут: плиточная сетка для быстрого выбора и смены активного сета ---------- */
+
+.routeTilesGrid {
   display: grid;
-  justify-items: center;
-  gap: 10px;
-  padding: 36px 20px;
-  text-align: center;
-  background: var(--canvas-bg);
-  border: 1px dashed rgba(255, 255, 255, 0.16);
-  border-radius: var(--radius);
-}
-
-.routeEmpty h4 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 500;
-}
-
-.routeEmpty p {
-  max-width: 460px;
-  margin: 0 0 6px;
-  line-height: 1.45;
-}
-
-.routeEmptyIcon {
-  color: var(--accent);
-}
-
-.routeBar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-}
-
-.routeBar .actions {
-  align-items: center;
-  margin: 0;
-}
-
-.routeBar .secondary {
-  margin-top: 0;
-}
-
-.routeSteps {
-  display: grid;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* A step: its mark on a line down the left, the set beside it */
-.routeSteps > li {
-  position: relative;
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
   gap: 14px;
-  padding-bottom: 12px;
+  margin-top: 14px;
+  align-items: start;
 }
 
-.routeSteps > li::before {
-  position: absolute;
-  top: 28px;
-  bottom: 0;
-  left: 13px;
-  width: 2px;
-  background: rgba(255, 255, 255, 0.1);
-  content: "";
-}
-
-.routeSteps > li:last-child::before {
-  display: none;
-}
-
-.routeSteps > li[data-done]::before {
-  background: rgba(124, 207, 107, 0.4);
-}
-
-.routeMark {
-  position: relative;
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  color: var(--text-dim);
-  font-size: 13px;
-  background: #1d1a18;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 50%;
-}
-
-.routeSteps > li[data-done] .routeMark {
-  color: #1f1d1b;
-  background: var(--solid);
-  border-color: transparent;
-}
-
-.routeSteps > li[data-here] .routeMark {
-  color: #1f1d1b;
-  font-weight: 600;
-  background: var(--accent);
-  border-color: transparent;
-  box-shadow: 0 0 0 4px rgba(255, 122, 0, 0.16);
-}
-
-.routeStep {
-  display: grid;
-  gap: 8px;
-  padding: 12px 14px;
+/* Плитка сета */
+.setTile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 15px 16px;
   background: var(--canvas-bg);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  animation: rise 0.3s var(--ease-out) both;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s var(--ease-out);
+  animation: rise 0.25s var(--ease-out) both;
+  align-self: start;
+  height: fit-content;
 }
 
-.routeSteps > li[data-here] .routeStep {
-  border-color: rgba(255, 122, 0, 0.45);
+.setTile:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
 }
 
-.routeSteps > li[data-done] .routeStep {
-  opacity: 0.7;
+/* Активная плитка сета */
+.setTile[data-active] {
+  border-color: rgba(255, 122, 0, 0.55);
+  background: linear-gradient(180deg, rgba(255, 122, 0, 0.06) 0%, rgba(255, 122, 0, 0.01) 100%), var(--canvas-bg);
+  box-shadow: 0 4px 18px rgba(255, 122, 0, 0.1), 0 0 0 1px rgba(255, 122, 0, 0.2);
 }
 
-.routeStepHead {
+.setTile[data-done] {
+  border-color: rgba(124, 207, 107, 0.22);
+}
+
+/* Шапка плитки */
+.setTileHead {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 2px 12px;
-}
-
-.routeStepHead strong {
-  font-weight: 500;
-}
-
-.routeStepMeta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-dim);
-  font-size: 13px;
-}
-
-.routeStepMeta .segments span {
-  width: 22px;
-  height: 6px;
-}
-
-.routeNow {
-  padding: 1px 8px;
-  color: var(--accent-label);
-  font-size: 12px;
-  font-weight: 400;
-  background: var(--accent-tint);
-  border-radius: 999px;
-}
-
-.routeStep .actions {
-  align-items: center;
-  margin: 0;
-}
-
-.routeStep .primary,
-.routeStep .secondary {
-  margin-top: 0;
-}
-
-.routeEditor {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.routeColumn {
-  display: grid;
-  align-content: start;
   gap: 10px;
-  padding: 14px;
-  background: var(--canvas-bg);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
+  margin-bottom: 5px;
 }
 
-.routeColumn .eyebrow {
-  margin: 0;
-}
-
-.routeColumnHead {
+.setTileTitleBox {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
-}
-
-.routeHint {
-  margin: 0;
-  color: var(--text-faint);
-  font-size: 14px;
-}
-
-.routeDraft {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.routeDraft > li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 6px 6px 8px;
-  background: var(--inset-bg);
-  border-radius: 10px;
-  animation: rise 0.2s var(--ease-out) both;
-}
-
-.routeDraft .routeMark {
-  width: 24px;
-  height: 24px;
-  font-size: 12px;
-}
-
-.routeDraftTitle {
-  flex: 1;
-  min-width: 0;
-  font-size: 14px;
-}
-
-.routeTools {
-  display: flex;
-  flex: none;
+  flex-direction: column;
   gap: 2px;
 }
 
-.routeTools button,
-.routeAdd {
+.setTileNumber {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.setTileTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+/* Бейджи на плитке */
+.tileActiveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ff9d42;
+  background: rgba(255, 122, 0, 0.14);
+  border: 1px solid rgba(255, 122, 0, 0.32);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.pulseDot {
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulseDotAnim 1.8s ease-in-out infinite;
+}
+
+@keyframes pulseDotAnim {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.5;
+  }
+}
+
+.tileBestBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #ffd066;
+  background: rgba(255, 208, 102, 0.12);
+  border: 1px solid rgba(255, 208, 102, 0.28);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.tileDoneBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--solid);
+  background: rgba(124, 207, 107, 0.12);
+  border: 1px solid rgba(124, 207, 107, 0.28);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Мета-информация плитки */
+.setTileMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.setTileProgressCount {
+  color: var(--text-faint);
+}
+
+/* Дефолтный компактный вид: мини-пилюли тем */
+.tilePillList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 4px;
+  transition: opacity 0.2s ease;
+}
+
+.setTile[data-expanded] .tilePillList {
+  display: none;
+}
+
+.tilePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  line-height: 1.3;
+}
+
+.tilePill[data-state="solid"] {
+  border-color: rgba(124, 207, 107, 0.2);
+}
+
+.tilePill[data-state="weak"] {
+  border-color: rgba(255, 122, 92, 0.2);
+}
+
+/* Раскрывающийся блок деталей: раскрывается ТОЛЬКО у одного целевого сета */
+.tileDetails {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, margin 0.2s ease;
+}
+
+.tileDetailsInner {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.setTile[data-expanded] .tileDetails {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.tileWhy {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 9px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.025);
+  border-left: 2px solid var(--accent);
+  border-radius: 4px;
+}
+
+.tileWhy svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+/* Темы внутри развёрнутой плитки */
+.tileTopics {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tileTopicItem {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.tileTopicItem:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.tileTopicHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.tileTopicNameGroup {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.tileTopicName {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.tileTopicState {
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.tileTopicState[data-state="solid"] {
+  color: var(--solid);
+}
+
+.tileTopicState[data-state="shaky"] {
+  color: var(--shaky);
+}
+
+.tileTopicState[data-state="weak"] {
+  color: var(--weak);
+}
+
+.tileTopicSummary {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Стильно соединённая низкоконтрастная группа действий */
+.tileActionGroup {
+  display: flex;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+.tileActionPill {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.setTile:hover .tileActionPill,
+.setTile[data-expanded] .tileActionPill {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.setTile[data-active] .tileActionPill {
+  border-color: rgba(255, 122, 0, 0.3);
+  background: rgba(255, 122, 0, 0.05);
+}
+
+/* Низкоконтрастная кнопка выбора сета */
+.tileSelectBtn {
+  flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  min-width: 30px;
-  height: 30px;
-  padding: 0 6px;
-  color: var(--text-dim);
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
   background: none;
-  border: 1px solid transparent;
-  border-radius: 8px;
+  border: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
 }
 
-.routeTools button:hover:not(:disabled),
-.routeAdd:hover {
+.tileSelectBtn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tileSelectBtn:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.tileActiveLabel {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #ff9d42;
+  border-right: 1px solid rgba(255, 122, 0, 0.2);
+}
+
+.tileOpenBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--text-faint);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
+}
+
+.tileOpenBtn:hover {
   color: var(--text);
   background: rgba(255, 255, 255, 0.06);
 }
 
-.routeTools button:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
 
-.routeAdd {
-  flex: none;
-  padding: 0 10px;
-  color: var(--accent-label);
-  border-color: rgba(255, 122, 0, 0.3);
-}
 
-.routeEditorFoot {
-  display: flex;
-  flex-wrap: wrap;
-  grid-column: 1 / -1;
-  gap: 10px;
-}
 
-.routeEditorFoot .primary,
-.routeEditorFoot .secondary {
-  margin-top: 0;
-}
 
-.routeEditorFoot .primary:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* ---------- Карта навыков по сетам: cards in columns by what they rest on ---------- */
+
+.canvasTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.mapModeSwitch {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.mapModeSwitch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12.5px;
+  background: none;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mapModeSwitch button[aria-selected="true"] {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: 500;
+}
+
+.canvasControlsRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.skillGraphWrapper {
+  position: relative;
+  flex: 1;
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+}
 
 .setMapCard {
   display: flex;
@@ -1988,6 +2118,86 @@
 
 .setMapBody[data-panel] {
   grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+}
+
+.activeNodePill {
+  display: inline-flex;
+  padding: 1px 5px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #1f1d1b;
+  background: var(--accent);
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.setMapDependencies {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.dependencyItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dependencyLabel {
+  color: var(--text-dim);
+  font-size: 11.5px;
+}
+
+.dependencySets {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.dependencyChip {
+  padding: 2px 7px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dependencyChip:hover {
+  color: #1f1d1b;
+  background: var(--accent);
+  border-color: transparent;
+}
+
+.skillSummaryText {
+  margin: 4px 0 8px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 7px;
+}
+
+.skillTrapHint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 5px 8px;
+  font-size: 12px;
+  color: #ffaa7d;
+  background: rgba(255, 122, 0, 0.08);
+  border-radius: 6px;
 }
 
 .setMapScroll {
@@ -2149,10 +2359,40 @@
   gap: 10px;
 }
 
-.setMapPanelHead h4 {
+.setMapTitleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   margin: 2px 0 0;
+  padding: 0;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: color 0.18s ease;
+}
+
+.setMapTitleBtn h4 {
+  margin: 0;
   font-size: 18px;
   font-weight: 500;
+  transition: color 0.18s ease;
+}
+
+.setMapTitleIcon {
+  color: var(--text-faint);
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.setMapTitleBtn:hover h4,
+.setMapTitleBtn:hover .setMapTitleIcon {
+  color: var(--accent);
+}
+
+.setMapTitleBtn:hover .setMapTitleIcon {
+  transform: translateX(2px);
 }
 
 .setMapPanelHead .eyebrow {
@@ -3169,11 +3409,87 @@
 }
 
 @media (max-width: 760px) {
+  /* Route tiles mobile optimization */
+  .routeTilesGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .setTile {
+    padding: 13px 14px;
+    border-radius: 14px;
+  }
+
+  .setTileTitle {
+    font-size: 15px;
+  }
+
+  .tileTopics {
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+
+  .tileTopicItem {
+    padding: 5px 8px;
+  }
+
+  .tileTopicName {
+    font-size: 12px;
+  }
+
+  .tileTopicSummary {
+    font-size: 11px;
+    -webkit-line-clamp: 2;
+  }
+
+  .tileActionGroup {
+    padding-top: 8px;
+  }
+
+  .tileSelectBtn {
+    height: 30px;
+    font-size: 11.5px;
+  }
+
+  .tileOpenBtn {
+    height: 30px;
+    font-size: 11px;
+  }
+
+  /* Map mobile optimization: compact vertical graph without layout overflow */
+  .canvasTitleRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .canvasControlsRight {
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+  }
+
+  .mapModeSwitch {
+    width: 100%;
+  }
+
+  .mapModeSwitch button {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .skillGraphWrapper {
+    min-height: 380px;
+    max-height: 60vh;
+  }
+
   .setMapScroll {
     flex-direction: column;
     align-items: stretch;
-    gap: 22px;
+    gap: 20px;
     padding: 10px;
+    max-height: 52vh;
   }
 
   .setMapColumn {
@@ -3193,8 +3509,10 @@
     font-size: 12px;
   }
 
-  .routeEditor {
-    grid-template-columns: minmax(0, 1fr);
+  .setMapPanel {
+    max-height: 50vh;
+    padding-top: 12px;
+    border-top: 1px solid var(--canvas-line);
   }
 
   .setGraphScroll {
@@ -3333,5 +3651,555 @@
 
 .nowButton:active {
   transform: scale(0.96);
+}
+
+/* Кнопка и подсказка запуска замера на экране «Сейчас» */
+.nowDiagActionBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.nowActionHint {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.nowSkipBtn {
+  background: none;
+  border: 0;
+  color: var(--text-faint);
+  font-size: 12.5px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px 10px;
+  margin-top: 4px;
+  transition: color 0.15s ease;
+}
+
+.nowSkipBtn:hover {
+  color: var(--text);
+}
+
+/* Действия в шапке и футере замера */
+.diagHeadActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diagSkipBtn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 11.5px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.diagSkipBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.diagSkipLink {
+  background: none;
+  border: 0;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 12.5px;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-right: auto;
+  padding: 6px 4px;
+  transition: color 0.15s ease;
+}
+
+.diagSkipLink:hover {
+  color: var(--text-dim);
+}
+
+/* ---------- Обязательный входной замер (8 вопросов) для новых пользователей ---------- */
+
+.routeDiagnosticBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(255, 166, 77, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(255, 166, 77, 0.24);
+  border-radius: 14px;
+  margin-bottom: 6px;
+}
+
+.routeDiagnosticInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.routeDiagnosticSub {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.35;
+}
+
+.routeDiagnosticBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #1f1d1b;
+  background: #ffaa54;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s var(--ease-out);
+  white-space: nowrap;
+}
+
+.routeDiagnosticBtn:hover {
+  background: #ffbb73;
+  transform: translateY(-1px);
+}
+
+.routeDiagnosticBtn:active {
+  transform: scale(0.98);
+}
+
+/* Диагностический баннер вверху раздела */
+.diagnosticBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  background: radial-gradient(circle at top left, rgba(255, 122, 0, 0.12), transparent 70%), var(--canvas-bg);
+  border: 1px solid rgba(255, 122, 0, 0.35);
+  border-radius: 18px;
+  animation: rise 0.28s var(--ease-out) both;
+}
+
+.diagnosticBannerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.diagnosticBannerTitle {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.diagnosticBannerText {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+/* Модальное окно входного теста */
+.diagnosticModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(14, 13, 12, 0.78);
+  backdrop-filter: blur(10px);
+  animation: rise 0.2s ease both;
+}
+
+.diagnosticModalBox {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 22px 26px;
+  background: #25221f;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65);
+  scrollbar-width: thin;
+}
+
+.diagnosticModalHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.diagnosticBadgeGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.diagnosticTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ff9d42;
+  background: rgba(255, 122, 0, 0.15);
+  border: 1px solid rgba(255, 122, 0, 0.3);
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.diagnosticSubtitle {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.diagnosticTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Точки прогресса (8 штук) */
+.diagnosticDots {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.diagnosticDot {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.diagnosticDot[data-state="current"] {
+  background: #ffaa54;
+  transform: scaleY(1.3);
+}
+
+.diagnosticDot[data-state="correct"] {
+  background: var(--solid);
+}
+
+.diagnosticDot[data-state="wrong"] {
+  background: var(--weak);
+}
+
+/* Тело вопроса */
+.diagnosticBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.diagnosticQuestionCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.diagnosticAreaMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.diagnosticSkillName {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.diagnosticQuestionText {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+/* Варианты ответов */
+.diagnosticOptionsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.diagnosticOptionBtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s var(--ease-out);
+}
+
+.diagnosticOptionBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateX(2px);
+}
+
+.diagnosticOptionIndex {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+}
+
+.diagnosticOptionLabel {
+  flex: 1;
+  line-height: 1.35;
+}
+
+.optCorrect {
+  background: rgba(124, 207, 107, 0.12) !important;
+  border-color: rgba(124, 207, 107, 0.45) !important;
+  color: #c9f5c0 !important;
+}
+
+.optWrong {
+  background: rgba(255, 122, 92, 0.12) !important;
+  border-color: rgba(255, 122, 92, 0.45) !important;
+  color: #ffd0c6 !important;
+}
+
+.optCheckIcon {
+  flex-shrink: 0;
+  color: var(--solid);
+}
+
+/* Обратная связь по вопросу */
+.diagnosticFeedback {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+  animation: rise 0.2s ease both;
+}
+
+.diagnosticTrapAlert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #ffb885;
+  background: rgba(255, 122, 0, 0.12);
+  border-left: 3px solid #ff9d42;
+  border-radius: 4px 10px 10px 4px;
+}
+
+.diagnosticTrapAlert svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #ff9d42;
+}
+
+.diagnosticExplainBox {
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+}
+
+.diagnosticExplainBox strong {
+  color: var(--text);
+}
+
+.diagnosticFoot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Результаты замера */
+.diagnosticResultBody {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: rise 0.25s var(--ease-out) both;
+}
+
+.diagnosticScoreCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px 16px;
+  background: radial-gradient(circle at center, rgba(255, 166, 77, 0.08), transparent 70%), rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+.diagnosticScoreNum {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  color: var(--text);
+  line-height: 1;
+}
+
+.diagnosticScoreNum strong {
+  font-size: 42px;
+  color: #ffaa54;
+  font-weight: 600;
+}
+
+.diagnosticPercent {
+  margin: 6px 0 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.diagnosticVerdict {
+  max-width: 520px;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+/* Разбивка тем в результатах */
+.diagnosticBreakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.breakdownSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+.breakdownTitleOk {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--solid);
+}
+
+.breakdownTitleWarn {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--weak);
+}
+
+.breakdownTitleTrap {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #ff9d42;
+}
+
+.breakdownList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.breakdownChipOk {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  font-size: 11.5px;
+  color: #d1f7cb;
+  background: rgba(124, 207, 107, 0.14);
+  border: 1px solid rgba(124, 207, 107, 0.3);
+  border-radius: 999px;
+}
+
+.breakdownChipWarn {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  font-size: 11.5px;
+  color: #ffd0c6;
+  background: rgba(255, 122, 92, 0.14);
+  border: 1px solid rgba(255, 122, 92, 0.3);
+  border-radius: 999px;
+}
+
+.trapsList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.diagnosticResultFoot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DuckLane } from "./DuckLane";
 import { Globe } from "./Globe";
+import { copy } from "./copy";
 import styles from "./globe-section.module.css";
 import { Reveal } from "./Reveal";
 
@@ -11,6 +12,7 @@ import { Reveal } from "./Reveal";
  * each side. The ducks only fly while the section is on screen.
  */
 export function GlobeSection() {
+  const heading = copy.quack.heading;
   const ref = useRef<HTMLElement>(null);
   const [onScreen, setOnScreen] = useState(false);
 
@@ -25,7 +27,21 @@ export function GlobeSection() {
   }, []);
 
   return (
-    <section ref={ref} className={styles.section} id="globe">
+    <section ref={ref} className={styles.section} id="globe" aria-labelledby="globe-heading">
+      <Reveal className={styles.headingWrap}>
+        <h2 id="globe-heading" className={styles.heading}>
+          {heading.split("*").map((part, i) =>
+            i % 2 ? (
+              <em key={i} className={styles.accent}>
+                {part}
+              </em>
+            ) : (
+              part
+            ),
+          )}
+        </h2>
+      </Reveal>
+
       <Reveal className={styles.globeWrap}>
         <Globe />
       </Reveal>

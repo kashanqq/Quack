@@ -19,7 +19,10 @@ import {
   type PrepTab,
 } from "./prepModel";
 import { quackSource } from "../quack/source";
+import { Icon } from "../choice/Icon";
 import { SetsView } from "./SetsView";
+import { DiagnosticMock } from "./DiagnosticMock";
+import type { DiagnosticResultSummary } from "./diagnosticData";
 import styles from "./prep.module.css";
 import { store } from "../account/store";
 
@@ -37,15 +40,10 @@ const INTROS: Record<PrepSub | "set", { id: string; title: string; text: string 
     title: "Что такое «Требования»",
     text: "Какие экзамены и на какой балл нужны сохранённым программам, и когда ты, по прогнозу, будешь готов. Цели пересчитываются, когда меняется список программ.",
   },
-  list: {
-    id: "prep-list",
-    title: "Что такое сет",
-    text: "Сет — несколько связанных тем с общим дедлайном. Сеты подбирает ассистент по твоим ошибкам. Работаешь над одним, сверху — он. Хочешь другой — нажми «Сменить на этот»: прогресс по темам не теряется.",
-  },
   route: {
-    id: "prep-route",
-    title: "Маршрут — по желанию",
-    text: "Над чем работать, решаешь ты: любой сет можно взять в «Все сеты». Если удобнее идти по плану — нажми «Составить маршрут», поставь нужные сеты вперёд по порядку и дальше просто следуй им.",
+    id: "prep-route-v2",
+    title: "Что такое маршрут",
+    text: "Сет — несколько связанных тем с общим дедлайном. Ассистент собирает сеты под тебя по твоим ошибкам и пересобирает их, пока ты продвигаешься. Работаешь над одним — сменить можно в любой момент кнопкой «Сменить на этот», прогресс по темам не теряется.",
   },
   map: {
     id: "prep-map",
@@ -66,9 +64,22 @@ type Props = {
   onSub: (sub: PrepSub) => void;
   saved: string[];
   onGoToChoice: () => void;
+  externalOpenDiagnostic?: boolean;
+  onCloseExternalDiagnostic?: () => void;
+  onDiagnosticStatusChange?: (done: boolean) => void;
 };
 
-export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props) {
+export function PrepView({
+  tab,
+  onTab,
+  sub,
+  onSub,
+  saved,
+  onGoToChoice,
+  externalOpenDiagnostic,
+  onCloseExternalDiagnostic,
+  onDiagnosticStatusChange,
+}: Props) {
   // Rendered only after the student switches to the section, so storage can be read right away
   const [model, setModel] = useState<PrepModel>(() => reviveModel(store.get(STORAGE_KEY)) ?? initialModel());
   const [toast, setToast] = useState<string | null>(null);
@@ -76,10 +87,25 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
   const [exam, setExam] = useState<ExamId>(() => (model.currentSet ? setById(model.currentSet).exam : "sat"));
   // The set opened on «Сеты»: its graph and topics replace the list until the student goes back
   const [openSet, setOpenSet] = useState<{ id: string; topic?: string } | null>(null);
+  const [showDiagnostic, setShowDiagnostic] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const isDiagPending = !model.diagnosticDone;
+
+  // Без входного замера доступна исключительно вкладка «Сейчас»
+  useEffect(() => {
+    if (isDiagPending) {
+      if (tab !== "overview") onTab("overview");
+      if (sub !== "now") onSub("now");
+    }
+  }, [isDiagPending, tab, sub, onTab, onSub]);
+
   // A sub-tab belongs to its tab; switching tabs falls back to the first one
-  const current = subFor(tab, sub);
+  const current = isDiagPending ? "now" : subFor(tab, sub);
+
+  useEffect(() => {
+    onDiagnosticStatusChange?.(Boolean(model.diagnosticDone));
+  }, [model.diagnosticDone, onDiagnosticStatusChange]);
 
   useEffect(() => {
     store.set(STORAGE_KEY, model);
@@ -99,7 +125,7 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
 
   const programs = savedPrograms(saved, model.demo);
   // An open set and the map are drawings: they take all the height left
-  const setOpen = programs.length > 0 && tab === "sets" && current === "list" && !!openSet;
+  const setOpen = programs.length > 0 && tab === "sets" && current === "route" && !!openSet;
   const fill = setOpen || (programs.length > 0 && tab === "sets" && current === "map");
 
   const intro = INTROS[setOpen ? "set" : current];
@@ -118,7 +144,7 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
       setOpenSet(id ? { id, topic } : null);
       if (!id) return;
       onTab("sets");
-      onSub("list");
+      onSub("route");
       setExam(setById(id).exam);
     });
 
@@ -132,6 +158,33 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
     setModel((m) => makeCurrent(m, id));
     setToast(`Сет ${setById(id).number} в работе`);
   };
+
+  const skipDiagnostic = () => {
+    setModel((m) => ({
+      ...m,
+      diagnosticDone: true,
+      diagnosticSkipped: true,
+    }));
+    setShowDiagnostic(false);
+    onCloseExternalDiagnostic?.();
+    onDiagnosticStatusChange?.(true);
+    setToast("Входной тест пропущен — применены базовые оценки знаний. Все вкладки открыты.");
+  };
+
+  const completeDiagnostic = (summary: DiagnosticResultSummary) => {
+    setModel((m) => ({
+      ...m,
+      diagnosticDone: true,
+      diagnosticSkipped: false,
+      states: { ...m.states, ...summary.statesUpdate },
+    }));
+    setShowDiagnostic(false);
+    onCloseExternalDiagnostic?.();
+    onDiagnosticStatusChange?.(true);
+    setToast(`Входной замер завершён: ${summary.score} из 8. Маршрут успешно откалиброван!`);
+  };
+
+  const isDiagModalOpen = showDiagnostic || Boolean(externalOpenDiagnostic);
 
   return (
     <div className={styles.prep}>
@@ -162,35 +215,66 @@ export function PrepView({ tab, onTab, sub, onSub, saved, onGoToChoice }: Props)
             <FirstHint key={intro.id} id={intro.id} title={intro.title}>
               {intro.text}
             </FirstHint>
+
             {/* Tabs and their parts are picked only in the left column — on phones it is the menu drawer */}
             <div key={`${tab}-${current}-${openSet?.id ?? ""}`} className={styles.tabBody}>
-              {tab === "overview" && (
+              {isDiagPending ? (
+                /* До прохождения теста доступна исключительно вкладка «Сейчас» */
                 <Overview
                   model={model}
                   programs={programs}
-                  sub={current}
-                  onGo={go}
-                  onOpenSet={openSetAt}
-                  onAccept={accept}
+                  sub="now"
+                  onGo={() => setShowDiagnostic(true)}
+                  onOpenSet={() => setShowDiagnostic(true)}
+                  onAccept={() => setShowDiagnostic(true)}
+                  onOpenDiagnostic={() => setShowDiagnostic(true)}
+                  onSkipDiagnostic={skipDiagnostic}
                 />
-              )}
-              {tab === "sets" && (
-                <SetsView
-                  model={model}
-                  sub={current}
-                  exam={exam}
-                  onExam={setExam}
-                  onMakeCurrent={choose}
-                  onModel={setModel}
-                  openSet={openSet}
-                  onOpenSet={openSetAt}
-                  onToast={setToast}
-                />
+              ) : (
+                <>
+                  {tab === "overview" && (
+                    <Overview
+                      model={model}
+                      programs={programs}
+                      sub={current}
+                      onGo={go}
+                      onOpenSet={openSetAt}
+                      onAccept={accept}
+                      onOpenDiagnostic={() => setShowDiagnostic(true)}
+                      onSkipDiagnostic={skipDiagnostic}
+                    />
+                  )}
+                  {tab === "sets" && (
+                    <SetsView
+                      model={model}
+                      sub={current}
+                      exam={exam}
+                      onExam={setExam}
+                      onMakeCurrent={choose}
+                      onModel={setModel}
+                      openSet={openSet}
+                      onOpenSet={openSetAt}
+                      onToast={setToast}
+                      onOpenDiagnostic={() => setShowDiagnostic(true)}
+                    />
+                  )}
+                </>
               )}
             </div>
           </>
         )}
       </div>
+
+      {isDiagModalOpen && (
+        <DiagnosticMock
+          onComplete={completeDiagnostic}
+          onClose={() => {
+            setShowDiagnostic(false);
+            onCloseExternalDiagnostic?.();
+          }}
+          onSkip={skipDiagnostic}
+        />
+      )}
 
       {toast && (
         <div className={styles.toast} role="status">

@@ -42,6 +42,7 @@ type SidebarProps = {
   prepTab: PrepTab;
   onPrepTab: (tab: PrepTab, sub?: PrepSub) => void;
   prepSub: PrepSub;
+  prepLocked?: boolean;
   dashTab: DashTab;
   onDashTab: (tab: DashTab) => void;
 };
@@ -77,33 +78,41 @@ export function Sidebar(props: SidebarProps) {
         {mode === "prep" && (
           <>
             <span className={styles.railDivider} />
-            {PREP_TABS.map((t) => (
-              <button
-                key={t.tab}
-                type="button"
-                className={styles.iconButton}
-                aria-label={t.label}
-                title={t.label}
-                aria-pressed={props.prepTab === t.tab}
-                onClick={() => props.onPrepTab(t.tab)}
-              >
-                <Icon name={t.icon} />
-              </button>
-            ))}
+            {PREP_TABS.map((t) => {
+              const locked = props.prepLocked && t.tab !== "overview";
+              return (
+                <button
+                  key={t.tab}
+                  type="button"
+                  className={styles.iconButton}
+                  style={locked ? { opacity: 0.35 } : undefined}
+                  aria-label={t.label}
+                  title={locked ? `${t.label} (сначала входной тест)` : t.label}
+                  aria-pressed={props.prepTab === t.tab}
+                  onClick={() => props.onPrepTab(t.tab)}
+                >
+                  <Icon name={t.icon} />
+                </button>
+              );
+            })}
             <span className={styles.railDivider} />
-            {PREP_SUBS[props.prepTab].map((s) => (
-              <button
-                key={s.sub}
-                type="button"
-                className={`${styles.iconButton} ${styles.railSub}`}
-                aria-label={`${s.label} — ${s.hint}`}
-                title={s.label}
-                aria-pressed={subFor(props.prepTab, props.prepSub) === s.sub}
-                onClick={() => props.onPrepTab(props.prepTab, s.sub)}
-              >
-                <Icon name={s.icon} size={16} />
-              </button>
-            ))}
+            {PREP_SUBS[props.prepTab].map((s) => {
+              const subLocked = props.prepLocked && s.sub !== "now";
+              return (
+                <button
+                  key={s.sub}
+                  type="button"
+                  className={`${styles.iconButton} ${styles.railSub}`}
+                  style={subLocked ? { opacity: 0.35 } : undefined}
+                  aria-label={`${s.label} — ${s.hint}`}
+                  title={subLocked ? `${s.label} (сначала входной тест)` : s.label}
+                  aria-pressed={subFor(props.prepTab, props.prepSub) === s.sub}
+                  onClick={() => props.onPrepTab(props.prepTab, s.sub)}
+                >
+                  <Icon name={s.icon} size={16} />
+                </button>
+              );
+            })}
           </>
         )}
         {mode === "dashboard" && (
@@ -238,13 +247,25 @@ export function Sidebar(props: SidebarProps) {
           <ul className={styles.list}>
             {PREP_TABS.map((t, i) => {
               const open = props.prepTab === t.tab;
+              const locked = props.prepLocked && t.tab !== "overview";
               return (
-                <li key={t.tab} style={{ animationDelay: `${i * 30}ms` }} className={styles.group}>
+                <li
+                  key={t.tab}
+                  style={{ animationDelay: `${i * 30}ms`, ...(locked ? { opacity: 0.45 } : {}) }}
+                  className={styles.group}
+                >
                   <div className={`${styles.row} ${open ? styles.rowActive : ""}`}>
-                    <button type="button" className={styles.rowMain} aria-current={open} onClick={() => props.onPrepTab(t.tab)}>
+                    <button
+                      type="button"
+                      className={styles.rowMain}
+                      aria-current={open}
+                      onClick={() => props.onPrepTab(t.tab)}
+                      title={locked ? "Требуется входной замер" : undefined}
+                    >
                       <Icon name={t.icon} size={16} className={styles.rowIcon} />
                       <span className={styles.rowText}>
                         <span className={styles.rowTitle}>{t.label}</span>
+                        {locked && <span className={styles.rowSub}>Сначала тест</span>}
                       </span>
                     </button>
                   </div>
@@ -253,22 +274,24 @@ export function Sidebar(props: SidebarProps) {
                     <ul className={styles.subList}>
                       {PREP_SUBS[t.tab].map((s, j) => {
                         const active = subFor(props.prepTab, props.prepSub) === s.sub;
+                        const subLocked = props.prepLocked && s.sub !== "now";
                         return (
                           <li
                             key={s.sub}
                             className={`${styles.row} ${styles.subRow} ${active ? styles.rowActive : ""}`}
-                            style={{ animationDelay: `${j * 24}ms` }}
+                            style={{ animationDelay: `${j * 24}ms`, ...(subLocked ? { opacity: 0.45 } : {}) }}
                           >
                             <button
                               type="button"
                               className={styles.rowMain}
                               aria-current={active}
                               onClick={() => props.onPrepTab(t.tab, s.sub)}
+                              title={subLocked ? "Требуется входной замер" : undefined}
                             >
                               <Icon name={s.icon} size={15} className={styles.rowIcon} />
                               <span className={styles.rowText}>
                                 <span className={styles.rowTitle}>{s.label}</span>
-                                <span className={styles.rowSub}>{s.hint}</span>
+                                <span className={styles.rowSub}>{subLocked ? "сначала тест" : s.hint}</span>
                               </span>
                             </button>
                             {active && <HelpDuck />}

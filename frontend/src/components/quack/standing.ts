@@ -12,7 +12,7 @@ import {
   type Conflict,
   type UnionExam,
 } from "../dashboard/dashboardRules";
-import { daysBetween, forecastSeries, formatDate, SETS, setById, TODAY, type StudySet } from "../prep/prepData";
+import { daysBetween, forecastSeries, formatDate, SETS, setById, TODAY, type ExamId, type StudySet } from "../prep/prepData";
 import { proposedSet, readiness, type PrepModel } from "../prep/prepModel";
 import type { ChanceFact, ExamPace, PaceLevel, ProgramChance, Standing, StandingAlert } from "./contract";
 
@@ -54,12 +54,12 @@ export function routeDelay(prep: PrepModel, today = TODAY): { set: StudySet; day
  * What closing the set in work is worth, in days of forecast: the readiness it adds, plus the delay
  * of the route it takes away when it was the set holding the route back.
  */
-function closingGain(prep: PrepModel, today: Date): { set: StudySet; days: number } | null {
+function closingGain(prep: PrepModel, today: Date, exam: ExamId): { set: StudySet; days: number } | null {
   const set = prep.currentSet ? setById(prep.currentSet) : proposedSet(prep);
-  if (!set) return null;
+  if (!set || set.exam !== exam) return null;
   const states = { ...prep.states, ...Object.fromEntries(set.skills.map((id) => [id, "solid" as const])) };
   const closed = { ...prep, states, doneSets: [...prep.doneSets, set.id], currentSet: null };
-  const fromSkills = (readiness(closed) - readiness(prep)) * DAYS_PER_POINT;
+  const fromSkills = (readiness(closed, exam) - readiness(prep, exam)) * DAYS_PER_POINT;
   const fromRoute = (routeDelay(prep, today)?.days ?? 0) - (routeDelay(closed, today)?.days ?? 0);
   return { set, days: Math.round(fromSkills + fromRoute) };
 }
@@ -70,7 +70,7 @@ type Ctx = { today: Date; prep: PrepModel; forecast: Date; delay: ReturnType<typ
 
 const targetOf = (u: UnionExam) => (u.exam.id === "ielts" ? u.target.toFixed(1) : String(u.target));
 
-/** An exam the knowledge model covers (SAT Math): forecast against the test date. */
+/** An exam the knowledge model covers (SAT Math, ЕНТ): forecast against the test date. */
 function modelPace(u: UnionExam, { today, prep, forecast, delay }: Ctx): ExamPace {
   const base = { id: u.exam.id, name: u.exam.name, target: targetOf(u) };
   const planned = u.exam.dates.find((d) => d > today);
@@ -103,7 +103,7 @@ function modelPace(u: UnionExam, { today, prep, forecast, delay }: Ctx): ExamPac
     if (margin < 0) {
       advice.push(`Нужно нагнать ${-margin} дн., чтобы прогноз встал на ${formatDate(planned)}`);
     }
-    const gain = closingGain(prep, today);
+    const gain = closingGain(prep, today, u.exam.id as ExamId);
     if (gain && gain.days > 0) {
       const when = gain.set.deadline >= today ? `до ${formatDate(gain.set.deadline)}` : "как можно скорее";
       advice.push(`Закрой сет ${gain.set.number} «${gain.set.title}» ${when} — прогноз станет раньше на ≈${gain.days} дн.`);
@@ -119,26 +119,6 @@ function modelPace(u: UnionExam, { today, prep, forecast, delay }: Ctx): ExamPac
         ? `Готовность к ${formatDate(forecast)}, тест ${formatDate(planned)} — запас всего ${margin} дн.`
         : `Готовность к ${formatDate(forecast)}, тест ${formatDate(planned)} — запас ${margin} дн.`;
   return { ...dated, level, verdict: PACE_VERDICT[level], summary, advice };
-}
-
-/** An exam without a knowledge model (IELTS): only dates and conflicts, no forecast to promise. */
-function plainPace(u: UnionExam, { today, conflicts }: Ctx): ExamPace {
-  const base = { id: u.exam.id, name: u.exam.name, target: targetOf(u) };
-  const planned = u.exam.dates.find((d) => d > today);
-  if (!planned) return { ...base, level: 1, verdict: "Нужна дата", summary: "Ближайших дат теста в календаре нет", advice: [] };
-
-  const late = conflicts.find((c) => c.kind === "late-result" && c.id.startsWith(`late-${u.exam.id}-`));
-  if (late) {
-    return { ...base, testDate: iso(planned), level: 1, verdict: "Нужно решить", summary: late.text, advice: late.options.slice(0, 1) };
-  }
-  return {
-    ...base,
-    testDate: iso(planned),
-    level: 2,
-    verdict: "По плану",
-    summary: `Тест ${formatDate(planned)}, регистрация до ${formatDate(addDays(planned, -REGISTRATION_LEAD))} · готовимся по вехам, без прогноза`,
-    advice: [],
-  };
 }
 
 /* ---------- Programs: chances as words, plus the facts behind them ---------- */
@@ -211,7 +191,7 @@ function markableId(event: CalendarEvent, programs: Program[]): string | undefin
   const exam = Object.values(EXAMS).find((x) => event.title === `Регистрация на ${x.name}` || event.title === x.name);
   const program = programs.find((p) => event.title === `Подача · ${p.university}`);
   const id = exam ? `${exam.id}-${event.kind === "registration" ? "reg" : "test"}` : program ? `apply-${program.id}` : undefined;
-  return id && /^(sat-reg|sat-test|ielts-test|apply-.+)$/.test(id) ? id : undefined;
+  return id && /^(sat-reg|sat-test|ent-reg|ent-test|apply-.+)$/.test(id) ? id : undefined;
 }
 
 function alertsFor(events: CalendarEvent[], conflicts: Conflict[], programs: Program[], { today, prep, delay }: Ctx): StandingAlert[] {
@@ -271,10 +251,25 @@ export function computeStanding({ profile, saved, prep }: QuackInputs, today = T
 
   const now = readiness(prep);
   const delay = routeDelay(prep, today);
-  const { forecast } = forecastSeries(now, prep.extraDays + (delay?.days ?? 0));
-  const ctx: Ctx = { today, prep, forecast, delay, conflicts };
+  // Each planned exam has its own forecast from its own skills
+  const ctxFor = (exam: ExamId): Ctx => ({
+    today,
+    prep,
+    forecast: forecastSeries(readiness(prep, exam), prep.extraDays + (delay?.set.exam === exam ? delay.days : 0), exam).forecast,
+    delay: delay?.set.exam === exam ? delay : null,
+    conflicts,
+  });
 
-  const paces = exams.map((u) => (u.exam.id === "sat" ? modelPace(u, ctx) : plainPace(u, ctx)));
+  // The plan is SAT Math and ЕНТ; IELTS is only a score the student tells us, so it gets no pace.
+  // ЕНТ is planned whether or not a saved program asks for it
+  const ent: UnionExam = exams.find((u) => u.exam.id === "ent") ?? {
+    exam: EXAMS.ent,
+    target: 40,
+    targetOwner: programs[0],
+    demands: [],
+  };
+  const planned = [...exams.filter((u) => u.exam.id === "sat"), ...(programs.length ? [ent] : [])];
+  const paces = planned.map((u) => modelPace(u, ctxFor(u.exam.id as ExamId)));
   // The worst exam speaks for all; on a tie the one with a forecast says more
   const worst = [...paces].sort((a, b) => a.level - b.level || Number(!a.forecast) - Number(!b.forecast))[0];
   const next = events.find((e) => e.date >= today);
@@ -287,7 +282,7 @@ export function computeStanding({ profile, saved, prep }: QuackInputs, today = T
       : null,
     exams: paces,
     programs: programs.map((p) => chanceOf(p, profile, forecastScore(now))),
-    alerts: alertsFor(events, conflicts, programs, ctx),
+    alerts: alertsFor(events, conflicts, programs, { ...ctxFor("sat"), delay }),
     next: next ? { title: next.title, date: iso(next.date), daysLeft: daysBetween(today, next.date) } : undefined,
   };
 }

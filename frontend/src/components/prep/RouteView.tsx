@@ -2,256 +2,259 @@
 
 import { useState, type ReactNode } from "react";
 import { Icon } from "../choice/Icon";
-import { formatShort, SETS, skillById, STATE_LABEL, type ExamId, type StudySet } from "./prepData";
-import { closed, planFor, rankSets, setPlan, setStatus, type PrepModel } from "./prepModel";
+import {
+  formatShort,
+  SETS,
+  skillById,
+  STATE_LABEL,
+  type ExamId,
+  type StudySet,
+} from "./prepData";
+import { closed, rankSets, setStatus, type PrepModel } from "./prepModel";
+import { StateGlyph } from "./SkillGraph";
+import { TOPICS } from "./topicContent";
 import styles from "./prep.module.css";
 
 type Props = {
   exam: ExamId;
   switcher: ReactNode;
   model: PrepModel;
-  onModel: (model: PrepModel) => void;
-  onOpen: (setId: string) => void;
+  onOpen: (setId: string, topic?: string) => void;
   onTake: (setId: string) => void;
-  onToast: (text: string) => void;
+  onOpenDiagnostic?: () => void;
 };
 
 /**
- * §4.3 — the route is the student's own and optional. Without one, any set can be taken from «Все сеты».
- * «Составить маршрут» puts chosen sets ahead in the student's order; then the route shows where they are
- * on it and what is next.
+ * §4.3 — Маршрут: каталог и плиточный селектор сетов.
+ * В дефолтном виде карточки компактны, подробная информация раскрывается ТОЛЬКО у одного
+ * выбранного/наведённого сета, соседние плитки не растягиваются и не меняют высоту.
+ * Кнопки выбора сета соединены в стильный низкоконтрастный блок.
  */
-export function RouteView({ exam, switcher, model, onModel, onOpen, onTake, onToast }: Props) {
-  const plan = planFor(model, exam);
-  const [editing, setEditing] = useState(false);
+export function RouteView({ exam, switcher, model, onOpen, onTake, onOpenDiagnostic }: Props) {
+  const sets = SETS.filter((s) => s.exam === exam);
+  const best = rankSets(model, exam).find((r) => r.set.id !== model.currentSet)?.set;
+  const passed = sets.filter((s) => model.doneSets.includes(s.id)).length;
 
-  const save = (ids: string[]) => {
-    onModel(setPlan(model, exam, ids));
-    setEditing(false);
-    onToast(ids.length ? `Маршрут сохранён: сетов ${ids.length}` : "Маршрут убран — сеты можно брать в любом порядке");
-  };
+  // Строгая изоляция: одновременно развёрнут строго максимум ОДИН сет
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
+
+  const activeOpenId = hoveredId ?? pinnedId;
 
   return (
     <div className={styles.setList}>
       <header className={styles.setListHead}>
         <div>
-          <h3>Маршрут</h3>
-          <p className={styles.muted}>Твой план, если он нужен. Над чем работать, решаешь ты — маршрут просто помогает не терять порядок.</p>
+          <h3>Маршрут подготовки</h3>
+          <p className={styles.muted}>
+            Выбери активный сет · в работе ровно 1 сет · сменить можно в любой момент · пройдено {passed} из {sets.length}
+          </p>
         </div>
         {switcher}
       </header>
 
-      {editing ? (
-        <RouteEditor key={exam} exam={exam} model={model} initial={plan.map((s) => s.id)} onSave={save} onCancel={() => setEditing(false)} />
-      ) : plan.length === 0 ? (
-        <section className={styles.routeEmpty}>
-          <Icon name="route" size={28} className={styles.routeEmptyIcon} />
-          <h4>Маршрута пока нет</h4>
-          <p className={styles.muted}>
-            Можно работать без него: бери любой сет в «Все сеты». Если удобнее идти по плану — выбери сеты и поставь их вперёд в том
-            порядке, в каком хочешь пройти.
-          </p>
-          <button type="button" className={styles.primary} onClick={() => setEditing(true)}>
-            <Icon name="plus" size={16} /> Составить маршрут
-          </button>
-        </section>
-      ) : (
-        <RoutePlan
-          plan={plan}
-          model={model}
-          onOpen={onOpen}
-          onTake={onTake}
-          onEdit={() => setEditing(true)}
-          onClear={() => save([])}
-        />
-      )}
-    </div>
-  );
-}
-
-/** The route as steps: passed ones ticked, the first open one is where the student is */
-function RoutePlan({
-  plan,
-  model,
-  onOpen,
-  onTake,
-  onEdit,
-  onClear,
-}: {
-  plan: StudySet[];
-  model: PrepModel;
-  onOpen: (setId: string) => void;
-  onTake: (setId: string) => void;
-  onEdit: () => void;
-  onClear: () => void;
-}) {
-  const next = plan.find((s) => !model.doneSets.includes(s.id));
-  const passed = plan.filter((s) => model.doneSets.includes(s.id)).length;
-
-  return (
-    <>
-      <div className={styles.routeBar}>
-        <span className={styles.muted}>
-          пройдено {passed} из {plan.length}
-          {next ? ` · дальше сет ${next.number}` : " · маршрут пройден"}
-        </span>
-        <div className={styles.actions}>
-          <button type="button" className={styles.secondary} onClick={onEdit}>
-            <Icon name="pencil" size={15} /> Изменить маршрут
-          </button>
-          <button type="button" className={styles.link} onClick={onClear}>
-            Убрать маршрут
+      {/* Обязательный входной замер для новых пользователей (прототип 8 вопросов) */}
+      {onOpenDiagnostic && (
+        <div className={styles.routeDiagnosticBar}>
+          <div className={styles.routeDiagnosticInfo}>
+            <span className={styles.diagnosticTag}>
+              <Icon name="sparkles" size={12} /> {model.diagnosticDone ? "Входной замер пройден" : "Обязательный замер"}
+            </span>
+            <span className={styles.routeDiagnosticSub}>
+              {model.diagnosticDone
+                ? "Маршрут откалиброван по 8 ключевым темам. Можно пересдать замер для повторной калибровки."
+                : "Входной мок-тест на 8 вопросов для новых пользователей: откалибрует модель знаний и порядок сетов."}
+            </span>
+          </div>
+          <button
+            type="button"
+            className={styles.routeDiagnosticBtn}
+            onClick={onOpenDiagnostic}
+          >
+            <Icon name="sparkles" size={13} />
+            {model.diagnosticDone ? "Пересдать замер (8 вопр.)" : "Пройти замер (8 вопр.)"}
           </button>
         </div>
-      </div>
+      )}
 
-      <ol className={styles.routeSteps}>
-        {plan.map((set, i) => {
+      {/* Плиточная сетка сетов */}
+      <div className={styles.routeTilesGrid} role="region" aria-label="Сетка сетов">
+        {sets.map((set) => {
           const status = setStatus(model, set);
-          const done = status === "done";
-          const here = set.id === next?.id;
+          const isCurrent = model.currentSet === set.id;
+          const isDone = status === "done";
+          const isBest = set.id === best?.id;
+          const closedCount = closed(model, set);
+          const totalSkills = set.skills.length;
+          const isExpanded = activeOpenId === set.id;
+
           return (
-            <li key={set.id} data-done={done || undefined} data-here={here || undefined}>
-              <span className={styles.routeMark} aria-hidden="true">
-                {done ? <Icon name="check" size={14} /> : i + 1}
-              </span>
-              <article className={styles.routeStep}>
-                <div className={styles.routeStepHead}>
-                  <strong>
-                    Сет {set.number} · {set.title}
-                  </strong>
-                  <span className={styles.muted}>до {formatShort(set.deadline)}</span>
-                </div>
-                <span className={styles.routeStepMeta}>
-                  <span className={styles.segments}>
-                    {set.skills.map((id) => (
-                      <span key={id} data-state={model.states[id]} title={`${skillById(id).name}: ${STATE_LABEL[model.states[id]]}`} />
-                    ))}
-                  </span>
-                  доказано {closed(model, set)} из {set.skills.length}
-                  {status === "current" && <b className={styles.routeNow}>в работе</b>}
-                </span>
-                {!done && (
-                  <div className={styles.actions}>
-                    {status === "current" ? (
-                      <button type="button" className={styles.primary} onClick={() => onOpen(set.id)}>
-                        Продолжить <Icon name="chevron-right" size={16} />
-                      </button>
-                    ) : (
-                      <button type="button" className={here ? styles.primary : styles.secondary} onClick={() => onTake(set.id)}>
-                        Взять в работу
-                      </button>
-                    )}
-                    <button type="button" className={styles.link} onClick={() => onOpen(set.id)}>
-                      Посмотреть →
-                    </button>
+            <article
+              key={set.id}
+              className={styles.setTile}
+              data-active={isCurrent || undefined}
+              data-done={isDone || undefined}
+              data-expanded={isExpanded || undefined}
+              onMouseEnter={() => setHoveredId(set.id)}
+              onMouseLeave={() => setHoveredId((curr) => (curr === set.id ? null : curr))}
+              onClick={() => setPinnedId((curr) => (curr === set.id ? null : set.id))}
+              aria-expanded={isExpanded}
+            >
+              <div>
+                {/* Шапка плитки */}
+                <div className={styles.setTileHead}>
+                  <div className={styles.setTileTitleBox}>
+                    <span className={styles.setTileNumber}>Сет {set.number}</span>
+                    <h4 className={styles.setTileTitle}>{set.title}</h4>
                   </div>
-                )}
-              </article>
-            </li>
+
+                  {isCurrent && (
+                    <span className={styles.tileActiveBadge}>
+                      <span className={styles.pulseDot} aria-hidden="true" />
+                      Активен
+                    </span>
+                  )}
+                  {!isCurrent && isBest && (
+                    <span className={styles.tileBestBadge} title="Ассистент рекомендует этот сет следующим">
+                      <Icon name="sparkles" size={11} /> Совет
+                    </span>
+                  )}
+                  {isDone && !isCurrent && (
+                    <span className={styles.tileDoneBadge}>
+                      <Icon name="check" size={11} /> Пройден
+                    </span>
+                  )}
+                </div>
+
+                {/* Мета-информация плитки */}
+                <div className={styles.setTileMeta}>
+                  <span>{set.area}</span>
+                  <span className={styles.setTileProgressCount}>
+                    {closedCount}/{totalSkills} закрыто · до {formatShort(set.deadline)}
+                  </span>
+                </div>
+
+                {/* Дефолтный компактный вид: мини-пилюли тем */}
+                <div className={styles.tilePillList}>
+                  {set.skills.map((id) => (
+                    <span key={id} className={styles.tilePill} data-state={model.states[id]}>
+                      <StateGlyph state={model.states[id]} size={9} />
+                      <span>{skillById(id).name}</span>
+                    </span>
+                  ))}
+                </div>
+
+                {/* Раскрывающаяся информация (при наведении / тапе) */}
+                <div className={styles.tileDetails}>
+                  <div className={styles.tileDetailsInner}>
+                    {set.why && (
+                      <p className={styles.tileWhy}>
+                        <Icon name="sparkles" size={11} /> {set.why}
+                      </p>
+                    )}
+
+                    <div className={styles.tileTopics}>
+                      {set.skills.map((id) => {
+                        const skill = skillById(id);
+                        const state = model.states[id];
+                        const topicSummary = TOPICS[id]?.summary;
+
+                        return (
+                          <div
+                            key={id}
+                            className={styles.tileTopicItem}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpen(set.id, id);
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onOpen(set.id, id);
+                              }
+                            }}
+                            title={`Нажми, чтобы открыть тему «${skill.name}»`}
+                          >
+                            <div className={styles.tileTopicHead}>
+                              <div className={styles.tileTopicNameGroup}>
+                                <StateGlyph state={state} size={11} />
+                                <span className={styles.tileTopicName}>{skill.name}</span>
+                                {skill.root && <span className={styles.rootTag}>корень</span>}
+                              </div>
+                              <span className={styles.tileTopicState} data-state={state}>
+                                {STATE_LABEL[state]}
+                              </span>
+                            </div>
+
+                            {topicSummary && (
+                              <p className={styles.tileTopicSummary}>
+                                {topicSummary}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Соединенный стильный блок действий внизу */}
+              <div className={styles.tileActionGroup}>
+                <div className={styles.tileActionPill}>
+                  {isCurrent ? (
+                    <>
+                      <span className={styles.tileActiveLabel}>
+                        <Icon name="check" size={13} /> Активный
+                      </span>
+                      <button
+                        type="button"
+                        className={styles.tileOpenBtn}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpen(set.id);
+                        }}
+                        title="Открыть материалы сета"
+                      >
+                        Открыть →
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.tileSelectBtn}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTake(set.id);
+                        }}
+                        aria-label={`Выбрать сет ${set.number} как активный`}
+                      >
+                        <Icon name="check" size={13} />
+                        {isDone ? "Выбрать снова" : "Выбрать сет"}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.tileOpenBtn}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpen(set.id);
+                        }}
+                        title="Посмотреть сет"
+                      >
+                        Обзор
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </article>
           );
         })}
-      </ol>
-    </>
-  );
-}
-
-/** Pick the sets and their order: add from the rest, move up and down, take out */
-function RouteEditor({
-  exam,
-  model,
-  initial,
-  onSave,
-  onCancel,
-}: {
-  exam: ExamId;
-  model: PrepModel;
-  initial: string[];
-  onSave: (ids: string[]) => void;
-  onCancel: () => void;
-}) {
-  const [draft, setDraft] = useState<string[]>(initial);
-  const open = SETS.filter((s) => s.exam === exam && !model.doneSets.includes(s.id));
-  // The rest in the assistant's order, so the likely next ones are at hand
-  const rest = rankSets(model, exam)
-    .map((r) => r.set)
-    .filter((s) => !draft.includes(s.id));
-  const set = (id: string) => SETS.find((s) => s.id === id)!;
-
-  const move = (i: number, by: number) =>
-    setDraft((d) => {
-      const next = [...d];
-      [next[i], next[i + by]] = [next[i + by], next[i]];
-      return next;
-    });
-
-  return (
-    <section className={styles.routeEditor} aria-label="Составить маршрут">
-      <div className={styles.routeColumn}>
-        <p className={styles.eyebrow}>Мой маршрут · по порядку</p>
-        {draft.length === 0 ? (
-          <p className={styles.routeHint}>Добавь сеты из списка — в том порядке, в каком хочешь их пройти.</p>
-        ) : (
-          <ol className={styles.routeDraft}>
-            {draft.map((id, i) => (
-              <li key={id}>
-                <span className={styles.routeMark}>{i + 1}</span>
-                <span className={styles.routeDraftTitle}>
-                  Сет {set(id).number} · {set(id).title}
-                </span>
-                <span className={styles.routeTools}>
-                  <button type="button" aria-label="Выше" disabled={i === 0} onClick={() => move(i, -1)}>
-                    <Icon name="arrow-up" size={15} />
-                  </button>
-                  <button type="button" aria-label="Ниже" disabled={i === draft.length - 1} onClick={() => move(i, 1)}>
-                    <Icon name="arrow-down" size={15} />
-                  </button>
-                  <button type="button" aria-label="Убрать из маршрута" onClick={() => setDraft((d) => d.filter((x) => x !== id))}>
-                    <Icon name="x" size={15} />
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
       </div>
-
-      <div className={styles.routeColumn}>
-        <div className={styles.routeColumnHead}>
-          <p className={styles.eyebrow}>Остальные сеты</p>
-          {rest.length > 0 && (
-            <button type="button" className={styles.link} onClick={() => setDraft((d) => [...d, ...rest.map((s) => s.id)])}>
-              Добавить все по совету ассистента
-            </button>
-          )}
-        </div>
-        {rest.length === 0 ? (
-          <p className={styles.routeHint}>{open.length ? "Все открытые сеты уже в маршруте." : "Все сеты пройдены."}</p>
-        ) : (
-          <ul className={styles.routeDraft}>
-            {rest.map((s) => (
-              <li key={s.id}>
-                <span className={styles.routeDraftTitle}>
-                  Сет {s.number} · {s.title}
-                  <span className={styles.muted}> · до {formatShort(s.deadline)}</span>
-                </span>
-                <button type="button" className={styles.routeAdd} onClick={() => setDraft((d) => [...d, s.id])}>
-                  <Icon name="plus" size={14} /> В маршрут
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className={styles.routeEditorFoot}>
-        <button type="button" className={styles.primary} disabled={!draft.length && !initial.length} onClick={() => onSave(draft)}>
-          {draft.length || !initial.length ? "Сохранить маршрут" : "Сохранить без маршрута"}
-        </button>
-        <button type="button" className={styles.secondary} onClick={onCancel}>
-          Отмена
-        </button>
-      </div>
-    </section>
+    </div>
   );
 }
