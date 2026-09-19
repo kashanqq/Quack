@@ -170,7 +170,7 @@ async def _call_b1_loader(
 
 
 async def run_seed(data_dir: Path, selected: set[str]) -> None:
-    from app.main import _optional_layer
+    from app.loader import optional_layer as _optional_layer
 
     engine = create_engine(settings)
     driver = None

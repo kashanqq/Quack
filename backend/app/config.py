@@ -107,6 +107,13 @@ class Settings(BaseSettings):
 
     JWT_SECRET: SecretStr = SecretStr("quack-local-only-development-secret")
     JWT_TTL_DAYS: int = 30
+    # Browser origins allowed to call the API with the session cookie. Empty in
+    # prod when Caddy serves frontend and API from one origin.
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+    ]
 
     LLM_BASE_URL: str = ""
     LLM_API_KEY: SecretStr = SecretStr("")
