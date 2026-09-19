@@ -146,6 +146,30 @@ class LLMClient:
             result.append(entry)
         return result
 
+    async def _chat_is_busy(self) -> bool:
+        """Phase 4 (§10.4): the live chat has priority over background work.
+
+        Two independent counters already split the provider's budget; this
+        adds the courtesy on top — while the chat is near its own limit, or
+        the breaker is degraded, `bulk` waits instead of competing. The chat
+        never waits for `bulk`.
+        """
+        try:
+            status = _decode(await self._redis.get(keys.llm_status()))
+            if status == "degraded":
+                return True
+            raw = await self._redis.get(keys.llm_ratelimit("chat"))
+        except RedisError:
+            return False
+        if raw is None:
+            return False
+        try:
+            used = int(_decode(raw) or 0)
+        except ValueError:
+            return False
+        share = self._settings.LLM_BULK_YIELD_SHARE
+        return used >= share * self._settings.LLM_RPM_CHAT
+
     async def _acquire(self, slot: ModelSlot) -> None:
         limit = (
             self._settings.LLM_RPM_CHAT
@@ -155,6 +179,11 @@ class LLMClient:
         key = keys.llm_ratelimit(slot)
         deadline = time.monotonic() + self._rate_limit_wait_s(slot)
         while True:
+            if slot == "bulk" and await self._chat_is_busy():
+                if time.monotonic() >= deadline:
+                    raise LLMUnavailable("rate limit")
+                await asyncio.sleep(0.1)
+                continue
             try:
                 count = await self._redis.incr(key)
                 if count == 1:
@@ -199,8 +228,19 @@ class LLMClient:
         if _decode(status) == "down":
             raise LLMUnavailable("llm unavailable")
 
-    async def _record(self, exc: Exception | None) -> None:
+    async def _record(
+        self, exc: Exception | None, slot: ModelSlot | None = None
+    ) -> None:
         if self._settings.LLM_FORCE_DOWN:
+            return
+        # Phase 4 (§10.4): a 429 on the background slot is *our* limit, not
+        # the provider failing — counting it would let bulk work trip the
+        # breaker and take the chat down with it. 5xx and timeouts still do.
+        if (
+            slot == "bulk"
+            and exc is not None
+            and isinstance(exc, openai.RateLimitError)
+        ):
             return
         try:
             probe_active = await self._redis.get(keys.llm_probe()) is not None
@@ -297,9 +337,9 @@ class LLMClient:
         try:
             response = await self._create_completion(slot, kwargs)
         except Exception as exc:
-            await self._record(exc)
+            await self._record(exc, slot)
             raise
-        await self._record(None)
+        await self._record(None, slot)
 
         choice = response.choices[0]
         tool_calls: list[ToolCallOut] = []
@@ -406,7 +446,7 @@ class LLMClient:
                     retried = True
                     await asyncio.sleep(1.0)
                     continue
-                await self._record(exc)
+                await self._record(exc, slot)
                 raise
             break
 
@@ -415,7 +455,7 @@ class LLMClient:
                 yield build_tool_call(entry)
                 emitted.add(index)
 
-        await self._record(None)
+        await self._record(None, slot)
 
     def _response_format_for(self, schema: type[BaseModel]) -> dict:
         json_schema: dict = {
@@ -464,9 +504,9 @@ class LLMClient:
             try:
                 response = await self._create_completion(slot, kwargs)
             except Exception as exc:
-                await self._record(exc)
+                await self._record(exc, slot)
                 raise
-            await self._record(None)
+            await self._record(None, slot)
             self._last_usage = self._usage_of(response)
 
             choice = response.choices[0]

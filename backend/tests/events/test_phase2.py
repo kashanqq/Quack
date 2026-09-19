@@ -133,31 +133,43 @@ def test_handlers_exact_mapping(empty_registry):
     dispatcher._handlers.clear()
     importlib.reload(handlers)
     expected = {
-        EventType.task_answered: "apply_task_answered",
-        EventType.task_skipped: "apply_task_skipped",
-        EventType.task_timed_out: "apply_task_skipped",
-        EventType.profile_updated: "apply_profile_updated",
-        EventType.program_saved: "on_program_change",
-        EventType.program_removed: "on_program_change",
-        EventType.set_switched_by_user: "on_set_change",
-        EventType.set_deadline_changed: "on_set_change",
-        EventType.misconception_disputed: "apply_dispute",
-        EventType.misconception_undisputed: "apply_dispute",
-        EventType.diagnostic_completed: "on_run_completed",
-        EventType.mock_completed: "on_run_completed",
+        EventType.task_answered: ["apply_task_answered"],
+        EventType.task_skipped: ["apply_task_skipped"],
+        EventType.task_timed_out: ["apply_task_skipped"],
+        EventType.misconception_disputed: ["apply_dispute"],
+        EventType.misconception_undisputed: ["apply_dispute"],
         # phase 3
-        EventType.observation_extracted: "apply_observation_extracted",
-        EventType.misconception_canonized: "apply_misconception_canonized",
-        EventType.misconception_personal_created: (
+        EventType.observation_extracted: ["apply_observation_extracted"],
+        EventType.misconception_canonized: ["apply_misconception_canonized"],
+        EventType.misconception_personal_created: [
             "apply_misconception_personal_created"
-        ),
+        ],
+        # phase 4 (§2.2): фон подписывается вторым обработчиком — правило
+        # фазы 2 выполняется первым и его результат не меняется.
+        EventType.profile_updated: [
+            "apply_profile_updated",
+            "on_profile_updated_enqueue",
+        ],
+        EventType.program_saved: ["on_program_change", "enqueue_recs_urgent"],
+        EventType.program_removed: ["on_program_change", "enqueue_recs_urgent"],
+        EventType.set_switched_by_user: ["on_set_change", "enqueue_recs_urgent"],
+        EventType.set_deadline_changed: ["on_set_change", "enqueue_recs_urgent"],
+        EventType.diagnostic_completed: ["on_run_completed", "enqueue_recs_urgent"],
+        EventType.mock_completed: ["on_run_completed", "enqueue_recs_urgent"],
+        EventType.set_opened: ["on_set_opened_enqueue"],
+        EventType.set_completed: ["on_set_completed", "enqueue_recs_urgent"],
+        EventType.topic_opened: ["on_topic_opened"],
+        EventType.milestone_done: ["enqueue_recs_urgent"],
+        EventType.recommendation_accepted: ["apply_accept"],
+        EventType.recommendation_declined: ["log_decline"],
     }
     assert {
         event_type: [handler.__name__ for handler in functions]
         for event_type, functions in dispatcher._handlers.items()
-    } == {event_type: [name] for event_type, name in expected.items()}
-    assert dispatcher._handlers.get(EventType.topic_opened, []) == []
-    assert dispatcher._handlers.get(EventType.set_opened, []) == []
+    } == expected
+    # Типы вне таблицы обработчиков не получают (§13.3).
+    assert dispatcher._handlers.get(EventType.topic_completed, []) == []
+    assert dispatcher._handlers.get(EventType.message_user, []) == []
 
 
 class FakeRedis:

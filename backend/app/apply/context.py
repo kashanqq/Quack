@@ -23,6 +23,7 @@ from app.db.repo import sets as sets_repo
 from app.db.repo import summaries as summaries_repo
 from app.events.dispatch import RuleDeps
 from app.graph.context import ContextExtras, TopicContext, build_topic_context
+from app.sets.report import stats_words
 
 _logger = structlog.get_logger(__name__)
 
@@ -42,9 +43,18 @@ async def get_topic_context(
     }:
         return None
     profile = await profiles_repo.get_profile(session, student_id)
-    previous_summary = await summaries_repo.get_latest_text(
+    # Фаза 4 (§4.5): контекст не пустеет из-за недоступной модели — при
+    # `failed`/`generating` слот заполняется фактами статистики словами.
+    previous = await summaries_repo.get_previous(
         session, student_id, before_set_id=set_id
     )
+    previous_summary = None
+    if previous is not None:
+        previous_summary = (
+            previous.text
+            if previous.status == "ready" and previous.text
+            else stats_words(previous.stats)
+        )
     if deps.graph is None:
         return None
     try:

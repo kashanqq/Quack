@@ -38,6 +38,10 @@ class Academics(BaseModel):
     sat_score: ProfileField[int] = Field(default_factory=ProfileField[int])
     sat_target: ProfileField[int] = Field(default_factory=ProfileField[int])
     sat_date: ProfileField[date] = Field(default_factory=ProfileField[date])
+    # Фаза 4 (§14.4): ручная цель и планируемая дата ЕНТ — без них варианты
+    # темпа `lower_target` / `move_date` для ЕНТ применить некуда.
+    ent_target: ProfileField[int] = Field(default_factory=ProfileField[int])
+    ent_date: ProfileField[date] = Field(default_factory=ProfileField[date])
     ielts_score: ProfileField[float] = Field(default_factory=ProfileField[float])
     ielts_target: ProfileField[float] = Field(default_factory=ProfileField[float])
 

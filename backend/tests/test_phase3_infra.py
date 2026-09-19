@@ -37,7 +37,9 @@ async def test_worker_startup_loads_embedder_or_none(monkeypatch):
     await workers.load_embedder(ctx)
     assert ctx["embedder"].calls == [["warmup"]]
     assert workers.WorkerInteractive.on_startup is workers.startup_interactive
-    assert workers.WorkerBulk.on_startup is workers.startup
+    # Фаза 4 (§9.5): bulk поднимается через обёртку, которая ещё и
+    # компенсирует пропущенный крон.
+    assert workers.WorkerBulk.on_startup is workers.startup_bulk
 
 
 def test_layers_apply_has_no_arq_and_agents_no_api():

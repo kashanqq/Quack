@@ -120,14 +120,17 @@ def test_roadmap_interfaces_import_without_io(module_name, function_name, parame
 def test_rule_deps_uses_app_connections_and_callable_clock():
     graph = object()
     redis = object()
+    # Фаза 4 (§1.4): outbox запроса живёт на `request.state`.
     request = SimpleNamespace(
-        app=SimpleNamespace(state=SimpleNamespace(neo4j=graph, redis=redis))
+        app=SimpleNamespace(state=SimpleNamespace(neo4j=graph, redis=redis)),
+        state=SimpleNamespace(),
     )
 
     deps = get_rule_deps(request)
 
     assert deps.graph is graph
     assert deps.redis is redis
+    assert deps.jobs is request.state.job_outbox
     assert deps.params is settings.knowledge
     assert callable(deps.now)
     assert isinstance(deps.now(), datetime)
@@ -143,4 +146,5 @@ def test_handlers_reference_apply_functions(monkeypatch):
     assert dispatcher._handlers[EventType.task_answered] == [
         task_answered.apply_task_answered
     ]
-    assert dispatcher._handlers[EventType.program_saved] == [sets.on_program_change]
+    # Фаза 4 добавляет вторым обработчиком постановку срочного батча (§2.2).
+    assert dispatcher._handlers[EventType.program_saved][0] is sets.on_program_change

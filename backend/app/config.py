@@ -71,6 +71,56 @@ class KnowledgeParams(BaseModel):
     mock_misc_n: int = 3
     diag_reask_after: int = 3
     min_candidates: int = 3
+    # --- Phase 4 (docs/tz/40-phase4-background-quack.md §1.6) ---
+    # Ритм крона рекомендаций: product-logic §3.6 — «раз в один-два дня».
+    recs_interval_h: int = 24
+    # Веха ближе этого числа дней — срочная рекомендация.
+    urgent_milestone_days: int = 5
+    # Шаг и потолок перебора варианта «увеличить часы».
+    pace_hours_step: int = 1
+    pace_max_hours: int = 20
+    # Шаг варианта «снизить цель» в баллах шкалы экзамена.
+    pace_target_step_sat: int = 10
+    pace_target_step_ent: int = 1
+    # Ниже этой доли текущей цели вариант «снизить цель» не опускается.
+    pace_min_target_share: float = 0.6
+    # Сколько программ из верха `rank` уходит в мягкое соответствие.
+    soft_match_max_candidates: int = 15
+    soft_match_debounce_s: int = 30
+    # Ключ `matching_priority_weights`, которым взвешивается мягкий фактор.
+    soft_weight_key: str = "program"
+    # Окно дневных агрегатов и календаря активности.
+    aggregate_window_days: int = 14
+    # В анкете часового пояса нет; аудитория — Казахстан.
+    activity_tz: str = "Asia/Almaty"
+    session_gap_min: int = 30
+    active_day_min_events: int = 1
+    summary_top_growth: int = 3
+    # При недоступной модели отдавать сохранённую версию текста с пометкой.
+    text_stale_ok_on_error: bool = True
+    extract_max_urls_per_search: int = 5
+    # Страница короче — «без данных», модель не вызывается.
+    extract_min_page_chars: int = 800
+    # Повторное извлечение по тому же URL не раньше этого срока.
+    program_recheck_days: int = 14
+    program_domain_denylist: list[str] = Field(
+        default_factory=lambda: [
+            "reddit.com",
+            "quora.com",
+            "youtube.com",
+            "facebook.com",
+            "instagram.com",
+            "tiktok.com",
+            "wikipedia.org",
+        ]
+    )
+    # Сколько рекомендаций максимум в ленте (`urgent`/`high` не режутся).
+    quack_feed_limit: int = 20
+    # Сколько дней отказ по причине подавляет её повторное появление.
+    declined_window_days: int = 90
+    # Сколько программ получают текст «почему реалистично» за один GET.
+    realism_texts_limit: int = 10
+
     matching_priority_weights: dict[str, int] = Field(
         default_factory=lambda: {
             "realism": 3,
@@ -164,6 +214,27 @@ class Settings(BaseSettings):
         if value == "":
             return None
         return value
+
+    # Фаза 4 (§1.6, §10.3–§10.5).
+    BULK_MAX_JOBS: int = 2
+    SEARCH_RPM: int = 5
+    SEARCH_MONTHLY_CAP: int = 800
+    LLM_RETRY_DEFER_S: int = 120
+    # Доля лимита чата, после которой фоновый слот уступает живому чату.
+    LLM_BULK_YIELD_SHARE: float = 0.7
+    # ARQ хранит результат job этот срок; с тем же `job_id` внутри окна
+    # задача не поставится, поэтому окно короткое (§1.3).
+    JOB_KEEP_RESULT_S: int = 60
+
+    # --- Фаза 5 (§13.3, D09). Технические значения под один VPS, не SLA. ---
+    # Сколько намерений разбирает один прогон `outbox_replay`.
+    OUTBOX_REPLAY_BATCH: int = 100
+    # Размер одной порции событий восстановления графа и потолок на задачу:
+    # `recover_graph_events` живёт 90 с, порция должна укладываться с запасом.
+    RECOVERY_BATCH: int = 25
+    RECOVERY_MAX_PER_JOB: int = 200
+    # Догон графа при старте воркера (bulk). Выключается в тестах.
+    RECOVERY_SWEEP_ON_STARTUP: bool = True
 
     TAVILY_API_KEY: SecretStr = SecretStr("")
     EMBEDDING_MODEL: str = "intfloat/multilingual-e5-small"

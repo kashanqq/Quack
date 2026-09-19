@@ -7,12 +7,13 @@ import structlog
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import keys
+from app import fallbacks, keys
 from app.api.chat import chat_id_for
 from app.api.deps import get_arq, get_current_student, get_rule_deps, get_session
 from app.apply import sets as apply_sets
 from app.db.repo import forecast as forecast_repo
 from app.db.repo import sets as set_repo
+from app.db.repo import summaries as summaries_repo
 from app.errors import Conflict, NotFound, ValidationFailed
 from app.events import dispatch, store, version
 from app.events.dispatch import RuleDeps
@@ -28,7 +29,9 @@ from app.schemas.events import (
     TopicCompletedPayload,
     TopicOpenedPayload,
 )
+from app.schemas.roadmap import SetSummaryOut
 from app.schemas.sets import SetEditIn, SetOut, SetsByExam, SetSwitchIn, TopicOut
+from app.sets import static_snapshot
 from app.workers.queue import enqueue
 
 router = APIRouter(prefix="/sets", tags=["sets"])
@@ -57,16 +60,57 @@ def _topic(item: SetOut, skill_id: str) -> TopicOut:
 
 
 async def _read_sets(
-    session: AsyncSession, student_id: UUID, exam_id: ExamId
+    session: AsyncSession,
+    student_id: UUID,
+    exam_id: ExamId,
+    deps: RuleDeps | None = None,
 ) -> SetsByExam:
+    """The persisted plan, labelled with how it was answered.
+
+    With Neo4j down the sets are still the student's real sets — they live in
+    Postgres — but nothing can be rebuilt from knowledge right now, so the
+    answer is marked `static` and the forecast is withheld rather than
+    reported as a stale live number (§11 A3, AC05).
+    """
     items = await set_repo.list_sets(session, student_id, exam_id)
+    graph_ok = deps is None or deps.graph is not None
     forecast = await forecast_repo.get(session, student_id, exam_id)
+    pending = False
+    if deps is not None:
+        from app.events import recovery
+
+        pending = await recovery.is_pending(session, student_id)
+    availability = fallbacks.availability(
+        graph_ok=graph_ok,
+        projection_pending=pending,
+        as_of_event_id=forecast.as_of_event_id if forecast is not None else None,
+    )
+    if not graph_ok:
+        # A forecast is a statement about knowledge we cannot read right now;
+        # showing the last one as if it were current is the one thing §11 A3
+        # forbids. The topics keep the canonical order from the seed snapshot,
+        # so the screen stays readable — and if that snapshot is missing the
+        # answer says `unavailable` rather than pretending (D05).
+        forecast = None
+        items = [
+            item.model_copy(
+                update={
+                    "topics": static_snapshot.sort_topics(
+                        exam_id, list(item.topics), lambda topic: topic.skill_id
+                    )
+                }
+            )
+            for item in items
+        ]
+        if not static_snapshot.available():
+            availability = availability.model_copy(update={"mode": "unavailable"})
     return SetsByExam(
         exam_id=exam_id,
         forecast=forecast,
         current=next((item for item in items if item.status == "current"), None),
         upcoming=[item for item in items if item.status == "upcoming"],
         done=[item for item in items if item.status == "done"],
+        availability=availability,
     )
 
 
@@ -83,11 +127,14 @@ async def list_sets(
     session: Annotated[AsyncSession, Depends(get_session)],
     deps: Annotated[RuleDeps, Depends(get_rule_deps)],
 ) -> SetsByExam:
-    current = await _read_sets(session, student.student_id, exam_id)
+    current = await _read_sets(session, student.student_id, exam_id, deps)
     if current.current is None and not current.upcoming and not current.done:
-        current = await apply_sets.rebuild_sets(
+        rebuilt = await apply_sets.rebuild_sets(
             session, deps, student.student_id, exam_id
         )
+        # A rebuild without the graph cannot produce a plan; keep the honest
+        # label instead of returning an unmarked empty answer (§11 A3).
+        current = rebuilt.model_copy(update={"availability": current.availability})
     await _version(response, deps, student.student_id)
     return current
 
@@ -118,7 +165,7 @@ async def switch_set(
             set_id=body.set_id,
         ),
     )
-    result = await _read_sets(session, student.student_id, target.exam_id)
+    result = await _read_sets(session, student.student_id, target.exam_id, deps)
     await _version(response, deps, student.student_id)
     return result
 
@@ -134,6 +181,20 @@ async def get_set(
     item = await _owned_set(session, student.student_id, set_id)
     await _version(response, deps, student.student_id)
     return item
+
+
+@router.get("/{set_id}/summary", response_model=SetSummaryOut)
+async def get_set_summary(
+    set_id: UUID,
+    student: Annotated[StudentCtx, Depends(get_current_student)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> SetSummaryOut:
+    """The end-of-set report: statistics always, text when it is ready (§4.5)."""
+    await _owned_set(session, student.student_id, set_id)
+    summary = await summaries_repo.get(session, set_id)
+    if summary is None:
+        raise NotFound("set summary not found")
+    return summary
 
 
 @router.post("/{set_id}/open", response_model=SetOut)
