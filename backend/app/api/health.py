@@ -10,6 +10,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select, text
 
+from app import keys
 from app.config import settings
 from app.db.models import Event
 
@@ -61,6 +62,21 @@ async def _graph_pending(request: Request) -> int | None:
         )
 
 
+async def _search(request: Request) -> Literal["ok", "down", "skipped"]:
+    """Phase 4 (§6.2): the last search error, not a live provider call.
+
+    Health must stay cheap and must not spend the monthly search budget, so
+    the background jobs record their failures in Redis and this only reads.
+    """
+    client = getattr(request.app.state, "redis", None)
+    if client is None:
+        return "skipped"
+    try:
+        return "down" if await client.get(keys.search_last_error()) else "ok"
+    except Exception:
+        return "skipped"
+
+
 async def _bounded_check(
     check: Callable[[Request], Awaitable[bool]], request: Request
 ) -> Literal["ok", "down"]:
@@ -95,7 +111,7 @@ async def health(request: Request) -> HealthOut:
         "postgres": postgres,
         "neo4j": neo4j,
         "redis": redis,
-        "search": "skipped",
+        "search": await _search(request),
     }
     if postgres == "ok":
         try:

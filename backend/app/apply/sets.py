@@ -294,3 +294,54 @@ async def _release_lock(deps: RuleDeps, key: str) -> None:
         await deps.redis.delete(key)
     except Exception:  # noqa: BLE001
         pass
+
+
+async def on_set_opened_enqueue(
+    session: AsyncSession, event: Event, deps: RuleDeps
+) -> None:
+    """`set.opened` → snapshot the forecast, queue the text pre-generation.
+
+    The snapshot is what «прогноз до» of the end-of-set report compares
+    against (§4.3), and it has to be taken now: by the time the set closes,
+    `forecast_cache` has long since moved on.
+
+    The pre-generation job is queued even when the model is down — the
+    worker defers it with `Retry`, and the alternative (deciding here) would
+    mean the student's set opens without texts for no good reason.
+    """
+    if event.type != EventType.set_opened:
+        return
+    set_id = (event.payload or {}).get("set_id")
+    if not set_id:
+        return
+    set_uuid = UUID(str(set_id))
+    target = await sets_repo.get_set(session, event.student_id, set_uuid)
+    if target is None:
+        return
+
+    current = await forecast_repo.get(session, event.student_id, target.exam_id)
+    if current is not None:
+        from app.db.models import Set as SetRow
+
+        row = await session.get(SetRow, set_uuid)
+        if row is not None:
+            row.opened_forecast = current.model_dump(mode="json")
+            await session.flush()
+
+    from app.apply import texts as apply_texts
+    from app.prompt_versions import text_versions
+
+    versions, model = text_versions()
+    job_id = await apply_texts.set_job_id(
+        session, deps, event.student_id, set_uuid, versions, model
+    )
+    if job_id is None:
+        _logger.info("pregenerate_not_enqueued", set_id=str(set_uuid))
+        return
+    deps.jobs.enqueue(
+        "bulk",
+        "pregenerate_set",
+        job_id=job_id,
+        set_id=str(set_uuid),
+        student_id=str(event.student_id),
+    )

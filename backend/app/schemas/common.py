@@ -20,6 +20,11 @@ TopicKind = Literal["topic", "check", "review"]
 RunStatus = Literal["active", "completed", "abandoned"]
 MockKind = Literal["mock_set", "mock_topic", "mock_misconception"]
 
+# --- phase 4 (§14.1) ---
+GeneratedTextStatus = Literal["ready", "generating", "stale", "failed"]
+TextKind = Literal["guideline", "explanation", "realism", "compare"]
+TextMark = Literal["generated", "saved_version"]
+
 
 class Source(BaseModel):
     label: str

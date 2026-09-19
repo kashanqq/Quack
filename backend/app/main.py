@@ -9,7 +9,7 @@ from uuid import uuid4
 import redis.asyncio as redis_async
 import structlog
 from arq.connections import ArqRedis
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import RequestResponseEndpoint
@@ -17,7 +17,7 @@ from starlette.responses import Response
 
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
-from app.api.deps import get_current_student
+from app.api.deps import flush_outbox, get_current_student
 from app.api.diagnostic import router as diagnostic_router
 from app.api.health import router as health_router
 from app.api.knowledge import router as knowledge_router
@@ -27,9 +27,11 @@ from app.api.overview import router as overview_router
 from app.api.prep import router as prep_router
 from app.api.profile import router as profile_router
 from app.api.programs import router as programs_router
+from app.api.quack import router as quack_router
 from app.api.saved import router as saved_router
 from app.api.sets import router as sets_router
 from app.api.tasks import router as tasks_router
+from app.api.texts import router as texts_router
 from app.config import settings
 from app.db.engine import close_engine, create_engine, create_sessionmaker
 from app.errors import AppError, UnsupportedMediaType
@@ -98,7 +100,14 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     configure_logging(settings.LOG_LEVEL)
     logger = structlog.get_logger(__name__)
-    app = FastAPI(title="Quack API", lifespan=lifespan)
+    # `flush_outbox` — глобальная зависимость: FastAPI разрешает её раньше
+    # маршрутных и закрывает позже, то есть уже после коммита сессии. Так
+    # задача ставится ровно тогда, когда воркер сможет увидеть её данные.
+    app = FastAPI(
+        title="Quack API",
+        lifespan=lifespan,
+        dependencies=[Depends(flush_outbox)],
+    )
 
     @app.middleware("http")
     async def request_id_middleware(
@@ -196,4 +205,6 @@ def create_app() -> FastAPI:
     app.include_router(overview_router)
     app.include_router(diagnostic_router)
     app.include_router(mocks_router)
+    app.include_router(texts_router)
+    app.include_router(quack_router)
     return app

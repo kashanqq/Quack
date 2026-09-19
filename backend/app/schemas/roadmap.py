@@ -1,13 +1,14 @@
 """Phase 2 roadmap presentation contracts."""
 
 from datetime import date
-from typing import Any, Literal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel
 
 from app.schemas.common import ExamId, Source
 from app.schemas.knowledge import ForecastOut, TestDate
+from app.schemas.sets import SetStats
 
 
 class ExamRequirementOut(BaseModel):
@@ -52,10 +53,16 @@ class ExamProgress(BaseModel):
 
 
 class SetSummaryOut(BaseModel):
+    """Phase 4 (§14.3): `stats` is typed and the row carries its status."""
+
     set_id: UUID
+    exam_id: ExamId | None = None
+    status: Literal["generating", "ready", "failed"] = "ready"
     text: str | None
-    stats: dict[str, Any]
+    stats: SetStats
+    prompt_version: str | None = None
     created_at: AwareDatetime
+    updated_at: AwareDatetime | None = None
 
 
 class OverviewOut(BaseModel):

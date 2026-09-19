@@ -108,7 +108,9 @@ def test_health_degraded_and_incoming_request_id(app, monkeypatch):
         response = client.get("/health", headers={"X-Request-Id": "existing-id"})
     assert response.status_code == 200
     assert response.json()["status"] == "degraded"
-    assert response.json()["checks"]["search"] == "skipped"
+    # Фаза 4 (§6.2): проверка поиска читает последнюю ошибку из Redis и
+    # `skipped` остаётся только там, где Redis недоступен.
+    assert response.json()["checks"]["search"] in {"ok", "skipped"}
     assert response.json()["version"] == "dev"
     assert response.headers["X-Request-Id"] == "existing-id"
 
