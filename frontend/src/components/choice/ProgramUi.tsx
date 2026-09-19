@@ -232,7 +232,7 @@ export function ProgramDrawer({
 
               <h3 className={styles.sectionTitle}>Среда</h3>
               <p className={styles.factorNote}>
-                Наука: {program.research}. Обмен: {program.exchange}. Язык: {program.language}.
+                {program.remote ? "" : `Наука: ${program.research}. Обмен: ${program.exchange}. `}Язык: {program.language}.
               </p>
             </div>
             <div className={styles.drawerActions}>

@@ -44,11 +44,11 @@
 
 ## 2\. Бэкенд `[B1, B2]`
 
-**Python 3.12, FastAPI, Pydantic v2, uvicorn.** Приложение `backend`. Пакетный менеджер — **uv** (lock-файл, быстрая установка в Docker). Линтер и форматтер — ruff. Тесты — pytest, только для правил: HLR, confidence, статусы заблуждений, сборщик сетов, инварианты шаблонов.
+**Python 3.12, FastAPI, Pydantic v2, uvicorn.** Приложение `apps/api`. Пакетный менеджер — **uv** (lock-файл, быстрая установка в Docker). Линтер и форматтер — ruff. Тесты — pytest, только для правил: HLR, confidence, статусы заблуждений, сборщик сетов, инварианты шаблонов.
 
 ### 2.1 Структура
 
-backend/
+apps/api/
 
   app/
 
@@ -273,7 +273,7 @@ quack/
 
   apps/web/          Next.js
 
-  backend/           FastAPI
+  apps/api/          FastAPI
 
   data/              датасеты (§3.3)
 

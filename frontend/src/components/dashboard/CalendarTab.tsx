@@ -25,8 +25,27 @@ const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
 const KIND_LABEL = { registration: "регистрация", test: "тест", application: "подача" } as const;
 
-/** Deadlines as a month calendar: registrations, tests and applications. */
-export function CalendarTab({ events }: { events: CalendarEvent[] }) {
+type Marks = {
+  /** The milestone an event is, when it can be ticked done */
+  idOf: (event: CalendarEvent) => string | undefined;
+  done: string[];
+  onToggle: (milestone: string) => void;
+};
+
+/**
+ * Deadlines as a month calendar: registrations, tests and applications. It is also the list of milestones:
+ * each one is ticked done here, and unticked if it was a mistake (product-logic §4.1).
+ */
+export function CalendarTab({
+  events,
+  marks,
+  onPickDate,
+}: {
+  events: CalendarEvent[];
+  marks: Marks;
+  /** Another sitting of SAT or ЕНТ becomes the one the plan works to */
+  onPickDate: (exam: "sat" | "ent", key: string) => void;
+}) {
   // Open on this month, or on the month of the next event when this one is empty
   const [cursor, setCursor] = useState(() => {
     const thisMonth = events.some((e) => e.date.getFullYear() === TODAY.getFullYear() && e.date.getMonth() === TODAY.getMonth());
@@ -60,7 +79,7 @@ export function CalendarTab({ events }: { events: CalendarEvent[] }) {
             type="button"
             className={styles.addToCalendar}
             title="Скачает файл .ics со всеми датами — открывается в Google Календаре, Apple и Outlook"
-            onClick={() => downloadIcs(events)}
+            onClick={() => downloadIcs(events.filter((e) => !e.alternative))}
           >
             <Icon name="calendar-plus" size={16} /> В свой календарь
           </button>
@@ -101,9 +120,19 @@ export function CalendarTab({ events }: { events: CalendarEvent[] }) {
               <span className={styles.calNumber}>{date.getDate()}</span>
               {list.length > 0 && (
                 <span className={styles.calDots}>
-                  {list.slice(0, 3).map((e) => (
-                    <span key={e.id} data-kind={e.kind} title={e.title} />
-                  ))}
+                  {list.slice(0, 3).map((e) => {
+                    const id = marks.idOf(e);
+                    const done = Boolean(id && marks.done.includes(id));
+                    return (
+                      <span
+                        key={e.id}
+                        data-kind={e.kind}
+                        data-done={done}
+                        data-alt={Boolean(e.alternative)}
+                        title={done ? `${e.title} · сделано` : e.alternative ? `${e.title} · другая дата` : e.title}
+                      />
+                    );
+                  })}
                 </span>
               )}
             </button>
@@ -126,8 +155,10 @@ export function CalendarTab({ events }: { events: CalendarEvent[] }) {
           <ul className={styles.calEvents}>
             {shown.map((e) => {
               const left = daysBetween(TODAY, e.date);
+              const id = marks.idOf(e);
+              const done = Boolean(id && marks.done.includes(id));
               return (
-                <li key={e.id}>
+                <li key={e.id} data-done={done} data-alt={Boolean(e.alternative)}>
                   <span className={styles.calKind} data-kind={e.kind}>
                     {KIND_LABEL[e.kind]}
                   </span>
@@ -137,8 +168,32 @@ export function CalendarTab({ events }: { events: CalendarEvent[] }) {
                   </span>
                   <span className={styles.muted}>
                     {formatDate(e.date)}
-                    {left >= 0 ? ` · через ${left} дн.` : " · прошло"}
+                    {done ? " · сделано" : left >= 0 ? ` · через ${left} дн.` : " · прошло"}
                   </span>
+                  {e.alternative ? (
+                    <button
+                      type="button"
+                      className={styles.markButton}
+                      title="Подготовка, вехи и прогноз пересчитаются под эту дату"
+                      onClick={() => onPickDate(e.alternative!.exam, e.alternative!.key)}
+                    >
+                      <Icon name="calendar-days" size={14} />
+                      Сдаю в эту дату
+                    </button>
+                  ) : id ? (
+                    <button
+                      type="button"
+                      className={styles.markButton}
+                      aria-pressed={done}
+                      title={done ? "Снять отметку, если это ошибка" : "Отметить, что это уже сделано"}
+                      onClick={() => marks.onToggle(id)}
+                    >
+                      <Icon name="check" size={14} />
+                      {done ? "Сделано" : "Отметить"}
+                    </button>
+                  ) : (
+                    <span />
+                  )}
                   <a
                     className={styles.googleLink}
                     href={googleCalendarUrl(e)}

@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register */
+        post: operations["register_auth_register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -2329,6 +2346,18 @@ export interface components {
             /** Failed Reason */
             failed_reason?: ("llm_unavailable" | "queue_unavailable" | "job_not_enqueued") | null;
         };
+        /** RegisterIn */
+        RegisterIn: {
+            /** Name */
+            name: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Password */
+            password: string;
+        };
         /** Requirement */
         Requirement: {
             /**
@@ -2722,16 +2751,6 @@ export interface components {
             /** Is Demo */
             is_demo: boolean;
         };
-        /** StudentCtx */
-        StudentCtx: {
-            /**
-             * Student Id
-             * Format: uuid
-             */
-            student_id: string;
-            /** Email */
-            email: string;
-        };
         /** TaskInstanceOut */
         TaskInstanceOut: {
             /**
@@ -2912,6 +2931,39 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    register_auth_register_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     login_auth_login_post: {
         parameters: {
             query?: never;
@@ -2931,7 +2983,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["StudentCtx"];
+                    "application/json": components["schemas"]["AuthOut"];
                 };
             };
             /** @description Validation Error */
@@ -2978,7 +3030,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["StudentCtx"];
+                    "application/json": components["schemas"]["AuthOut"];
                 };
             };
         };

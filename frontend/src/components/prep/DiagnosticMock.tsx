@@ -11,7 +11,8 @@ import styles from "./prep.module.css";
 
 type Props = {
   onComplete: (summary: DiagnosticResultSummary) => void;
-  onClose: () => void;
+  /** Without it the test cannot be left, only finished or skipped (the first visit) */
+  onClose?: () => void;
   onSkip?: () => void;
 };
 
@@ -19,6 +20,7 @@ type Props = {
  * Обязательный входной мок-тест на 8 вопросов для новых пользователей.
  * Прототип замера: 8 ключевых вопросов по алгебре, геометрии и анализу данных.
  * Определяет стартовую готовность, ловушки и калибрует персональный маршрут.
+ * Идёт прямо во вкладке «Сейчас»: после итога на том же месте открывается граф первого сета.
  */
 export function DiagnosticMock({ onComplete, onClose, onSkip }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -55,7 +57,7 @@ export function DiagnosticMock({ onComplete, onClose, onSkip }: Props) {
   const percent = Math.round((summary.score / total) * 100);
 
   return (
-    <div className={styles.diagnosticModalOverlay} role="dialog" aria-modal="true" aria-labelledby="diag-title">
+    <section className={styles.diagnosticInline} aria-labelledby="diag-title">
       <div className={styles.diagnosticModalBox}>
         {/* Шапка модального окна */}
         <header className={styles.diagnosticModalHead}>
@@ -82,15 +84,17 @@ export function DiagnosticMock({ onComplete, onClose, onSkip }: Props) {
                 Скинуть тест
               </button>
             )}
-            <button
-              type="button"
-              className={styles.topicClose}
-              onClick={onClose}
-              aria-label="Закрыть тест"
-              title="Закрыть замер"
-            >
-              <Icon name="x" size={16} />
-            </button>
+            {onClose && (
+              <button
+                type="button"
+                className={styles.topicClose}
+                onClick={onClose}
+                aria-label="Закрыть тест"
+                title="Закрыть замер"
+              >
+                <Icon name="x" size={16} />
+              </button>
+            )}
           </div>
         </header>
 
@@ -279,7 +283,7 @@ export function DiagnosticMock({ onComplete, onClose, onSkip }: Props) {
                 className={styles.primary}
                 onClick={() => onComplete(summary)}
               >
-                Применить и открыть маршрут <Icon name="chevron-right" size={16} />
+                Собрать маршрут и начать <Icon name="chevron-right" size={16} />
               </button>
               <button
                 type="button"
@@ -292,6 +296,6 @@ export function DiagnosticMock({ onComplete, onClose, onSkip }: Props) {
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }

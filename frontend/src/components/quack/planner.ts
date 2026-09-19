@@ -61,7 +61,10 @@ export function plan(seen: Standing, now: Standing): Draft[] {
       kind: a.kind,
       title: a.title,
       detail: a.detail,
-      target: a.kind === "late-set" || a.kind === "missed" ? "prep" : "calendar",
+      // A missed date is ticked in the calendar, not in preparation
+      target: a.kind === "late-set" ? "prep" : "calendar",
+      milestone: a.milestone,
+      conflict: a.conflict,
     });
   }
 

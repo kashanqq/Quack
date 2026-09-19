@@ -269,6 +269,13 @@ def profile_values(profile: Profile) -> list[float | date]:
 
     for path in _questionnaire_paths():
         add(_field_value(profile, path)[0])
+    sat = profile.questionnaire.academics.sat_score.value
+    if sat is not None:
+        if sat > 800:
+            values.append(float(round(sat / 2 / 10) * 10))
+            values.append(float(sat / 2))
+        else:
+            values.append(float(sat * 2))
     return values
 
 
@@ -519,7 +526,10 @@ class UpdateProfileArgs(BaseModel):
             "list, or an ISO 8601 date for date fields). For "
             "'traits.verbatim' this is the one quote to append, not the "
             "whole list; for 'traits.summary' it is the full replacement "
-            "text of the running preference summary."
+            "text of the running preference summary. "
+            "For 'preferences.grant_need', allowed values are strictly: "
+            "'only_grant' (только грант), 'preferred' (желательно), 'not_needed' (не нужен). "
+            "For 'academics.sat_score', write the math section score (up to 800, e.g. 650 for 1300 total)."
         )
     )
     by: Literal["assistant", "user"] = Field(
@@ -542,12 +552,40 @@ def _coerce(profile: Profile, path: str, value: Any) -> tuple[Any, Any]:
             return new, current
         if path == "traits.summary":
             return TypeAdapter(str).validate_python(value), profile.traits.summary
+        if path == "preferences.grant_need":
+            if isinstance(value, bool):
+                value = "preferred" if value else "not_needed"
+            elif isinstance(value, str):
+                v = value.lower().strip()
+                if v in ("true", "yes", "need", "grant", "желательно", "нужен", "хотелось бы", "хочу"):
+                    value = "preferred"
+                elif v in ("false", "no", "not_needed", "не нужен", "нет"):
+                    value = "not_needed"
+                elif v in ("only_grant", "только", "только грант"):
+                    value = "only_grant"
+        elif path == "level.grade" and isinstance(value, str):
+            digits = re.findall(r"\d+", value)
+            if digits:
+                value = int(digits[0])
+        elif path == "academics.sat_score" and isinstance(value, int | float | str):
+            try:
+                num = int(value)
+                if num > 800:
+                    value = round(num / 2 / 10) * 10
+                else:
+                    value = num
+            except (ValueError, TypeError):
+                pass
         section, leaf = path.split(".")
         field = getattr(getattr(profile.questionnaire, section), leaf)
         annotation = field.__class__.model_fields["value"].annotation
         return TypeAdapter(annotation).validate_python(value), field.value
     except ValidationError as error:
-        raise ValidationFailed("invalid profile value") from error
+        detail = "; ".join(
+            f"{e['loc'][0] if e.get('loc') else path}: {e.get('msg', '')}"
+            for e in error.errors()
+        )
+        raise ValidationFailed(f"invalid profile value: {detail}") from error
 
 
 @tool(
@@ -587,7 +625,7 @@ async def update_profile(args: UpdateProfileArgs, ctx: ToolCtx) -> ProfileUpdate
         updated = await profiles_repo.apply_profile_update(
             session,
             student_id,
-            ProfileUpdateIn(path=args.path, value=args.value, by="assistant"),
+            ProfileUpdateIn(path=args.path, value=value, by="assistant"),
         )
         await store.append(
             session,

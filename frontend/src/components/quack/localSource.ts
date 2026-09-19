@@ -5,7 +5,7 @@
 
 import { FIELDS, fieldValue } from "../choice/assistant";
 import { programById } from "../choice/programs";
-import { milestones, setById, skillById, STATE_LABEL } from "../prep/prepData";
+import { EXAMS, formatDate, milestones, plannedTest, setById, skillById, STATE_LABEL, type TestDates } from "../prep/prepData";
 import { initialModel, reviveModel, type PrepModel } from "../prep/prepModel";
 import { EMPTY_STATE, glowOf, type QuackState, type Signal, type Standing } from "./contract";
 import { firstBaseline, plan } from "./planner";
@@ -50,11 +50,22 @@ function describePrep(a: PrepModel, b: PrepModel, saved: string[]): string | und
   const passed = b.doneSets.find((id) => !a.doneSets.includes(id));
   if (passed) return `сет ${setById(passed).number} пройден`;
   if (b.currentSet && a.currentSet !== b.currentSet) return `новый текущий сет: ${setById(b.currentSet).title}`;
+  const programs = saved.map(programById).filter(Boolean);
+  const moves = (["sat", "ent"] as const).filter((exam) => a.testDates?.[exam] !== b.testDates?.[exam]);
+  if (moves.length) {
+    const exam = moves[0];
+    const when = (dates?: TestDates) => {
+      const test = plannedTest(exam, dates);
+      return test ? formatDate(test) : "—";
+    };
+    return `дата ${EXAMS[exam].name}: ${when(a.testDates)} → ${when(b.testDates)}`;
+  }
   const marked = b.milestonesDone.find((id) => !a.milestonesDone.includes(id));
   const unmarked = a.milestonesDone.find((id) => !b.milestonesDone.includes(id));
   const toggled = marked ?? unmarked;
   if (toggled) {
-    const title = milestones(saved.map(programById).filter(Boolean)).find((m) => m.id === toggled)?.title ?? toggled;
+    const title =
+      [...milestones(programs, b.testDates), ...milestones(programs, a.testDates)].find((m) => m.id === toggled)?.title ?? toggled;
     return `веха «${title}» ${marked ? "отмечена" : "снята"}`;
   }
   if (Object.keys(b.resolvedConflicts).length > Object.keys(a.resolvedConflicts).length) return "решён конфликт вех";

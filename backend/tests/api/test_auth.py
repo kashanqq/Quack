@@ -63,7 +63,11 @@ def test_login_success_sets_cookie_and_jwt(auth_app):
         )
 
     assert response.status_code == 200
-    assert response.json() == {"student_id": str(user.id), "email": user.email}
+    assert response.json() == {
+        "student_id": str(user.id),
+        "email": user.email,
+        "name": "student",
+    }
     cookie = response.headers["set-cookie"]
     assert "quack_token=" in cookie
     assert "HttpOnly" in cookie
@@ -176,7 +180,11 @@ def test_logout_clears_cookie_and_me_becomes_unauthorized(auth_app):
         after = client.get("/auth/me")
 
     assert login.status_code == 200
-    assert before.json() == {"student_id": str(user.id), "email": user.email}
+    assert before.json() == {
+        "student_id": str(user.id),
+        "email": user.email,
+        "name": "student",
+    }
     assert logout.status_code == 204
     assert "Max-Age=0" in logout.headers["set-cookie"]
     assert after.status_code == 401
@@ -230,7 +238,11 @@ def test_me_still_answers_when_graph_is_unavailable(auth_app, monkeypatch):
         response = client.get("/auth/me")
 
     assert response.status_code == 200
-    assert response.json() == {"student_id": str(user.id), "email": user.email}
+    assert response.json() == {
+        "student_id": str(user.id),
+        "email": user.email,
+        "name": "student",
+    }
     ensure_student.assert_not_awaited()
 
 
@@ -277,3 +289,75 @@ def test_session_dependency_commits_or_rolls_back(failed):
     assert session.commit.await_count == (0 if failed else 1)
     assert session.rollback.await_count == (1 if failed else 0)
     assert session.closed
+
+
+def test_register_creates_user_sets_cookie_and_returns_name(auth_app, monkeypatch):
+    app, _, redis, _ = auth_app
+    new_id = uuid4()
+    create = AsyncMock(return_value=new_id)
+    monkeypatch.setattr(auth, "create_user", create)
+    with TestClient(app) as client:
+        response = client.post(
+            "/auth/register",
+            json={
+                "name": " Аня ",
+                "email": "Anya@Quack.kz",
+                "password": "long-enough-1",
+            },
+        )
+        me = client.get("/auth/me")
+
+    assert response.status_code == 201
+    assert response.json() == {
+        "student_id": str(new_id),
+        "email": "anya@quack.kz",
+        "name": "Аня",
+    }
+    assert "quack_token=" in response.headers["set-cookie"]
+    assert create.await_args.args[1] == "anya@quack.kz"
+    assert create.await_args.args[2] != "long-enough-1"
+    assert me.json()["name"] == "Аня"
+
+
+def test_register_duplicate_email_is_conflict(auth_app, monkeypatch):
+    app, *_ = auth_app
+    monkeypatch.setattr(auth, "create_user", AsyncMock(return_value=None))
+    with TestClient(app) as client:
+        response = client.post(
+            "/auth/register",
+            json={"name": "A", "email": "a@quack.kz", "password": "long-enough-1"},
+        )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "conflict"
+
+
+def test_register_rejects_short_password(auth_app):
+    app, *_ = auth_app
+    with TestClient(app) as client:
+        response = client.post(
+            "/auth/register",
+            json={"name": "A", "email": "a@quack.kz", "password": "short"},
+        )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "validation_failed"
+
+
+def test_cors_preflight_allows_frontend_origin_with_credentials(auth_app):
+    app, *_ = auth_app
+    with TestClient(app) as client:
+        response = client.options(
+            "/auth/login",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+        other = client.get("/health", headers={"Origin": "http://evil.example"})
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert response.headers["access-control-allow-credentials"] == "true"
+    assert "access-control-allow-origin" not in other.headers

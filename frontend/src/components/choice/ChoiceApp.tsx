@@ -21,6 +21,7 @@ import {
 import { Dashboard } from "../dashboard/Dashboard";
 import type { DashTab } from "../dashboard/dashboardRules";
 import { PrepView } from "../prep/PrepView";
+import { prefetchRemoteOverview } from "../prep/remotePrep";
 import { useQuack } from "../quack/source";
 import { morph } from "@/components/transition/morph";
 import { FirstHint, HelpDialog } from "@/components/hints/FirstHint";
@@ -29,9 +30,16 @@ import type { PrepSub, PrepTab } from "../prep/prepModel";
 import { ChatMessage, type ChatMsg } from "./ChatMessage";
 import { CompareView } from "./CompareView";
 import { CustomScrollbar } from "./CustomScrollbar";
+import { milestoneIntent } from "./milestoneIntent";
+import { chosenTestDates, doneMilestones, markMilestone, pickTestDate, skipEntranceTest } from "../prep/milestoneMarks";
+import { EXAMS, formatDate, plannedTest, registrationBy } from "../prep/prepData";
 import { ProfilePanel } from "./ProfilePanel";
 import { ProgramCards, ProgramDrawer, type ProgramActions } from "./ProgramUi";
-import { recommend } from "./programs";
+import { catalog, recommend } from "./programs";
+import { REMOTE, forgetSynced, loadCatalog, loadSaved, prioritize, primeSynced, syncFields } from "./catalog";
+import { loadHistory, loadProfile, sendSelectionMessage, type HistoryItem } from "./remoteChat";
+import { ApiError } from "@/api/client";
+import { backend } from "@/api/backend";
 import { ResizeHandle } from "./ResizeHandle";
 import { Sidebar, type ChatSummary, type Mode, type SidebarTab } from "./Sidebar";
 import { Icon } from "./Icon";
@@ -59,6 +67,8 @@ const CHAT_MIN = 460; // below this the profile panel turns into an overlay
 const PHONE_MAX = 760;
 const LAYOUT_KEY = "quack-choice-layout";
 const WORKSPACE_KEY = "quack-choice-workspace";
+// With the backend there is one conversation per student, kept on the server
+const SERVER_CHAT = "server";
 const INTRO_PLACEHOLDER = "Люблю бананы и хочу в IT...";
 
 type LeftPanel = { width: number; collapsed: boolean; lastWidth: number; userSet: boolean };
@@ -115,6 +125,8 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   // Programs
   const [picks, setPicks] = useState<string[]>([]);
   const [saved, setSaved] = useState<string[]>([]);
+  // The catalog registry is filled outside React (catalog.ts); bumping this re-reads it
+  const [, bumpCatalog] = useState(0);
   const [compare, setCompare] = useState<string[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [view, setView] = useState<"chat" | "compare">("chat");
@@ -169,6 +181,17 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   /* ---------- Workspace persistence (profile, programs, chats) ---------- */
 
   useEffect(() => {
+    let alive = true;
+    (async () => {
+    // Stored cards may be backend programs: the registry has to know them before they render
+    let serverProfile: Profile | null = null;
+    let history: HistoryItem[] = [];
+    if (REMOTE) {
+      await loadCatalog().catch(() => undefined);
+      serverProfile = await loadProfile().catch(() => null);
+      history = await loadHistory().catch(() => []);
+    }
+    if (!alive) return;
     try {
       const stored = store.get<Workspace>(WORKSPACE_KEY);
       if (stored) {
@@ -182,7 +205,25 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
         idRef.current = Math.max(0, ...(stored.sessions ?? []).flatMap((c: Session) => c.messages.map((m) => m.id)));
       }
     } catch {}
+    if (REMOTE) {
+      // The server is the source of truth for the profile and the conversation
+      if (serverProfile) {
+        profileRef.current = serverProfile;
+        setProfile(serverProfile);
+        primeSynced(serverProfile);
+        setPlaceholder(placeholderFor(serverProfile));
+      }
+      const messages: ChatItem[] = history.map((m, i) => ({ id: i + 1, role: m.role, text: m.text, confirm: "none", editable: false }));
+      idRef.current = messages.length;
+      setSessions(
+        messages.length ? [{ id: SERVER_CHAT, title: "Подбор программ", updatedAt: history[history.length - 1].at, messages }] : []
+      );
+    }
     setWorkspaceLoaded(true);
+    })();
+    return () => {
+      alive = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -190,6 +231,31 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     // The store gathers a burst (a reply typing out) into one write
     store.set(WORKSPACE_KEY, { profile, confirmed, picks, saved, compare, sessions } satisfies Workspace);
   }, [workspaceLoaded, profile, confirmed, picks, saved, compare, sessions]);
+
+  /* ---------- Backend: catalog, saved programs, profile ---------- */
+
+  useEffect(() => {
+    if (!REMOTE || !workspaceLoaded) return;
+    let alive = true;
+    (async () => {
+      try {
+        await loadCatalog();
+        const ids = await loadSaved();
+        if (!alive) return;
+        setSaved(ids);
+        prefetchRemoteOverview();
+        // Cards picked before the backend was on refer to the demo set
+        setPicks((list) => list.filter((id) => catalog.get(id)?.remote));
+        setCompare((list) => list.filter((id) => catalog.get(id)?.remote));
+        bumpCatalog((n) => n + 1);
+      } catch {
+        // Offline: the demo set stays, this visit just is not synced
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [workspaceLoaded]);
 
   // Keep the active chat's stored copy in sync with what is on screen
   useEffect(() => {
@@ -272,10 +338,10 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const addUserMessage = (text: string) =>
     setMessages((list) => [...list, { id: ++idRef.current, role: "user", text, confirm: "none", editable: false }]);
 
-  async function assistantSay(text: string, summary = false) {
+  async function assistantSay(text: string, summary = false, extra?: Pick<ChatItem, "milestone" | "testDate" | "offer">) {
     const id = ++idRef.current;
     const reduced = prefersReducedMotion();
-    setMessages((list) => [...list, { id, role: "assistant", text: "", typing: true, confirm: "none", editable: false }]);
+    setMessages((list) => [...list, { id, role: "assistant", text: "", typing: true, confirm: "none", editable: false, ...extra }]);
 
     await sleep(reduced ? 100 : 700 + Math.min(900, text.length * 12));
     if (!mounted.current) return;
@@ -334,16 +400,28 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     openMobilePrograms();
   };
 
+  function toggleSave(id: string) {
+    const has = saved.includes(id);
+    const offer = !has && !saved.length && !diagDone && stage === "chat" && !busyRef.current;
+    if (!has && !saved.length && !offer) setToast("Сохранено. Под неё уже собирается «Подготовка»");
+    setSaved((list) => (has ? list.filter((x) => x !== id) : list.includes(id) ? list : [...list, id]));
+    if (REMOTE && catalog.get(id)?.remote) {
+      (has ? backend.saved.remove(id) : backend.saved.add(id))
+        .then(() => {
+          prefetchRemoteOverview();
+        })
+        .catch(() => {
+          setSaved((list) => (has ? [...list, id] : list.filter((x) => x !== id)));
+          setToast("Не получилось сохранить. Попробуй ещё раз");
+        });
+    }
+    if (offer) void offerTest();
+  }
+
   const programActions: ProgramActions = {
     saved,
     compare,
-    onToggleSave: (id) =>
-      setSaved((list) => {
-        if (list.includes(id)) return list.filter((x) => x !== id);
-        // The first save is when the other sections start to matter: say so once, briefly
-        if (!list.length) setToast("Сохранено. Под неё уже собирается «Подготовка»");
-        return [...list, id];
-      }),
+    onToggleSave: (id) => toggleSave(id),
     onToggleCompare: (id) =>
       setCompare((list) => {
         if (list.includes(id)) return list.filter((x) => x !== id);
@@ -367,8 +445,109 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     setView("compare");
   };
 
+  /**
+   * «Зарегистрировался на SAT», «подал в Болонью»: the chat ticks the milestone like the calendar and the Quack
+   * feed do. A plan is not ticked, only asked about; a date no saved program has is named, not invented.
+   */
+  async function handleMilestone(text: string) {
+    const chosen = chosenTestDates();
+    const intent = milestoneIntent(text, saved, chosen);
+    if (!intent) return false;
+    if (intent.kind === "date") {
+      const name = EXAMS[intent.exam].name;
+      const prevTest = plannedTest(intent.exam, chosen);
+      const same = prevTest?.getTime() === intent.test.getTime();
+      if (!same) pickTestDate(intent.exam, intent.key);
+      const already = intent.mark && doneMilestones().includes(intent.mark.id);
+      if (intent.mark && !already) markMilestone(intent.mark.id, true);
+      const reg = formatDate(registrationBy(intent.test));
+      const reply = same
+        ? intent.mark
+          ? already
+            ? `«${intent.mark.title}» уже отмечено.`
+            : "Дата та же, отметил."
+          : `${name} и так ${formatDate(intent.test)}. Регистрация до ${reg}.`
+        : intent.mark
+          ? `Перестроил план под ${formatDate(intent.test)} и отметил. Прогноз и напоминания в Quack пересчитаны.`
+          : `Перестроил план под ${formatDate(intent.test)}: регистрация до ${reg} — отмечу, когда зарегистрируешься. Прогноз в Quack пересчитан.`;
+      await assistantSay(reply, false, {
+        testDate: same
+          ? undefined
+          : {
+              exam: intent.exam,
+              label: `${name} — ${formatDate(intent.test)}`,
+              prev: chosen[intent.exam] ?? null,
+              prevLabel: prevTest ? formatDate(prevTest) : "ближайшую",
+            },
+        milestone: intent.mark && !already ? intent.mark : undefined,
+      });
+      return true;
+    }
+    if (intent.kind === "badDate") {
+      await assistantSay(`В эту дату ${EXAMS[intent.exam].name} не проходит. Ближайшие даты: ${intent.options.join(", ")}. Какую выбираешь?`);
+      return true;
+    }
+    if (intent.kind === "planned") {
+      await assistantSay(`Отмечу ${intent.what}, когда сделаешь. Как только будет готово, напиши, например, «зарегистрировался», или отметь в Календаре.`);
+    } else if (intent.kind === "unknown") {
+      await assistantSay(`Не нашёл ${intent.what} среди дат твоих сохранённых программ. Сохрани программу, которой это нужно, и дата появится в Календаре.`);
+    } else if (doneMilestones().includes(intent.id)) {
+      await assistantSay(`«${intent.title}» уже отмечено как сделанное.`);
+    } else {
+      markMilestone(intent.id, true);
+      await assistantSay("Отметил. Прогноз и напоминания в Quack уже пересчитаны.", false, {
+        milestone: { id: intent.id, title: intent.title },
+      });
+    }
+    return true;
+  }
+
+  function undoMilestone(messageId: number) {
+    const mark = messages.find((m) => m.id === messageId)?.milestone;
+    if (!mark || mark.undone) return;
+    markMilestone(mark.id, false);
+    updateMsg(messageId, { milestone: { ...mark, undone: true } });
+  }
+
+  /** Optional, never in the way: taking it opens it in «Подготовке», putting it off starts from the profile */
+  async function offerTest() {
+    setBusyState(true);
+    await assistantSay(
+      "Сохранено — «Подготовка» уже собирается под эту программу. Хочешь пройти входной замер? 8 вопросов, пара минут: найдём, с какого уровня строить сеты. Можно и позже — тогда первый сет соберу по твоему профилю.",
+      false,
+      { offer: { kind: "diagnostic" } }
+    );
+    if (mounted.current) setBusyState(false);
+  }
+
+  async function answerOffer(messageId: number, answer: "start" | "later") {
+    if (busyRef.current) return;
+    updateMsg(messageId, { offer: { kind: "diagnostic", answered: answer } });
+    if (answer === "start") {
+      morph(() => {
+        setMode("prep");
+        setPrepTab("overview");
+        setPrepSub("now");
+        setLaunchDiag(true);
+      });
+      return;
+    }
+    skipEntranceTest();
+    setDiagDone(true);
+    setBusyState(true);
+    await assistantSay("Хорошо. Первый сет собрал по твоему профилю — он уже в «Подготовке → Сейчас». Замер можно пройти там в любой момент.");
+    if (mounted.current) setBusyState(false);
+  }
+  function undoTestDate(messageId: number) {
+    const pick = messages.find((m) => m.id === messageId)?.testDate;
+    if (!pick || pick.undone) return;
+    pickTestDate(pick.exam, pick.prev);
+    updateMsg(messageId, { testDate: { ...pick, undone: true } });
+  }
+
   // Chat shortcuts once programs exist: "сравни…", "избранное…"
   async function handleIntent(text: string) {
+    if (await handleMilestone(text)) return true;
     if (!picks.length) return false;
     const t = text.toLowerCase();
     if (/сравн/.test(t)) {
@@ -392,11 +571,13 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   async function openChat(text: string) {
     if (!activeChatRef.current) {
-      const id = `chat-${Date.now()}`;
+      const id = REMOTE ? SERVER_CHAT : `chat-${Date.now()}`;
       const title = text.length > 42 ? `${text.slice(0, 40)}…` : text;
       activeChatRef.current = id;
       setActiveChatId(id);
-      setSessions((list) => [{ id, title, updatedAt: Date.now(), messages: [] }, ...list]);
+      setSessions((list) =>
+        list.some((c) => c.id === id) ? list : [{ id, title: REMOTE ? "Подбор программ" : title, updatedAt: Date.now(), messages: [] }, ...list]
+      );
     }
 
     if (stage === "intro") {
@@ -418,10 +599,97 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
     await openChat(text);
     addUserMessage(text);
-    if (!(await handleIntent(text))) await respond(text);
+    if (REMOTE) await remoteRespond(text);
+    else if (!(await handleIntent(text))) await respond(text);
     if (!mounted.current) return;
     setBusyState(false);
     inputRef.current?.focus();
+  }
+
+  /** One turn with the backend agent: the answer streams in, cards and comparison arrive as tool results */
+  async function remoteRespond(text: string) {
+    const id = ++idRef.current;
+    setMessages((list) => [...list, { id, role: "assistant", text: "", typing: true, confirm: "none", editable: false }]);
+    let answer = "";
+    const cards: string[][] = [];
+    let compareIds: string[] = [];
+    const changed = { profile: false, saved: false };
+    let failed: string | null = null;
+
+    try {
+      await sendSelectionMessage(text, {
+        onText: (delta) => {
+          answer += delta;
+          if (mounted.current) updateMsg(id, { typing: false, text: answer });
+        },
+        onPrograms: (ids) => cards.push(ids),
+        onCompare: (ids) => (compareIds = ids),
+        onChanged: (what) => {
+          changed.profile ||= Boolean(what.profile);
+          changed.saved ||= Boolean(what.saved);
+        },
+      });
+    } catch (err) {
+      const code = err instanceof ApiError ? err.code : "";
+      failed =
+        code === "llm_unavailable"
+          ? "Ассистент сейчас недоступен. Программы и профиль слева по-прежнему можно смотреть — попробуй написать позже."
+          : code === "conflict"
+            ? "Я ещё отвечаю на предыдущее сообщение. Подожди секунду и напиши снова."
+            : code === "too_many_requests"
+              ? "Слишком много сообщений подряд. Подожди минуту."
+              : code === "tool_loop_limit"
+                ? "Не удалось завершить подборку (превышен лимит шагов). Попробуй повторить запрос."
+                : code === "postcheck_failed"
+                  ? "Ответ отозван проверкой фактов. Попробуй переформулировать вопрос."
+                  : err instanceof ApiError && err.message
+                    ? err.message
+                    : "Не получилось получить ответ. Попробуй ещё раз.";
+    }
+    if (!mounted.current) return;
+
+    if (failed) {
+      updateMsg(id, {
+        typing: false,
+        text: answer ? `${answer}\n\n⚠️ ${failed}` : failed,
+      });
+    } else if (!answer) {
+      setMessages((list) => list.filter((m) => m.id !== id));
+    }
+
+    // Whatever the agent changed on the server is read back
+    try {
+      if (changed.profile || cards.length) {
+        const [profileNow] = await Promise.all([changed.profile ? loadProfile() : null, loadCatalog()]);
+        if (profileNow) {
+          profileRef.current = profileNow;
+          setProfile(profileNow);
+          primeSynced(profileNow);
+          setPlaceholder(placeholderFor(profileNow));
+        }
+        bumpCatalog((n) => n + 1);
+      }
+      if (changed.saved) setSaved(await loadSaved());
+    } catch {
+      // The next turn reads it again
+    }
+    if (!mounted.current) return;
+
+    for (const ids of cards) {
+      const known = prioritize(ids.filter((pid) => catalog.get(pid)?.remote));
+      if (!known.length) continue;
+      setPicks(known);
+      setSidebarTab("picks");
+      setMessages((list) => [...list, { id: ++idRef.current, role: "assistant", text: "", confirm: "none", editable: false, programs: known }]);
+    }
+    const toCompare = compareIds.filter((pid) => catalog.get(pid)?.remote).slice(0, MAX_COMPARE);
+    if (toCompare.length >= 2) {
+      setCompare(toCompare);
+      setDetailId(null);
+      setMobileProgramsOpen(false);
+      setMode("choice");
+      setView("compare");
+    }
   }
 
   /* ---------- Summary: confirm / edit ---------- */
@@ -435,12 +703,28 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     await assistantSay(CONFIRM_REPLY);
     if (!mounted.current) return;
 
-    showPicks();
+    await showPicks();
+    if (!mounted.current) return;
     setBusyState(false);
   }
 
-  function showPicks() {
-    const ids = recommend(profileRef.current);
+  async function showPicks() {
+    let ids: string[];
+    if (REMOTE) {
+      try {
+        const loaded = await loadCatalog();
+        bumpCatalog((n) => n + 1);
+        ids = prioritize(loaded.ids).slice(0, 5);
+        if (!ids.length) {
+          await assistantSay(loaded.emptyReason ?? "Пока не нашёл подходящих программ. Расскажи, что для тебя важно, — и я поищу ещё.");
+          return;
+        }
+      } catch {
+        ids = recommend(profileRef.current);
+      }
+    } else {
+      ids = recommend(profileRef.current);
+    }
     setPicks(ids);
     setSidebarTab("picks");
     setMessages((list) => [
@@ -461,9 +745,18 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     await openChat(ask);
     addUserMessage(ask);
 
+    if (REMOTE) {
+      await remoteRespond(ask);
+      if (!mounted.current) return;
+      setBusyState(false);
+      inputRef.current?.focus();
+      return;
+    }
+
     await assistantSay(skipReply(profileRef.current));
     if (!mounted.current) return;
-    showPicks();
+    await showPicks();
+    if (!mounted.current) return;
     setBusyState(false);
     inputRef.current?.focus();
   }
@@ -524,6 +817,9 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   };
 
   const changeMode = (next: Mode) => {
+    if (next === "prep") {
+      prefetchRemoteOverview();
+    }
     morph(() => {
       setMode(next);
       setView("chat");
@@ -534,6 +830,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   // Everything of this student goes (chats, programs, preparation, the map), the account stays
   const restart = async () => {
     await store.reset();
+    forgetSynced();
     resetQuack();
     onRestart();
   };
@@ -576,6 +873,15 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     setProfile(next);
     setVersions((v) => ({ ...v, [key]: (v[key] ?? 0) + 1 }));
     setPlaceholder(placeholderFor(next));
+    if (REMOTE) {
+      syncFields(next, [key])
+        .then(async (sent) => {
+          if (!sent) return;
+          await loadCatalog();
+          bumpCatalog((n) => n + 1);
+        })
+        .catch(() => setToast("Не получилось сохранить изменение. Попробуй ещё раз"));
+    }
   }
 
   /* ---------- Panel resizing ---------- */
@@ -658,11 +964,11 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
               morph(() => {
                 setMode("prep");
                 if (!diagDone) {
+                  // «Требования» are open before the entrance test: the test date is picked there
+                  const open = tab === "overview" && (!sub || sub === "now" || sub === "requirements");
                   setPrepTab("overview");
-                  setPrepSub("now");
-                  if (tab !== "overview" || (sub && sub !== "now")) {
-                    setLaunchDiag(true);
-                  }
+                  setPrepSub(open && sub ? sub : "now");
+                  if (!open) setLaunchDiag(true);
                 } else {
                   setPrepTab(tab);
                   if (sub) setPrepSub(sub);
@@ -744,6 +1050,9 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
                         onEditStart={onEditStart}
                         onEditCancel={onEditCancel}
                         onEditSave={onEditSave}
+                        onUndoMilestone={undoMilestone}
+                        onUndoTestDate={undoTestDate}
+                        onOffer={diagDone ? undefined : answerOffer}
                       />
                     )
                   )}
@@ -772,7 +1081,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
                   saved={saved}
                   profile={profile}
                   chatDays={sessions.map((c) => c.updatedAt)}
-                  onUnsave={(id) => setSaved((list) => list.filter((x) => x !== id))}
+                  onUnsave={(id) => saved.includes(id) && toggleSave(id)}
                   onOpenChoice={() => changeMode("choice")}
                   onOpenPrep={(tab) => {
                     setPrepTab(tab);

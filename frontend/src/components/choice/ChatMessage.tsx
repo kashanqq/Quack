@@ -14,6 +14,12 @@ export type ChatMsg = {
   editable: boolean;
   editing?: boolean;
   confirmBeforeEdit?: ChatMsg["confirm"];
+  /** A milestone this reply ticked done, with a way to take the tick back */
+  milestone?: { id: string; title: string; undone?: boolean };
+  /** The entrance test offered after the first save (product-logic §8.1): taken, put off, or not answered yet */
+  offer?: { kind: "diagnostic"; answered?: "start" | "later" };
+  /** A test date this reply picked, with the one it replaced to go back to */
+  testDate?: { exam: "sat" | "ent"; label: string; prev: string | null; prevLabel: string; undone?: boolean };
 };
 
 type ChatMessageProps = {
@@ -22,9 +28,13 @@ type ChatMessageProps = {
   onEditStart: (id: number) => void;
   onEditCancel: (id: number) => void;
   onEditSave: (id: number, original: string, edited: string) => void;
+  onUndoMilestone?: (id: number) => void;
+  onUndoTestDate?: (id: number) => void;
+  /** Absent once the test is done or put off elsewhere: the offer then has nothing left to ask */
+  onOffer?: (id: number, answer: "start" | "later") => void;
 };
 
-export function ChatMessage({ msg, onConfirm, onEditStart, onEditCancel, onEditSave }: ChatMessageProps) {
+export function ChatMessage({ msg, onConfirm, onEditStart, onEditCancel, onEditSave, onUndoMilestone, onUndoTestDate, onOffer }: ChatMessageProps) {
   const editRef = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState(msg.text);
 
@@ -79,6 +89,44 @@ export function ChatMessage({ msg, onConfirm, onEditStart, onEditCancel, onEditS
           />
         ) : (
           <div className={styles.msgText}>{msg.text}</div>
+        )}
+        {msg.offer && !msg.typing && !msg.offer.answered && onOffer && (
+          <div className={styles.msgOffer}>
+            <button type="button" className={styles.msgOfferMain} onClick={() => onOffer(msg.id, "start")}>
+              Пройти замер
+            </button>
+            <button type="button" className={styles.msgOfferLater} onClick={() => onOffer(msg.id, "later")}>
+              Позже — начать с сета по профилю
+            </button>
+          </div>
+        )}
+        {msg.testDate && !msg.typing && (
+          <p className={styles.msgMilestone} data-undone={msg.testDate.undone || undefined}>
+            {msg.testDate.undone ? (
+              <>Вернул прежнюю дату: {msg.testDate.prevLabel}</>
+            ) : (
+              <>
+                ✓ Дата теста: {msg.testDate.label} ·{" "}
+                <button type="button" className={styles.msgMilestoneUndo} onClick={() => onUndoTestDate?.(msg.id)}>
+                  вернуть {msg.testDate.prevLabel}
+                </button>
+              </>
+            )}
+          </p>
+        )}
+        {msg.milestone && !msg.typing && (
+          <p className={styles.msgMilestone} data-undone={msg.milestone.undone || undefined}>
+            {msg.milestone.undone ? (
+              <>Отметка снята: {msg.milestone.title}</>
+            ) : (
+              <>
+                ✓ {msg.milestone.title} ·{" "}
+                <button type="button" className={styles.msgMilestoneUndo} onClick={() => onUndoMilestone?.(msg.id)}>
+                  отменить
+                </button>
+              </>
+            )}
+          </p>
         )}
       </div>
 
