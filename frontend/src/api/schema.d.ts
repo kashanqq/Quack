@@ -1107,6 +1107,22 @@ export interface components {
             referenced_skill_ids?: string[];
         };
         /**
+         * AuthOut
+         * @description Identity plus the display name. The name rides in the token so that
+         *     /auth/me stays free of database access.
+         */
+        AuthOut: {
+            /**
+             * Student Id
+             * Format: uuid
+             */
+            student_id: string;
+            /** Email */
+            email: string;
+            /** Name */
+            name: string;
+        };
+        /**
          * AvailabilityOut
          * @description How honest a read model is right now (phase 5, D03).
          *
