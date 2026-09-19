@@ -37,18 +37,30 @@ async def test_worker_registry_and_queue_settings():
 async def test_llm_jobs_declare_their_own_timeout():
     """Очередь interactive живёт с job_timeout=30, а наблюдатель ходит в LLM
     на слоте bulk (LLM_TIMEOUT_BULK_S): без собственного таймаута задача
-    гарантированно не укладывалась."""
+    гарантированно не укладывалась (phase3 §3.12, F19)."""
     by_name = {
         entry.name: entry for entry in (*INTERACTIVE, *BULK) if hasattr(entry, "name")
     }
-    assert set(by_name) == set(JOB_TIMEOUTS)
+    assert (
+        set(by_name)
+        == set(JOB_TIMEOUTS)
+        == {
+            "observe_chat",
+            "canonize_misconception",
+        }
+    )
+    assert by_name["observe_chat"].timeout_s == settings.OBSERVER_JOB_TIMEOUT_S
     assert by_name["observe_chat"].timeout_s > settings.LLM_TIMEOUT_BULK_S
+    assert by_name["canonize_misconception"].timeout_s == settings.CANON_JOB_TIMEOUT_S
     assert JOB_QUEUES["observe_chat"] == "interactive"
     assert by_name["observe_chat"] in INTERACTIVE
-    assert by_name["pregenerate_set"] in BULK
+    assert by_name["canonize_misconception"] in INTERACTIVE
+    assert BULK == [ping]
     for entry in by_name.values():
+        assert entry.max_tries == 3
         assert entry.timeout_s <= settings.JOB_TIMEOUT_MAX_S
-        assert entry.timeout_s > settings.JOB_TIMEOUT_DEFAULT_S
+    # a finished observer must not keep its job id busy for keep_result
+    assert by_name["observe_chat"].keep_result_s == 0
 
 
 async def test_worker_startup_shutdown_reuses_factories(monkeypatch):

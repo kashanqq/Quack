@@ -70,10 +70,17 @@ def _set(student_id, *, status="upcoming", position=0, skills=("skill-a",)):
     )
 
 
+class _Session:
+    """Stands in for AsyncSession: routes commit before queueing a job."""
+
+    async def commit(self):
+        pass
+
+
 @pytest.fixture
 def transport(monkeypatch, fake_apply):
     student_id = uuid4()
-    session = object()
+    session = _Session()
     redis = FakeRedis(student_id)
     deps_value = RuleDeps(
         graph=None,
@@ -150,6 +157,7 @@ def transport(monkeypatch, fake_apply):
 
     app.dependency_overrides[deps.get_session] = session_override
     app.dependency_overrides[deps.get_rule_deps] = lambda: deps_value
+    app.dependency_overrides[deps.get_arq] = lambda: None
     monkeypatch.setattr(sets_api.set_repo, "list_sets", list_sets)
     monkeypatch.setattr(sets_api.set_repo, "get_set", get_set)
     monkeypatch.setattr(sets_api.set_repo, "update_set", update_set)
@@ -428,6 +436,8 @@ def test_refresh_queues_the_observer(transport, monkeypatch):
     }
     assert enqueued[0][0] == "interactive"
     assert enqueued[0][1] == "observe_chat"
+    assert enqueued[0][2]["trigger"] == "requested"
+    assert enqueued[0][2]["_job_id"].startswith("observe:")
     assert transport.events[-1].type.value == "observer.requested"
 
 

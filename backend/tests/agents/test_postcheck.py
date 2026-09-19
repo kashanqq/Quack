@@ -59,3 +59,51 @@ def test_number_with_empty_tool_results_is_a_mismatch():
     result = check_facts("Стоимость 1500", [])
 
     assert not result.ok
+
+
+# --- phase 3 (docs/tz/phase3-agents.md §3.6, §6.5) ---
+
+
+@pytest.mark.phase3
+def test_extra_values_from_profile_pass():
+    assert check_facts("бюджет 5000", [], extra_values=[5000]).ok
+
+
+@pytest.mark.phase3
+def test_history_numbers_not_authoritative():
+    assert not check_facts("1 500 CHF", [], extra_values=[3000]).ok
+
+
+@pytest.mark.phase3
+def test_scope_exam_facts_keyword_sentences_only():
+    result = check_facts("В секции 22 задания, а x = 3", [], scope="exam_facts")
+    assert result.mismatches == ["22"]
+
+
+@pytest.mark.phase3
+def test_scope_exam_facts_dates_and_percents_always():
+    assert not check_facts("подача до 15 декабря", [], scope="exam_facts").ok
+    assert not check_facts("ты знаешь на 55%", [], scope="exam_facts").ok
+    assert check_facts("x = 5 или x = 1", [], scope="exam_facts").ok
+
+
+@pytest.mark.phase3
+def test_max_questions():
+    result = check_facts("Что? Где? Когда?", [], max_questions=2)
+    assert not result.ok
+    assert result.questions == 3
+    assert "questions>2" in result.mismatches
+    assert check_facts("Что? Где?", [], max_questions=2).ok
+
+
+@pytest.mark.phase3
+def test_percent_matches_fraction():
+    assert check_facts("покрытие 85%", [_result({"coverage": 0.85})]).ok
+
+
+@pytest.mark.phase3
+def test_error_results_give_no_values():
+    failed = ToolResult(
+        type="tool_result", tool="t", call_id="c1", data={"x": 1500}, error="boom"
+    )
+    assert not check_facts("Стоимость 1500", [failed]).ok

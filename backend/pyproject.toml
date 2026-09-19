@@ -52,4 +52,5 @@ markers = [
     "integration: tests requiring external services",
     "phase1: tests for the first implementation phase",
     "phase2: tests for the second implementation phase",
+    "phase3: tests for the third implementation phase (agents)",
 ]

@@ -20,12 +20,17 @@ from app.schemas.events import (
     Event,
     EventIn,
     EventType,
+    JobFailedPayload,
     MessageAssistantPayload,
     MessageUserPayload,
     MilestoneDonePayload,
+    MisconceptionCanonizedPayload,
     MisconceptionDisputedPayload,
+    MisconceptionPersonalCreatedPayload,
     MockCompletedPayload,
     MockStartedPayload,
+    ObservationExtractedPayload,
+    ObserverRequestedPayload,
     ProfileUpdatedPayload,
     ProgramSavedPayload,
     SetCompletedPayload,
@@ -62,6 +67,11 @@ _PAYLOAD_MODELS: dict[EventType, type[BaseModel]] = {
     EventType.misconception_disputed: MisconceptionDisputedPayload,
     EventType.misconception_undisputed: MisconceptionDisputedPayload,
     EventType.milestone_done: MilestoneDonePayload,
+    EventType.observation_extracted: ObservationExtractedPayload,
+    EventType.observer_requested: ObserverRequestedPayload,
+    EventType.job_failed: JobFailedPayload,
+    EventType.misconception_canonized: MisconceptionCanonizedPayload,
+    EventType.misconception_personal_created: MisconceptionPersonalCreatedPayload,
 }
 _json_payload = TypeAdapter(dict[str, Any])
 _logger = structlog.get_logger(__name__)
@@ -139,15 +149,48 @@ async def append(
 
 
 async def list_unprocessed(
-    session: AsyncSession, chat_id: UUID, limit: int = 50
+    session: AsyncSession,
+    chat_id: UUID,
+    limit: int = 50,
+    types: list[EventType] | None = None,
 ) -> list[Event]:
-    result = await session.scalars(
-        select(EventRow)
-        .where(EventRow.chat_id == chat_id, EventRow.processed_at.is_(None))
-        .order_by(EventRow.id)
-        .limit(limit)
+    """Events of one chat without `processed_at`, oldest first.
+
+    `types` narrows the window — the observer reads `message.*` and
+    `task.issued`, the trigger counts `message.*` only.
+    """
+    statement = select(EventRow).where(
+        EventRow.chat_id == chat_id, EventRow.processed_at.is_(None)
     )
+    if types is not None:
+        statement = statement.where(EventRow.type.in_([t.value for t in types]))
+    result = await session.scalars(statement.order_by(EventRow.id).limit(limit))
     return [Event.model_validate(row) for row in result]
+
+
+async def count_unprocessed(
+    session: AsyncSession, chat_id: UUID, types: list[EventType] | None = None
+) -> int:
+    statement = (
+        select(func.count())
+        .select_from(EventRow)
+        .where(EventRow.chat_id == chat_id, EventRow.processed_at.is_(None))
+    )
+    if types is not None:
+        statement = statement.where(EventRow.type.in_([t.value for t in types]))
+    return int(await session.scalar(statement) or 0)
+
+
+async def get_event(
+    session: AsyncSession, student_id: UUID, event_id: int
+) -> Event | None:
+    """One event of this student; someone else's id reads as missing."""
+    row = await session.scalar(
+        select(EventRow).where(
+            EventRow.id == event_id, EventRow.student_id == student_id
+        )
+    )
+    return Event.model_validate(row) if row is not None else None
 
 
 async def last_event_id(session: AsyncSession, student_id: UUID) -> int:
@@ -178,12 +221,22 @@ async def list_events(
     types: list[EventType] | None = None,
     since: datetime | None = None,
     limit: int = 200,
+    *,
+    chat_id: UUID | None = None,
+    after_id: int | None = None,
+    session_id: UUID | None = None,
 ) -> list[Event]:
     statement = select(EventRow).where(EventRow.student_id == student_id)
     if types is not None:
         statement = statement.where(EventRow.type.in_([type_.value for type_ in types]))
     if since is not None:
         statement = statement.where(EventRow.occurred_at >= since)
+    if chat_id is not None:
+        statement = statement.where(EventRow.chat_id == chat_id)
+    if after_id is not None:
+        statement = statement.where(EventRow.id > after_id)
+    if session_id is not None:
+        statement = statement.where(EventRow.session_id == session_id)
     result = await session.scalars(statement.order_by(EventRow.id).limit(limit))
     return [Event.model_validate(row) for row in result]
 
@@ -194,6 +247,60 @@ async def list_by_type(
     types: list[EventType],
     since: datetime | None,
     limit: int,
+    *,
+    chat_id: UUID | None = None,
+    after_id: int | None = None,
+    session_id: UUID | None = None,
 ) -> list[Event]:
-    """List a student's selected events in the existing ascending ID order."""
-    return await list_events(session, student_id, types=types, since=since, limit=limit)
+    """List a student's selected events in the existing ascending ID order.
+
+    `chat_id` / `after_id` / `session_id` narrow the read in SQL (the
+    observation diff and the tutor's session line need only one chat or one
+    session — filtering 200 oldest events in Python would miss new ones).
+    """
+    return await list_events(
+        session,
+        student_id,
+        types=types,
+        since=since,
+        limit=limit,
+        chat_id=chat_id,
+        after_id=after_id,
+        session_id=session_id,
+    )
+
+
+async def get_events(
+    session: AsyncSession, student_id: UUID, event_ids: list[int]
+) -> list[Event]:
+    """Several events of this student by id, ascending."""
+    if not event_ids:
+        return []
+    result = await session.scalars(
+        select(EventRow)
+        .where(EventRow.student_id == student_id, EventRow.id.in_(event_ids))
+        .order_by(EventRow.id)
+    )
+    return [Event.model_validate(row) for row in result]
+
+
+async def latest_before(
+    session: AsyncSession,
+    student_id: UUID,
+    chat_id: UUID,
+    types: list[EventType],
+    before_id: int,
+) -> Event | None:
+    """The newest event of these types in one chat with `id < before_id`."""
+    row = await session.scalar(
+        select(EventRow)
+        .where(
+            EventRow.student_id == student_id,
+            EventRow.chat_id == chat_id,
+            EventRow.type.in_([t.value for t in types]),
+            EventRow.id < before_id,
+        )
+        .order_by(EventRow.id.desc())
+        .limit(1)
+    )
+    return Event.model_validate(row) if row is not None else None

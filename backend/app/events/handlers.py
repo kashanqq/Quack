@@ -1,6 +1,11 @@
-"""The single Phase 2 event-to-B1-apply registration table."""
+"""The single event-to-B1-apply registration table."""
 
 from app.apply.dispute import apply_dispute
+from app.apply.observation import (
+    apply_misconception_canonized,
+    apply_misconception_personal_created,
+    apply_observation_extracted,
+)
 from app.apply.profile_updated import apply_profile_updated
 from app.apply.sets import on_program_change, on_run_completed, on_set_change
 from app.apply.task_answered import apply_task_answered, apply_task_skipped
@@ -19,3 +24,7 @@ on(EventType.misconception_disputed)(apply_dispute)
 on(EventType.misconception_undisputed)(apply_dispute)
 on(EventType.diagnostic_completed)(on_run_completed)
 on(EventType.mock_completed)(on_run_completed)
+# Phase 3 — the observer and the canonization of proposed misconceptions.
+on(EventType.observation_extracted)(apply_observation_extracted)
+on(EventType.misconception_canonized)(apply_misconception_canonized)
+on(EventType.misconception_personal_created)(apply_misconception_personal_created)

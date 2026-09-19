@@ -3,10 +3,13 @@ tests/agents/test_registries.py)."""
 
 from __future__ import annotations
 
+from uuid import uuid4
+
 import pytest
 
 from app.agents.selection import SELECTION_TOOLS, UpdateProfileArgs, save_program
 from app.agents.tutor import TUTOR_TOOLS
+from app.errors import ValidationFailed
 from app.llm.tools import ToolCtx
 
 pytestmark = pytest.mark.phase1
@@ -41,9 +44,20 @@ def test_tutor_tools_has_three_names_and_rejects_save_program():
         TUTOR_TOOLS.register(save_program)
 
 
-async def test_calling_a_stub_tool_raises_not_implemented_error():
-    ctx = ToolCtx(student_id="s1", deps=None, request_id="r1")
-    args = UpdateProfileArgs(path="traits.summary", value="x").model_dump()
+async def test_unknown_profile_path_is_rejected_before_any_io():
+    """Phase 3: the body is real; a path outside the questionnaire fails
+    validation before the tool touches a database."""
+    ctx = ToolCtx(student_id=str(uuid4()), deps=None, request_id="r1")
+    args = UpdateProfileArgs(path="secret.field", value="x").model_dump()
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ValidationFailed, match="unknown profile path"):
         await SELECTION_TOOLS.call("update_profile", args, ctx)
+
+
+def test_subset_keeps_specs_and_read_only_flag():
+    subset = SELECTION_TOOLS.subset(["update_profile", "query_dataset", "nope"])
+    assert subset.names() == ["update_profile", "query_dataset"]
+
+    tutor_subset = TUTOR_TOOLS.subset(["get_task"])
+    with pytest.raises(ValueError):
+        tutor_subset.register(save_program)

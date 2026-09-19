@@ -80,7 +80,10 @@ async def states_view(
             due = None
 
         level = words.skill_level(state, p_target, deps.params)
-        trend = words.trend(history) if history else "flat"
+        # get_state_history отдаёт новейшее первым, а trend сравнивает
+        # последний элемент с первым — нужен порядок от старого к новому.
+        ordered = sorted(history, key=lambda s: s.last_observed_at)
+        trend = words.trend(ordered) if ordered else "flat"
 
         out.append(
             SkillStateView(

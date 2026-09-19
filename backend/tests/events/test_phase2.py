@@ -145,6 +145,12 @@ def test_handlers_exact_mapping(empty_registry):
         EventType.misconception_undisputed: "apply_dispute",
         EventType.diagnostic_completed: "on_run_completed",
         EventType.mock_completed: "on_run_completed",
+        # phase 3
+        EventType.observation_extracted: "apply_observation_extracted",
+        EventType.misconception_canonized: "apply_misconception_canonized",
+        EventType.misconception_personal_created: (
+            "apply_misconception_personal_created"
+        ),
     }
     assert {
         event_type: [handler.__name__ for handler in functions]

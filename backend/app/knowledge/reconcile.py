@@ -68,15 +68,17 @@ def reconcile_task_answer(
         share = None
 
     # --- source / tier from mode ---
-    # Ответ на задачу — всегда source="task"/"mock"/"diagnostic": это решение
-    # задачи, а не реплика в чате. Режим «chat» отличается только видом
-    # свидетельства (kind="task_in_chat", §4.3) и своей строкой в таблице
-    # весов; source="chat" здесь давал бы вес 0.
+    # Ответ на задачу, выданную в чате репетитора (phase3 F7): source="chat",
+    # kind="task_in_chat" — ярус 2, вес 0.8 (§4.3). Ответ записывает правило
+    # наблюдателя, и свидетельство честно помечено как пришедшее из чата;
+    # вес тот же, что у задачи темы, потому что это решение задачи с ключом.
     mode = payload.mode
     if mode in _MOCK_MODES:
         source = "mock"
     elif mode == "diagnostic":
         source = "diagnostic"
+    elif mode == "chat":
+        source = "chat"
     else:
         source = "task"
 
@@ -291,6 +293,154 @@ def _apply_misconception(
                 )
 
     return None
+
+
+# --- chat observations (memory-architecture §8.1, phase3 §3.10) ---
+
+_CROSS_EXAMS: tuple[ExamId, ...] = ("SAT_MATH", "ENT_MATH")
+
+
+def reconcile_chat_evidence(
+    evidence: EvidenceIn,
+    state: KnowledgeStateOut | None,
+    misc_states: list[MisconceptionStateOut],
+    misconception_id: str | None,
+    avoided: bool,
+    params: KnowledgeParams,
+    now: datetime,
+    *,
+    cross_state: KnowledgeStateOut | None = None,
+    p_target: float | None = None,
+) -> ReconcileResult:
+    """Apply one observer evidence to the skill state and, optionally, to a
+    misconception state. Pure.
+
+    - the skill state goes through `hlr.apply_evidence`, which already caps a
+      tier-3 observation at `p_chat_cap` and sets `has_strong` only for tier
+      ≤ 2 — exactly as for tasks;
+    - `misconception_id` with `avoided=False` is a hit (`solution_step`
+      incorrect): `occurrence_count += 1`, `strong_count += 1` for a strong
+      tier; `confirmed` is reachable only with `strong_count ≥ 1` (§5.1);
+    - `avoided=True` is `avoided_trap`: `consecutive_avoided += 1`; without an
+      existing state there is nothing to avoid and no change is returned (the
+      rule skips such an observation before calling this);
+    - a shared `math.*` skill also moves the other exam's state, weighted by
+      `transfer_cross_exam` and never made strong by it (as for tasks).
+    """
+    state_after = hlr.apply_evidence(state, evidence, params=params)
+
+    cross_exam_state: KnowledgeStateOut | None = None
+    if evidence.skill_id.startswith("math."):
+        other_exam = next((e for e in _CROSS_EXAMS if e != evidence.exam_id), None)
+        if other_exam is not None:
+            cross_ev = evidence.model_copy(
+                update={
+                    "exam_id": other_exam,
+                    "weight": evidence.weight * params.transfer_cross_exam,
+                }
+            )
+            cross = hlr.apply_evidence(cross_state, cross_ev, params=params)
+            cross_exam_state = cross.model_copy(
+                update={
+                    "exam_id": other_exam,
+                    "has_strong": cross_state.has_strong
+                    if cross_state is not None
+                    else False,
+                }
+            )
+
+    change: MisconceptionChange | None = None
+    if misconception_id is not None:
+        change = _chat_misconception_change(
+            misconception_id, evidence.tier, misc_states, avoided, params
+        )
+
+    words = state_words(
+        state_after, params.p_target_max if p_target is None else p_target, params
+    )
+    return ReconcileResult(
+        evidence=[evidence],
+        state_after=state_after,
+        cross_exam_state=cross_exam_state,
+        misconception_change=change,
+        root_causes=[],
+        words=words,
+    )
+
+
+def _chat_misconception_change(
+    misconception_id: str,
+    tier: int,
+    misc_states: list[MisconceptionStateOut],
+    avoided: bool,
+    params: KnowledgeParams,
+) -> MisconceptionChange | None:
+    strong = weights.is_strong(tier)  # type: ignore[arg-type]
+    existing = next(
+        (m for m in misc_states if m.misconception_id == misconception_id), None
+    )
+    if avoided:
+        if existing is None:
+            return None
+        consecutive = existing.consecutive_avoided + 1
+        new_status = next_status(
+            existing.status,
+            event="avoided",
+            strong=False,
+            occurrence_count=existing.occurrence_count,
+            strong_count=existing.strong_count,
+            consecutive_avoided=consecutive,
+            strong_at_dispute=existing.strong_count,
+            disputed_at=None,
+            previous_status=existing.status,
+            params=params,
+        )
+        return MisconceptionChange(
+            misconception_id=misconception_id,
+            from_status=existing.status,
+            to_status=new_status,
+            counters={
+                "occurrence_count": existing.occurrence_count,
+                "strong_count": existing.strong_count,
+                "consecutive_avoided": consecutive,
+            },
+        )
+
+    if existing is None:
+        return MisconceptionChange(
+            misconception_id=misconception_id,
+            from_status=None,
+            to_status="suspected",
+            counters={
+                "occurrence_count": 1,
+                "strong_count": int(strong),
+                "consecutive_avoided": 0,
+            },
+        )
+    occurrence = existing.occurrence_count + 1
+    strong_count = existing.strong_count + (1 if strong else 0)
+    new_status = next_status(
+        existing.status,
+        event="hit",
+        strong=strong,
+        occurrence_count=occurrence,
+        strong_count=strong_count,
+        consecutive_avoided=0,
+        strong_at_dispute=existing.strong_count,
+        disputed_at=None,
+        previous_status=existing.status,
+        params=params,
+    )
+    return MisconceptionChange(
+        misconception_id=misconception_id,
+        from_status=existing.status,
+        to_status=new_status,
+        counters={
+            "occurrence_count": occurrence,
+            "strong_count": strong_count,
+            "consecutive_avoided": 0,
+        },
+    )
 
 
 # --- priors from profile (memory-architecture §4.8) ---

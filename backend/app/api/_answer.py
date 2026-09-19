@@ -1,9 +1,8 @@
 """Shared task-answer recording for topic, diagnostic, and mock routes."""
 
-from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Event as EventRow
@@ -11,7 +10,7 @@ from app.db.models import TaskInstance as InstanceRow
 from app.errors import Conflict, NotFound, ValidationFailed
 from app.events import dispatch, handlers, store  # noqa: F401 (register B1 handlers)
 from app.events.dispatch import RuleDeps
-from app.events.session import current_session_id
+from app.events.session import current_session_id, session_minute
 from app.schemas.auth import StudentCtx
 from app.schemas.common import TaskMode
 from app.schemas.events import EventIn, EventType, TaskAnsweredPayload
@@ -54,18 +53,6 @@ async def skipped_instance(
     return event_id is not None
 
 
-async def _session_minute(
-    session: AsyncSession, student_id: UUID, session_id: UUID, now: datetime
-) -> int:
-    first = await session.scalar(
-        select(func.min(EventRow.occurred_at)).where(
-            EventRow.student_id == student_id,
-            EventRow.session_id == session_id,
-        )
-    )
-    return max(0, int((now - first).total_seconds() // 60)) if first else 0
-
-
 async def record_answer(
     session: AsyncSession,
     deps: RuleDeps,
@@ -88,7 +75,7 @@ async def record_answer(
 
     session_id = await current_session_id(deps.redis, student.student_id)
     now = deps.now()
-    minute = await _session_minute(session, student.student_id, session_id, now)
+    minute = await session_minute(session, student.student_id, session_id, now)
     payload = TaskAnsweredPayload(
         instance_id=instance_id,
         answer=body.answer,

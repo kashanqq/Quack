@@ -39,3 +39,8 @@ def ctx_topic(student_id: str, skill_id: str) -> str:
 
 def lock(name: str) -> str:
     return f"quack:lock:{name}"
+
+
+def matching_snapshot(student_id: str) -> str:
+    """Last matching the selection assistant showed (docs/tz/phase3 §3.3)."""
+    return f"quack:matching:snapshot:{student_id}"

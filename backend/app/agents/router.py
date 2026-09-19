@@ -1,10 +1,8 @@
 """Chat entrypoint — dispatches an incoming message to the right agent.
 
-Phase 1 note: every ``kind`` goes through the same echo path below — no
-history, no tools, no branching. Phase 2 replaces the body of ``run_chat``
-with a dispatch to ``selection.run`` / ``tutor.run``, each fed prior turns
-loaded via ``db.repo.messages.list_messages`` instead of a bare two-message
-list. Don't lose that when this file is next touched.
+Phase 3 (docs/tz/phase3-agents.md §3.1): load the chat's recent history and
+the student's profile, hand the turn to `selection.run` (kind="selection") or
+`tutor.run` (kind="prep"), and pass the agent's stream through unchanged.
 """
 
 from __future__ import annotations
@@ -12,22 +10,26 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
+import structlog
 from neo4j import AsyncDriver
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.config import settings
+from app.db.repo import messages as messages_repo
+from app.db.repo import profiles as profiles_repo
 from app.errors import LLMUnavailable
 from app.llm.client import LLMLike
-from app.llm.prompts import load_prompt
 from app.schemas.chat import (
     ChatCtx,
     ChatKind,
     ChatMessageIn,
-    Done,
+    MessageOut,
     StreamError,
     StreamEvent,
 )
-from app.schemas.llm import LLMMessage
+
+_logger = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -37,8 +39,9 @@ class AgentDeps:
     Constructed by B3 in ``api/chat.py`` from ``app.state`` (00-contracts.md
     §7); this is also the concrete type that ``app.llm.tools.ToolCtx.deps``
     refers to through its ``TYPE_CHECKING``-only import of this module — so
-    this module must never import from ``app.llm.tools`` or ``app.agents.*``,
-    only be imported by them.
+    this module must never import from ``app.llm.tools`` or ``app.agents.*``
+    at import time, only be imported by them (the agents are imported lazily
+    inside ``run_chat``).
     """
 
     llm: LLMLike
@@ -47,10 +50,12 @@ class AgentDeps:
     redis: Redis
 
 
-_SYSTEM_PROMPT_NAME: dict[ChatKind, str] = {
-    "selection": "selection",
-    "prep": "tutor",
-}
+def drop_current(history: list[MessageOut], text: str) -> list[MessageOut]:
+    """The transport has already stored the current message; the agent adds
+    it itself as the last one, so a trailing copy in the history goes."""
+    if history and history[-1].role == "user" and history[-1].text == text:
+        return history[:-1]
+    return history
 
 
 async def run_chat(
@@ -61,46 +66,43 @@ async def run_chat(
 ) -> AsyncIterator[StreamEvent]:
     """Stream a reply to one chat message.
 
-    Phase 1 is echo-only: exactly two messages go to the model — the
-    ``kind``'s system prompt (``selection_v*`` for ``"selection"``,
-    ``tutor_v*`` for ``"prep"``) and the user's text — via
-    ``deps.llm.stream(messages, "chat")``, no ``tools``. Every ``TextDelta``
-    the model yields is forwarded unchanged; the stream always ends with a
-    ``Done`` whose ``event_id`` is a placeholder (the real id is assigned by
-    B3's transport when it persists the message) and whose other markup
-    fields are empty, since phase 1 has no mode, no issued task, no hint
-    level and nothing to reference.
-
-    ``LLMUnavailable`` raised by the model *before* any event has been
-    yielded propagates unchanged, so B3's transport can still turn it into a
-    503 — no response bytes have gone out yet. Once streaming has started,
-    that option is gone (headers are already on the wire), so the same
-    error is instead surfaced as a ``StreamError`` — the last event of the
-    stream. This is the opposite of ``app.llm.loop.run_tool_loop``, which
-    always turns ``LLMUnavailable`` into a ``StreamError`` regardless of
-    position; don't carry that rule over here.
+    ``LLMUnavailable`` before any event has been yielded propagates, so B3's
+    transport can still turn it into a 503 — no response bytes have gone out
+    yet. An agent reports an unavailable model as
+    ``StreamError(code="llm_unavailable")``; when that is its very first
+    event, it is raised here as ``LLMUnavailable`` for the same reason. Any
+    later ``StreamError`` is passed through and ends the stream.
     """
-    prompt = load_prompt(_SYSTEM_PROMPT_NAME[kind])
-    messages = [
-        LLMMessage(role="system", content=prompt.text),
-        LLMMessage(role="user", content=message.text),
-    ]
+    from app.agents import selection, tutor
 
-    yielded_any = False
-    try:
-        async for event in deps.llm.stream(messages, "chat"):
-            yielded_any = True
-            yield event
-    except LLMUnavailable as exc:
-        if not yielded_any:
-            raise
-        yield StreamError(code="llm_unavailable", message=str(exc))
-        return
-
-    yield Done(
-        event_id=0,
-        mode=None,
-        gave_task_instance_id=None,
-        hint_level=None,
-        referenced_skill_ids=[],
+    window = settings.knowledge.chat_window
+    async with deps.pg() as session:
+        history = await messages_repo.list_messages(
+            session, ctx.student_id, ctx.chat_id, limit=window + 1
+        )
+        profile = await profiles_repo.get_profile(session, ctx.student_id)
+    history = drop_current(history, message.text)[-window:]
+    _logger.info(
+        "chat_turn_started",
+        kind=kind,
+        chat_id=str(ctx.chat_id),
+        history_len=len(history),
     )
+
+    agent = selection.run if kind == "selection" else tutor.run
+    stream = agent(ctx, message, history, profile, deps)
+    first = True
+    try:
+        async for event in stream:
+            if (
+                first
+                and isinstance(event, StreamError)
+                and event.code == "llm_unavailable"
+            ):
+                raise LLMUnavailable(event.message)
+            first = False
+            yield event
+            if isinstance(event, StreamError):
+                return
+    finally:
+        await stream.aclose()

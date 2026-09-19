@@ -102,6 +102,7 @@ events (
 | `topic.opened`, `topic.completed` | topic\_skill\_id | контекст, триггер наблюдателя |
 | `misconception.disputed` / `.undisputed` | misconception\_id | да |
 | `skill.personal_created`, `misconception.personal_created` | описание узла | да |
+| `misconception.canonized` | source\_event\_id, ordinal, skill\_id, canonical\_id, similarity, decided\_by | да — предложенное заблуждение сведено к существующему (§5.4) |
 | `profile.updated` | field, value, by (assistant / user) | приоры; подборка |
 | `program.saved` / `program.removed` | program\_id | требования, вехи |
 | `milestone.done` | milestone\_id | вехи |
@@ -958,9 +959,19 @@ Summary по топику отдельно не нужен — контекст 
 | `chat_window` | 10 сообщений | §9.1 |
 | `context_budget_tokens` | 3000 | §9.2 |
 | `context_set_multiplier` | 1.5 | §9.3 контекст чата сета — те же слоты, шире |
-| `assistant_max_questions` | 3 | §9.1 уточняющих вопросов подряд у подбора |
+| `assistant_max_questions` | 2 | §9.1 вопросов в одном ответе подбора; постпроверка считает «?» (фаза 3) |
 | `assistant_readiness_threshold` | 0.6 | §9.1 заполненность анкеты для подбора |
 | `tutor_escalate_after_failures` | 2 | §9.4 когда репетитор спускается к предпосылке |
+
+Настройки процесса (`Settings`, переопределяются переменными окружения, фаза 3):
+
+| Параметр | Значение | Где |
+| :---- | :---- | :---- |
+| `OBSERVER_SLOT` | `bulk` | §8.1, §5.4 слот модели наблюдателя и канонизации |
+| `CTX_CACHE_TTL_S` | 3600 | §9.2 кэш сырья контекста топика в Redis |
+| `CHAT_LOCK_TTL_S` | 120 | один ход чата одновременно |
+| `OBSERVER_JOB_TIMEOUT_S` | 100 (≥ `LLM_TIMEOUT_BULK_S` + 10) | §8.1 таймаут `observe_chat` |
+| `CANON_JOB_TIMEOUT_S` | 30 | §5.4 таймаут `canonize_misconception` |
 
 ---
 
