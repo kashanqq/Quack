@@ -18,6 +18,7 @@ from app.db.models import Base
 API_ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_TABLES = {
     "users",
+    "student_state",
     "events",
     "profiles",
     "saved_programs",

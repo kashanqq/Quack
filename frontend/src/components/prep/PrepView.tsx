@@ -19,6 +19,7 @@ import {
   applyRemoteKnowledgeToModel,
   fetchRemoteKnowledge,
 } from "./remoteKnowledge";
+import { fetchKnowledgeVersion } from "./remoteChat";
 import { savedPrograms, setById, type ExamId } from "./prepData";
 import {
   acceptSet,
@@ -149,17 +150,43 @@ export function PrepView({
     }
   }, [exam]);
 
+  const lastVersionRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (!REMOTE_PREP) return;
-    const onFocus = () => {
-      fetchRemoteKnowledge(exam, true).then((data) => {
-        if (data) {
-          setModel((prev) => applyRemoteKnowledgeToModel(prev, data, exam));
+    let active = true;
+
+    const checkVersionAndSync = async (force = false) => {
+      try {
+        const v = await fetchKnowledgeVersion();
+        if (!active) return;
+        if (force || lastVersionRef.current === null || v > lastVersionRef.current) {
+          lastVersionRef.current = v;
+          prefetchRemoteSets(exam);
+          const data = await fetchRemoteKnowledge(exam, true);
+          if (active && data) {
+            setModel((prev) => applyRemoteKnowledgeToModel(prev, data, exam));
+          }
         }
-      });
+      } catch (err) {
+        console.warn("Version check sync failed:", err);
+      }
+    };
+
+    const onFocus = () => {
+      checkVersionAndSync();
     };
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+
+    const interval = setInterval(() => {
+      checkVersionAndSync();
+    }, 20000);
+
+    return () => {
+      active = false;
+      window.removeEventListener("focus", onFocus);
+      clearInterval(interval);
+    };
   }, [exam]);
 
   // Asked to open the test from outside (a locked tab in the column): it runs in «Сейчас»
