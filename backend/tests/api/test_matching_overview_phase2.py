@@ -7,7 +7,8 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api import deps, matching, overview
+from app.api import deps, overview
+from app.apply import matching  # сборка подборки переехала сюда (фаза 3, F13)
 from app.config import KnowledgeParams
 from app.events.dispatch import RuleDeps
 from app.main import create_app

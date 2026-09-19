@@ -1,12 +1,15 @@
 """Authenticated Phase 2 preparation-set routes."""
 
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
+import structlog
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_student, get_rule_deps, get_session
+from app import keys
+from app.api.chat import chat_id_for
+from app.api.deps import get_arq, get_current_student, get_rule_deps, get_session
 from app.apply import sets as apply_sets
 from app.db.repo import forecast as forecast_repo
 from app.db.repo import sets as set_repo
@@ -26,8 +29,11 @@ from app.schemas.events import (
     TopicOpenedPayload,
 )
 from app.schemas.sets import SetEditIn, SetOut, SetsByExam, SetSwitchIn, TopicOut
+from app.workers.queue import enqueue
 
 router = APIRouter(prefix="/sets", tags=["sets"])
+_logger = structlog.get_logger(__name__)
+_MESSAGE_TYPES = [EventType.message_user, EventType.message_assistant]
 
 
 async def _version(response: Response, deps: RuleDeps, student_id: UUID) -> None:
@@ -231,6 +237,7 @@ async def complete_topic(
     student: Annotated[StudentCtx, Depends(get_current_student)],
     session: Annotated[AsyncSession, Depends(get_session)],
     deps: Annotated[RuleDeps, Depends(get_rule_deps)],
+    arq: Annotated[Any, Depends(get_arq)],
 ) -> SetOut:
     item = await _owned_set(session, student.student_id, set_id)
     topic = _topic(item, skill_id)
@@ -252,7 +259,10 @@ async def complete_topic(
         ),
     )
     updated = await _owned_set(session, student.student_id, set_id)
-    if updated.topics and all(topic.status == "closed" for topic in updated.topics):
+    set_done = bool(updated.topics) and all(
+        topic.status == "closed" for topic in updated.topics
+    )
+    if set_done:
         await _record(
             session,
             deps,
@@ -266,5 +276,73 @@ async def complete_topic(
         )
         await set_repo.set_status(session, student.student_id, set_id, "done")
         updated = await _owned_set(session, student.student_id, set_id)
+    # The observer should see the topic window before the student moves on;
+    # the cached context of the closed topic and of the set is stale now.
+    await session.commit()
+    await _drop_topic_context(deps, student.student_id, set_id, skill_id)
+    await _observe_after_completion(
+        session, arq, student.student_id, updated, skill_id, set_done
+    )
     await _version(response, deps, student.student_id)
     return updated
+
+
+async def _drop_topic_context(
+    deps: RuleDeps, student_id: UUID, set_id: UUID, skill_id: str
+) -> None:
+    try:
+        await deps.redis.delete(
+            keys.ctx_topic(str(student_id), skill_id),
+            keys.ctx_topic(str(student_id), f"set:{set_id}"),
+        )
+    except Exception:  # noqa: BLE001 - the knowledge version still guards it
+        _logger.warning("ctx_topic_invalidate_failed", student_id=str(student_id))
+
+
+async def _observe_after_completion(
+    session: AsyncSession,
+    arq: Any,
+    student_id: UUID,
+    set_out: SetOut,
+    skill_id: str,
+    set_done: bool,
+) -> None:
+    """Queue the observer on the completed topic chat; when the whole set is
+    done - on every topic chat with unprocessed messages and on the set chat
+    (phase3 3.12)."""
+    if arq is None:
+        return
+    try:
+        targets: list[tuple[UUID, str]] = [
+            (chat_id_for(student_id, "prep", set_out.id, skill_id), "topic_completed")
+        ]
+        if set_done:
+            for topic in set_out.topics:
+                chat_id = chat_id_for(student_id, "prep", set_out.id, topic.skill_id)
+                if topic.skill_id != skill_id and await store.count_unprocessed(
+                    session, chat_id, _MESSAGE_TYPES
+                ):
+                    targets.append((chat_id, "set_completed"))
+            set_chat = chat_id_for(student_id, "prep", set_out.id, None)
+            if await store.count_unprocessed(session, set_chat, _MESSAGE_TYPES):
+                targets.append((set_chat, "set_completed"))
+    except Exception:  # noqa: BLE001
+        _logger.warning("observer_targets_failed", student_id=str(student_id))
+        return
+    for chat_id, trigger in targets:
+        try:
+            job_id = await enqueue(
+                arq,
+                "interactive",
+                "observe_chat",
+                _job_id=f"observe:{chat_id}",
+                chat_id=chat_id,
+                student_id=student_id,
+                trigger=trigger,
+            )
+        except Exception:  # noqa: BLE001 - completing a topic must not fail on it
+            _logger.warning("observer_not_enqueued", chat_id=str(chat_id))
+            continue
+        _logger.info(
+            "observer_enqueued", chat_id=str(chat_id), trigger=trigger, job_id=job_id
+        )

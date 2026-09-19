@@ -187,3 +187,115 @@ def fake_apply(monkeypatch):
         return mock
 
     return replace
+
+
+# --- phase 3 fixtures (docs/tz/phase3-agents.md §6.1) ---
+
+
+class FakeSession:
+    """Async-context stand-in for AsyncSession: agents and jobs open their own
+    sessions (`async with deps.pg() as session`); the repositories they call
+    are monkeypatched in unit tests, so the session only has to exist."""
+
+    def __init__(self) -> None:
+        self.commits = 0
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_):
+        return None
+
+    async def commit(self):
+        self.commits += 1
+
+    async def rollback(self):
+        return None
+
+
+@pytest.fixture
+def fake_session() -> FakeSession:
+    return FakeSession()
+
+
+@pytest.fixture
+def agent_deps(fake_llm, redis, fake_session):
+    from app.agents.router import AgentDeps
+
+    return AgentDeps(llm=fake_llm, pg=lambda: fake_session, graph=None, redis=redis)
+
+
+@pytest.fixture
+def chat_ctx():
+    from app.schemas.chat import ChatCtx
+
+    def make(kind="selection", set_id=None, topic_skill_id=None, student_id=None):
+        return ChatCtx(
+            student_id=student_id or uuid4(),
+            kind=kind,
+            chat_id=uuid4(),
+            session_id=uuid4(),
+            request_id="req-1",
+            set_id=set_id,
+            topic_skill_id=topic_skill_id,
+        )
+
+    return make
+
+
+@pytest.fixture
+def profile_factory():
+    from app.db.repo.profiles import profile_readiness
+    from app.schemas.profile import Profile
+
+    def make(student_id=None, *, mark="stated", **fields):
+        """`profile_factory(**{"preferences.budget_per_year": 5000})`."""
+        profile = Profile(student_id=student_id or uuid4())
+        for path, value in fields.items():
+            section, leaf = path.split(".")
+            field = getattr(getattr(profile.questionnaire, section), leaf)
+            field.value = value
+            field.mark = mark
+        profile.readiness = profile_readiness(profile.questionnaire)
+        return profile
+
+    return make
+
+
+@pytest.fixture
+def history_factory():
+    from app.schemas.chat import AssistantMarkup, MessageOut
+
+    def make(pairs):
+        """[(role, text, mode|None), ...] -> list[MessageOut], oldest first."""
+        out = []
+        for index, (role, text, *rest) in enumerate(pairs):
+            mode = rest[0] if rest else None
+            out.append(
+                MessageOut(
+                    id=uuid4(),
+                    role=role,
+                    text=text,
+                    markup=AssistantMarkup(mode=mode) if role == "assistant" else None,
+                    event_id=index + 1,
+                    created_at=datetime(2026, 9, 18, 12, index, tzinfo=UTC),
+                )
+            )
+        return out
+
+    return make
+
+
+@pytest.fixture
+def fake_enqueue(monkeypatch):
+    """Spy on `app.workers.queue.enqueue` (what jobs and routes call)."""
+    calls: list[tuple[str, str, dict]] = []
+
+    async def enqueue(redis, queue, fn_name, **kwargs):
+        calls.append((queue, fn_name, kwargs))
+        return kwargs.get("_job_id") or "job"
+
+    from app.workers import queue as queue_module
+
+    monkeypatch.setattr(queue_module, "enqueue", enqueue)
+    return calls

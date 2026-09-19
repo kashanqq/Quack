@@ -1,99 +1,151 @@
-"""run_chat echo mode (docs/tz/30-B2.md §5.1, §6, tests/agents/test_router.py)."""
+"""agents.router.run_chat — branching, history window, 503 semantics
+(docs/tz/phase3-agents.md §3.1, §6.3)."""
 
 from __future__ import annotations
 
-from uuid import uuid4
+from unittest.mock import AsyncMock
 
 import pytest
 
-from app.agents.router import AgentDeps, run_chat
+from app.agents import router
+from app.agents.router import run_chat
 from app.errors import LLMUnavailable
+from app.graph.context import TopicContext
 from app.llm.fake import FakeLLMClient
-from app.llm.prompts import load_prompt
-from app.schemas.chat import ChatCtx, ChatMessageIn, Done, StreamError, TextDelta
+from app.schemas.chat import ChatMessageIn, Done, StreamError, ToolCall, ToolResult
+from tests.agents._scripts import TC, TXT, collect, patch_selection_io
 
-pytestmark = pytest.mark.phase1
+pytestmark = pytest.mark.phase3
 
 
-def _ctx(kind: str) -> ChatCtx:
-    return ChatCtx(
-        student_id=uuid4(),
-        kind=kind,
-        chat_id=uuid4(),
-        session_id=uuid4(),
-        request_id="r1",
+def _patch_history(monkeypatch, history, profile):
+    async def list_messages(_session, _sid, _chat, limit=50):
+        return history[-limit:]
+
+    monkeypatch.setattr(router.messages_repo, "list_messages", list_messages)
+    monkeypatch.setattr(
+        router.profiles_repo, "get_profile", AsyncMock(return_value=profile)
     )
 
 
-def _deps(fake_llm: FakeLLMClient) -> AgentDeps:
-    return AgentDeps(llm=fake_llm, pg=None, graph=None, redis=None)
+async def test_router_selection_branch(
+    monkeypatch, agent_deps, chat_ctx, history_factory, profile_factory
+):
+    profile = profile_factory()
+    history = history_factory(
+        [("user", "привет"), ("assistant", "здравствуй", "opening")]
+    )
+    _patch_history(monkeypatch, history, profile)
+    patch_selection_io(monkeypatch, profile=profile)
+    agent_deps.llm = FakeLLMClient([TXT("ок")])
 
-
-async def test_selection_echo_streams_text_then_done_with_no_tools():
-    fake_llm = FakeLLMClient([[TextDelta(text="Привет!")]])
-
-    events = [
-        event
-        async for event in run_chat(
-            "selection",
-            _ctx("selection"),
-            ChatMessageIn(text="привет"),
-            _deps(fake_llm),
+    events = await collect(
+        run_chat(
+            "selection", chat_ctx(), ChatMessageIn(text="хочу учиться"), agent_deps
         )
-    ]
+    )
 
-    assert isinstance(events[0], TextDelta)
+    messages = agent_deps.llm.calls[0].messages
+    assert messages[0].role == "system"
+    assert [m.content for m in messages[1:3]] == ["привет", "здравствуй"]
+    assert messages[-1].role == "user" and messages[-1].content == "хочу учиться"
     assert isinstance(events[-1], Done)
-    assert events[-1].referenced_skill_ids == []
-    assert fake_llm.calls[0].messages[0].role == "system"
-    assert fake_llm.calls[0].slot == "chat"
-    assert fake_llm.calls[0].tools is None
+    assert events[-1].mode in {"opening", "intake", "summary", "matching", "refine"}
 
 
-async def test_prep_kind_uses_tutor_system_prompt():
-    fake_llm = FakeLLMClient([[TextDelta(text="Давай разберём.")]])
+async def test_router_prep_branch_uses_tutor(
+    monkeypatch, agent_deps, chat_ctx, profile_factory
+):
+    from uuid import uuid4
 
-    [
-        event
-        async for event in run_chat(
-            "prep", _ctx("prep"), ChatMessageIn(text="привет"), _deps(fake_llm)
-        )
+    from app.agents import tutor
+
+    _patch_history(monkeypatch, [], profile_factory())
+    monkeypatch.setattr(
+        tutor.apply_context,
+        "get_topic_context",
+        AsyncMock(return_value=TopicContext(topic=["x"], skill_ids=["math.a"])),
+    )
+    agent_deps.llm = FakeLLMClient([TXT("Давай разберём.")])
+    ctx = chat_ctx("prep", set_id=uuid4(), topic_skill_id="math.a")
+
+    await collect(run_chat("prep", ctx, ChatMessageIn(text="объясни"), agent_deps))
+
+    system = agent_deps.llm.calls[0].messages[0].content
+    assert "<learner_model" in system
+    assert "<session" in system
+
+
+async def test_router_drops_duplicate_current_message(
+    monkeypatch, agent_deps, chat_ctx, history_factory, profile_factory
+):
+    profile = profile_factory()
+    history = history_factory(
+        [("user", "раз"), ("assistant", "два", "opening"), ("user", "привет")]
+    )
+    _patch_history(monkeypatch, history, profile)
+    patch_selection_io(monkeypatch, profile=profile)
+    agent_deps.llm = FakeLLMClient([TXT("ок")])
+
+    await collect(
+        run_chat("selection", chat_ctx(), ChatMessageIn(text="привет"), agent_deps)
+    )
+
+    users = [m for m in agent_deps.llm.calls[0].messages if m.content == "привет"]
+    assert len(users) == 1
+    assert agent_deps.llm.calls[0].messages[-1].content == "привет"
+
+
+async def test_router_history_window(
+    monkeypatch, agent_deps, chat_ctx, history_factory, profile_factory
+):
+    profile = profile_factory()
+    pairs = [
+        ("user" if i % 2 == 0 else "assistant", f"m{i}", "intake") for i in range(15)
     ]
+    _patch_history(monkeypatch, history_factory(pairs), profile)
+    patch_selection_io(monkeypatch, profile=profile)
+    agent_deps.llm = FakeLLMClient([TXT("ок")])
 
-    assert fake_llm.calls[0].messages[0].content == load_prompt("tutor").text
+    await collect(
+        run_chat("selection", chat_ctx(), ChatMessageIn(text="новое"), agent_deps)
+    )
+
+    messages = agent_deps.llm.calls[0].messages
+    window = router.settings.knowledge.chat_window
+    assert len(messages) == 1 + window + 1  # system + window + current
+    assert messages[1].content == f"m{15 - window}"
 
 
-async def test_llm_unavailable_before_first_token_propagates_after_it_streams_error():
-    fake_llm_before = FakeLLMClient([LLMUnavailable("down")])
+async def test_router_llm_unavailable_before_first_event_is_raised(
+    monkeypatch, agent_deps, chat_ctx, profile_factory
+):
+    profile = profile_factory()
+    _patch_history(monkeypatch, [], profile)
+    patch_selection_io(monkeypatch, profile=profile)
+
+    agent_deps.llm = FakeLLMClient([LLMUnavailable("down")])
     with pytest.raises(LLMUnavailable):
-        [
-            event
-            async for event in run_chat(
-                "selection",
-                _ctx("selection"),
-                ChatMessageIn(text="привет"),
-                _deps(fake_llm_before),
-            )
-        ]
-
-    fake_llm_after = FakeLLMClient()
-
-    async def _stream_then_fail(messages, slot, tools=None):
-        yield TextDelta(text="hi")
-        raise LLMUnavailable("down")
-
-    fake_llm_after.stream = _stream_then_fail
-
-    events = [
-        event
-        async for event in run_chat(
-            "selection",
-            _ctx("selection"),
-            ChatMessageIn(text="привет"),
-            _deps(fake_llm_after),
+        await collect(
+            run_chat("selection", chat_ctx(), ChatMessageIn(text="hi"), agent_deps)
         )
-    ]
 
-    assert isinstance(events[0], TextDelta)
-    assert isinstance(events[-1], StreamError)
+    from app.agents import selection
+
+    monkeypatch.setattr(
+        selection.profiles_repo,
+        "apply_profile_update",
+        AsyncMock(return_value=profile),
+    )
+    monkeypatch.setattr(selection.store, "append", AsyncMock())
+    agent_deps.llm = FakeLLMClient(
+        [
+            TC("update_profile", {"path": "traits.summary", "value": "тепло"}),
+            LLMUnavailable("down"),
+        ]
+    )
+    events = await collect(
+        run_chat("selection", chat_ctx(), ChatMessageIn(text="hi"), agent_deps)
+    )
+    assert [type(e) for e in events] == [ToolCall, ToolResult, StreamError]
     assert events[-1].code == "llm_unavailable"

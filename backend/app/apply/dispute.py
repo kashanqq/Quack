@@ -12,6 +12,7 @@ import structlog
 from neo4j.exceptions import ServiceUnavailable, SessionExpired
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.apply._lock import student_lock
 from app.events.dispatch import RuleDeps
 from app.events.version import bump
 from app.graph.queries import canonical as canonical_q
@@ -30,8 +31,16 @@ async def apply_dispute(
 ) -> MisconceptionStateOut:
     """Handle misconception.disputed / misconception.undisputed.
 
-    Роутер уже записал событие; здесь — только переход статуса.
+    Роутер уже записал событие; здесь — только переход статуса. Под локом
+    ученика (phase3 F9): наблюдатель пишет те же состояния заблуждений.
     """
+    async with student_lock(deps.redis, event.student_id):
+        return await _apply_dispute(session, event, deps)
+
+
+async def _apply_dispute(
+    session: AsyncSession, event: Event, deps: RuleDeps
+) -> MisconceptionStateOut:
     if event.type not in (
         EventType.misconception_disputed,
         EventType.misconception_undisputed,
