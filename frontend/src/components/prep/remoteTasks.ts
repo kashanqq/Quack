@@ -3,11 +3,14 @@
 import {
   backend,
   type BackendAnswerResult,
+  type BackendMockOut,
+  type BackendMockResultOut,
   type BackendSetOut,
   type BackendTaskInstanceOut,
   type BackendTopicOut,
 } from "@/api/backend";
-import { type Task } from "./prepData";
+import { type ExamId, type Task } from "./prepData";
+import { toBackendExamId } from "./remotePrep";
 import { REMOTE_PREP } from "./remoteSets";
 
 const tasksCache = new Map<string, Task[]>();
@@ -125,5 +128,54 @@ export function clearTasksCache(skillId?: string, setId?: string) {
     tasksCache.delete(`${skillId}:${setId ?? ""}`);
   } else {
     tasksCache.clear();
+  }
+}
+
+/* ---------- Final mock: the set's own mock, §4.4/§5.4 kind "mock_set" ---------- */
+
+/** Starts (or resumes, if the backend returns the same run) the set's final mock. */
+export async function startRemoteSetMock(exam: ExamId, setId: string): Promise<BackendMockOut | null> {
+  if (!REMOTE_PREP) return null;
+  try {
+    return await backend.mocks.start({
+      kind: "mock_set",
+      exam_id: toBackendExamId(exam),
+      set_id: setId,
+      skill_id: null,
+      misconception_id: null,
+    });
+  } catch (err) {
+    console.warn("Failed to start the set's final mock:", setId, err);
+    return null;
+  }
+}
+
+export async function answerRemoteMock(
+  runId: string,
+  instanceId: string,
+  answerKey: string,
+  timeSpentSec: number
+): Promise<BackendMockOut | null> {
+  try {
+    return await backend.mocks.answer(runId, {
+      instance_id: instanceId,
+      answer: answerKey,
+      time_spent_sec: Math.max(1, timeSpentSec),
+      mode: "mock_set",
+      after_guideline: false,
+      hint_level_before: 0,
+    });
+  } catch (err) {
+    console.warn("Failed to submit a final-mock answer:", runId, err);
+    return null;
+  }
+}
+
+export async function finishRemoteMock(runId: string): Promise<BackendMockResultOut | null> {
+  try {
+    return await backend.mocks.finish(runId);
+  } catch (err) {
+    console.warn("Failed to finish the final mock:", runId, err);
+    return null;
   }
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Icon } from "../choice/Icon";
-import { daysBetween, formatShort, skillById, STATE_LABEL, TODAY, type StudySet, type Task } from "./prepData";
+import { daysBetween, formatShort, skillById, STATE_LABEL, TODAY, type Evidence, type StudySet, type Task } from "./prepData";
 import { TOPIC_PROMPTS, topicReply } from "./prepAssistant";
 import { addMaterial, answerTask, MOCK_SOLID, removeMaterial, settleMock, type Material, type PrepModel } from "./prepModel";
 import { downloadMarkdown, generateCards, generateNotes, materialAsked, printPdf, renderMarkdown, type MaterialKind } from "./materials";
@@ -15,6 +15,24 @@ import {
   submitRemoteAnswer,
 } from "./remoteTasks";
 import { fetchRemoteSets, REMOTE_PREP } from "./remoteSets";
+import { applyRemoteKnowledgeToModel, explainRemoteNode, fetchRemoteKnowledge, refreshRemoteKnowledge } from "./remoteKnowledge";
+import type { ExamId } from "./prepData";
+
+/** The server's knowledge model after answers: states, recall and traps go into the model, and from
+ * there to Quack's «Что изменилось» (PrepView reports every model change). */
+async function pullKnowledge(base: PrepModel, exam: ExamId): Promise<PrepModel | null> {
+  if (!REMOTE_PREP) return null;
+  const data = await fetchRemoteKnowledge(exam, true).catch(() => null);
+  // Answers rebuild the plan on the server: the sets screen gets the new order too
+  fetchRemoteSets(exam, true).catch(() => {});
+  return data ? applyRemoteKnowledgeToModel(base, data, exam) : null;
+}
+import {
+  loadPrepMessages,
+  pollObservationsDiff,
+  requestChatObservation,
+  sendPrepMessage,
+} from "./remoteChat";
 import styles from "./prep.module.css";
 
 type Props = {
@@ -31,7 +49,16 @@ type Props = {
   onToast: (text: string) => void;
 };
 
-type Line = { id: number; role: "student" | "assistant"; text: string; material?: string };
+type Line = {
+  id: number | string;
+  role: "student" | "assistant";
+  text: string;
+  material?: string;
+  mode?: string;
+  instanceId?: string;
+  hintLevel?: number;
+  referencedSkills?: string[];
+};
 /** What the «Материалы» column shows: the list, the mock test or one material */
 type Open = null | "mock" | string;
 
@@ -48,6 +75,140 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
       openRemoteTopic(set.rawId, skillId);
     }
   }, [set.rawId, skillId]);
+
+  useEffect(() => {
+    if (!REMOTE_PREP) return;
+    explainRemoteNode(skillId).then((res) => {
+      if (res && res.items.length > 0) {
+        const sourceMap: Record<string, Evidence["source"]> = {
+          diagnostic: "замер",
+          mock: "мок",
+          chat: "чат",
+          task: "задача",
+          self_report: "замер",
+        };
+        const mapped: Evidence[] = res.items.map((e) => ({
+          source: sourceMap[e.source] ?? "задача",
+          text: e.summary || `Ответ (${e.direction > 0 ? "верно" : "ошибка"})`,
+          date: new Date(e.observed_at),
+        }));
+        onModel({
+          ...modelRef.current,
+          evidence: {
+            ...modelRef.current.evidence,
+            [skillId]: mapped,
+          },
+        });
+      }
+    });
+  }, [skillId]);
+
+  useEffect(() => {
+    if (!REMOTE_PREP || !set.rawId) return;
+    loadPrepMessages(set.rawId, skillId).then((history) => {
+      if (history && history.length > 0) {
+        setLines(
+          history.map((m, idx) => ({
+            id: m.id || idx,
+            role: m.role === "assistant" ? "assistant" : "student",
+            text: m.text,
+            mode: m.markup?.mode ?? undefined,
+            instanceId: m.markup?.gave_task_instance_id ?? undefined,
+            hintLevel: m.markup?.hint_level ?? undefined,
+            referencedSkills: m.markup?.referenced_skill_ids ?? undefined,
+          }))
+        );
+      }
+    });
+  }, [set.rawId, skillId]);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      if (REMOTE_PREP && set.rawId) {
+        let observeRes = null;
+        try {
+          observeRes = await requestChatObservation(set.rawId, skillId);
+        } catch (err: unknown) {
+          if (err && typeof err === "object" && "status" in err && (err as { status: number }).status === 429) {
+            onToast("Наблюдатель уже запущен, подождите несколько секунд");
+            setRefreshing(false);
+            return;
+          }
+        }
+
+        if (observeRes && observeRes.since_event_id !== undefined) {
+          onToast("Наблюдатель запущен: сверяем сообщения с моделью");
+          const diff = await pollObservationsDiff(
+            set.rawId,
+            observeRes.since_event_id,
+            skillId
+          );
+          if (diff) {
+            if (diff.status === "done") {
+              if (diff.observations.length > 0) {
+                onToast(`Анализ завершён: зафиксировано ${diff.observations.length} наблюдений`);
+              } else {
+                onToast("Новых наблюдений в диалоге не обнаружено");
+              }
+              explainRemoteNode(skillId).then((res) => {
+                if (res && res.items.length > 0) {
+                  const sourceMap: Record<string, Evidence["source"]> = {
+                    diagnostic: "замер",
+                    mock: "мок",
+                    chat: "чат",
+                    task: "задача",
+                    self_report: "замер",
+                  };
+                  const mapped: Evidence[] = res.items.map((e) => ({
+                    source: sourceMap[e.source] ?? "задача",
+                    text: e.summary || `Ответ (${e.direction > 0 ? "верно" : "ошибка"})`,
+                    date: new Date(e.observed_at),
+                  }));
+                  onModel({
+                    ...modelRef.current,
+                    evidence: {
+                      ...modelRef.current.evidence,
+                      [skillId]: mapped,
+                    },
+                  });
+                }
+              });
+              setRefreshing(false);
+              return;
+            } else if (diff.status === "failed") {
+              onToast(`Анализ чата завершился с ошибкой: ${diff.failed_reason || "попробуйте позже"}`);
+              setRefreshing(false);
+              return;
+            }
+          }
+        }
+      }
+
+      const res = await refreshRemoteKnowledge({
+        kind: "prep",
+        topic_skill_id: skillId,
+      });
+      if (res?.status === "queued") {
+        onToast("Наблюдатель запущен: сверяем сообщения с моделью");
+      } else if (res?.status === "empty") {
+        onToast("Новых сообщений для анализа пока нет");
+      } else if (res?.status === "failed") {
+        onToast("Сервис анализа временно недоступен");
+      }
+    } catch {
+      onToast("Ошибка при запуске обновления");
+    } finally {
+      const pulled = await pullKnowledge(modelRef.current, set.exam);
+      if (pulled) {
+        onModel(pulled);
+        onToast("Модель знаний обновлена — изменения в Quack!");
+      }
+      setRefreshing(false);
+    }
+  };
 
   const skill = skillById(skillId);
   const state = model.states[skillId];
@@ -88,11 +249,76 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
     });
   };
 
-  const ask = (text: string) => {
+  const ask = async (text: string) => {
     const q = text.trim();
     if (!q || typing) return;
     const kind = materialAsked(q);
     if (kind) return make(kind, q);
+
+    if (REMOTE_PREP && set.rawId) {
+      const studentLineId = ++idRef.current;
+      const assistantLineId = ++idRef.current;
+      setLines((prev) => [
+        ...prev,
+        { id: studentLineId, role: "student", text: q },
+        { id: assistantLineId, role: "assistant", text: "" },
+      ]);
+      setTyping(true);
+
+      try {
+        await sendPrepMessage(
+          { text: q, setId: set.rawId, topicSkillId: skillId },
+          {
+            onText: (delta) => {
+              setLines((prev) =>
+                prev.map((l) =>
+                  l.id === assistantLineId ? { ...l, text: l.text + delta } : l
+                )
+              );
+            },
+            onDone: (done) => {
+              setTyping(false);
+              setLines((prev) =>
+                prev.map((l) =>
+                  l.id === assistantLineId
+                    ? {
+                        ...l,
+                        mode: done.mode ?? undefined,
+                        instanceId: done.gave_task_instance_id ?? undefined,
+                        hintLevel: done.hint_level ?? undefined,
+                        referencedSkills: done.referenced_skill_ids ?? undefined,
+                      }
+                    : l
+                )
+              );
+            },
+            onError: (err) => {
+              console.warn("Tutor stream error:", err);
+              setTyping(false);
+              setLines((prev) =>
+                prev.map((l) =>
+                  l.id === assistantLineId && !l.text
+                    ? { ...l, text: topicReply(q, model, skillId, set, content) }
+                    : l
+                )
+              );
+            },
+          }
+        );
+      } catch (err: unknown) {
+        console.warn("Tutor chat request failed, fallback to local:", err);
+        setTyping(false);
+        setLines((prev) =>
+          prev.map((l) =>
+            l.id === assistantLineId && !l.text
+              ? { ...l, text: topicReply(q, model, skillId, set, content) }
+              : l
+          )
+        );
+      }
+      return;
+    }
+
     say(q, () => ({ text: topicReply(q, model, skillId, set, content) }));
   };
 
@@ -127,6 +353,17 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
           <span className={styles.checkState} data-state={state}>
             <StateGlyph state={state} size={12} /> {STATE_LABEL[state]}
           </span>
+          {REMOTE_PREP && (
+            <button
+              type="button"
+              className={styles.secondary}
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="Сверить недавние сообщения темы с моделью знаний"
+            >
+              <Icon name="sparkles" size={13} /> {refreshing ? "Сверка..." : "Обновить статус"}
+            </button>
+          )}
         </div>
         {/* The other topics of the set, to move on without the graph */}
         <nav className={styles.topicSteps} aria-label="Темы сета">
@@ -245,12 +482,25 @@ function Chat({
               </button>
             </div>
           ) : (
-            <p key={l.id} className={styles.chatLine} data-role={l.role}>
-              {l.text}
-            </p>
+            <div key={l.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <p className={styles.chatLine} data-role={l.role}>
+                {l.text || (typing && l.role === "assistant" ? "…" : "")}
+              </p>
+              {l.instanceId && (
+                <div style={{ alignSelf: "flex-start", marginTop: 2 }}>
+                  <button
+                    type="button"
+                    className={styles.pinButton}
+                    onClick={() => onOpen("mock")}
+                  >
+                    <Icon name="circle-check" size={13} /> Решить выданную задачу
+                  </button>
+                </div>
+              )}
+            </div>
           )
         )}
-        {typing && (
+        {typing && lines[lines.length - 1]?.role === "student" && (
           <p className={styles.chatLine} data-role="assistant" aria-label="Ассистент печатает">
             …
           </p>
@@ -575,8 +825,10 @@ function MockTest({
         }
         currentTask.solution = res.solution;
 
-        onModel(answerTask(model, skillId, currentTask, i, true).model);
+        const answered = answerTask(model, skillId, currentTask, i, true).model;
+        onModel(answered);
         setPicks((p) => [...p, i]);
+        pullKnowledge(answered, set.exam).then((m) => m && onModel(m));
       } catch (err) {
         console.warn("Failed remote answer, falling back to local:", err);
         onModel(answerTask(model, skillId, currentTask, i, true).model);
@@ -601,6 +853,7 @@ function MockTest({
     onModel(r.model);
     setSettled({ from: STATE_LABEL[r.from], to: STATE_LABEL[r.to] });
     if (r.setPassed) onToast(`Сет ${r.setPassed.number} доказан целиком — отчёт в «Обзоре»`);
+    pullKnowledge(r.model, set.exam).then((m) => m && onModel(m));
 
     if (r.to === "solid" && set.rawId && REMOTE_PREP) {
       try {

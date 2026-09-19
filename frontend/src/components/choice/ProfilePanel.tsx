@@ -1,8 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { PixelDuck } from "@/components/duck/PixelDuck";
-import { FIELDS, profileItems, type FieldKey, type FieldStatus, type Profile, type ProfileItem } from "./assistant";
+import {
+  FIELDS,
+  PRIORITY_LABEL,
+  profileItems,
+  type FieldKey,
+  type FieldStatus,
+  type PriorityKey,
+  type Profile,
+  type ProfileItem,
+} from "./assistant";
 import { CustomScrollbar } from "./CustomScrollbar";
 import { Icon } from "./Icon";
 import styles from "./choice.module.css";
@@ -22,6 +31,9 @@ const GROUPS: { title: string; keys: FieldKey[] }[] = [
   { title: "Учёба", keys: ["grade", "direction", "location", "language"] },
   { title: "Экзамены", keys: ["ielts", "sat", "ent"] },
   { title: "Деньги", keys: ["budget", "grant"] },
+  { title: "Ограничения", keys: ["requiredNote", "excludedNote"] },
+  { title: "Приоритеты при выборе", keys: ["priorities"] },
+  { title: "Темп и стиль", keys: ["paceHours", "paceDepth", "paceHint"] },
   { title: "О тебе", keys: ["strong", "soft"] },
 ];
 
@@ -76,12 +88,16 @@ export function ProfilePanel({ profile, readiness, versions, onHide, onEdit }: P
           {GROUPS.map((group) => (
             <section key={group.title} className={styles.passGroup} aria-label={group.title}>
               <h3 className={styles.passGroupTitle}>{group.title}</h3>
-              <dl className={styles.profileList}>
-                {group.keys.map((key) => {
-                  const row: Row = byKey.get(key) ?? { key, label: labelOf(key), value: "", status: "empty" };
-                  return <ProfileRow key={key} row={row} profile={profile} version={versions[key] ?? 0} onEdit={onEdit} />;
-                })}
-              </dl>
+              {group.keys[0] === "priorities" ? (
+                <PriorityRanking priorities={profile.priorities} onChange={(next) => onEdit("priorities", next.join(","))} />
+              ) : (
+                <dl className={styles.profileList}>
+                  {group.keys.map((key) => {
+                    const row: Row = byKey.get(key) ?? { key, label: labelOf(key), value: "", status: "empty" };
+                    return <ProfileRow key={key} row={row} profile={profile} version={versions[key] ?? 0} onEdit={onEdit} />;
+                  })}
+                </dl>
+              )}
             </section>
           ))}
         </div>
@@ -206,5 +222,84 @@ function ProfileRow({
         </dd>
       )}
     </div>
+  );
+}
+
+/**
+ * §3.1 «приоритеты при выборе»: порядок ученик задаёт перетаскиванием — первый в списке весомее
+ * при ранжировании программ (§3.3). Pointer Events вместо HTML5 drag&drop, чтобы работало и на тач-экране.
+ */
+function PriorityRanking({ priorities, onChange }: { priorities: PriorityKey[]; onChange: (next: PriorityKey[]) => void }) {
+  const [order, setOrder] = useState(priorities);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const dragging = useRef(false);
+
+  // Профиль мог измениться извне (чат) — не перетираем то, что ученик сейчас тащит
+  useEffect(() => {
+    if (!dragging.current) setOrder(priorities);
+  }, [priorities]);
+
+  const reorderTo = (clientY: number, from: number) => {
+    let target = from;
+    itemRefs.current.forEach((el, i) => {
+      if (!el || i === from) return;
+      const mid = el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2;
+      if (i < from && clientY < mid) target = Math.min(target, i);
+      if (i > from && clientY > mid) target = Math.max(target, i);
+    });
+    if (target !== from) {
+      setOrder((prev) => {
+        const next = [...prev];
+        const [moved] = next.splice(from, 1);
+        next.splice(target, 0, moved);
+        return next;
+      });
+      setDragIndex(target);
+    }
+  };
+
+  const onDown = (index: number) => (e: ReactPointerEvent<HTMLSpanElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragging.current = true;
+    setDragIndex(index);
+  };
+  const onMove = (e: ReactPointerEvent<HTMLSpanElement>) => {
+    if (dragIndex === null) return;
+    reorderTo(e.clientY, dragIndex);
+  };
+  const onUp = () => {
+    if (dragIndex !== null) onChange(order);
+    dragging.current = false;
+    setDragIndex(null);
+  };
+
+  return (
+    <ol className={styles.priorityList}>
+      {order.map((key, i) => (
+        <li
+          key={key}
+          ref={(el) => {
+            itemRefs.current[i] = el;
+          }}
+          className={`${styles.priorityItem} ${dragIndex === i ? styles.isDragging : ""}`}
+        >
+          <span className={styles.priorityRank}>{i + 1}</span>
+          <span className={styles.priorityLabel}>{PRIORITY_LABEL[key]}</span>
+          <span
+            className={styles.priorityHandle}
+            role="button"
+            tabIndex={0}
+            aria-label={`Переместить «${PRIORITY_LABEL[key]}»`}
+            onPointerDown={onDown(i)}
+            onPointerMove={onMove}
+            onPointerUp={onUp}
+            onPointerCancel={onUp}
+          >
+            <Icon name="menu" size={16} />
+          </span>
+        </li>
+      ))}
+    </ol>
   );
 }

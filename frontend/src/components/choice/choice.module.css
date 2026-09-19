@@ -1280,6 +1280,57 @@
   border-radius: 999px;
 }
 
+.priorityList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.priorityItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  touch-action: none;
+  user-select: none;
+}
+
+.priorityItem.isDragging {
+  background: var(--accent-tint);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  z-index: 1;
+}
+
+.priorityRank {
+  flex: none;
+  width: 1.4em;
+  color: var(--text-faint);
+  font-size: 0.82em;
+  text-align: right;
+}
+
+.priorityLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+.priorityHandle {
+  flex: none;
+  display: flex;
+  align-items: center;
+  color: var(--text-faint);
+  cursor: grab;
+  touch-action: none;
+}
+
+.priorityHandle:active {
+  cursor: grabbing;
+}
+
 .profileHideMobile.profileHideMobile {
   display: none;
 }

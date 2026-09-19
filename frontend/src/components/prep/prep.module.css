@@ -2086,6 +2086,42 @@
   stroke-width: 1.5;
 }
 
+/* §4.4: the set's own capstone check, at the end of the axis next to the deadline */
+.setFinalMockLine {
+  stroke: var(--text-faint);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 5;
+}
+
+.setFinalMock {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--canvas-bg);
+  border: 1px dashed var(--text-faint);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.setFinalMock:hover:not(:disabled) {
+  color: var(--accent-label);
+  border-color: var(--accent-label);
+}
+
+.setFinalMock:disabled {
+  color: var(--text-faint);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* A topic's share of the axis: its colour says where its own deadline stands */
 .setSeg line {
   stroke: rgba(255, 255, 255, 0.16);
@@ -3893,4 +3929,23 @@
   font-size: 13px;
   color: var(--text-dim);
   cursor: pointer;
+}
+
+/* Waiting for the plan: the transition duck, centred */
+.setsLoading {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 16px;
+  padding-top: 24px;
+  min-height: 320px;
+}
+
+.setsLoading > :first-child {
+  justify-self: stretch;
+}
+
+.setsLoadingDuck {
+  width: 64px;
+  margin-top: 64px;
 }

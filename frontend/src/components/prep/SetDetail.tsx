@@ -7,6 +7,7 @@ import { closed, setStatus, type PrepModel } from "./prepModel";
 import { useVertical } from "./GraphCanvas";
 import { NodeMark, StateGlyph } from "./SkillGraph";
 import { TopicWorkspace } from "./TopicWorkspace";
+import { FinalMockTest } from "./FinalMockTest";
 import styles from "./prep.module.css";
 
 type Props = {
@@ -32,7 +33,9 @@ export function SetDetail({ model, set, topic, onBack, onMakeCurrent, onModel, o
   const plan = plannedDates(set, order);
   // A topic asked for from outside (e.g. a trap in «Важно сейчас») opens straight away
   const [open, setOpen] = useState<string | null>(topic && set.skills.includes(topic) ? topic : null);
+  const [finalMockOpen, setFinalMockOpen] = useState(false);
   const next = order.find((id) => model.states[id] !== "solid");
+  const allClosed = closed(model, set) === set.skills.length;
 
   const status = setStatus(model, set);
   const left = daysBetween(TODAY, set.deadline);
@@ -61,6 +64,10 @@ export function SetDetail({ model, set, topic, onBack, onMakeCurrent, onModel, o
         onToast={onToast}
       />
     );
+  }
+
+  if (finalMockOpen) {
+    return <FinalMockTest set={set} onToast={onToast} onBack={() => setFinalMockOpen(false)} />;
   }
 
   return (
@@ -105,7 +112,16 @@ export function SetDetail({ model, set, topic, onBack, onMakeCurrent, onModel, o
 
       <div className={styles.setStage}>
         <section className={`${styles.canvas} ${styles.setGraphCard}`} aria-label="Темы сета">
-          <SetGraph model={model} set={set} order={order} plan={plan} next={next} onSelect={setOpen} />
+          <SetGraph
+            model={model}
+            set={set}
+            order={order}
+            plan={plan}
+            next={next}
+            onSelect={setOpen}
+            allClosed={allClosed}
+            onFinalMock={() => setFinalMockOpen(true)}
+          />
         </section>
       </div>
     </div>
@@ -176,6 +192,8 @@ function SetGraph({
   plan,
   next,
   onSelect,
+  allClosed,
+  onFinalMock,
 }: {
   model: PrepModel;
   set: StudySet;
@@ -184,6 +202,9 @@ function SetGraph({
   /** The first topic that does not hold yet: where to start */
   next?: string;
   onSelect: (id: string) => void;
+  /** Every topic of the set holds — the final mock unlocks (§4.4) */
+  allClosed: boolean;
+  onFinalMock: () => void;
 }) {
   const vertical = useVertical();
   const boxRef = useRef<HTMLDivElement>(null);
@@ -199,8 +220,11 @@ function SetGraph({
     return () => observer.disconnect();
   }, []);
 
-  const from = set.start.getTime();
-  const to = set.deadline.getTime();
+  // A set can start and end on the same day (a short set, or dates the server has not spread yet):
+  // keep a one-day window so positions never divide by zero, and fall back to today for a bad date
+  const valid = (d: Date) => (Number.isFinite(d?.getTime?.()) ? d.getTime() : TODAY.getTime());
+  const from = valid(set.start);
+  const to = Math.max(valid(set.deadline), from + 86_400_000);
   const n = order.length;
   const starts = order.map((_, i) => new Date(from + ((to - from) * i) / n));
 
@@ -249,6 +273,13 @@ function SetGraph({
             <line x1={0} y1={along(1)} x2={width} y2={along(1)} className={styles.setDeadlineLine} />
           ) : (
             <line x1={along(1)} y1={14} x2={along(1)} y2={axisY + 10} className={styles.setDeadlineLine} />
+          )}
+
+          {/* §4.4: the final mock, right after the set's own deadline — a dashed line until it unlocks */}
+          {vertical ? (
+            <line x1={0} y1={along(1) + 26} x2={width} y2={along(1) + 26} className={styles.setFinalMockLine} />
+          ) : (
+            <line x1={along(1) + 26} y1={14} x2={along(1) + 26} y2={axisY + 10} className={styles.setFinalMockLine} />
           )}
 
           {/* Every topic's share of the window, ending on its own deadline */}
@@ -311,6 +342,20 @@ function SetGraph({
           дедлайн сета
           <b>{formatShort(set.deadline)}</b>
         </span>
+        <button
+          type="button"
+          className={styles.setFinalMock}
+          style={
+            vertical
+              ? { left: V_AXIS + 12, top: along(1) + 32 }
+              : { left: along(1) + 26, top: axisY / 2 - 14, translate: "-50% 0" }
+          }
+          disabled={!allClosed}
+          title={allClosed ? "Финальный мок: проверить сет целиком" : "Откроется, когда все темы сета будут держаться"}
+          onClick={onFinalMock}
+        >
+          <Icon name="flag" size={14} /> Final mock
+        </button>
         <span
           className={`${styles.routeMark} ${styles.setTodayMark}`}
           style={vertical ? { left: V_AXIS - 6, top: todayAt - 24, translate: "none" } : { left: todayAt, top: 8 }}

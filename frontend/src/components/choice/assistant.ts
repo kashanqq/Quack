@@ -1,6 +1,21 @@
 // Simulated assistant for the "Choice" page (front-end only): keyword rules that fill the
 // profile, pick the next question and phrase the summary. Pure functions, no React.
 
+/** §3.1 «приоритеты при выборе»: порядок факторов, ученик решает, что важнее — первый в списке весомее. */
+export type PriorityKey = "realism" | "cost" | "ranking" | "location" | "program" | "research" | "mobility";
+
+export const PRIORITY_KEYS: PriorityKey[] = ["realism", "cost", "ranking", "location", "program", "research", "mobility"];
+
+export const PRIORITY_LABEL: Record<PriorityKey, string> = {
+  realism: "Реалистичность",
+  cost: "Стоимость",
+  ranking: "Рейтинг вуза",
+  location: "Локация",
+  program: "Программа/направление",
+  research: "Наука",
+  mobility: "Мобильность",
+};
+
 export type Profile = {
   grade?: string;
   direction?: string;
@@ -13,9 +28,18 @@ export type Profile = {
   ent?: string;
   strong?: string;
   soft: string[];
+  /** Ограничения (§3.1): что обязательно должно быть и что точно исключено */
+  requiredNote?: string;
+  excludedNote?: string;
+  /** Ранжирование факторов при выборе (§3.1, §3.3); дефолтный порядок = "по умолчанию" */
+  priorities: PriorityKey[];
+  /** Темп и стиль (§3.1) */
+  paceHours?: string;
+  paceDepth?: string;
+  paceHint?: string;
 };
 
-export type FieldKey = Exclude<keyof Profile, "soft"> | "soft";
+export type FieldKey = Exclude<keyof Profile, "soft" | "priorities"> | "soft" | "priorities";
 
 export const FIELDS: [FieldKey, string][] = [
   ["grade", "Класс"],
@@ -29,9 +53,20 @@ export const FIELDS: [FieldKey, string][] = [
   ["ent", "ЕНТ"],
   ["strong", "Сильные стороны"],
   ["soft", "Черты и предпочтения"],
+  ["requiredNote", "Обязательно"],
+  ["excludedNote", "Исключить"],
+  ["priorities", "Приоритеты при выборе"],
+  ["paceHours", "Часов в неделю"],
+  ["paceDepth", "Глубина объяснений"],
+  ["paceHint", "Уровень подсказки"],
 ];
 
-export const EMPTY_PROFILE: Profile = { soft: [] };
+export const EMPTY_PROFILE: Profile = { soft: [], priorities: [...PRIORITY_KEYS] };
+
+/** Backfills fields that did not exist yet when a profile was saved (e.g. in localStorage). */
+export function sanitizeProfile(p: Partial<Profile> | null | undefined): Profile {
+  return { ...EMPTY_PROFILE, ...p, soft: p?.soft ?? [], priorities: p?.priorities?.length === PRIORITY_KEYS.length ? p.priorities : [...PRIORITY_KEYS] };
+}
 
 type MissingKey = "direction" | "location" | "exams" | "budget";
 
@@ -55,7 +90,9 @@ export const QUESTIONS: Record<MissingKey, { ask: string; hint: string }> = {
 };
 
 export function fieldValue(profile: Profile, key: FieldKey): string | undefined {
-  const value = key === "soft" ? profile.soft.join(", ") : profile[key];
+  if (key === "soft") return profile.soft.join(", ") || undefined;
+  if (key === "priorities") return profile.priorities.map((k) => PRIORITY_LABEL[k]).join(" › ");
+  const value = profile[key];
   return value ? value.charAt(0).toUpperCase() + value.slice(1) : undefined;
 }
 
@@ -65,7 +102,7 @@ export function extract(current: Profile, raw: string): { profile: Profile; chan
   const profile: Profile = { ...current, soft: [...current.soft] };
   const changed = new Set<FieldKey>();
 
-  const set = (key: Exclude<FieldKey, "soft">, value: string) => {
+  const set = (key: Exclude<FieldKey, "soft" | "priorities">, value: string) => {
     if (profile[key] !== value) {
       profile[key] = value;
       changed.add(key);
@@ -148,6 +185,20 @@ export function extract(current: Profile, raw: string): { profile: Profile; chan
   if (/банан/.test(text)) addSoft("Любит бананы");
   if (/наук|исследов|лаборатор/.test(text)) addSoft("хочет заниматься наукой");
   if (/обмен/.test(text)) addSoft("важен обмен");
+
+  // Ограничения (§3.1): «обязательно» / «точно не» — простая эвристика, правится вручную в профиле
+  const required = text.match(/обязательно(?:,?\s*чтобы|,?\s*что)?\s+(.+?)[.!]?$/);
+  if (required && required[1].length < 80) set("requiredNote", required[1].trim());
+  const excluded = text.match(/(?:точно не |искл(?:ючи|ючить)\s+)(.+?)[.!]?$/);
+  if (excluded && excluded[1].length < 80) set("excludedNote", excluded[1].trim());
+
+  // Темп и стиль (§3.1)
+  const hours = text.match(/(\d{1,2})\s*час\w*\s*(?:в\s*недел|\/\s*нед)/);
+  if (hours) set("paceHours", `${hours[1]} ч/нед`);
+  if (/объясняй (подробн|детальн)|глубже объясня|подробнее, пожалуйста/.test(text)) set("paceDepth", "глубоко");
+  else if (/коротк(о|ие) объясн|кратко объясня/.test(text)) set("paceDepth", "коротко");
+  if (/подскаж(и|ите) сразу|давай (больше )?подсказ/.test(text)) set("paceHint", "щедро");
+  else if (/без подсказ|сам разберусь|минимум подсказ/.test(text)) set("paceHint", "минимум");
 
   return { profile, changed: [...changed] };
 }
@@ -240,15 +291,32 @@ export function profileItems(profile: Profile): ProfileItem[] {
       chips: profile.soft.map((t) => t.charAt(0).toUpperCase() + t.slice(1)),
     });
   }
+  add("requiredNote");
+  add("excludedNote");
+  items.push({
+    key: "priorities",
+    label: labelOf("priorities"),
+    value: profile.priorities.map((k) => PRIORITY_LABEL[k]).join(" › "),
+    status: profile.priorities.every((k, i) => k === PRIORITY_KEYS[i]) ? "assumed" : "said",
+  });
+  add("paceHours", "2-3 ч/нед");
+  add("paceDepth", "обычная");
+  add("paceHint", "обычный");
   return items;
 }
 
 /** Apply a manual edit from the profile panel; an empty value clears the field. */
 export function editField(profile: Profile, key: FieldKey, raw: string): Profile {
   const value = raw.trim();
-  const next: Profile = { ...profile, soft: [...profile.soft] };
+  const next: Profile = { ...profile, soft: [...profile.soft], priorities: [...profile.priorities] };
   if (key === "soft") {
     next.soft = value.split(",").map((t) => t.trim()).filter(Boolean);
+  } else if (key === "priorities") {
+    const keys = value
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s): s is PriorityKey => (PRIORITY_KEYS as string[]).includes(s));
+    if (keys.length === PRIORITY_KEYS.length) next.priorities = keys;
   } else {
     next[key] = value || undefined;
   }

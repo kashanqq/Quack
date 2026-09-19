@@ -3,7 +3,9 @@
 // same two standings always give the same signals, so a change that is undone before the student
 // looks never makes the button glow. Pure functions, no React, no storage.
 
-import { daysBetween } from "../prep/prepData";
+import { daysBetween, skillById } from "../prep/prepData";
+
+const skillName = (id: string) => skillById(id).name;
 import type { ProgramChance, Signal, Standing } from "./contract";
 import { LEVEL_RANK } from "./standing";
 
@@ -101,6 +103,44 @@ export function plan(seen: Standing, now: Standing): Draft[] {
           target: "prep",
         });
       }
+    }
+  }
+
+  // Topics that moved: readiness counts only «шатко» and «уверенно», so a failed test (не изучено ->
+  // слабо, уверенно -> шатко) must still be told
+  if (seen.skills && now.skills) {
+    const RANK: Record<string, number> = { lowData: 0, weak: 1, shaky: 2, solid: 3 };
+    const LABEL: Record<string, string> = { lowData: "не изучено", weak: "слабо", shaky: "шатко", solid: "уверенно" };
+    const moved = Object.keys(now.skills).filter((id) => seen.skills![id] !== undefined && seen.skills![id] !== now.skills![id]);
+    const name = (id: string) => skillName(id);
+    const worse = moved.filter((id) => RANK[now.skills![id]] < RANK[seen.skills![id]] || (seen.skills![id] === "lowData" && now.skills![id] === "weak"));
+    const better = moved.filter((id) => !worse.includes(id));
+    const line = (ids: string[]) =>
+      ids.slice(0, 3).map((id) => `${name(id)}: ${LABEL[seen.skills![id]] ?? seen.skills![id]} → ${LABEL[now.skills![id]] ?? now.skills![id]}`).join("; ") +
+      (ids.length > 3 ? ` и ещё ${ids.length - 3}` : "");
+    const delta = now.readiness - seen.readiness;
+    const ready = delta ? ` · готовность ${seen.readiness}% → ${now.readiness}%` : "";
+    if (worse.length) {
+      out.push({
+        id: `skills-down-${worse.map((id) => id + ":" + now.skills![id]).join(",")}`,
+        level: "notice",
+        tone: "down",
+        kind: "skills",
+        title: worse.length === 1 ? `Тема «${name(worse[0])}» проседает` : `Проседают темы: ${worse.length}`,
+        detail: line(worse) + ready,
+        target: "prep",
+      });
+    }
+    if (better.length) {
+      out.push({
+        id: `skills-up-${better.map((id) => id + ":" + now.skills![id]).join(",")}`,
+        level: "notice",
+        tone: "up",
+        kind: "skills",
+        title: better.length === 1 ? `Тема «${name(better[0])}» подтянулась` : `Подтянулись темы: ${better.length}`,
+        detail: line(better) + (worse.length ? "" : ready),
+        target: "prep",
+      });
     }
   }
 

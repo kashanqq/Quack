@@ -27,6 +27,28 @@ export type BackendTaskRequestIn = Schemas["TaskRequestIn"];
 export type BackendAnswerIn = Schemas["AnswerIn"];
 export type BackendAnswerResult = Schemas["AnswerResult"];
 export type BackendTaskSkipIn = Schemas["TaskSkipIn"];
+export type BackendKnowledgeOut = Schemas["KnowledgeOut"];
+export type BackendSkillStateView = Schemas["SkillStateView"];
+export type BackendMisconceptionStateOut = Schemas["MisconceptionStateOut"];
+export type BackendRootCauseOut = Schemas["RootCauseOut"];
+export type BackendEvidenceListOut = Schemas["EvidenceListOut"];
+export type BackendEvidenceOut = Schemas["EvidenceOut"];
+export type BackendRefreshIn = Schemas["RefreshIn"];
+export type BackendRefreshOut = Schemas["RefreshOut"];
+export type BackendDiagnosticOut = Schemas["DiagnosticOut"];
+export type BackendDiagnosticResult = Schemas["DiagnosticResult"];
+export type BackendDiagnosticStartIn = Schemas["DiagnosticStartIn"];
+export type BackendDiagnosticState = Schemas["DiagnosticState"];
+export type BackendMockOut = Schemas["MockOut"];
+export type BackendMockResultOut = Schemas["MockResultOut"];
+export type BackendMockStartIn = Schemas["MockStartIn"];
+export type BackendChatMessageIn = Schemas["ChatMessageIn"];
+export type BackendMessageOut = Schemas["MessageOut"];
+export type BackendAssistantMarkup = Schemas["AssistantMarkup"];
+export type BackendObserveRequestIn = Schemas["ObserveRequestIn"];
+export type BackendObserveRequestedOut = Schemas["ObserveRequestedOut"];
+export type BackendObservationsDiffOut = Schemas["ObservationsDiffOut"];
+export type BackendObservationView = Schemas["ObservationView"];
 
 export const backend = {
   profile: {
@@ -84,8 +106,71 @@ export const backend = {
     solution: (instanceId: string) =>
       api.get<{ solution: string[] }>(`/tasks/${encodeURIComponent(instanceId)}/solution`),
   },
+  knowledge: {
+    get: (examId: "SAT_MATH" | "ENT_MATH") =>
+      api.get<BackendKnowledgeOut>(`/knowledge?exam_id=${examId}`),
+    explain: (nodeId: string) =>
+      api.get<BackendEvidenceListOut>(`/knowledge/explain/${encodeURIComponent(nodeId)}`),
+    dispute: (misconceptionId: string, disputed: boolean) =>
+      api.post<BackendMisconceptionStateOut>(
+        `/knowledge/misconceptions/${encodeURIComponent(misconceptionId)}/dispute`,
+        { disputed }
+      ),
+    refresh: (body: BackendRefreshIn) =>
+      api.post<BackendRefreshOut>("/knowledge/refresh", body),
+  },
+  diagnostic: {
+    start: (body: BackendDiagnosticStartIn) =>
+      api.post<BackendDiagnosticOut>("/diagnostic", body),
+    active: (examId: "SAT_MATH" | "ENT_MATH") =>
+      api.get<BackendDiagnosticOut>(`/diagnostic/active?exam_id=${examId}`),
+    answer: (runId: string, body: BackendAnswerIn) =>
+      api.post<BackendDiagnosticOut>(`/diagnostic/${encodeURIComponent(runId)}/answer`, body),
+    finish: (runId: string) =>
+      api.post<BackendDiagnosticResult>(`/diagnostic/${encodeURIComponent(runId)}/finish`),
+  },
+  mocks: {
+    start: (body: BackendMockStartIn) =>
+      api.post<BackendMockOut>("/mocks", body),
+    get: (runId: string) =>
+      api.get<BackendMockOut>(`/mocks/${encodeURIComponent(runId)}`),
+    answer: (runId: string, body: BackendAnswerIn) =>
+      api.post<BackendMockOut>(`/mocks/${encodeURIComponent(runId)}/answer`, body),
+    finish: (runId: string) =>
+      api.post<BackendMockResultOut>(`/mocks/${encodeURIComponent(runId)}/finish`),
+  },
   prep: {
     version: () => api.get<BackendKnowledgeVersion>("/prep/knowledge/version"),
+  },
+  chat: {
+    messages: (
+      kind: "selection" | "prep",
+      params?: { limit?: number; set_id?: string | null; topic_skill_id?: string | null }
+    ) => {
+      const query = new URLSearchParams();
+      if (params?.limit) query.set("limit", String(params.limit));
+      if (params?.set_id) query.set("set_id", params.set_id);
+      if (params?.topic_skill_id) query.set("topic_skill_id", params.topic_skill_id);
+      const qs = query.toString();
+      return api.get<BackendMessageOut[]>(`/chat/${kind}/messages${qs ? `?${qs}` : ""}`);
+    },
+    observe: (body: BackendObserveRequestIn) =>
+      api.post<BackendObserveRequestedOut>("/chat/prep/observe", body),
+    observations: (params: {
+      set_id: string;
+      since_event_id?: number;
+      topic_skill_id?: string | null;
+    }) => {
+      const query = new URLSearchParams();
+      query.set("set_id", params.set_id);
+      if (params.since_event_id !== undefined) {
+        query.set("since_event_id", String(params.since_event_id));
+      }
+      if (params.topic_skill_id) {
+        query.set("topic_skill_id", params.topic_skill_id);
+      }
+      return api.get<BackendObservationsDiffOut>(`/chat/prep/observations?${query.toString()}`);
+    },
   },
 };
 
