@@ -18,10 +18,14 @@ import {
   TODAY,
   EXAM_IDS,
   EXAMS,
+  dateKey,
+  examMilestoneId,
+  plannedTest,
+  type DatedExam,
   type ExamId,
   type ExamOutlook,
 } from "./prepData";
-import { proposedSet, readiness, type PrepModel, type PrepSub, type PrepTab } from "./prepModel";
+import { chooseTestDate, proposedSet, readiness, type PrepModel, type PrepSub, type PrepTab } from "./prepModel";
 import { StateGlyph } from "./SkillGraph";
 import { SetDetail } from "./SetDetail";
 import { DiagnosticMock } from "./DiagnosticMock";
@@ -68,12 +72,20 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onMo
     sat: { readiness: series.sat.readiness, forecast: series.sat.forecast },
     ent: { readiness: series.ent.readiness, forecast: series.ent.forecast },
   };
-  const exams = requirements(programs, outlook);
-  const list = milestones(programs);
+  const exams = requirements(programs, outlook, model.testDates);
+  const list = milestones(programs, model.testDates);
 
   if (sub === "requirements")
     return (
-      <Requirements exams={exams}>
+      <Requirements
+        exams={exams}
+        milestoneList={list}
+        done={model.milestonesDone}
+        onPick={(exam, key) => {
+          onModel(chooseTestDate(model, exam, key));
+          onToast(`Тест ${EXAMS[exam].name} — ${formatDate(new Date(`${key}T00:00`))}. Вехи и прогноз пересчитаны`);
+        }}
+      >
         <Important model={model} milestoneList={list} onGo={onGo} onOpenSet={onOpenSet} />
       </Requirements>
     );
@@ -123,13 +135,16 @@ function Now({
   // Quack's verdict per exam; demo programs are not saved, so there only the forecast date
   const paces: Pace[] = state.standing?.exams.length
     ? state.standing.exams.map((e) => ({ id: e.id, name: e.name, level: e.level, verdict: e.verdict, summary: e.summary }))
-    : EXAM_IDS.map((id) => ({
-        id,
-        name: EXAMS[id].name,
-        level: forecasts[id] <= EXAMS[id].test ? 3 : 0,
-        verdict: forecasts[id] <= EXAMS[id].test ? "Успеваешь" : "Не успеваешь",
-        summary: `прогноз на ${formatDate(forecasts[id])}, тест ${formatDate(EXAMS[id].test)}`,
-      }));
+    : EXAM_IDS.map((id) => {
+        const test = plannedTest(id, model.testDates) ?? EXAMS[id].test;
+        return {
+          id,
+          name: EXAMS[id].name,
+          level: forecasts[id] <= test ? 3 : 0,
+          verdict: forecasts[id] <= test ? "Успеваешь" : "Не успеваешь",
+          summary: `прогноз на ${formatDate(forecasts[id])}, тест ${formatDate(test)}`,
+        };
+      });
 
   // The test itself, in place: its result builds the route and the first set opens on the same spot
   if (diagnostic.open)
@@ -345,11 +360,26 @@ function Important({
 /* ---------- Требования: the exams the saved programs ask for ---------- */
 
 /** What each exam asks for and whether the student makes it, in words: no readiness charts or percentages */
-function Requirements({ exams, children }: { exams: ReturnType<typeof requirements>; children: React.ReactNode }) {
+function Requirements({
+  exams,
+  milestoneList,
+  done,
+  onPick,
+  children,
+}: {
+  exams: ReturnType<typeof requirements>;
+  milestoneList: ReturnType<typeof milestones>;
+  done: string[];
+  /** The student picks the sitting: its `dateKey` */
+  onPick: (exam: DatedExam, key: string) => void;
+  children: React.ReactNode;
+}) {
   return (
     <div className={styles.canvasGrid}>
       {exams.map((exam) => {
         const margin = exam.testDate && exam.forecast ? daysBetween(exam.forecast, exam.testDate) : 0;
+        const dated = exam.id === "ielts" ? null : exam.id;
+        const registration = dated && exam.testDate ? milestoneList.find((m) => m.id === examMilestoneId(dated, "reg", exam.testDate!)) : undefined;
         return (
           <section key={exam.id} className={styles.canvas} aria-label={exam.name}>
             <header className={styles.canvasHead}>
@@ -363,11 +393,48 @@ function Requirements({ exams, children }: { exams: ReturnType<typeof requiremen
             <dl className={styles.facts}>
               <div>
                 <dt>Тест</dt>
-                <dd>
-                  {exam.testDate ? formatDate(exam.testDate) : "—"}
-                  <span className={styles.muted}> · ещё {exam.testCandidates.slice(1).map(formatShort).join(", ")}</span>
-                </dd>
+                {dated && exam.testCandidates.length > 1 ? (
+                  // The student decides the date; each sitting says what it leaves by the forecast
+                  <dd className={styles.testDates} role="radiogroup" aria-label={`Дата теста ${exam.name}`}>
+                    {exam.testCandidates.map((d) => {
+                      const chosen = exam.testDate?.getTime() === d.getTime();
+                      const room = exam.forecast ? daysBetween(exam.forecast, d) : null;
+                      return (
+                        <button
+                          key={d.getTime()}
+                          type="button"
+                          role="radio"
+                          aria-checked={chosen}
+                          className={styles.testDate}
+                          data-late={room !== null && room < 0 ? "" : undefined}
+                          onClick={() => !chosen && onPick(dated, dateKey(d))}
+                        >
+                          <b>{formatShort(d)}</b>
+                          {room !== null && <span>{room >= 0 ? `запас ${room} дн.` : `не хватает ${-room} дн.`}</span>}
+                        </button>
+                      );
+                    })}
+                  </dd>
+                ) : (
+                  <dd>{exam.testDate ? formatDate(exam.testDate) : "—"}</dd>
+                )}
               </div>
+              {registration && (
+                <div>
+                  <dt>Регистрация</dt>
+                  <dd>
+                    до {formatDate(registration.date)}
+                    {done.includes(registration.id) ? (
+                      <span className={styles.ok}> · ✓ отмечена</span>
+                    ) : (
+                      <span className={styles.muted} title="Отметить можно в календаре Quack или написать в чате: «зарегистрировался на SAT»">
+                        {" "}
+                        · ещё не отмечена
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt>Нужен для</dt>
                 {exam.programs.length ? (

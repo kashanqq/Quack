@@ -13,7 +13,7 @@ import { initialModel, readiness, reviveModel, type PrepTab } from "../prep/prep
 import type { Signal } from "../quack/contract";
 import { useQuack } from "../quack/source";
 import { forecastScore, markableId } from "../quack/standing";
-import { markMilestone, useDoneMilestones } from "../prep/milestoneMarks";
+import { markMilestone, pickTestDate, useChosenTestDates, useDoneMilestones } from "../prep/milestoneMarks";
 import { ActivityGrid } from "./ActivityGrid";
 import { CalendarTab } from "./CalendarTab";
 import { ChancesCard } from "./ChancesCard";
@@ -52,6 +52,7 @@ export function Dashboard({ tab, onTab, saved, profile, chatDays, onUnsave, onOp
   const [watched, setWatched] = useState<string[]>([]);
   const { state: quack } = useQuack();
   const doneMilestones = useDoneMilestones();
+  const testDates = useChosenTestDates();
 
   // Fresh signals turn into history a moment after Quack opens; for this visit they still read as new
   const [visitNew, setVisitNew] = useState<Set<string>>(() => new Set());
@@ -74,7 +75,9 @@ export function Dashboard({ tab, onTab, saved, profile, chatDays, onUnsave, onOp
 
   const programs = saved.map(programById).filter(Boolean);
   const exams = unionExams(programs);
-  const events = calendarEvents(programs, exams);
+  const events = calendarEvents(programs, exams, testDates);
+  // The calendar also lists the other sittings, so a date can be picked right there
+  const calendarDays = calendarEvents(programs, exams, testDates, true);
   const predicted = forecastScore(readiness(prep));
   const activity = useMemo(() => activityByDay(Object.values(prep.evidence).flat(), chatDays), [prep, chatDays]);
 
@@ -160,13 +163,15 @@ export function Dashboard({ tab, onTab, saved, profile, chatDays, onUnsave, onOp
         )}
         {tab === "calendar" && (
           <>
-            <FirstHint id="dashboard-calendar-v2" title="Что в «Календаре»">
-              Даты экзаменов и дедлайны подачи твоих программ на одной сетке. Зарегистрировался или подал документы — нажми
-              «Отметить», и прогноз с напоминаниями пересчитаются. Нужные даты можно добавить в Google Календарь.
+            <FirstHint id="dashboard-calendar-v3" title="Что в «Календаре»">
+              Даты экзаменов и дедлайны подачи твоих программ на одной сетке. Бледные тесты — другие даты сдачи: «Сдаю в эту
+              дату» перестроит план под неё. Зарегистрировался или подал документы — нажми «Отметить», и прогноз с напоминаниями
+              пересчитаются.
             </FirstHint>
             <CalendarTab
-              events={events}
-              marks={{ idOf: (e) => markableId(e, programs), done: doneMilestones, onToggle: (id) => markMilestone(id) }}
+              events={calendarDays}
+              marks={{ idOf: markableId, done: doneMilestones, onToggle: (id) => markMilestone(id) }}
+              onPickDate={pickTestDate}
             />
           </>
         )}

@@ -12,22 +12,31 @@ import {
   type Conflict,
   type UnionExam,
 } from "../dashboard/dashboardRules";
-import { daysBetween, forecastSeries, formatDate, SETS, setById, TODAY, type ExamId, type StudySet } from "../prep/prepData";
+import {
+  daysBetween,
+  examMilestoneId,
+  forecastSeries,
+  formatDate,
+  plannedTest,
+  registrationBy,
+  SETS,
+  setById,
+  TODAY,
+  type DatedExam,
+  type ExamId,
+  type StudySet,
+} from "../prep/prepData";
 import { proposedSet, readiness, type PrepModel } from "../prep/prepModel";
 import type { ChanceFact, ExamPace, PaceLevel, ProgramChance, Standing, StandingAlert } from "./contract";
 
 export type QuackInputs = { profile: Profile; saved: string[]; prep: PrepModel };
 
-const DAY = 86_400_000;
-const addDays = (d: Date, n: number) => new Date(d.getTime() + n * DAY);
 const iso = (d: Date) => d.toISOString();
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
 /** Each point of readiness moves the forecast by half a day (see forecastSeries). */
 const DAYS_PER_POINT = 0.5;
-/** Registration closes four weeks before a test — the same rule the overview calendar uses. */
-const REGISTRATION_LEAD = 28;
 
 export const PACE_VERDICT: Record<PaceLevel, string> = {
   0: "Не успеваешь",
@@ -73,15 +82,18 @@ const targetOf = (u: UnionExam) => (u.exam.id === "ielts" ? u.target.toFixed(1) 
 /** An exam the knowledge model covers (SAT Math, ЕНТ): forecast against the test date. */
 function modelPace(u: UnionExam, { today, prep, forecast, delay }: Ctx): ExamPace {
   const base = { id: u.exam.id, name: u.exam.name, target: targetOf(u) };
-  const planned = u.exam.dates.find((d) => d > today);
+  // The sitting the student picked, or the nearest one while they have not
+  const exam = u.exam.id as DatedExam;
+  const planned = plannedTest(exam, prep.testDates);
   if (!planned) return { ...base, level: 0, verdict: PACE_VERDICT[0], summary: "Ближайших дат теста в календаре нет", advice: [] };
 
   const following = u.exam.dates.find((d) => d > planned);
-  const registration = addDays(planned, -REGISTRATION_LEAD);
+  const registration = registrationBy(planned);
   const dated = { ...base, testDate: iso(planned), forecast: iso(forecast) };
+  const registered = examMilestoneId(exam, "reg", planned);
 
   // Slept through the registration: this test date is gone, whatever the readiness
-  if (registration < today && !prep.milestonesDone.includes(`${u.exam.id}-reg`)) {
+  if (registration < today && !prep.milestonesDone.includes(registered)) {
     return {
       ...dated,
       level: 0,
@@ -89,11 +101,11 @@ function modelPace(u: UnionExam, { today, prep, forecast, delay }: Ctx): ExamPac
       summary: `К тесту ${formatDate(planned)} уже не успеть — регистрация закрылась ${formatDate(registration)}`,
       advice: [
         following
-          ? `Ближайшая дата — ${formatDate(following)}, регистрация до ${formatDate(addDays(following, -REGISTRATION_LEAD))}`
+          ? `Следующая дата — ${formatDate(following)}, регистрация до ${formatDate(registrationBy(following))}. Выбрать её можно в календаре или в «Требованиях»`
           : "Других дат в этом году нет — нужен слот на следующий год",
-        "Если ты уже зарегистрировался — нажми «Уже зарегистрировался» или напиши об этом в чате, и прогноз вернётся",
+        `Если ты уже зарегистрировался на ${formatDate(planned)} — нажми кнопку ниже или напиши об этом в чате, и прогноз вернётся`,
       ],
-      mark: { milestone: `${u.exam.id}-reg`, label: "Уже зарегистрировался" },
+      mark: { milestone: registered, label: `Уже зарегистрировался на ${formatDate(planned)}` },
     };
   }
 
@@ -188,12 +200,7 @@ export function chanceOf(program: Program, profile: Profile, predictedMath: numb
 /* ---------- Dates: coming up, slept through, in conflict ---------- */
 
 /** Dates the student can tick off (in the calendar, the Quack feed or the chat); only those can be missed. */
-export function markableId(event: CalendarEvent, programs: Program[]): string | undefined {
-  const exam = Object.values(EXAMS).find((x) => event.title === `Регистрация на ${x.name}` || event.title === x.name);
-  const program = programs.find((p) => event.title === `Подача · ${p.university}`);
-  const id = exam ? `${exam.id}-${event.kind === "registration" ? "reg" : "test"}` : program ? `apply-${program.id}` : undefined;
-  return id && /^(sat-reg|sat-test|ent-reg|ent-test|apply-.+)$/.test(id) ? id : undefined;
-}
+export const markableId = (event: CalendarEvent): string | undefined => event.milestone;
 
 function alertsFor(events: CalendarEvent[], conflicts: Conflict[], programs: Program[], { today, prep, delay }: Ctx): StandingAlert[] {
   const list: StandingAlert[] = conflicts.map((c) => ({
@@ -205,7 +212,7 @@ function alertsFor(events: CalendarEvent[], conflicts: Conflict[], programs: Pro
   }));
 
   for (const e of events) {
-    const done = markableId(e, programs);
+    const done = markableId(e);
     if (done && prep.milestonesDone.includes(done)) continue;
     const left = daysBetween(today, e.date);
     if (left < 0) {
@@ -249,8 +256,8 @@ function alertsFor(events: CalendarEvent[], conflicts: Conflict[], programs: Pro
 export function computeStanding({ profile, saved, prep }: QuackInputs, today = TODAY): Standing {
   const programs = saved.map(programById).filter(Boolean);
   const exams = unionExams(programs);
-  const events = calendarEvents(programs, exams);
-  const conflicts = hardConflicts(programs, exams);
+  const events = calendarEvents(programs, exams, prep.testDates);
+  const conflicts = hardConflicts(programs, exams, prep.testDates);
 
   const now = readiness(prep);
   const delay = routeDelay(prep, today);
