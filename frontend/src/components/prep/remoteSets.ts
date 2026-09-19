@@ -192,8 +192,9 @@ export async function fetchRemoteSets(exam: ExamId, forceRefresh = false): Promi
   return promise;
 }
 
+/** Always asks the server: the plan is rebuilt there after every answer, so a cached copy goes stale */
 export function prefetchRemoteSets(exam: ExamId) {
-  fetchRemoteSets(exam).catch((err) => {
+  fetchRemoteSets(exam, true).catch((err) => {
     console.warn("Failed to prefetch remote sets for", exam, err);
   });
 }

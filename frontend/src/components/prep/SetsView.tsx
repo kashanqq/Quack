@@ -1,5 +1,6 @@
 "use client";
 
+import { PixelDuck } from "../duck/PixelDuck";
 import { useLayoutEffect, useRef, useState, useEffect } from "react";
 import { Icon } from "../choice/Icon";
 import { EXAM_IDS, EXAMS, formatShort, SETS, setById, skillById, STATE_LABEL, type ExamId, type StudySet } from "./prepData";
@@ -50,7 +51,8 @@ export function SetsView({ model, sub, exam, onExam, onMakeCurrent, focus, onOpe
 
     let active = true;
     setLoading(true);
-    fetchRemoteSets(exam)
+    // The cached plan shows at once; the server's rebuilt one replaces it
+    fetchRemoteSets(exam, true)
       .then((data) => {
         if (active) {
           setRemoteData(data);
@@ -98,6 +100,19 @@ export function SetsView({ model, sub, exam, onExam, onMakeCurrent, focus, onOpe
             onTake={handleMakeCurrent}
           />
         </section>
+      </div>
+    );
+  }
+
+  // Nothing to study yet while the plan is being built: the duck from the page transitions waits with you
+  const planEmpty =
+    REMOTE_PREP && (!remoteData || ![remoteData.current, ...remoteData.upcoming].some((s) => s && s.skills.length));
+  if (planEmpty && (loading || !remoteData)) {
+    return (
+      <div className={styles.setsLoading} role="status" aria-live="polite">
+        {switcher}
+        <PixelDuck tempo="fast" className={styles.setsLoadingDuck} />
+        <p className={styles.muted}>Собираем сеты под твои ответы…</p>
       </div>
     );
   }

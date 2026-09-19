@@ -81,7 +81,7 @@ def test_small_queue_single_set():
 # --- checks don't count as topics ---
 
 
-def test_check_not_counted_as_topic():
+def test_unchecked_skills_follow_known_topics():
     queue = [
         _item("a", is_check=False),
         _item("b", is_check=True),  # проверка
@@ -99,10 +99,10 @@ def test_check_not_counted_as_topic():
         params=PARAMS,
         today=TODAY,
     )
-    # set_size=3: топики a, c, d в первый сет, b — проверка тоже в первый
-    assert len(plans) == 1
-    assert set(plans[0].skill_ids) == {"a", "c", "d"}
-    assert plans[0].checks == ["b"]
+    # set_size=3: известные темы a, c, d — первым сетом; непроверенный b не
+    # теряется, а уходит следующим сетом (у нового ученика иначе нет сетов)
+    assert [p.skill_ids for p in plans] == [["a", "c", "d"], ["b"]]
+    assert all(p.checks == [] for p in plans)
 
 
 # --- deadlines ---
