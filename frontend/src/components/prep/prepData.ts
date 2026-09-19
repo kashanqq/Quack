@@ -357,6 +357,13 @@ export function registerRemoteSkills(skills: Skill[]) {
   }
 }
 
+export function allSkills(): Skill[] {
+  const map = new Map<string, Skill>();
+  for (const s of SKILLS) map.set(s.id, s);
+  for (const [id, s] of REMOTE_SKILLS) map.set(id, s);
+  return Array.from(map.values());
+}
+
 export const skillById = (id: string): Skill => {
   const found = REMOTE_SKILLS.get(id) ?? SKILLS.find((s) => s.id === id);
   if (found) return found;

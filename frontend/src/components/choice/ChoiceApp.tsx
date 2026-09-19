@@ -126,7 +126,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const [picks, setPicks] = useState<string[]>([]);
   const [saved, setSaved] = useState<string[]>([]);
   // The catalog registry is filled outside React (catalog.ts); bumping this re-reads it
-  const [, bumpCatalog] = useState(0);
+  const [catalogVersion, bumpCatalog] = useState(0);
   const [compare, setCompare] = useState<string[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [view, setView] = useState<"chat" | "compare">("chat");
@@ -648,6 +648,13 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     }
     if (!mounted.current) return;
 
+    // The backend withdrew the text but the picks themselves are real: show them without the scare
+    if (failed && cards.length && failed.startsWith("Ответ отозван")) {
+      failed = null;
+      answer = "Вот что подобрал по твоему профилю — подробности в карточках.";
+      updateMsg(id, { typing: false, text: answer });
+    }
+
     if (failed) {
       updateMsg(id, {
         typing: false,
@@ -830,6 +837,8 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   // Everything of this student goes (chats, programs, preparation, the map), the account stays
   const restart = async () => {
     await store.reset();
+    // Saved programs live on the server: "начать заново" empties them too
+    if (REMOTE) await Promise.all(saved.map((id) => backend.saved.remove(id).catch(() => undefined)));
     forgetSynced();
     resetQuack();
     onRestart();
@@ -839,9 +848,19 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   // Profile and saved programs are sources of truth: every change is recomputed at once,
   // and whatever moved since the last visit makes the Quack! button glow
+  // With the backend, realism arrives with the catalog: a new verdict is recomputed too (catalogVersion)
   useEffect(() => {
     if (workspaceLoaded) reportToQuack({ profile, saved });
-  }, [reportToQuack, workspaceLoaded, profile, saved]);
+  }, [reportToQuack, workspaceLoaded, profile, saved, catalogVersion]);
+
+  // Answers in preparation move the backend's forecast and with it the realism of saved programs:
+  // opening Quack or coming back from preparation asks for the fresh verdicts
+  useEffect(() => {
+    if (!REMOTE || !workspaceLoaded || mode === "prep") return;
+    loadCatalog()
+      .then(() => bumpCatalog((n) => n + 1))
+      .catch(() => undefined);
+  }, [workspaceLoaded, mode]);
 
   // Seen a moment after Quack opens, so the glow does not vanish before it is noticed
   const freshKey = quackState.fresh.map((s) => `${s.id}@${s.at}`).join("|");
