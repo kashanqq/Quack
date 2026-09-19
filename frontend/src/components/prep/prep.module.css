@@ -173,12 +173,6 @@
   border-radius: 999px;
 }
 
-.sourceTag {
-  flex: none;
-  border-style: solid;
-  border-color: rgba(255, 255, 255, 0.16);
-}
-
 .emptyCanvas {
   max-width: 560px;
   margin: 8vh auto 0;
@@ -292,6 +286,53 @@
   margin: 0;
 }
 
+/* The sittings of an exam: the student picks one, each says what it leaves by the forecast */
+.testDates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.testDate {
+  display: inline-grid;
+  gap: 1px;
+  padding: 5px 11px;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.testDate b {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.testDate span {
+  color: var(--solid);
+  font-size: 12px;
+}
+
+.testDate[data-late] span {
+  color: var(--shaky);
+}
+
+.testDate:hover {
+  border-color: rgba(255, 166, 77, 0.5);
+}
+
+.testDate[aria-checked="true"] {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+  cursor: default;
+}
+
 .chips,
 .skillChips {
   display: flex;
@@ -316,21 +357,6 @@
   list-style: none;
 }
 
-.plainList {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 15px;
-}
-
-.plainList li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 /* ---------- Exam cards ---------- */
 
 .examTarget {
@@ -338,6 +364,36 @@
   align-items: baseline;
   gap: 12px;
   margin-bottom: 14px;
+}
+
+/* The target is pressed to change: the number itself is the button */
+.targetValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  color: var(--text-faint);
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.targetValue:hover {
+  color: var(--accent-label);
+}
+
+.targetInput {
+  width: 3.4em;
+  padding: 0 6px;
+  color: var(--accent-label);
+  font-family: var(--font-mono);
+  font-size: 40px;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  outline: none;
 }
 
 .examTargetValue {
@@ -448,23 +504,6 @@
 
 .glyphDashed {
   stroke-dasharray: 2.5 2;
-}
-
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  color: var(--text-dim);
-  font-size: 13px;
-}
-
-.legend li {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .rootTag,
@@ -651,24 +690,6 @@
   }
 }
 
-/* One lane per exam area. Nodes can be dragged out of it — the lane only says where they started. */
-.lane {
-  position: absolute;
-  left: 12px;
-  padding-top: 5px;
-  border: 1px dashed var(--canvas-line);
-  border-radius: 18px;
-}
-
-.laneName {
-  padding-left: 14px;
-  color: var(--text-faint);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .graphEdges {
   position: absolute;
   inset: 0;
@@ -681,19 +702,6 @@
   stroke: rgba(255, 255, 255, 0.22);
   stroke-width: 1;
   transition: stroke 0.25s ease, opacity 0.25s ease;
-}
-
-.edgeActive {
-  stroke: var(--accent);
-  stroke-width: 2;
-}
-
-.arrowHead {
-  fill: rgba(255, 255, 255, 0.35);
-}
-
-.arrowHeadActive {
-  fill: var(--accent);
 }
 
 /* ---------- Knowledge map ----------
@@ -811,10 +819,6 @@
   font-size: 11px;
 }
 
-.mapNodeInSet .mapShapeBox {
-  box-shadow: 0 0 0 3px var(--canvas-bg), 0 0 0 5px rgba(255, 122, 0, 0.55);
-}
-
 /* A root: errors higher up trace back to it. It glows and sends out a ring, so it is never missed */
 .mapNodeRoot .mapShapeBox {
   position: relative;
@@ -922,105 +926,6 @@
   .canvasGliding {
     transition: none;
   }
-}
-
-.mapNodeSelected .mapChip {
-  background: var(--accent-tint);
-  border-color: rgba(255, 166, 77, 0.45);
-}
-
-.mapNodeDim {
-  opacity: 0.35;
-}
-
-.mapNode.mapNodeDragging {
-  z-index: 2;
-  cursor: grabbing;
-  transform: none;
-  transition: none;
-}
-
-.mapNodeDragging .mapShapeBox {
-  box-shadow: 0 0 0 3px var(--canvas-bg), 0 0 0 5px rgba(255, 255, 255, 0.28);
-}
-
-.skillPanel {
-  font-size: 15px;
-}
-
-.skillPanel h4 {
-  margin: 0 0 6px;
-  font-size: 20px;
-  font-weight: 500;
-}
-
-.skillPanel .eyebrow {
-  margin-top: 14px;
-}
-
-.skillPanel > .eyebrow:first-child {
-  margin-top: 0;
-}
-
-.skillState {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 12px;
-  color: var(--text-dim);
-  font-size: 14px;
-}
-
-.rootNote {
-  margin: 0 0 12px;
-  padding: 8px 10px;
-  font-size: 14px;
-  background: rgba(255, 172, 74, 0.1);
-  border-radius: 10px;
-}
-
-.misconception {
-  display: grid !important;
-  gap: 2px;
-  padding: 8px 10px;
-  border-left: 2px solid var(--weak);
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 2px 10px 10px 2px;
-}
-
-.misconception[data-status="resolved"] {
-  border-left-color: var(--solid);
-}
-
-.misconception[data-status="suspected"] {
-  border-left-color: var(--shaky);
-}
-
-.misconception[data-status="disputed"] {
-  border-left-color: var(--low);
-  opacity: 0.6;
-}
-
-.misconception .link {
-  justify-self: start;
-  font-size: 13px;
-}
-
-.evidence {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 14px;
-}
-
-.evidence li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 8px;
 }
 
 /* ---------- Sets by area ---------- */
@@ -1379,13 +1284,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .evidence li {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .evidence li > .muted {
-    grid-column: 2;
-  }
 }
 
 /* ---------- Сейчас: pace from Quack and the few things that matter ---------- */
@@ -1549,15 +1447,6 @@
   border-radius: 12px;
 }
 
-
-
-
-
-
-
-
-
-
 .setCard .actions {
   align-items: center;
   align-self: end;
@@ -1630,477 +1519,199 @@
 
 /* ---------- Маршрут: the student's own plan, optional ---------- */
 
+/* ---------- Маршрут: спокойная сетка карточек сетов ---------- */
 
-
-
-
-
-
-
-/* ---------- Маршрут: плиточная сетка для быстрого выбора и смены активного сета ---------- */
-
-.routeTilesGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 14px;
-  margin-top: 14px;
-  align-items: start;
+.inlineLink {
+  padding: 0;
+  font: inherit;
+  color: #ffac4a;
+  background: none;
+  border: 0;
+  cursor: pointer;
 }
 
-/* Плитка сета */
-.setTile {
+.inlineLink:hover {
+  text-decoration: underline;
+}
+
+.routeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.routeCard {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: 15px 16px;
-  background: var(--canvas-bg);
+  min-height: 210px;
+  padding: 18px 18px 12px;
+  font-family: var(--font-text);
+  background: #242120;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s var(--ease-out);
-  animation: rise 0.25s var(--ease-out) both;
-  align-self: start;
-  height: fit-content;
+  border-radius: 20px;
+  transition: border-color 0.35s ease;
+  animation: rise 0.3s var(--ease-out) both;
 }
 
-.setTile:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
+.routeCard:hover {
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
-/* Активная плитка сета */
-.setTile[data-active] {
-  border-color: rgba(255, 122, 0, 0.55);
-  background: linear-gradient(180deg, rgba(255, 122, 0, 0.06) 0%, rgba(255, 122, 0, 0.01) 100%), var(--canvas-bg);
-  box-shadow: 0 4px 18px rgba(255, 122, 0, 0.1), 0 0 0 1px rgba(255, 122, 0, 0.2);
+.routeCard[data-kind="active"] {
+  border-color: rgba(255, 122, 0, 0.45);
 }
 
-.setTile[data-done] {
-  border-color: rgba(124, 207, 107, 0.22);
-}
-
-/* Шапка плитки */
-.setTileHead {
+.routeCardTop {
   display: flex;
-  align-items: flex-start;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+.routeCardNumber {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.routeCardStatus {
+  color: var(--text-faint);
+}
+
+.routeCard[data-kind="done"] .routeCardStatus {
+  color: var(--solid);
+}
+
+.routeCard[data-kind="active"] .routeCardStatus {
+  color: #ff9d42;
+}
+
+.routeCard[data-kind="advised"] .routeCardStatus {
+  color: #cece51;
+}
+
+.routeCardTitle {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.routeCardArea {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.routeCardBar {
+  display: flex;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 18px;
+}
+
+.routeCardBar i,
+.routeLegend i {
+  background: #57514c;
+}
+
+.routeCardBar i {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.routeCardBar i[data-state="solid"],
+.routeLegend i[data-state="solid"] {
+  background: var(--solid);
+}
+
+.routeCardBar i[data-state="shaky"],
+.routeLegend i[data-state="shaky"] {
+  background: var(--shaky);
+}
+
+.routeCardBar i[data-state="weak"],
+.routeLegend i[data-state="weak"] {
+  background: var(--weak);
+}
+
+.routeCardMeta {
+  display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 5px;
-}
-
-.setTileTitleBox {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.setTileNumber {
-  font-size: 11px;
-  font-weight: 600;
+  margin-top: 10px;
+  font-size: 12px;
   color: var(--text-dim);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
 }
 
-.setTileTitle {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1.3;
+.routeCardTraps {
+  color: #f09595;
 }
 
-/* Бейджи на плитке */
-.tileActiveBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #ff9d42;
-  background: rgba(255, 122, 0, 0.14);
-  border: 1px solid rgba(255, 122, 0, 0.32);
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.pulseDot {
-  width: 6px;
-  height: 6px;
-  background: var(--accent);
-  border-radius: 50%;
-  animation: pulseDotAnim 1.8s ease-in-out infinite;
-}
-
-@keyframes pulseDotAnim {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.4);
-    opacity: 0.5;
-  }
-}
-
-.tileBestBadge {
-  display: inline-flex;
-  align-items: center;
+.routeCardActions {
+  display: flex;
   gap: 4px;
-  padding: 2px 7px;
-  font-size: 11px;
-  font-weight: 500;
-  color: #ffd066;
-  background: rgba(255, 208, 102, 0.12);
-  border: 1px solid rgba(255, 208, 102, 0.28);
-  border-radius: 999px;
-  white-space: nowrap;
+  margin: 12px -8px 0;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.tileDoneBadge {
+.routeCardActions button {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 7px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--solid);
-  background: rgba(124, 207, 107, 0.12);
-  border: 1px solid rgba(124, 207, 107, 0.28);
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-/* Мета-информация плитки */
-.setTileMeta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 11.5px;
-  color: var(--text-dim);
-  margin-bottom: 10px;
-  padding-bottom: 7px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.setTileProgressCount {
-  color: var(--text-faint);
-}
-
-/* Дефолтный компактный вид: мини-пилюли тем */
-.tilePillList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-bottom: 4px;
-  transition: opacity 0.2s ease;
-}
-
-.setTile[data-expanded] .tilePillList {
-  display: none;
-}
-
-.tilePill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 7px;
-  font-size: 11px;
-  color: var(--text-dim);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
-  line-height: 1.3;
-}
-
-.tilePill[data-state="solid"] {
-  border-color: rgba(124, 207, 107, 0.2);
-}
-
-.tilePill[data-state="weak"] {
-  border-color: rgba(255, 122, 92, 0.2);
-}
-
-/* Раскрывающийся блок деталей: раскрывается ТОЛЬКО у одного целевого сета */
-.tileDetails {
-  display: grid;
-  grid-template-rows: 0fr;
-  opacity: 0;
-  transition: grid-template-rows 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, margin 0.2s ease;
-}
-
-.tileDetailsInner {
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.setTile[data-expanded] .tileDetails {
-  grid-template-rows: 1fr;
-  opacity: 1;
-  margin-top: 8px;
-  margin-bottom: 4px;
-}
-
-.tileWhy {
-  display: flex;
-  align-items: flex-start;
   gap: 6px;
-  margin: 0;
-  padding: 6px 9px;
-  font-size: 11.5px;
-  line-height: 1.4;
-  color: var(--text-dim);
-  background: rgba(255, 255, 255, 0.025);
-  border-left: 2px solid var(--accent);
-  border-radius: 4px;
-}
-
-.tileWhy svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--accent);
-}
-
-/* Темы внутри развёрнутой плитки */
-.tileTopics {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.tileTopicItem {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
   padding: 6px 8px;
-  background: rgba(0, 0, 0, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.tileTopicItem:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.14);
-}
-
-.tileTopicHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.tileTopicNameGroup {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.tileTopicName {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text);
-}
-
-.tileTopicState {
-  font-size: 10.5px;
-  color: var(--text-faint);
-}
-
-.tileTopicState[data-state="solid"] {
-  color: var(--solid);
-}
-
-.tileTopicState[data-state="shaky"] {
-  color: var(--shaky);
-}
-
-.tileTopicState[data-state="weak"] {
-  color: var(--weak);
-}
-
-.tileTopicSummary {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--text-dim);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Стильно соединённая низкоконтрастная группа действий */
-.tileActionGroup {
-  display: flex;
-  width: 100%;
-  margin-top: auto;
-  padding-top: 10px;
-}
-
-.tileActionPill {
-  display: flex;
-  align-items: stretch;
-  width: 100%;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  overflow: hidden;
-  transition: border-color 0.2s ease, background 0.2s ease;
-}
-
-.setTile:hover .tileActionPill,
-.setTile[data-expanded] .tileActionPill {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.setTile[data-active] .tileActionPill {
-  border-color: rgba(255, 122, 0, 0.3);
-  background: rgba(255, 122, 0, 0.05);
-}
-
-/* Низкоконтрастная кнопка выбора сета */
-.tileSelectBtn {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 10px;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-dim);
-  background: none;
-  border: 0;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-
-.tileSelectBtn:hover {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.tileSelectBtn:active {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.tileActiveLabel {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  height: 32px;
-  padding: 0 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #ff9d42;
-  border-right: 1px solid rgba(255, 122, 0, 0.2);
-}
-
-.tileOpenBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  padding: 0 12px;
-  font: inherit;
-  font-size: 11.5px;
-  color: var(--text-faint);
-  background: none;
-  border: 0;
-  cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
-  white-space: nowrap;
-}
-
-.tileOpenBtn:hover {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* ---------- Карта навыков по сетам: cards in columns by what they rest on ---------- */
-
-.canvasTitleRow {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.mapModeSwitch {
-  display: inline-flex;
-  gap: 3px;
-  padding: 3px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-}
-
-.mapModeSwitch button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 26px;
-  padding: 0 10px;
-  color: var(--text-dim);
   font: inherit;
   font-size: 12.5px;
   background: none;
   border: 0;
-  border-radius: 9px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background 0.2s ease;
 }
 
-.mapModeSwitch button[aria-selected="true"] {
+.routeCardPrimary {
+  color: #ff9d42;
+}
+
+.routeCardPrimary:hover {
+  background: rgba(255, 122, 0, 0.1);
+}
+
+.routeCardSelect {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.12);
-  font-weight: 500;
 }
 
-.canvasControlsRight {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.routeCardGhost {
   margin-left: auto;
-  flex-wrap: wrap;
+  color: var(--text-faint);
 }
 
-.skillGraphWrapper {
-  position: relative;
-  flex: 1;
-  min-height: 520px;
+.routeCardSelect:hover,
+.routeCardGhost:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.routeLegend {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-family: var(--font-text);
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.routeLegend i {
+  display: inline-block;
+  width: 10px;
+  height: 4px;
+  margin-right: 4px;
+  vertical-align: middle;
+  border-radius: 2px;
 }
 
 .setMapCard {
@@ -2109,104 +1720,21 @@
 }
 
 .setMapBody {
-  display: grid;
+  display: flex;
   flex: 1;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
+  flex-direction: column;
   min-height: 0;
 }
 
-.setMapBody[data-panel] {
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
-}
-
-.activeNodePill {
-  display: inline-flex;
-  padding: 1px 5px;
-  font-size: 9.5px;
-  font-weight: 600;
-  color: #1f1d1b;
-  background: var(--accent);
-  border-radius: 4px;
-  line-height: 1.2;
-}
-
-.setMapDependencies {
-  display: grid;
-  gap: 6px;
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
-  font-size: 12px;
-}
-
-.dependencyItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.dependencyLabel {
-  color: var(--text-dim);
-  font-size: 11.5px;
-}
-
-.dependencySets {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-}
-
-.dependencyChip {
-  padding: 2px 7px;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 5px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.dependencyChip:hover {
-  color: #1f1d1b;
-  background: var(--accent);
-  border-color: transparent;
-}
-
-.skillSummaryText {
-  margin: 4px 0 8px;
-  padding: 6px 10px;
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.035);
-  border-radius: 7px;
-}
-
-.skillTrapHint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-  padding: 5px 8px;
-  font-size: 12px;
-  color: #ffaa7d;
-  background: rgba(255, 122, 0, 0.08);
-  border-radius: 6px;
-}
-
+/* Passed → in work → proposed, left to right, centred on the line between them */
 .setMapScroll {
   position: relative;
   display: flex;
+  flex: 1;
   gap: 36px;
-  align-items: center;
+  align-items: flex-start;
   min-height: 0;
-  padding: 14px;
+  padding: 18px;
   overflow: auto;
   background: var(--inset-bg);
   border: 1px solid var(--canvas-line);
@@ -2227,214 +1755,188 @@
   stroke-width: 1.5;
 }
 
+/* Centred by auto margins, not align-items: a column taller than the box then still scrolls to its top */
+.setMapScroll > .setMapMore,
+.setMapScroll > .setMapColumn {
+  margin-block: auto;
+}
+
+/* «⋯»: the older passed sets, left of the three shown */
+.setMapMore {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  background: #1d1a18;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.setMapMore:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.36);
+}
+
 .setMapColumn {
   display: grid;
   flex: none;
-  gap: 12px;
-  width: 150px;
+  gap: 14px;
+  width: 232px;
 }
 
-/* A set is a small card: its number, its title and a bar per topic. The topics are in the panel */
+/* A set says everything about itself: status, deadline, each topic with its state in words */
 .setMapNode {
   display: grid;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
   min-width: 0;
-  padding: 8px 10px 9px;
+  padding: 12px 12px 6px;
   color: var(--text);
-  font: inherit;
-  text-align: left;
+  font-family: var(--font-text);
   background: #1d1a18;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: border-color 0.2s ease, opacity 0.25s ease, transform 0.2s var(--ease-out);
+  border-radius: 14px;
+  animation: rise 0.3s var(--ease-out) both;
 }
 
-.setMapNode:hover {
-  border-color: rgba(255, 255, 255, 0.24);
-  transform: translateY(-1px);
-}
-
-.setMapNode[data-status="current"] {
+.setMapNode[data-kind="current"] {
   border-color: rgba(255, 122, 0, 0.55);
+  box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.1);
 }
 
-.setMapNode[data-status="done"] {
-  border-color: rgba(124, 207, 107, 0.35);
-}
-
-.setMapNode[data-selected] {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.18);
-}
-
-.setMapNode[data-dim] {
-  opacity: 0.45;
+.setMapNode[data-kind="done"] {
+  border-color: rgba(124, 207, 107, 0.28);
 }
 
 .setMapNodeHead {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   color: var(--text-faint);
-  font-size: 11px;
-  line-height: 1;
+  font-size: 11.5px;
 }
 
-.setMapNodeHead strong {
-  margin-right: auto;
-  font-weight: 500;
+.setMapNodeHead > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Status as a dot: in work — orange, passed — green, the rest — grey */
-.setMapDot {
-  width: 8px;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 50%;
+.setMapKind {
+  flex: none;
 }
 
-.setMapDot[data-status="current"],
-.setMapDot[data-status="proposed"] {
-  background: var(--accent);
+.setMapKind[data-kind="current"] {
+  color: #ff9d42;
 }
 
-.setMapDot[data-status="done"] {
-  background: var(--solid);
+.setMapKind[data-kind="done"] {
+  color: var(--solid);
 }
 
-/* A root of errors or a confirmed trap somewhere in the set */
-.setMapFlag {
-  width: 8px;
-  height: 8px;
-  background: var(--weak);
-  border-radius: 2px;
-  transform: rotate(45deg);
+.setMapKind[data-kind="advised"] {
+  color: #cece51;
 }
 
 .setMapNodeTitle {
-  display: -webkit-box;
-  overflow: hidden;
-  font-size: 13px;
-  line-height: 1.25;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
-.setMapNode .segments {
-  gap: 3px;
+.setMapNodeMeta,
+.setMapReason {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
 }
 
-.setMapNode .segments span {
-  flex: 1;
-  width: auto;
-  height: 5px;
-  border-radius: 3px;
+.setMapReason {
+  color: #d8d6a0;
 }
 
-.setMapPanel {
+.setMapTopics {
   display: grid;
-  align-content: start;
-  gap: 10px;
-  min-height: 0;
-  padding-right: 4px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #57524e transparent;
-  animation: fade 0.2s ease both;
-}
-
-.setMapPanel > p {
-  margin: 0;
-}
-
-.setMapPanel .actions {
-  margin: 0;
-}
-
-.setMapPanelHead {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.setMapTitleBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 2px 0 0;
-  padding: 0;
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  transition: color 0.18s ease;
-}
-
-.setMapTitleBtn h4 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 500;
-  transition: color 0.18s ease;
-}
-
-.setMapTitleIcon {
-  color: var(--text-faint);
-  transition: transform 0.18s ease, color 0.18s ease;
-}
-
-.setMapTitleBtn:hover h4,
-.setMapTitleBtn:hover .setMapTitleIcon {
-  color: var(--accent);
-}
-
-.setMapTitleBtn:hover .setMapTitleIcon {
-  transform: translateX(2px);
-}
-
-.setMapPanelHead .eyebrow {
-  margin: 0;
-}
-
-.setMapTopicList {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
+  gap: 2px;
+  margin: 0 -6px;
+  padding: 6px 0 0;
   list-style: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.setMapTopicList > li > button {
-  display: flex;
+.setMapTopics button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 5px 6px;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: 12.5px;
   text-align: left;
-  background: var(--inset-bg);
-  border: 1px solid transparent;
-  border-radius: 10px;
+  background: none;
+  border: 0;
+  border-radius: 8px;
   cursor: pointer;
+  transition: background 0.2s ease;
 }
 
-.setMapTopicList > li > button > span:nth-child(3) {
-  margin-left: auto;
-  font-size: 12px;
+.setMapTopics button:hover {
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.setMapTopicList > li > button:hover,
-.setMapTopicList > li > button[aria-expanded="true"] {
-  border-color: rgba(255, 255, 255, 0.16);
+.setMapTopicName b {
+  margin-left: 6px;
 }
 
-.setMapTopicList .skillPanel {
-  padding: 10px 4px 4px;
+.setMapTopicState {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.setMapTopicState[data-state="solid"] {
+  color: var(--solid);
+}
+
+.setMapTopicState[data-state="shaky"] {
+  color: var(--shaky);
+}
+
+.setMapTopicState[data-state="weak"] {
+  color: var(--weak);
+}
+
+.setMapNodeFoot {
+  display: flex;
+  margin: 0 -6px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.setMapNodeFoot button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12.5px;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
 }
 
 /* ---------- One set: a bar, then the topic graph over the whole screen and the topic beside it ---------- */
@@ -3409,110 +2911,27 @@
 }
 
 @media (max-width: 760px) {
-  /* Route tiles mobile optimization */
-  .routeTilesGrid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-  }
 
-  .setTile {
-    padding: 13px 14px;
-    border-radius: 14px;
-  }
-
-  .setTileTitle {
-    font-size: 15px;
-  }
-
-  .tileTopics {
-    gap: 5px;
-    margin-bottom: 10px;
-  }
-
-  .tileTopicItem {
-    padding: 5px 8px;
-  }
-
-  .tileTopicName {
-    font-size: 12px;
-  }
-
-  .tileTopicSummary {
-    font-size: 11px;
-    -webkit-line-clamp: 2;
-  }
-
-  .tileActionGroup {
-    padding-top: 8px;
-  }
-
-  .tileSelectBtn {
-    height: 30px;
-    font-size: 11.5px;
-  }
-
-  .tileOpenBtn {
-    height: 30px;
-    font-size: 11px;
-  }
-
-  /* Map mobile optimization: compact vertical graph without layout overflow */
-  .canvasTitleRow {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    width: 100%;
-  }
-
-  .canvasControlsRight {
-    width: 100%;
-    justify-content: space-between;
-    margin-left: 0;
-  }
-
-  .mapModeSwitch {
-    width: 100%;
-  }
-
-  .mapModeSwitch button {
-    flex: 1;
-    justify-content: center;
-  }
-
-  .skillGraphWrapper {
-    min-height: 380px;
-    max-height: 60vh;
-  }
-
+  /* Phones: the same line top to bottom, proposals one under another */
   .setMapScroll {
     flex-direction: column;
     align-items: stretch;
-    gap: 20px;
+    gap: 28px;
     padding: 10px;
-    max-height: 52vh;
+  }
+
+  .setMapScroll > .setMapMore,
+  .setMapScroll > .setMapColumn {
+    margin-block: 0;
+  }
+
+  .setMapMore {
+    align-self: center;
   }
 
   .setMapColumn {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
-  }
-
-  .setMapColumn .setMapNode {
-    flex: 1 1 0;
-    max-width: 150px;
-    padding: 7px 8px 8px;
-  }
-
-  .setMapNodeTitle {
-    font-size: 12px;
-  }
-
-  .setMapPanel {
-    max-height: 50vh;
-    padding-top: 12px;
-    border-top: 1px solid var(--canvas-line);
   }
 
   .setGraphScroll {
@@ -3527,8 +2946,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
-
-
 
 /* ---------- Сейчас: centred, informational, one button ---------- */
 
@@ -3550,6 +2967,49 @@
 
 .nowCenter > .eyebrow {
   margin: 4px 0 0;
+}
+
+/* The report on a passed set, above the next one offered */
+.setReport {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 14px 18px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid var(--solid);
+  border-radius: 4px 14px 14px 4px;
+}
+
+.setReport > .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--solid);
+}
+
+.setReportList {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  list-style: none;
+}
+
+.setReportList b {
+  font-weight: 500;
+}
+
+.nowStripLinks {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
 }
 
 .nowDuck {
@@ -3735,8 +3195,8 @@
   justify-content: space-between;
   gap: 12px 16px;
   padding: 12px 16px;
-  background: linear-gradient(135deg, rgba(255, 166, 77, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
-  border: 1px solid rgba(255, 166, 77, 0.24);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   margin-bottom: 6px;
 }
@@ -3745,6 +3205,14 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* Тег в плашке маршрута — без пилюли и свечения, просто подпись */
+.routeDiagnosticInfo .diagnosticTag {
+  align-self: flex-start;
+  padding: 0;
+  background: none;
+  border: 0;
 }
 
 .routeDiagnosticSub {
@@ -4203,3 +3671,226 @@
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* ---------- Сейчас: the entrance test in place, then the active set's work ---------- */
+
+.diagnosticInline {
+  display: grid;
+  justify-items: center;
+  padding: 8px 0 24px;
+  animation: rise 0.3s var(--ease-out) both;
+}
+
+.diagnosticInline > .diagnosticModalBox {
+  max-width: 680px;
+  max-height: none;
+  overflow: visible;
+  box-shadow: none;
+}
+
+.nowWork {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.nowStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.nowStripPaces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nowStripPaces > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 6px;
+  font-size: 13px;
+  background: var(--canvas-bg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+.nowStripPaces > li strong {
+  font-weight: 500;
+}
+
+.nowStripPaces > li[data-pace="3"] strong,
+.nowStripPaces > li[data-pace="2"] strong {
+  color: var(--solid);
+}
+
+.nowStripPaces > li[data-pace="1"] strong {
+  color: var(--shaky);
+}
+
+.nowStripPaces > li[data-pace="0"] strong {
+  color: var(--weak);
+}
+
+.nowStripDuck {
+  width: 22px;
+}
+
+/* ---------- Маршрут: the chosen set on top, the assistant's advice below ---------- */
+
+.routeGrid {
+  align-items: start;
+}
+
+.routeCurrent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+  padding: 20px 22px;
+  font-family: var(--font-text);
+  background: #242120;
+  border: 1px solid rgba(255, 122, 0, 0.45);
+  border-radius: 20px;
+  animation: rise 0.3s var(--ease-out) both;
+}
+
+.routeCurrent[data-empty] {
+  display: grid;
+  gap: 4px;
+  border-color: rgba(255, 255, 255, 0.08);
+  border-style: dashed;
+}
+
+.routeCurrent[data-empty] p {
+  margin: 0;
+}
+
+.routeCurrentMain {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
+.routeCurrentMain > .routeCardBar {
+  max-width: 420px;
+  padding-top: 14px;
+}
+
+.routeCurrentLabel {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: #ff9d42;
+}
+
+.routeCurrentTitle {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+.routeCurrentFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 14px 0 0;
+  font-size: 13px;
+}
+
+.routeCurrentFacts dt {
+  margin-bottom: 2px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.routeCurrentFacts dd {
+  margin: 0;
+  color: var(--text);
+}
+
+.routeCurrentNext {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.routeSectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px 20px;
+  margin-top: 10px;
+}
+
+.routeSectionHead h4 {
+  margin: 0 0 2px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.routeSectionHead p {
+  margin: 0;
+}
+
+.routeCard[data-kind="postponed"] .routeCardStatus {
+  color: var(--text-dim);
+}
+
+.routeCard[data-focus] {
+  border-color: rgba(206, 206, 81, 0.55);
+}
+
+.routeReasons {
+  display: grid;
+  gap: 3px;
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  list-style: none;
+}
+
+.routeReasons li::before {
+  content: "· ";
+  color: var(--text-faint);
+}
+
+.routeTopics {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 10px 0 0;
+  font-size: 13px;
+  list-style: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.routeTopics li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.routeTopics li .muted {
+  font-size: 12px;
+}
+
+.routeDone > summary {
+  margin: 6px 0 12px;
+  font-family: var(--font-text);
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}

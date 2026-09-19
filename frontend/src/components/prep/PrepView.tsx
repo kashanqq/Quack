@@ -12,6 +12,8 @@ import {
   acceptSet,
   initialModel,
   makeCurrent,
+  skipTest,
+  rankSets,
   reviveModel,
   subFor,
   type PrepModel,
@@ -19,9 +21,7 @@ import {
   type PrepTab,
 } from "./prepModel";
 import { quackSource } from "../quack/source";
-import { Icon } from "../choice/Icon";
 import { SetsView } from "./SetsView";
-import { DiagnosticMock } from "./DiagnosticMock";
 import type { DiagnosticResultSummary } from "./diagnosticData";
 import styles from "./prep.module.css";
 import { store } from "../account/store";
@@ -29,11 +29,11 @@ import { store } from "../account/store";
 const STORAGE_KEY = "quack-prep";
 
 /** One first-visit note per part of the section: what it shows and what to press. The ids are kept once seen. */
-const INTROS: Record<PrepSub | "set", { id: string; title: string; text: string }> = {
+const INTROS: Record<PrepSub, { id: string; title: string; text: string }> = {
   now: {
-    id: "prep",
+    id: "prep-now-v2",
     title: "Зачем «Подготовка»",
-    text: "Здесь план подготовки к экзаменам, которые требуют твои программы. «Сейчас» — главное на сегодня: какой сет в работе, что сделать дальше и успеваешь ли к тесту.",
+    text: "Здесь план подготовки к экзаменам, которые требуют твои программы. «Сейчас» — твоё место для занятий: активный сет и его темы на шкале до дедлайна. Нажми на тему — откроется чат с ассистентом и мок-тест рядом.",
   },
   requirements: {
     id: "prep-requirements",
@@ -41,19 +41,14 @@ const INTROS: Record<PrepSub | "set", { id: string; title: string; text: string 
     text: "Какие экзамены и на какой балл нужны сохранённым программам, и когда ты, по прогнозу, будешь готов. Цели пересчитываются, когда меняется список программ.",
   },
   route: {
-    id: "prep-route-v2",
+    id: "prep-route-v3",
     title: "Что такое маршрут",
-    text: "Сет — несколько связанных тем с общим дедлайном. Ассистент собирает сеты под тебя по твоим ошибкам и пересобирает их, пока ты продвигаешься. Работаешь над одним — сменить можно в любой момент кнопкой «Сменить на этот», прогресс по темам не теряется.",
+    text: "Сет — несколько связанных тем с общим дедлайном. Сверху — сет, над которым ты работаешь, ниже — советы ассистента по твоим ошибкам. Не нравится текущий — сделай актуальным другой, а текущий уйдёт в отложенные, прогресс по темам не теряется.",
   },
   map: {
-    id: "prep-map",
+    id: "prep-map-v2",
     title: "Как читать карту навыков",
-    text: "Каждая карточка — сет, внутри его темы и как они держатся. Стрелка ведёт к сету, который опирается на предыдущий. Нажми на сет — справа его темы, а по теме — почему она в таком состоянии.",
-  },
-  set: {
-    id: "prep-set",
-    title: "Внутри сета",
-    text: "Темы сета на шкале до его дедлайна, у каждой свой срок. Нажми на тему — откроется чат с ассистентом, который начинает с короткого материала, и мок-тест рядом. Ответы в тесте сразу меняют состояние темы.",
+    text: "Слева направо: последние пройденные сеты, сет в работе и не больше трёх советов ассистента. На каждой карточке — её темы и как они держатся. Нажми на тему, чтобы открыть её; «⋯» слева показывает всю историю.",
   },
 };
 
@@ -85,23 +80,26 @@ export function PrepView({
   const [toast, setToast] = useState<string | null>(null);
   // Which exam the route, the map and the set list show; starts on the exam of the set in work
   const [exam, setExam] = useState<ExamId>(() => (model.currentSet ? setById(model.currentSet).exam : "sat"));
-  // The set opened on «Сеты»: its graph and topics replace the list until the student goes back
-  const [openSet, setOpenSet] = useState<{ id: string; topic?: string } | null>(null);
+  // A topic of the active set asked for from elsewhere (a trap, the map): «Сейчас» opens it
+  const [focus, setFocus] = useState<{ topic?: string; n: number } | null>(null);
+  // Another set asked for from elsewhere: «Маршрут» shows its card open
+  const [routeFocus, setRouteFocus] = useState<string | null>(null);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const isDiagPending = !model.diagnosticDone;
 
-  // Без входного замера доступна исключительно вкладка «Сейчас»
+  // Без входного замера открыты «Сейчас» и «Требования»: цели и дату теста можно выбрать до замера
+  const openBeforeTest = (s: PrepSub) => s === "now" || s === "requirements";
   useEffect(() => {
     if (isDiagPending) {
       if (tab !== "overview") onTab("overview");
-      if (sub !== "now") onSub("now");
+      if (!openBeforeTest(sub)) onSub("now");
     }
   }, [isDiagPending, tab, sub, onTab, onSub]);
 
   // A sub-tab belongs to its tab; switching tabs falls back to the first one
-  const current = isDiagPending ? "now" : subFor(tab, sub);
+  const current = isDiagPending ? (openBeforeTest(sub) ? sub : "now") : subFor(tab, sub);
 
   useEffect(() => {
     onDiagnosticStatusChange?.(Boolean(model.diagnosticDone));
@@ -121,14 +119,21 @@ export function PrepView({
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
-  }, [tab, current, openSet?.id]);
+  }, [tab, current, focus?.n]);
+
+  // Asked to open the test from outside (a locked tab in the column): it runs in «Сейчас»
+  const diagOpen = showDiagnostic || Boolean(externalOpenDiagnostic);
+  const closeDiagnostic = () => {
+    setShowDiagnostic(false);
+    onCloseExternalDiagnostic?.();
+  };
 
   const programs = savedPrograms(saved, model.demo);
-  // An open set and the map are drawings: they take all the height left
-  const setOpen = programs.length > 0 && tab === "sets" && current === "route" && !!openSet;
-  const fill = setOpen || (programs.length > 0 && tab === "sets" && current === "map");
+  // The active set in «Сейчас» and the map are drawings: they take all the height left
+  const working = tab === "overview" && current === "now" && !isDiagPending && !diagOpen && !!model.currentSet;
+  const fill = programs.length > 0 && (working || (tab === "sets" && current === "map"));
 
-  const intro = INTROS[setOpen ? "set" : current];
+  const intro = INTROS[current];
 
   /** One move for both levels, so a jump across the section is a single animated step */
   const go = (next: PrepTab, nextSub?: PrepSub, nextExam?: ExamId) =>
@@ -138,53 +143,66 @@ export function PrepView({
       if (nextExam) setExam(nextExam);
     });
 
-  /** Straight into a set's graph, from anywhere in the section */
-  const openSetAt = (id: string | null, topic?: string) =>
+  /**
+   * A set asked for from anywhere in the section: the active one is worked on in «Сейчас»,
+   * any other is shown in «Маршрут», where it can be made the active one.
+   */
+  const openSetAt = (id: string, topic?: string) =>
     morph(() => {
-      setOpenSet(id ? { id, topic } : null);
-      if (!id) return;
+      if (id === model.currentSet) {
+        setFocus({ topic, n: Date.now() });
+        onTab("overview");
+        onSub("now");
+        return;
+      }
+      setRouteFocus(id);
+      setExam(setById(id).exam);
       onTab("sets");
       onSub("route");
-      setExam(setById(id).exam);
     });
 
+  /** Takes the proposed set into work: it opens right there in «Сейчас» */
   const accept = (id: string) => {
     setModel((m) => acceptSet(m, id));
+    setFocus(null);
     setToast("Сет принят — начни с первой темы на графе");
-    openSetAt(id);
+    go("overview", "now");
   };
 
+  /** From «Маршрут»: the set becomes the active one, the previous one is put aside; the student stays */
   const choose = (id: string) => {
+    const prev = model.currentSet;
     setModel((m) => makeCurrent(m, id));
-    setToast(`Сет ${setById(id).number} в работе`);
+    setFocus(null);
+    setRouteFocus(null);
+    setToast(
+      prev && prev !== id
+        ? `Сет ${setById(id).number} теперь актуальный, сет ${setById(prev).number} отложен · занятия — во вкладке «Сейчас»`
+        : `Сет ${setById(id).number} теперь актуальный · занятия — во вкладке «Сейчас»`
+    );
   };
 
   const skipDiagnostic = () => {
-    setModel((m) => ({
-      ...m,
-      diagnosticDone: true,
-      diagnosticSkipped: true,
-    }));
-    setShowDiagnostic(false);
-    onCloseExternalDiagnostic?.();
+    setModel(skipTest);
+    closeDiagnostic();
+    setFocus(null);
     onDiagnosticStatusChange?.(true);
-    setToast("Входной тест пропущен — применены базовые оценки знаний. Все вкладки открыты.");
+    setToast("Первый сет собран по твоему профилю. Замер можно пройти позже — ссылка над графом");
   };
 
   const completeDiagnostic = (summary: DiagnosticResultSummary) => {
-    setModel((m) => ({
-      ...m,
-      diagnosticDone: true,
-      diagnosticSkipped: false,
-      states: { ...m.states, ...summary.statesUpdate },
-    }));
-    setShowDiagnostic(false);
-    onCloseExternalDiagnostic?.();
+    setModel((m) => {
+      const next = { ...m, diagnosticDone: true, diagnosticSkipped: false, states: { ...m.states, ...summary.statesUpdate } };
+      // The first test builds the route: its top set becomes the first one in work. A retake leaves the choice alone.
+      if (m.diagnosticDone && m.currentSet) return next;
+      const top = rankSets(next, "sat")[0]?.set;
+      return top ? acceptSet(next, top.id) : next;
+    });
+    closeDiagnostic();
+    setFocus(null);
     onDiagnosticStatusChange?.(true);
-    setToast(`Входной замер завершён: ${summary.score} из 8. Маршрут успешно откалиброван!`);
+    setToast(`Входной замер завершён: ${summary.score} из 8. Маршрут собран — начни с первой темы на графе`);
   };
-
-  const isDiagModalOpen = showDiagnostic || Boolean(externalOpenDiagnostic);
 
   return (
     <div className={styles.prep}>
@@ -212,69 +230,54 @@ export function PrepView({
                 План собран на демо-программах. Сохрани свои в «Выборе», и подготовка пересоберётся под их экзамены и сроки.
               </FirstHint>
             )}
-            <FirstHint key={intro.id} id={intro.id} title={intro.title}>
-              {intro.text}
-            </FirstHint>
+            {!diagOpen && (
+              <FirstHint key={intro.id} id={intro.id} title={intro.title}>
+                {intro.text}
+              </FirstHint>
+            )}
 
             {/* Tabs and their parts are picked only in the left column — on phones it is the menu drawer */}
-            <div key={`${tab}-${current}-${openSet?.id ?? ""}`} className={styles.tabBody}>
-              {isDiagPending ? (
-                /* До прохождения теста доступна исключительно вкладка «Сейчас» */
+            <div key={`${tab}-${current}`} className={styles.tabBody}>
+              {tab === "overview" || isDiagPending ? (
                 <Overview
                   model={model}
                   programs={programs}
-                  sub="now"
-                  onGo={() => setShowDiagnostic(true)}
-                  onOpenSet={() => setShowDiagnostic(true)}
-                  onAccept={() => setShowDiagnostic(true)}
-                  onOpenDiagnostic={() => setShowDiagnostic(true)}
-                  onSkipDiagnostic={skipDiagnostic}
+                  sub={current}
+                  onGo={go}
+                  onOpenSet={openSetAt}
+                  onAccept={accept}
+                  onModel={setModel}
+                  onToast={setToast}
+                  focus={focus}
+                  diagnostic={{
+                    open: diagOpen,
+                    onStart: () => setShowDiagnostic(true),
+                    // The first test can only be finished or skipped; a retake can be left
+                    onClose: isDiagPending ? undefined : closeDiagnostic,
+                    onComplete: completeDiagnostic,
+                    onSkip: skipDiagnostic,
+                  }}
                 />
               ) : (
-                <>
-                  {tab === "overview" && (
-                    <Overview
-                      model={model}
-                      programs={programs}
-                      sub={current}
-                      onGo={go}
-                      onOpenSet={openSetAt}
-                      onAccept={accept}
-                      onOpenDiagnostic={() => setShowDiagnostic(true)}
-                      onSkipDiagnostic={skipDiagnostic}
-                    />
-                  )}
-                  {tab === "sets" && (
-                    <SetsView
-                      model={model}
-                      sub={current}
-                      exam={exam}
-                      onExam={setExam}
-                      onMakeCurrent={choose}
-                      onModel={setModel}
-                      openSet={openSet}
-                      onOpenSet={openSetAt}
-                      onToast={setToast}
-                      onOpenDiagnostic={() => setShowDiagnostic(true)}
-                    />
-                  )}
-                </>
+                <SetsView
+                  model={model}
+                  sub={current}
+                  exam={exam}
+                  onExam={setExam}
+                  onMakeCurrent={choose}
+                  focus={routeFocus}
+                  onOpenSet={openSetAt}
+                  onGoNow={() => go("overview", "now")}
+                  onOpenDiagnostic={() => {
+                    setShowDiagnostic(true);
+                    go("overview", "now");
+                  }}
+                />
               )}
             </div>
           </>
         )}
       </div>
-
-      {isDiagModalOpen && (
-        <DiagnosticMock
-          onComplete={completeDiagnostic}
-          onClose={() => {
-            setShowDiagnostic(false);
-            onCloseExternalDiagnostic?.();
-          }}
-          onSkip={skipDiagnostic}
-        />
-      )}
 
       {toast && (
         <div className={styles.toast} role="status">

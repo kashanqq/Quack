@@ -186,6 +186,45 @@
   color: var(--pace);
 }
 
+/* Each piece of advice with its two answers: take it, or not now */
+.advice li,
+.adviceCompact li {
+  display: grid;
+  gap: 6px;
+}
+
+.adviceCompact {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0 0;
+  padding-left: 16px;
+  color: var(--text-dim);
+}
+
+.adviceActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.adviceLater {
+  height: 28px;
+  padding: 0 10px;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 13px;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.adviceLater:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
 .examPaces {
   display: grid;
   gap: 8px;
@@ -419,6 +458,87 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+/* ---------- Ticking a milestone done: the feed, the pace card and the calendar ---------- */
+
+.markButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  background: rgba(124, 207, 107, 0.1);
+  border: 1px solid rgba(124, 207, 107, 0.45);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.markButton:hover {
+  background: rgba(124, 207, 107, 0.2);
+  border-color: var(--ok);
+}
+
+.markButton[aria-pressed="true"] {
+  color: var(--ok);
+}
+
+.markInline {
+  justify-self: start;
+  margin-top: 10px;
+}
+
+.markDone {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 6px 0 0;
+  color: var(--ok);
+  font-size: 13px;
+}
+
+.feedOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.feedOptions .markButton {
+  height: auto;
+  min-height: 28px;
+  white-space: normal;
+  text-align: left;
+}
+
+.feedActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.calEvents li[data-done="true"] strong {
+  color: var(--text-dim);
+  text-decoration: line-through;
+}
+
+/* Another sitting: in the calendar to be picked, not in the plan */
+.calDots span[data-alt="true"] {
+  opacity: 0.4;
+}
+
+.calEvents li[data-alt="true"] > span:not(.calKind) {
+  opacity: 0.7;
+}
+
+.calDots span[data-done="true"] {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--kind);
+}
+
 /* ---------- Calendar ---------- */
 
 .calNav {
@@ -598,7 +718,7 @@
 
 .calEvents li {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   gap: 10px;
   align-items: baseline;
 }
@@ -1091,6 +1211,7 @@
   }
 
   .calEvents li > .muted,
+  .calEvents li > .markButton,
   .googleLink {
     grid-column: 2;
   }

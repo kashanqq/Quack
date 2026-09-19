@@ -77,6 +77,42 @@ export const EXAMS: Record<ExamId, { name: string; test: Date; routeFrom: Date; 
   ent: { name: "ЕНТ · математика", test: day(1, 20, 2027), routeFrom: day(9, 1), routeTo: day(1, 25, 2027) },
 };
 
+/* ---------- Test dates: the student picks one and registers for it ---------- */
+
+/** Every exam has several sittings a year (demo calendar, product-logic §5.5); the rest of the app reads these. */
+export const TEST_DATES: Record<"sat" | "ielts" | "ent", Date[]> = {
+  sat: [day(11, 7), day(12, 5), day(3, 14, 2027)],
+  ielts: [day(11, 21), day(12, 12), day(1, 16, 2027)],
+  ent: [day(1, 20, 2027), day(6, 20, 2027)],
+};
+
+/** The exams a student picks a date for and ticks the registration of */
+export type DatedExam = "sat" | "ent";
+
+/** Registration closes four weeks before the test (demo rule until the real calendars arrive) */
+export const REGISTRATION_LEAD = 28;
+
+/** The chosen date of each exam, as `dateKey`; absent while the student has not picked one */
+export type TestDates = Partial<Record<DatedExam, string>>;
+
+export const dateKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/** Dates of an exam still ahead: the ones a student can pick */
+export const testCandidates = (exam: keyof typeof TEST_DATES) => TEST_DATES[exam].filter((d) => d > TODAY);
+
+/** The sitting the plan works to: the one the student picked, otherwise the nearest one ahead. */
+export function plannedTest(exam: keyof typeof TEST_DATES, chosen?: TestDates): Date | undefined {
+  const ahead = testCandidates(exam);
+  const key = exam === "ielts" ? undefined : chosen?.[exam];
+  return (key && ahead.find((d) => dateKey(d) === key)) || ahead[0];
+}
+
+export const registrationBy = (test: Date) => new Date(test.getTime() - REGISTRATION_LEAD * 86_400_000);
+
+/** A registration or a test is a milestone of one sitting: picking another date makes a new one. */
+export const examMilestoneId = (exam: DatedExam, kind: "reg" | "test", test: Date) => `${exam}-${kind}:${dateKey(test)}`;
+
 /* ---------- Skill map (§5.2) ---------- */
 
 /** State words from memory-architecture: closed/solid, shaky, prerequisite not held, low data. */
@@ -478,14 +514,23 @@ export type Milestone = {
   source: string | "демо";
   /** Only milestones can be ticked: they happen outside the product */
   checkable: boolean;
+  /** For a registration or a test: the sitting it belongs to */
+  test?: Date;
 };
 
 export type ExamRequirement = {
   id: "sat" | "ielts" | "ent";
   name: string;
+  /** The target the plan works to: the student's own, or the programs' bar */
   target: string;
+  /** The bar the saved programs set, whatever the student chose */
+  programTarget?: number;
+  /** The student set the target by hand */
+  custom?: boolean;
   targetNote: string;
+  /** The sitting the plan works to: picked by the student or the nearest */
   testDate?: Date;
+  /** Every sitting still ahead, the chosen one among them */
   testCandidates: Date[];
   programs: Program[];
   /** Exams with a knowledge model get readiness and a forecast; others only milestones */
@@ -505,8 +550,23 @@ export function savedPrograms(saved: string[], demo: boolean): Program[] {
 /** Readiness now and its forecast, per exam with a knowledge model. */
 export type ExamOutlook = Record<ExamId, { readiness: number; forecast: Date }>;
 
-/** Requirements are derived from saved programs: the highest threshold wins. */
-export function requirements(programs: Program[], outlook: ExamOutlook): ExamRequirement[] {
+/** Requirements are derived from saved programs: the highest threshold wins; the test date is the student's pick. */
+/** What a target can be set to, per exam: SAT Math in steps of ten, ЕНТ profile maths in points */
+export const TARGET_RANGE: Record<DatedExam, { min: number; max: number; step: number }> = {
+  sat: { min: 200, max: 800, step: 10 },
+  ent: { min: 1, max: 50, step: 1 },
+};
+
+/**
+ * Requirements are derived from saved programs: the highest threshold wins, unless the student set their own
+ * target (product-logic §4.1: «максимальный порог среди сохранённых, можно изменить»). The test date is theirs too.
+ */
+export function requirements(
+  programs: Program[],
+  outlook: ExamOutlook,
+  chosen?: TestDates,
+  targets?: Partial<Record<DatedExam, number>>
+): ExamRequirement[] {
   const result: ExamRequirement[] = [];
 
   const satPrograms = programs.filter((p) => p.satMin);
@@ -517,10 +577,12 @@ export function requirements(programs: Program[], outlook: ExamOutlook): ExamReq
     result.push({
       id: "sat",
       name: "SAT Math",
-      target: String(math),
+      target: String(targets?.sat ?? math),
+      programTarget: math,
+      custom: targets?.sat !== undefined,
       targetNote: `из 800 · порог ${top} в сумме у ${satPrograms.find((p) => p.satMin === top)!.university}`,
-      testDate: EXAMS.sat.test,
-      testCandidates: [EXAMS.sat.test, day(12, 5)],
+      testDate: plannedTest("sat", chosen),
+      testCandidates: testCandidates("sat"),
       programs: satPrograms,
       hasModel: true,
       ...outlook.sat,
@@ -532,10 +594,12 @@ export function requirements(programs: Program[], outlook: ExamOutlook): ExamReq
     result.push({
       id: "ent",
       name: "ЕНТ · математика",
-      target: "40",
+      target: String(targets?.ent ?? 40),
+      programTarget: 40,
+      custom: targets?.ent !== undefined,
       targetNote: "из 50 · профильная математика, цель на грант",
-      testDate: EXAMS.ent.test,
-      testCandidates: [EXAMS.ent.test, day(6, 20, 2027)],
+      testDate: plannedTest("ent", chosen),
+      testCandidates: testCandidates("ent"),
       programs: [],
       hasModel: true,
       ...outlook.ent,
@@ -545,20 +609,27 @@ export function requirements(programs: Program[], outlook: ExamOutlook): ExamReq
   return result;
 }
 
-export function milestones(programs: Program[]): Milestone[] {
+/** Registration and the test of the chosen sitting of each planned exam, and every application. */
+export function milestones(programs: Program[], chosen?: TestDates): Milestone[] {
   const list: Milestone[] = [];
-  if (programs.some((p) => p.satMin)) {
+  const sitting = (exam: DatedExam, label: string, body: string, testDetail: string) => {
+    const test = plannedTest(exam, chosen);
+    if (!test) return;
     list.push(
-      { id: "sat-reg", date: day(10, 10), title: "Регистрация на SAT", detail: "Тест 7 ноября · College Board", source: "демо", checkable: true },
-      { id: "sat-test", date: day(11, 7), title: "SAT — тест", detail: "Цель по Math выставлена по сохранённым", source: "демо", checkable: true }
+      {
+        id: examMilestoneId(exam, "reg", test),
+        date: registrationBy(test),
+        title: `Регистрация на ${label}`,
+        detail: `Тест ${formatDate(test)} · ${body}`,
+        source: "демо",
+        checkable: true,
+        test,
+      },
+      { id: examMilestoneId(exam, "test", test), date: test, title: `${label} — тест`, detail: testDetail, source: "демо", checkable: true, test }
     );
-  }
-  if (programs.length) {
-    list.push(
-      { id: "ent-reg", date: day(12, 20), title: "Регистрация на ЕНТ", detail: "Тест 20 января · НЦТ", source: "демо", checkable: true },
-      { id: "ent-test", date: day(1, 20, 2027), title: "ЕНТ — тест", detail: "Профильная математика", source: "демо", checkable: true }
-    );
-  }
+  };
+  if (programs.some((p) => p.satMin)) sitting("sat", "SAT", "College Board", "Цель по Math выставлена по сохранённым");
+  if (programs.length) sitting("ent", "ЕНТ", "НЦТ", "Профильная математика");
   for (const p of programs) {
     list.push({
       id: `apply-${p.id}`,

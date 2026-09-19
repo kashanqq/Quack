@@ -11,6 +11,14 @@ import type { Level } from "../choice/programs";
 /** 0 не успеваешь · 1 нужно ускориться · 2 успеваешь · 3 с запасом */
 export type PaceLevel = 0 | 1 | 2 | 3;
 
+/**
+ * What a piece of advice or a conflict option does when the student accepts it (product-logic §3.6: accepting
+ * changes the plan as if the student had changed it). Without an action it is only words to agree or dismiss.
+ */
+export type AdviceAction =
+  | { kind: "pick-date"; exam: "sat" | "ent"; key: string; label: string }
+  | { kind: "open-prep"; label: string };
+
 /** One exam: will the student be ready by the test, and what to do if not. */
 export type ExamPace = {
   id: string;
@@ -27,7 +35,14 @@ export type ExamPace = {
   testDate?: string;
   /** ISO date the knowledge model expects readiness; absent for exams without a model */
   forecast?: string;
+  /** A milestone whose tick changes the verdict (a registration not ticked yet), with the button's words */
+  mark?: { milestone: string; label: string };
+  /** What each piece of `advice` does when taken, by the same index; null — nothing to do but agree */
+  adviceActions?: (AdviceAction | null)[];
 };
+
+/** A way out of a date conflict: taken, it either changes the plan or is kept as the student's decision */
+export type ConflictOption = { label: string; action?: AdviceAction };
 
 export type ChanceFact = {
   key: "sat" | "sat-forecast" | "ielts" | "budget";
@@ -56,6 +71,10 @@ export type StandingAlert = {
   kind: "deadline" | "missed" | "conflict" | "late-set";
   title: string;
   detail?: string;
+  /** The milestone whose tick clears this alert */
+  milestone?: string;
+  /** A date conflict: its id and the ways out of it */
+  conflict?: { id: string; options: ConflictOption[] };
 };
 
 /** Everything derived from the sources of truth at one moment. */
@@ -65,7 +84,7 @@ export type Standing = {
   /** Preparation readiness, % */
   readiness: number;
   /** The worst exam decides; null while nothing is saved */
-  pace: { level: PaceLevel; verdict: string; summary: string; advice: string[]; exam: string } | null;
+  pace: { level: PaceLevel; verdict: string; summary: string; advice: string[]; exam: string; mark?: ExamPace["mark"]; adviceActions?: ExamPace["adviceActions"] } | null;
   exams: ExamPace[];
   programs: ProgramChance[];
   alerts: StandingAlert[];
@@ -87,6 +106,10 @@ export type Signal = {
   cause?: string;
   /** Program or exam id the signal is about */
   subject?: string;
+  /** The milestone whose tick settles it: the feed offers «Уже сделал» */
+  milestone?: string;
+  /** A date conflict: the feed offers its ways out as buttons */
+  conflict?: StandingAlert["conflict"];
   /** ISO time it was first noticed */
   at: string;
   /** Where to go to deal with it */

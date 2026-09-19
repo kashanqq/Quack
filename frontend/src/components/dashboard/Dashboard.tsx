@@ -10,9 +10,21 @@ import type { Profile } from "../choice/assistant";
 import { Icon } from "../choice/Icon";
 import { programById } from "../choice/programs";
 import { initialModel, readiness, reviveModel, type PrepTab } from "../prep/prepModel";
-import type { Signal } from "../quack/contract";
+import type { AdviceAction, Signal } from "../quack/contract";
 import { useQuack } from "../quack/source";
-import { forecastScore } from "../quack/standing";
+import { forecastScore, markableId } from "../quack/standing";
+import {
+  chosenTestDates,
+  dismissAdvice,
+  markMilestone,
+  pickTestDate,
+  resolveConflict,
+  useChosenTargets,
+  useChosenTestDates,
+  useDismissedAdvice,
+  useResolvedConflicts,
+  useDoneMilestones,
+} from "../prep/milestoneMarks";
 import { ActivityGrid } from "./ActivityGrid";
 import { CalendarTab } from "./CalendarTab";
 import { ChancesCard } from "./ChancesCard";
@@ -50,6 +62,17 @@ type Props = {
 export function Dashboard({ tab, onTab, saved, profile, chatDays, onUnsave, onOpenChoice, onOpenPrep }: Props) {
   const [watched, setWatched] = useState<string[]>([]);
   const { state: quack } = useQuack();
+  const doneMilestones = useDoneMilestones();
+  const testDates = useChosenTestDates();
+  const targets = useChosenTargets();
+  const dismissed = useDismissedAdvice();
+  const resolved = useResolvedConflicts();
+
+  /** Taking a piece of advice or a way out of a conflict: the plan changes as if the student did it by hand */
+  const act = (action: AdviceAction) => {
+    if (action.kind === "pick-date") pickTestDate(action.exam, action.key);
+    else onOpenPrep("overview");
+  };
 
   // Fresh signals turn into history a moment after Quack opens; for this visit they still read as new
   const [visitNew, setVisitNew] = useState<Set<string>>(() => new Set());
@@ -72,7 +95,9 @@ export function Dashboard({ tab, onTab, saved, profile, chatDays, onUnsave, onOp
 
   const programs = saved.map(programById).filter(Boolean);
   const exams = unionExams(programs);
-  const events = calendarEvents(programs, exams);
+  const events = calendarEvents(programs, exams, testDates);
+  // The calendar also lists the other sittings, so a date can be picked right there
+  const calendarDays = calendarEvents(programs, exams, testDates, true);
   const predicted = forecastScore(readiness(prep));
   const activity = useMemo(() => activityByDay(Object.values(prep.evidence).flat(), chatDays), [prep, chatDays]);
 
@@ -132,6 +157,8 @@ export function Dashboard({ tab, onTab, saved, profile, chatDays, onUnsave, onOp
                 onOpenPrep={() => onOpenPrep("overview")}
                 onOpenCalendar={() => onTab("calendar")}
                 onOpenPrograms={() => onTab("programs")}
+                onMark={(id) => markMilestone(id, true)}
+                decisions={{ dismissed, onAct: act, onDismiss: dismissAdvice }}
               />
             )}
             <ChangesFeed
@@ -139,6 +166,21 @@ export function Dashboard({ tab, onTab, saved, profile, chatDays, onUnsave, onOp
               history={quack.history}
               isNew={(s) => visitNew.has(keyOf(s))}
               onTarget={(target) => (target === "prep" ? onOpenPrep("overview") : target === "calendar" ? onTab("calendar") : onTab("programs"))}
+              done={doneMilestones}
+              onMark={(id, value) => markMilestone(id, value)}
+              onConflict={(id, option) => {
+                // A new date settles the conflict by itself; any other way out is kept as the student's decision
+                if (option.action?.kind === "pick-date") {
+                  const { exam } = option.action;
+                  const before = chosenTestDates()[exam] ?? null;
+                  act(option.action);
+                  return () => pickTestDate(exam, before);
+                }
+                resolveConflict(id, option.label);
+                return () => resolveConflict(id, null);
+              }}
+              resolved={resolved}
+              onUnresolve={(id) => resolveConflict(id, null)}
             />
             <ActivityGrid days={activity} />
           </div>
@@ -150,16 +192,21 @@ export function Dashboard({ tab, onTab, saved, profile, chatDays, onUnsave, onOp
               Требования всех сохранённых программ сведены в один список: какой экзамен сдавать, на какой балл и каким программам
               он нужен. Один экзамен часто закрывает сразу несколько программ.
             </FirstHint>
-            <ExamsTab exams={exams} programCount={programs.length} />
+            <ExamsTab exams={exams} programCount={programs.length} targets={targets} />
           </>
         )}
         {tab === "calendar" && (
           <>
-            <FirstHint id="dashboard-calendar" title="Что в «Календаре»">
-              Даты экзаменов и дедлайны подачи твоих программ на одной сетке. Нажми на день, чтобы увидеть события, и добавь нужные
-              в Google Календарь.
+            <FirstHint id="dashboard-calendar-v3" title="Что в «Календаре»">
+              Даты экзаменов и дедлайны подачи твоих программ на одной сетке. Бледные тесты — другие даты сдачи: «Сдаю в эту
+              дату» перестроит план под неё. Зарегистрировался или подал документы — нажми «Отметить», и прогноз с напоминаниями
+              пересчитаются.
             </FirstHint>
-            <CalendarTab events={events} />
+            <CalendarTab
+              events={calendarDays}
+              marks={{ idOf: markableId, done: doneMilestones, onToggle: (id) => markMilestone(id) }}
+              onPickDate={pickTestDate}
+            />
           </>
         )}
         {tab === "programs" && (

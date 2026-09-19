@@ -4,8 +4,20 @@
 
 import type { Profile } from "../choice/assistant";
 import type { IconName } from "../choice/Icon";
+import type { ConflictOption } from "../quack/contract";
 import { evaluate, formatEur, LEVEL_LABEL, programById, type Level, type Program } from "../choice/programs";
-import { day, daysBetween, formatDate, parseDeadline, TODAY } from "../prep/prepData";
+import {
+  dateKey,
+  daysBetween,
+  examMilestoneId,
+  formatDate,
+  parseDeadline,
+  plannedTest,
+  registrationBy,
+  TEST_DATES,
+  TODAY,
+  type TestDates,
+} from "../prep/prepData";
 
 export type DashTab = "overview" | "exams" | "calendar" | "programs";
 
@@ -30,9 +42,9 @@ type ExamSpec = {
 };
 
 export const EXAMS: Record<ExamId, ExamSpec> = {
-  sat: { id: "sat", name: "SAT Math", unit: "из 800", resultLag: 13, dates: [day(11, 7), day(12, 5), day(3, 14, 2027)] },
-  ielts: { id: "ielts", name: "IELTS Academic", unit: "из 9.0", resultLag: 13, dates: [day(11, 21), day(12, 12), day(1, 16, 2027)] },
-  ent: { id: "ent", name: "ЕНТ · математика", unit: "из 50", resultLag: 1, dates: [day(1, 20, 2027), day(6, 20, 2027)] },
+  sat: { id: "sat", name: "SAT Math", unit: "из 800", resultLag: 13, dates: TEST_DATES.sat },
+  ielts: { id: "ielts", name: "IELTS Academic", unit: "из 9.0", resultLag: 13, dates: TEST_DATES.ielts },
+  ent: { id: "ent", name: "ЕНТ · математика", unit: "из 50", resultLag: 1, dates: TEST_DATES.ent },
 };
 
 /* ---------- 1. Union engine ---------- */
@@ -100,11 +112,11 @@ export type Conflict = {
   id: string;
   kind: "late-result" | "rounds" | "deadline-pile";
   text: string;
-  options: string[];
+  options: ConflictOption[];
 };
 
 /** Real-world checks a student usually finds out about too late. */
-export function hardConflicts(programs: Program[], exams: UnionExam[]): Conflict[] {
+export function hardConflicts(programs: Program[], exams: UnionExam[], chosen?: TestDates): Conflict[] {
   const list: Conflict[] = [];
 
   // The test result has to reach the university before its deadline
@@ -117,7 +129,7 @@ export function hardConflicts(programs: Program[], exams: UnionExam[]): Conflict
       if (!needs) continue;
 
       const deadline = parseDeadline(program.deadline);
-      const planned = exam.dates.find((d) => d > TODAY);
+      const planned = plannedTest(exam.id, chosen);
       if (!planned) continue;
       const results = new Date(planned.getTime() + exam.resultLag * 86_400_000);
       if (results <= deadline) continue;
@@ -128,8 +140,16 @@ export function hardConflicts(programs: Program[], exams: UnionExam[]): Conflict
         kind: "late-result",
         text: `${exam.name} ${formatDate(planned)}: результат придёт к ${formatDate(results)}, а подача в ${program.university} закрывается ${formatDate(deadline)}`,
         options: earlier
-          ? [`Сдавать ${formatDate(earlier)}`, `Подать в ${program.university} следующей волной`]
-          : [`Убрать ${program.university} из ранней подачи`, "Искать более ранний слот теста"],
+          ? [
+              {
+                label: `Сдавать ${formatDate(earlier)}`,
+                // An earlier sitting of SAT or ЕНТ is picked right away: the plan moves to it
+                action:
+                  exam.id === "ielts" ? undefined : { kind: "pick-date", exam: exam.id, key: dateKey(earlier), label: `Сдавать ${formatDate(earlier)}` },
+              },
+              { label: `Подать в ${program.university} следующей волной` },
+            ]
+          : [{ label: `Убрать ${program.university} из ранней подачи` }, { label: "Искать более ранний слот теста" }],
       });
     }
   }
@@ -142,7 +162,11 @@ export function hardConflicts(programs: Program[], exams: UnionExam[]): Conflict
       id: "rounds",
       kind: "rounds",
       text: `${single.university} принимает по Single-Choice Early, а ${otherEarly.university} — по Early Decision. Одновременно подать нельзя`,
-      options: [`Ранняя подача только в ${single.university}`, `Ранняя подача только в ${otherEarly.university}`, "Обе — обычной волной"],
+      options: [
+        { label: `Ранняя подача только в ${single.university}` },
+        { label: `Ранняя подача только в ${otherEarly.university}` },
+        { label: "Обе — обычной волной" },
+      ],
     });
   }
 
@@ -155,7 +179,7 @@ export function hardConflicts(programs: Program[], exams: UnionExam[]): Conflict
         id: `pile-${byDate[i - 1].id}-${byDate[i].id}`,
         kind: "deadline-pile",
         text: `Подачи в ${byDate[i - 1].university} и ${byDate[i].university} почти в один день — ${byDate[i - 1].deadline} и ${byDate[i].deadline}`,
-        options: ["Собрать документы на неделю раньше", "Оставить как есть — я успею"],
+        options: [{ label: "Собрать документы на неделю раньше" }, { label: "Оставить как есть — я успею" }],
       });
     }
   }
@@ -165,23 +189,57 @@ export function hardConflicts(programs: Program[], exams: UnionExam[]): Conflict
 
 /* ---------- 3–4. What preparation gets, and what happens if a program leaves ---------- */
 
-export type Milestone = { date: Date; title: string; detail: string };
+export type Milestone = {
+  date: Date;
+  title: string;
+  detail: string;
+  /** The milestone a student ticks done for this date; IELTS has none — it is not planned */
+  milestone?: string;
+  /** Another sitting of a planned exam: not in the plan, the student may pick it instead */
+  alternative?: { exam: "sat" | "ent"; key: string };
+};
 
-/** Registration and application dates the section fills by itself. */
-export function calendar(programs: Program[], exams: UnionExam[]): Milestone[] {
+/**
+ * Registration and application dates the section fills by itself, for the sitting the student picked.
+ * With `alternatives` the other sittings of SAT and ЕНТ are listed too, so one can be picked in the calendar.
+ */
+export function calendar(programs: Program[], exams: UnionExam[], chosen?: TestDates, alternatives = false): Milestone[] {
   const list: Milestone[] = [];
-  for (const { exam } of exams) {
-    const planned = exam.dates.find((d) => d > TODAY);
+  // ЕНТ is the student's own plan whenever something is saved — as in «Подготовке» and the Quack pace —
+  // so its dates are here even when no saved program asks for it
+  const inPlan = [
+    ...exams.map((u) => u.exam),
+    ...(programs.length && !exams.some((u) => u.exam.id === "ent") ? [EXAMS.ent] : []),
+  ];
+  for (const exam of inPlan) {
+    const planned = plannedTest(exam.id, chosen);
     if (!planned) continue;
+    const dated = exam.id === "ielts" ? null : exam.id;
     list.push({
-      date: new Date(planned.getTime() - 28 * 86_400_000),
+      date: registrationBy(planned),
       title: `Регистрация на ${exam.name}`,
       detail: `за месяц до теста ${formatDate(planned)}`,
+      milestone: dated ? examMilestoneId(dated, "reg", planned) : undefined,
     });
-    list.push({ date: planned, title: exam.name, detail: "тест" });
+    list.push({
+      date: planned,
+      title: exam.name,
+      detail: dated ? "тест · твоя дата" : "тест",
+      milestone: dated ? examMilestoneId(dated, "test", planned) : undefined,
+    });
+    if (alternatives && dated) {
+      for (const other of exam.dates.filter((d) => d > TODAY && d.getTime() !== planned.getTime())) {
+        list.push({
+          date: other,
+          title: exam.name,
+          detail: `другая дата · сейчас выбрано ${formatDate(planned)}`,
+          alternative: { exam: dated, key: dateKey(other) },
+        });
+      }
+    }
   }
   for (const p of programs) {
-    list.push({ date: parseDeadline(p.deadline), title: `Подача · ${p.university}`, detail: p.program });
+    list.push({ date: parseDeadline(p.deadline), title: `Подача · ${p.university}`, detail: p.program, milestone: `apply-${p.id}` });
   }
   return list.sort((a, b) => a.date.getTime() - b.date.getTime());
 }
@@ -256,8 +314,8 @@ const kindOf = (title: string): CalendarKind =>
   title.startsWith("Регистрация") ? "registration" : title.startsWith("Подача") ? "application" : "test";
 
 /** The same dates, tagged so the calendar can colour them. */
-export function calendarEvents(programs: Program[], exams: UnionExam[]): CalendarEvent[] {
-  return calendar(programs, exams).map((m, i) => ({ ...m, id: `${i}-${m.title}`, kind: kindOf(m.title) }));
+export function calendarEvents(programs: Program[], exams: UnionExam[], chosen?: TestDates, alternatives = false): CalendarEvent[] {
+  return calendar(programs, exams, chosen, alternatives).map((m, i) => ({ ...m, id: `${i}-${m.title}`, kind: kindOf(m.title) }));
 }
 
 export const sameDay = (a: Date, b: Date) =>

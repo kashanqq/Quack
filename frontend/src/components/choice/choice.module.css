@@ -689,6 +689,66 @@
   outline: none;
 }
 
+/* The entrance test offered in the chat: take it now, or start from the profile */
+.msgOffer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.msgOfferMain,
+.msgOfferLater {
+  min-height: 32px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.msgOfferMain {
+  color: #1d1a18;
+  background: var(--accent);
+  border: 0;
+}
+
+.msgOfferLater {
+  color: var(--text-dim);
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.msgOfferLater:hover {
+  color: var(--text);
+}
+
+/* A milestone the reply ticked done, and the way to take it back */
+.msgMilestone {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  color: #7ccf6b;
+  font-size: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.msgMilestone[data-undone] {
+  color: var(--text-faint);
+}
+
+.msgMilestoneUndo {
+  padding: 0;
+  color: var(--accent-label);
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.msgMilestoneUndo:hover {
+  text-decoration: underline;
+}
+
 .msg.isEditing .msgBubble {
   padding-bottom: 34px;
   box-shadow: 0 0 0 2px rgba(255, 122, 0, 0.45);
