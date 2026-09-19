@@ -1,77 +1,72 @@
 // Sign-in against the backend (backend/app/api/auth.py). The session is the httpOnly cookie the server
 // sets, so every call goes with credentials and the client never holds a token.
 
-import { AuthError, type AuthApi, type User } from "./contract";
+import { api, API_URL, ApiError } from "../../api/client";
+import { AuthError, EMAIL_RE, PASSWORD_MIN, type AuthApi, type AuthErrorCode, type User } from "./contract";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+type AuthOut = { student_id: string; email: string; name: string };
 
-type StudentCtx = { student_id?: string; id?: string; email: string; name?: string };
+const toUser = (s: AuthOut): User => ({ id: s.student_id, email: s.email, name: s.name });
 
-const toUser = (s: StudentCtx): User => ({
-  id: s.student_id ?? s.id ?? "",
-  email: s.email,
-  name: s.name ?? s.email.split("@")[0],
-});
+const CODES: Record<string, AuthErrorCode> = {
+  unauthorized: "invalid",
+  conflict: "exists",
+  validation_failed: "email",
+  too_many_requests: "rate",
+};
 
-async function call(path: string, body?: unknown) {
-  try {
-    return await fetch(`${API}${path}`, {
-      method: body === undefined ? "GET" : "POST",
-      credentials: "include",
-      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-  } catch {
-    throw new AuthError("network");
-  }
-}
-
-function fail(status: number): never {
-  if (status === 401) throw new AuthError("invalid");
-  if (status === 409) throw new AuthError("exists");
-  if (status === 422) throw new AuthError("email");
-  if (status === 429) throw new AuthError("rate");
+/** Maps a backend error to what the login form knows how to show */
+function fail(e: unknown): never {
+  if (e instanceof AuthError) throw e;
+  if (e instanceof ApiError) throw new AuthError(CODES[e.code] ?? "network");
   throw new AuthError("network");
 }
 
 export const remoteAuth: AuthApi = {
   async me() {
-    const res = await call("/auth/me").catch(() => null);
-    return res?.ok ? toUser(await res.json()) : null;
+    try {
+      return toUser(await api.get<AuthOut>("/auth/me"));
+    } catch {
+      return null;
+    }
   },
 
   async login(email, password) {
-    const res = await call("/auth/login", { email: email.trim(), password });
-    if (!res.ok) fail(res.status);
-    return toUser(await res.json());
+    try {
+      return toUser(await api.post<AuthOut>("/auth/login", { email: email.trim(), password }));
+    } catch (e) {
+      fail(e);
+    }
   },
 
   async register(name, email, password) {
-    const res = await call("/auth/register", { name: name.trim(), email: email.trim(), password });
-    if (!res.ok) fail(res.status);
-    return toUser(await res.json());
+    if (!EMAIL_RE.test(email.trim())) throw new AuthError("email");
+    if (password.length < PASSWORD_MIN) throw new AuthError("weak");
+    try {
+      return toUser(await api.post<AuthOut>("/auth/register", { name: name.trim(), email: email.trim(), password }));
+    } catch (e) {
+      fail(e);
+    }
   },
 
   async loginWithGoogle(credential?: string) {
     if (credential) {
-      const res = await call("/auth/google", { credential });
-      if (!res.ok) fail(res.status);
-      return toUser(await res.json());
+      try {
+        return toUser(await api.post<AuthOut>("/auth/google", { credential }));
+      } catch (e) {
+        fail(e);
+      }
     }
-    // Check if backend provides a direct stub/test endpoint
-    const stubRes = await call("/auth/google/stub", {}).catch(() => null);
-    if (stubRes?.ok) {
-      return toUser(await stubRes.json());
-    }
-    // If backend implements OAuth redirect flow
+    // Not implemented on the backend yet (integration plan G3): fall back to the redirect flow,
+    // which reports "network" if the endpoint is missing.
     if (typeof window !== "undefined") {
-      window.location.assign(`${API}/auth/google/login?next=${encodeURIComponent("/choice")}`);
+      window.location.assign(`${API_URL}/auth/google/login?next=${encodeURIComponent("/choice")}`);
       return new Promise<User>(() => {});
     }
     throw new AuthError("network");
   },
 
   async logout() {
-    await call("/auth/logout", {}).catch(() => undefined);
+    await api.post("/auth/logout").catch(() => undefined);
   },
 };

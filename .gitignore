@@ -25,3 +25,7 @@ venv/
 # local TZ notes and CI logs, not the pytest suite
 backend/tests/*.md
 backend/tests/error.txt
+
+# graphify
+graphify-out/
+frontend/graphify-out/

@@ -14,10 +14,13 @@ export function CustomScrollbar({ target, className }: CustomScrollbarProps) {
   const railRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
 
+  /** Null while the scroller or the rail is not in the page: observers can fire after an unmount */
   const metrics = () => {
-    const scroller = target.current!;
+    const scroller = target.current;
+    const rail = railRef.current;
+    if (!scroller || !rail) return null;
     const { scrollHeight: sh, clientHeight: ch } = scroller;
-    const railH = railRef.current!.clientHeight;
+    const railH = rail.clientHeight;
     const thumbH = sh <= ch ? railH : Math.max(40, (railH * ch) / sh);
     return { scroller, sh, ch, railH, thumbH };
   };
@@ -27,11 +30,15 @@ export function CustomScrollbar({ target, className }: CustomScrollbarProps) {
     if (!scroller) return;
 
     const update = () => {
-      const { sh, ch, railH, thumbH } = metrics();
+      const m = metrics();
+      const thumb = thumbRef.current;
+      const bar = barRef.current;
+      if (!m || !thumb || !bar) return;
+      const { sh, ch, railH, thumbH } = m;
       const top = sh <= ch ? 0 : (scroller.scrollTop / (sh - ch)) * (railH - thumbH);
-      thumbRef.current!.style.height = `${thumbH}px`;
-      thumbRef.current!.style.transform = `translateY(${top}px)`;
-      barRef.current!.classList.toggle(styles.isIdle, sh <= ch);
+      thumb.style.height = `${thumbH}px`;
+      thumb.style.transform = `translateY(${top}px)`;
+      bar.classList.toggle(styles.isIdle, sh <= ch);
     };
 
     scroller.addEventListener("scroll", update, { passive: true });
@@ -53,7 +60,9 @@ export function CustomScrollbar({ target, className }: CustomScrollbarProps) {
   const onThumbDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     const thumb = e.currentTarget;
-    const { scroller, sh, ch, railH, thumbH } = metrics();
+    const m = metrics();
+    if (!m) return;
+    const { scroller, sh, ch, railH, thumbH } = m;
     const startY = e.clientY;
     const startTop = scroller.scrollTop;
     const ratio = (sh - ch) / Math.max(1, railH - thumbH);
@@ -71,7 +80,9 @@ export function CustomScrollbar({ target, className }: CustomScrollbarProps) {
 
   const onRailClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === thumbRef.current) return;
-    const { scroller, sh, ch, railH } = metrics();
+    const m = metrics();
+    if (!m) return;
+    const { scroller, sh, ch, railH } = m;
     const y = e.clientY - e.currentTarget.getBoundingClientRect().top;
     scroller.scrollTo({ top: (y / railH) * (sh - ch), behavior: "smooth" });
   };
