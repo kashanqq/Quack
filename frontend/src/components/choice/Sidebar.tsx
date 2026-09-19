@@ -97,7 +97,7 @@ export function Sidebar(props: SidebarProps) {
             })}
             <span className={styles.railDivider} />
             {PREP_SUBS[props.prepTab].map((s) => {
-              const subLocked = props.prepLocked && s.sub !== "now";
+              const subLocked = props.prepLocked && s.sub !== "now" && s.sub !== "requirements";
               return (
                 <button
                   key={s.sub}
@@ -274,7 +274,7 @@ export function Sidebar(props: SidebarProps) {
                     <ul className={styles.subList}>
                       {PREP_SUBS[t.tab].map((s, j) => {
                         const active = subFor(props.prepTab, props.prepSub) === s.sub;
-                        const subLocked = props.prepLocked && s.sub !== "now";
+                        const subLocked = props.prepLocked && s.sub !== "now" && s.sub !== "requirements";
                         return (
                           <li
                             key={s.sub}

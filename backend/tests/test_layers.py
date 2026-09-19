@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 APP_ROOT = Path(__file__).resolve().parents[1] / "app"
-PURE_PACKAGES = ("knowledge", "tasks", "sets", "matching", "roadmap")
+PURE_PACKAGES = ("knowledge", "tasks", "sets", "matching", "roadmap", "quack")
 PURE_FORBIDDEN = (
     "app.db",
     "app.graph",

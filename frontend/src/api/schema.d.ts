@@ -159,6 +159,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/programs/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Search
+         * @description 202 and a `search_id`: nothing is searched inside a request (§1.1).
+         *
+         *     The id *is* the ARQ job id, hashed from the normalized query, so the
+         *     same question from two students is one search and one budget spend.
+         */
+        post: operations["start_search_programs_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/programs/search/{search_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Status
+         * @description Whatever the job last wrote; an unknown id is still `queued`.
+         */
+        get: operations["search_status_programs_search__search_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/programs/{program_id}/flag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Flag Program
+         * @description «Неверно» hides an automatically extracted record from matching.
+         *
+         *     Идемпотентно; вручную выверенный «пол» так пометить нельзя — 409.
+         *     Полноценная перепроверка — фаза 5.
+         */
+        post: operations["flag_program_programs__program_id__flag_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/programs/{program_id}": {
         parameters: {
             query?: never;
@@ -370,6 +436,26 @@ export interface paths {
         head?: never;
         /** Edit Set */
         patch: operations["edit_set_sets__set_id__patch"];
+        trace?: never;
+    };
+    "/sets/{set_id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Set Summary
+         * @description The end-of-set report: statistics always, text when it is ready (§4.5).
+         */
+        get: operations["get_set_summary_sets__set_id__summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/sets/{set_id}/open": {
@@ -701,6 +787,188 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/texts/{set_id}/{skill_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Text */
+        get: operations["get_text_texts__set_id___skill_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/texts/{set_id}/{skill_id}/opened": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Opened
+         * @description `guideline.opened` / `explanation.opened` — activity and
+         *     `after_guideline` both read this event.
+         */
+        post: operations["mark_opened_texts__set_id___skill_id__opened_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/texts/{set_id}/{skill_id}/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Regenerate
+         * @description Force a regeneration — for a demo, and after a `failed` row.
+         */
+        post: operations["regenerate_texts__set_id___skill_id__regenerate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Quack */
+        get: operations["get_quack_quack_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quack/pace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Pace */
+        get: operations["get_pace_quack_pace_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quack/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Activity */
+        get: operations["get_activity_quack_activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quack/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get History */
+        get: operations["get_history_quack_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quack/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Seen
+         * @description Opening Quack is not activity (activity is tasks, mocks and chat —
+         *     product-logic §3.6), so no event is written. It does refresh the
+         *     aggregates, at most once an hour per student (§9.5).
+         */
+        post: operations["mark_seen_quack_seen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quack/{recommendation_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept */
+        post: operations["accept_quack__recommendation_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quack/{recommendation_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline */
+        post: operations["decline_quack__recommendation_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -713,8 +981,57 @@ export interface components {
             sat_score?: components["schemas"]["ProfileField_int_"];
             sat_target?: components["schemas"]["ProfileField_int_"];
             sat_date?: components["schemas"]["ProfileField_date_"];
+            ent_target?: components["schemas"]["ProfileField_int_"];
+            ent_date?: components["schemas"]["ProfileField_date_"];
             ielts_score?: components["schemas"]["ProfileField_float_"];
             ielts_target?: components["schemas"]["ProfileField_float_"];
+        };
+        /** ActivityDay */
+        ActivityDay: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Active */
+            active: boolean;
+            /**
+             * Tasks Answered
+             * @default 0
+             */
+            tasks_answered: number;
+            /**
+             * Mocks Completed
+             * @default 0
+             */
+            mocks_completed: number;
+            /**
+             * Chat Messages
+             * @default 0
+             */
+            chat_messages: number;
+            /**
+             * Active Minutes
+             * @default 0
+             */
+            active_minutes: number;
+        };
+        /** ActivityOut */
+        ActivityOut: {
+            /** Days */
+            days?: components["schemas"]["ActivityDay"][];
+            /** Window Days */
+            window_days: number;
+            /** Active Days */
+            active_days: number;
+            /** Hours Per Week Actual */
+            hours_per_week_actual?: number | null;
+            /** Hours Per Week Declared */
+            hours_per_week_declared?: number | null;
+            /** Computed At */
+            computed_at?: string | null;
+            /** Tz */
+            tz: string;
         };
         /** AnswerIn */
         AnswerIn: {
@@ -752,6 +1069,12 @@ export interface components {
             state_words: string;
             /** Knowledge Version */
             knowledge_version: number;
+            /**
+             * Projection Status
+             * @default applied
+             * @enum {string}
+             */
+            projection_status: "applied" | "pending";
         };
         /** AssistantMarkup */
         AssistantMarkup: {
@@ -765,20 +1088,24 @@ export interface components {
             referenced_skill_ids?: string[];
         };
         /**
-         * AuthOut
-         * @description Identity plus the display name. The name rides in the token so that
-         *     /auth/me stays free of database access.
+         * AvailabilityOut
+         * @description How honest a read model is right now (phase 5, D03).
+         *
+         *     Additive and optional everywhere it appears: a client that ignores it
+         *     keeps working, and a client that reads it can stop presenting a static
+         *     ordering or an unrefreshed cache as a live answer. `as_of_event_id` is
+         *     only ever a version we actually know — never a guess at "the latest".
          */
-        AuthOut: {
+        AvailabilityOut: {
             /**
-             * Student Id
-             * Format: uuid
+             * Mode
+             * @enum {string}
              */
-            student_id: string;
-            /** Email */
-            email: string;
-            /** Name */
-            name: string;
+            mode: "live" | "cached" | "static" | "unavailable";
+            /** Reason */
+            reason?: ("graph_unavailable" | "projection_pending" | "search_unavailable") | null;
+            /** As Of Event Id */
+            as_of_event_id?: number | null;
         };
         /** ChatMessageIn */
         ChatMessageIn: {
@@ -799,6 +1126,12 @@ export interface components {
             collapsed_same: string[];
             /** Conclusion */
             conclusion: string | null;
+            /**
+             * Conclusion Status
+             * @default generating
+             * @enum {string}
+             */
+            conclusion_status: "ready" | "generating" | "stale" | "failed";
         };
         /** CompareRow */
         CompareRow: {
@@ -1002,6 +1335,30 @@ export interface components {
             /** Message Id */
             message_id: string | null;
         };
+        /** ExamPaceOut */
+        ExamPaceOut: {
+            /**
+             * Exam Id
+             * @enum {string}
+             */
+            exam_id: "SAT_MATH" | "ENT_MATH";
+            forecast?: components["schemas"]["ForecastOut"] | null;
+            /** On Track */
+            on_track?: boolean | null;
+            /** Test Date */
+            test_date?: string | null;
+            /** Hours Declared */
+            hours_declared?: number | null;
+            /** Hours Actual */
+            hours_actual?: number | null;
+            /** Variants */
+            variants?: components["schemas"]["PaceVariantOut"][];
+            /**
+             * Words
+             * @default
+             */
+            words: string;
+        };
         /** ExamProgress */
         ExamProgress: {
             /**
@@ -1043,6 +1400,31 @@ export interface components {
             current_estimate: number | null;
             /** Estimate Note */
             estimate_note: string;
+        };
+        /**
+         * ExtractionMeta
+         * @description What the extraction knew about itself — shown next to every number.
+         */
+        ExtractionMeta: {
+            /** Prompt Version */
+            prompt_version: string;
+            /** Model */
+            model: string;
+            /** Page Chars */
+            page_chars: number;
+            /** Dropped Fields */
+            dropped_fields?: string[];
+            /** Notes */
+            notes?: string[];
+            /** Search Query */
+            search_query?: string | null;
+            /** Requested By */
+            requested_by?: string | null;
+            /**
+             * Extracted At
+             * Format: date-time
+             */
+            extracted_at: string;
         };
         /** FactorOut */
         FactorOut: {
@@ -1090,6 +1472,38 @@ export interface components {
             /** Note */
             note: string;
         };
+        /**
+         * GeneratedTextOut
+         * @description What `GET /texts/{set_id}/{skill_id}` returns (§14.2).
+         */
+        GeneratedTextOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "guideline" | "explanation" | "realism" | "compare";
+            /** Subject */
+            subject: string;
+            /** Set Id */
+            set_id?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "generating" | "stale" | "failed";
+            /** Text */
+            text?: string | null;
+            /** Mark */
+            mark?: ("generated" | "saved_version") | null;
+            /** Prompt Version */
+            prompt_version?: string | null;
+            /** Generated At */
+            generated_at?: string | null;
+            /** Input Hash */
+            input_hash: string;
+            /** Reason */
+            reason?: string | null;
+        };
         /** Grade */
         Grade: {
             /** Correct */
@@ -1136,6 +1550,7 @@ export interface components {
             misconceptions: components["schemas"]["MisconceptionStateOut"][];
             /** Roots */
             roots: components["schemas"]["RootCauseOut"][];
+            availability?: components["schemas"]["AvailabilityOut"] | null;
         };
         /** KnowledgeVersionOut */
         KnowledgeVersionOut: {
@@ -1175,6 +1590,15 @@ export interface components {
             fits_text: string | null;
             /** Soft Pending */
             soft_pending: boolean;
+            soft?: components["schemas"]["SoftMatchOut"] | null;
+            /** Realism Text */
+            realism_text?: string | null;
+            /**
+             * Realism Text Status
+             * @default generating
+             * @enum {string}
+             */
+            realism_text_status: "ready" | "generating" | "stale" | "failed";
         };
         /** MatchingOut */
         MatchingOut: {
@@ -1188,6 +1612,7 @@ export interface components {
             forecast_used: boolean;
             /** Empty Reason */
             empty_reason: string | null;
+            availability?: components["schemas"]["AvailabilityOut"] | null;
         };
         /** MessageOut */
         MessageOut: {
@@ -1242,6 +1667,13 @@ export interface components {
             done: boolean;
             /** Done At */
             done_at?: string | null;
+        };
+        /** MisconceptionBrief */
+        MisconceptionBrief: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
         };
         /** MisconceptionChange */
         MisconceptionChange: {
@@ -1373,6 +1805,21 @@ export interface components {
             /** Misconception Id */
             misconception_id: string | null;
         };
+        /** NextSetBrief */
+        NextSetBrief: {
+            /**
+             * Set Id
+             * Format: uuid
+             */
+            set_id: string;
+            /**
+             * Deadline
+             * Format: date
+             */
+            deadline: string;
+            /** Topic Names */
+            topic_names: string[];
+        };
         /** ObservationView */
         ObservationView: {
             /** Event Id */
@@ -1461,10 +1908,50 @@ export interface components {
             explanation_depth?: components["schemas"]["ProfileField_Literal__short____normal____deep___"];
             hint_level?: components["schemas"]["ProfileField_Literal__minimal____normal____generous___"];
         };
+        /** PaceOut */
+        PaceOut: {
+            /** Exams */
+            exams?: components["schemas"]["ExamPaceOut"][];
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+        };
+        /** PaceVariantOut */
+        PaceVariantOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "more_hours" | "move_date" | "remove_program" | "lower_target";
+            /** Text */
+            text: string;
+            /** Params */
+            params?: {
+                [key: string]: unknown;
+            };
+            forecast: components["schemas"]["ForecastOut"];
+            /** Available */
+            available: boolean;
+            /** Unavailable Reason */
+            unavailable_reason?: string | null;
+            /** Affected Program Ids */
+            affected_program_ids?: string[];
+            /** Recommendation Id */
+            recommendation_id?: string | null;
+        };
         /** Page[Program] */
         Page_Program_: {
             /** Items */
             items: components["schemas"]["Program"][];
+            /** Total */
+            total: number;
+        };
+        /** Page[RecommendationOut] */
+        Page_RecommendationOut_: {
+            /** Items */
+            items: components["schemas"]["RecommendationOut"][];
             /** Total */
             total: number;
         };
@@ -1690,6 +2177,36 @@ export interface components {
             extracted_auto: boolean;
             /** Flagged */
             flagged: boolean;
+            extraction?: components["schemas"]["ExtractionMeta"] | null;
+        };
+        /** ProgramFlagIn */
+        ProgramFlagIn: {
+            /** Reason */
+            reason: string;
+        };
+        /** QuackOut */
+        QuackOut: {
+            pace: components["schemas"]["PaceOut"];
+            /** Items */
+            items?: components["schemas"]["RecommendationOut"][];
+            activity: components["schemas"]["ActivityOut"];
+            /**
+             * New Batch
+             * @default false
+             */
+            new_batch: boolean;
+            /** Batch At */
+            batch_at?: string | null;
+            /**
+             * N New
+             * @default 0
+             */
+            n_new: number;
+        };
+        /** QuackSeenIn */
+        QuackSeenIn: {
+            /** Recommendation Ids */
+            recommendation_ids?: string[] | null;
         };
         /** Questionnaire */
         Questionnaire: {
@@ -1700,6 +2217,95 @@ export interface components {
             constraints?: components["schemas"]["Constraints"];
             priorities?: components["schemas"]["Priorities"];
             pace?: components["schemas"]["Pace"];
+        };
+        /** RecDecisionIn */
+        RecDecisionIn: {
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
+         * RecommendationAction
+         * @description What accepting the recommendation does — §14.7 spells out per-kind
+         *     requirements, and the validator below enforces them.
+         */
+        RecommendationAction: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "profile_update" | "requirement_update" | "program_remove" | "set_open" | "set_edit" | "milestone_open" | "acknowledge";
+            /** Profile Path */
+            profile_path?: string | null;
+            /** Profile Value */
+            profile_value?: unknown | null;
+            /** Exam Id */
+            exam_id?: ("SAT_MATH" | "ENT_MATH") | null;
+            /** Target Score */
+            target_score?: number | null;
+            /** Test Date */
+            test_date?: string | null;
+            /** Program Id */
+            program_id?: string | null;
+            /** Set Id */
+            set_id?: string | null;
+            /** Skill Ids */
+            skill_ids?: string[] | null;
+            /** Deadline */
+            deadline?: string | null;
+            /** Milestone Key */
+            milestone_key?: string | null;
+        };
+        /** RecommendationOut */
+        RecommendationOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "pace_variant" | "milestone_due" | "conflict" | "next_set" | "set_change" | "program_new_fit" | "saved_realism_shift" | "diagnostic_suggested" | "activity_pause";
+            /**
+             * Urgency
+             * @enum {string}
+             */
+            urgency: "urgent" | "high" | "normal" | "low";
+            /** Position */
+            position: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "shown" | "accepted" | "declined" | "expired";
+            /** Title */
+            title: string;
+            /** Reason */
+            reason: string;
+            /** Action Text */
+            action_text: string;
+            action: components["schemas"]["RecommendationAction"];
+            forecast_after?: components["schemas"]["ForecastOut"] | null;
+            /** Exam Id */
+            exam_id?: ("SAT_MATH" | "ENT_MATH") | null;
+            /** Program Id */
+            program_id?: string | null;
+            /** Milestone Key */
+            milestone_key?: string | null;
+            /** Reason Hash */
+            reason_hash: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Shown At */
+            shown_at?: string | null;
+            /** Decided At */
+            decided_at?: string | null;
+            /** Expires At */
+            expires_at?: string | null;
         };
         /**
          * RefreshIn
@@ -1806,6 +2412,41 @@ export interface components {
             saved_at: string;
             program: components["schemas"]["Program"];
         };
+        /** SearchIn */
+        SearchIn: {
+            /** Query */
+            query: string;
+        };
+        /** SearchStartedOut */
+        SearchStartedOut: {
+            /** Search Id */
+            search_id: string;
+            /**
+             * Status
+             * @default queued
+             * @constant
+             */
+            status: "queued";
+        };
+        /** SearchStatusOut */
+        SearchStatusOut: {
+            /** Search Id */
+            search_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "done" | "unavailable";
+            /** Found */
+            found?: string[];
+            /**
+             * Rejected
+             * @default 0
+             */
+            rejected: number;
+            /** Error */
+            error?: string | null;
+        };
         /** SetEditIn */
         SetEditIn: {
             /** Skill Ids */
@@ -1865,24 +2506,120 @@ export interface components {
             /** Tasks Correct */
             tasks_correct: number;
         };
-        /** SetSummaryOut */
+        /**
+         * SetStats
+         * @description Facts the summary prompt is allowed to speak about — nothing else.
+         */
+        SetStats: {
+            /**
+             * Set Id
+             * Format: uuid
+             */
+            set_id: string;
+            /**
+             * Exam Id
+             * @enum {string}
+             */
+            exam_id: "SAT_MATH" | "ENT_MATH";
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "regular" | "review" | "consolidation";
+            /** Opened At */
+            opened_at?: string | null;
+            /** Completed At */
+            completed_at?: string | null;
+            /**
+             * Deadline
+             * Format: date
+             */
+            deadline: string;
+            /**
+             * Days In Set
+             * @default 0
+             */
+            days_in_set: number;
+            /**
+             * Days Vs Deadline
+             * @default 0
+             */
+            days_vs_deadline: number;
+            /**
+             * Tasks Answered
+             * @default 0
+             */
+            tasks_answered: number;
+            /**
+             * Tasks Correct
+             * @default 0
+             */
+            tasks_correct: number;
+            /**
+             * Mocks Completed
+             * @default 0
+             */
+            mocks_completed: number;
+            /**
+             * Skills Total
+             * @default 0
+             */
+            skills_total: number;
+            /**
+             * Skills Closed
+             * @default 0
+             */
+            skills_closed: number;
+            /** Skills */
+            skills?: components["schemas"]["SkillDelta"][];
+            /** Top Growth */
+            top_growth?: string[];
+            /** Misconceptions Resolved */
+            misconceptions_resolved?: components["schemas"]["MisconceptionBrief"][];
+            /** Misconceptions Still Watching */
+            misconceptions_still_watching?: components["schemas"]["MisconceptionBrief"][];
+            /** Misconceptions New Confirmed */
+            misconceptions_new_confirmed?: components["schemas"]["MisconceptionBrief"][];
+            forecast_before?: components["schemas"]["ForecastOut"] | null;
+            forecast_after?: components["schemas"]["ForecastOut"] | null;
+            /** On Track After */
+            on_track_after?: boolean | null;
+            /** Ready By Shift Days */
+            ready_by_shift_days?: number | null;
+            next_set?: components["schemas"]["NextSetBrief"] | null;
+            /** Previous Summary Id */
+            previous_summary_id?: string | null;
+        };
+        /**
+         * SetSummaryOut
+         * @description Phase 4 (§14.3): `stats` is typed and the row carries its status.
+         */
         SetSummaryOut: {
             /**
              * Set Id
              * Format: uuid
              */
             set_id: string;
+            /** Exam Id */
+            exam_id?: ("SAT_MATH" | "ENT_MATH") | null;
+            /**
+             * Status
+             * @default ready
+             * @enum {string}
+             */
+            status: "generating" | "ready" | "failed";
             /** Text */
             text: string | null;
-            /** Stats */
-            stats: {
-                [key: string]: unknown;
-            };
+            stats: components["schemas"]["SetStats"];
+            /** Prompt Version */
+            prompt_version?: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+            /** Updated At */
+            updated_at?: string | null;
         };
         /** SetSwitchIn */
         SetSwitchIn: {
@@ -1905,6 +2642,30 @@ export interface components {
             upcoming: components["schemas"]["SetOut"][];
             /** Done */
             done: components["schemas"]["SetOut"][];
+            availability?: components["schemas"]["AvailabilityOut"] | null;
+        };
+        /** SkillDelta */
+        SkillDelta: {
+            /** Skill Id */
+            skill_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Level Before
+             * @enum {string}
+             */
+            level_before: "low_data" | "weak" | "shaky" | "solid" | "closed";
+            /**
+             * Level After
+             * @enum {string}
+             */
+            level_after: "low_data" | "weak" | "shaky" | "solid" | "closed";
+            /** P Before */
+            p_before: number;
+            /** P After */
+            p_after: number;
+            /** Delta P */
+            delta_p: number;
         };
         /** SkillStateView */
         SkillStateView: {
@@ -1943,6 +2704,41 @@ export interface components {
             is_root: boolean;
             /** N Evidence */
             n_evidence: number;
+        };
+        /**
+         * SoftMatchOut
+         * @description One `soft_matches` row, as the job writes it and the route reads it.
+         */
+        SoftMatchOut: {
+            /** Program Id */
+            program_id: string;
+            /** Score */
+            score: number;
+            /** Fit Text */
+            fit_text?: string | null;
+            /** Caveat */
+            caveat?: string | null;
+            /**
+             * Matched Traits
+             * @default []
+             */
+            matched_traits: string[];
+            /**
+             * Confidence
+             * @default medium
+             * @enum {string}
+             */
+            confidence: "low" | "medium" | "high";
+            /**
+             * Prompt Version
+             * @default
+             */
+            prompt_version: string;
+            /**
+             * Stale
+             * @default false
+             */
+            stale: boolean;
         };
         /** Source */
         Source: {
@@ -2064,6 +2860,14 @@ export interface components {
             checked_at: string;
             /** Is Demo */
             is_demo: boolean;
+        };
+        /** TextOpenedIn */
+        TextOpenedIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "guideline" | "explanation";
         };
         /** TopicOut */
         TopicOut: {
@@ -2405,6 +3209,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_Program_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_search_programs_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchStartedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_status_programs_search__search_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                search_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    flag_program_programs__program_id__flag_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramFlagIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Program"];
                 };
             };
             /** @description Validation Error */
@@ -2860,6 +3763,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_set_summary_sets__set_id__summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                set_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetSummaryOut"];
                 };
             };
             /** @description Validation Error */
@@ -3462,6 +4396,313 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MockResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_text_texts__set_id___skill_id__get: {
+        parameters: {
+            query?: {
+                kind?: string;
+            };
+            header?: never;
+            path: {
+                set_id: string;
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneratedTextOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_opened_texts__set_id___skill_id__opened_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                set_id: string;
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TextOpenedIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_texts__set_id___skill_id__regenerate_post: {
+        parameters: {
+            query?: {
+                kind?: string;
+            };
+            header?: never;
+            path: {
+                set_id: string;
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_quack_quack_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuackOut"];
+                };
+            };
+        };
+    };
+    get_pace_quack_pace_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaceOut"];
+                };
+            };
+        };
+    };
+    get_activity_quack_activity_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_history_quack_history_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_RecommendationOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_seen_quack_seen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuackSeenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_quack__recommendation_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recommendation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommendationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_quack__recommendation_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recommendation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecDecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommendationOut"];
                 };
             };
             /** @description Validation Error */

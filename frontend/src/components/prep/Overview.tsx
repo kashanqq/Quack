@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { Icon } from "../choice/Icon";
 import type { Program } from "../choice/programs";
@@ -26,12 +24,14 @@ import {
   setById,
   skillById,
   SKILLS,
+  STATE_LABEL,
   TODAY,
   EXAM_IDS,
   EXAMS,
   dateKey,
   examMilestoneId,
   plannedTest,
+  TARGET_RANGE,
   type DatedExam,
   type ExamId,
   type ExamOutlook,
@@ -39,7 +39,7 @@ import {
   type Milestone,
   type StudySet,
 } from "./prepData";
-import { chooseTestDate, disputeMisconception, proposedSet, readiness, type PrepModel, type PrepSub, type PrepTab } from "./prepModel";
+import { chooseTestDate, disputeMisconception, proposedSet, readiness, setReport, type PrepModel, type PrepSub, type PrepTab, type SetReport } from "./prepModel";
 import { disputeRemoteMisconception } from "./remoteKnowledge";
 import { getCachedRemoteSets } from "./remoteSets";
 import { StateGlyph } from "./SkillGraph";
@@ -124,7 +124,7 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onMo
     ? remoteData.requirements
     : REMOTE_PREP
     ? []
-    : requirements(programs, outlook, model.testDates);
+    : requirements(programs, outlook, model.testDates, model.targets);
   const list = remoteData
     ? remoteData.milestones
     : REMOTE_PREP
@@ -163,6 +163,13 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onMo
         onPick={(exam, key) => {
           onModel(chooseTestDate(model, exam, key));
           onToast(`Тест ${EXAMS[exam].name} — ${formatDate(new Date(`${key}T00:00`))}. Вехи и прогноз пересчитаны`);
+        }}
+        onTarget={(exam, value) => {
+          const targets = { ...model.targets };
+          if (value === null) delete targets[exam];
+          else targets[exam] = value;
+          onModel({ ...model, targets });
+          onToast(value === null ? `Цель ${EXAMS[exam].name} — снова по программам` : `Цель ${EXAMS[exam].name} — ${value}`);
         }}
       >
         <MilestonesSection
@@ -280,9 +287,17 @@ function Now({
               ))}
             </ul>
           )}
-          <button type="button" className={styles.link} onClick={() => onGo("sets", "route")}>
-            Сменить сет →
-          </button>
+          <span className={styles.nowStripLinks}>
+            {/* Skipped at the start: the test is still there, never in the way */}
+            {model.diagnosticSkipped && (
+              <button type="button" className={styles.link} onClick={diagnostic.onStart}>
+                Пройти замер
+              </button>
+            )}
+            <button type="button" className={styles.link} onClick={() => onGo("sets", "route")}>
+              Сменить сет →
+            </button>
+          </span>
         </div>
         <SetDetail
           key={`${current.id}-${focus?.n ?? 0}`}
@@ -299,16 +314,20 @@ function Now({
   const proposed = isDiagPending ? null : proposedSet(model);
   const topicId = proposed?.skills.find((id) => model.states[id] !== "solid") ?? proposed?.skills[0];
   const topic = topicId ? skillById(topicId) : null;
+  const report = isDiagPending ? null : setReport(model);
 
   return (
     <div className={styles.nowScreen}>
       <section className={styles.nowCenter} aria-label="Сейчас">
+        {report && <SetReportCard report={report} pace={paces.find((p) => p.id === report.set.exam)} onChoose={() => onGo("sets", "route")} />}
         <PixelDuck tempo="steady" className={styles.nowDuck} waving />
         {isDiagPending ? (
           <>
-            <h2 className={styles.nowSet}>Входной замер готовности</h2>
+            <p className={styles.eyebrow}>Необязательно</p>
+            <h2 className={styles.nowSet}>Входной замер · 8 вопросов</h2>
             <p className={styles.nowTopic}>
-              <Icon name="sparkles" size={14} />8 вопросов · по ответам соберётся твой первый сет
+              <Icon name="sparkles" size={14} />
+              Найдём, с какого уровня строить сеты. Можно и позже — тогда первый сет соберём по твоему профилю
             </p>
           </>
         ) : proposed && topic ? (
@@ -343,20 +362,20 @@ function Now({
             <button
               type="button"
               className={styles.nowButton}
-              aria-label="Начать замер"
-              title="Начать замер"
+              aria-label="Пройти замер"
+              title="Пройти замер"
               onClick={diagnostic.onStart}
             >
               <Icon name="play" size={26} />
             </button>
-            <span className={styles.nowActionHint}>Нажми, чтобы начать — это пара минут</span>
+            <span className={styles.nowActionHint}>Пройти замер — это пара минут</span>
             <button
               type="button"
               className={styles.nowSkipBtn}
               onClick={diagnostic.onSkip}
-              title="Использовать начальные базовые оценки без прохождения теста"
+              title="Первый сет соберётся по профилю, замер останется доступен"
             >
-              Пропустить тест (взять базовые оценки)
+              Позже — начать с сета по профилю
             </button>
           </div>
         ) : (
@@ -368,6 +387,48 @@ function Now({
         )}
       </section>
     </div>
+  );
+}
+
+/**
+ * §4.1 — the report on a passed set: short and encouraging, what was closed, what grew, which traps are
+ * fixed and whether the tests are still in reach. The words come from the model's data only; the backend
+ * will write them. Below it the next set is offered as before — take it or pick another in «Маршрут».
+ */
+function SetReportCard({ report, pace, onChoose }: { report: SetReport; pace?: Pace; onChoose: () => void }) {
+  const names = (ids: string[]) => ids.map((id) => skillById(id).name).join(", ");
+  return (
+    <section className={styles.setReport} aria-label={`Итог сета ${report.set.number}`}>
+      <p className={styles.eyebrow}>
+        <Icon name="circle-check" size={14} /> Сет {report.set.number} пройден · {report.set.title}
+      </p>
+      <ul className={styles.setReportList}>
+        {report.closed.length > 0 && (
+          <li>
+            <b>Закрыто:</b> {names(report.closed)}
+          </li>
+        )}
+        {report.stronger.length > 0 && (
+          <li>
+            <b>Стало увереннее:</b>{" "}
+            {report.stronger.map((s) => `${skillById(s.id).name} (${STATE_LABEL[s.from]} → ${STATE_LABEL[s.to]})`).join(", ")}
+          </li>
+        )}
+        {report.fixed.length > 0 && (
+          <li>
+            <b>Исправлено:</b> {report.fixed.map((f) => f.text.charAt(0).toLowerCase() + f.text.slice(1)).join("; ")}
+          </li>
+        )}
+        {pace && (
+          <li data-pace={pace.level}>
+            <b>К тесту:</b> {pace.verdict.toLowerCase()} — {pace.summary.charAt(0).toLowerCase() + pace.summary.slice(1)}
+          </li>
+        )}
+      </ul>
+      <button type="button" className={styles.link} onClick={onChoose}>
+        Выбрать другой сет →
+      </button>
+    </section>
   );
 }
 
@@ -584,6 +645,81 @@ function MilestonesSection({
 
 /* ---------- Требования: the exams the saved programs ask for ---------- */
 
+/**
+ * The target is the programs' highest bar until the student sets their own (§4.1). A target under the bar is
+ * allowed — the student decides — but it says which program it leaves out of reach.
+ */
+function TargetEditor({
+  exam,
+  requirement,
+  onTarget,
+}: {
+  exam: DatedExam;
+  requirement: ReturnType<typeof requirements>[number];
+  onTarget: (exam: DatedExam, value: number | null) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const range = TARGET_RANGE[exam];
+  const bar = requirement.programTarget;
+  const current = Number(requirement.target);
+
+  const save = () => {
+    if (draft === null) return;
+    const n = Math.round(Number(draft.replace(",", ".")) / range.step) * range.step;
+    setDraft(null);
+    if (!Number.isFinite(n) || draft.trim() === "") return;
+    const value = Math.min(range.max, Math.max(range.min, n));
+    if (value !== current) onTarget(exam, value === bar ? null : value);
+  };
+
+  const below = bar !== undefined && current < bar;
+  const owner = requirement.programs.find((p) => p.satMin && Math.round(p.satMin / 2 / 10) * 10 === bar);
+
+  return (
+    <div className={styles.examTarget}>
+      {draft !== null ? (
+        <input
+          autoFocus
+          className={styles.targetInput}
+          inputMode="numeric"
+          aria-label={`Цель ${requirement.name}`}
+          value={draft}
+          onFocus={(e) => e.target.select()}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") setDraft(null);
+          }}
+        />
+      ) : (
+        <button type="button" className={styles.targetValue} title="Изменить цель" onClick={() => setDraft(String(current))}>
+          <span className={styles.examTargetValue}>{requirement.target}</span>
+          <Icon name="pencil" size={14} />
+        </button>
+      )}
+      <span className={styles.examTargetNote}>
+        {requirement.custom ? (
+          <>
+            твоя цель · по программам {bar} ·{" "}
+            <button type="button" className={styles.inlineLink} onClick={() => onTarget(exam, null)}>
+              вернуть {bar}
+            </button>
+            {below && (
+              <span className={styles.warn}>
+                {" "}
+                · ниже планки{owner ? ` ${owner.university}` : " программ"} — она может стать недостижимой
+              </span>
+            )}
+          </>
+        ) : (
+          <>цель · {requirement.targetNote}</>
+        )}
+      </span>
+    </div>
+  );
+}
+
 /** What each exam asks for and whether the student makes it, in words: no readiness charts or percentages */
 function Requirements({
   exams,
@@ -591,6 +727,7 @@ function Requirements({
   milestoneList,
   done,
   onPick,
+  onTarget,
   children,
 }: {
   exams: ExamRequirement[];
@@ -599,6 +736,8 @@ function Requirements({
   done: string[];
   /** The student picks the sitting: its `dateKey` */
   onPick: (exam: DatedExam, key: string) => void;
+  /** The student sets the target; null goes back to the programs' bar */
+  onTarget: (exam: DatedExam, value: number | null) => void;
   children: React.ReactNode;
 }) {
   return (
@@ -634,10 +773,14 @@ function Requirements({
               <h3>{exam.name}</h3>
               {isDemo && <span className={styles.demoTag}>демо</span>}
             </header>
-            <div className={styles.examTarget}>
-              <span className={styles.examTargetValue}>{exam.target}</span>
-              <span className={styles.examTargetNote}>цель · {exam.targetNote}</span>
-            </div>
+            {dated ? (
+              <TargetEditor exam={dated} requirement={exam} onTarget={onTarget} />
+            ) : (
+              <div className={styles.examTarget}>
+                <span className={styles.examTargetValue}>{exam.target}</span>
+                <span className={styles.examTargetNote}>цель · {exam.targetNote}</span>
+              </div>
+            )}
             <dl className={styles.facts}>
               <div>
                 <dt>Тест</dt>

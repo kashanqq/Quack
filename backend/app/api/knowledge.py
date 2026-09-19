@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from redis.exceptions import RedisError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import fallbacks
 from app.api.chat import chat_id_for
 from app.api.deps import (
     get_arq,
@@ -17,12 +18,12 @@ from app.api.deps import (
     get_session,
 )
 from app.apply import knowledge as apply_knowledge
-from app.events import dispatch, handlers, store, version  # noqa: F401
+from app.events import dispatch, handlers, recovery, store, version  # noqa: F401
 from app.events.dispatch import RuleDeps
 from app.graph.queries import personal
 from app.schemas.auth import StudentCtx
 from app.schemas.chat import ChatKind
-from app.schemas.common import ExamId
+from app.schemas.common import AvailabilityOut, ExamId
 from app.schemas.events import (
     EventIn,
     EventType,
@@ -44,6 +45,9 @@ class KnowledgeOut(BaseModel):
     skills: list[SkillStateView]
     misconceptions: list[MisconceptionStateOut]
     roots: list[RootCauseOut]
+    # Phase 5 (D03): "the graph is down" and "this student knows nothing" are
+    # both an empty list; only this field tells them apart.
+    availability: AvailabilityOut | None = None
 
 
 class EvidenceListOut(BaseModel):
@@ -105,10 +109,14 @@ async def get_knowledge(
         else []
     )
     await _version(response, deps, student)
+    pending = await recovery.is_pending(session, student.student_id)
     return KnowledgeOut(
         skills=skills,
         misconceptions=misconceptions,
         roots=roots,
+        availability=fallbacks.availability(
+            graph_ok=deps.graph is not None, projection_pending=pending
+        ),
     )
 
 

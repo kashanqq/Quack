@@ -366,6 +366,36 @@
   margin-bottom: 14px;
 }
 
+/* The target is pressed to change: the number itself is the button */
+.targetValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  color: var(--text-faint);
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.targetValue:hover {
+  color: var(--accent-label);
+}
+
+.targetInput {
+  width: 3.4em;
+  padding: 0 6px;
+  color: var(--accent-label);
+  font-family: var(--font-mono);
+  font-size: 40px;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  outline: none;
+}
+
 .examTargetValue {
   font-family: var(--font-mono);
   font-size: 44px;
@@ -2937,6 +2967,49 @@
 
 .nowCenter > .eyebrow {
   margin: 4px 0 0;
+}
+
+/* The report on a passed set, above the next one offered */
+.setReport {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 14px 18px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid var(--solid);
+  border-radius: 4px 14px 14px 4px;
+}
+
+.setReport > .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--solid);
+}
+
+.setReportList {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  list-style: none;
+}
+
+.setReportList b {
+  font-weight: 500;
+}
+
+.nowStripLinks {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
 }
 
 .nowDuck {

@@ -99,12 +99,12 @@ export function ProgramsTab({ effects, watch, profile, predicted, watched, onWat
                 </div>
                 {watched.includes(w.program.id) ? (
                   <span className={styles.kept}>
-                    <Icon name="star" size={14} /> следим за стипендиями
+                    <Icon name="star" size={14} /> оставлена, следим за оценкой
                   </span>
                 ) : (
                   <div className={styles.actions}>
                     <button type="button" className={styles.secondary} onClick={() => onWatch(w.program.id)}>
-                      Оставить для стипендий
+                      Оставить
                     </button>
                     <button type="button" className={styles.danger} onClick={() => onUnsave(w.program.id)}>
                       Убрать

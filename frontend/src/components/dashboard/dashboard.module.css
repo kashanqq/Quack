@@ -186,6 +186,45 @@
   color: var(--pace);
 }
 
+/* Each piece of advice with its two answers: take it, or not now */
+.advice li,
+.adviceCompact li {
+  display: grid;
+  gap: 6px;
+}
+
+.adviceCompact {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0 0;
+  padding-left: 16px;
+  color: var(--text-dim);
+}
+
+.adviceActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.adviceLater {
+  height: 28px;
+  padding: 0 10px;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 13px;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.adviceLater:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
 .examPaces {
   display: grid;
   gap: 8px;
@@ -459,6 +498,20 @@
   margin: 6px 0 0;
   color: var(--ok);
   font-size: 13px;
+}
+
+.feedOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.feedOptions .markButton {
+  height: auto;
+  min-height: 28px;
+  white-space: normal;
+  text-align: left;
 }
 
 .feedActions {

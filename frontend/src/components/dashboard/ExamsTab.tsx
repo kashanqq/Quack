@@ -4,7 +4,16 @@ import { examLabel, type UnionExam } from "./dashboardRules";
 import styles from "./dashboard.module.css";
 
 /** «Что сдавать»: requirements of every saved program merged into one list. */
-export function ExamsTab({ exams, programCount }: { exams: UnionExam[]; programCount: number }) {
+export function ExamsTab({
+  exams,
+  programCount,
+  targets,
+}: {
+  exams: UnionExam[];
+  programCount: number;
+  /** Targets the student set by hand in «Требованиях»: shown next to the programs' bar */
+  targets: Partial<Record<"sat" | "ent", number>>;
+}) {
   return (
     <section className={styles.card} aria-label="Что тебе сдавать">
       <header className={styles.cardHead}>
@@ -17,6 +26,9 @@ export function ExamsTab({ exams, programCount }: { exams: UnionExam[]; programC
           <article key={union.exam.id} className={styles.exam}>
             <div className={styles.examTop}>
               <strong>{examLabel(union)}</strong>
+              {union.exam.id !== "ielts" && targets[union.exam.id] !== undefined && (
+                <span className={styles.muted}>твоя цель — {targets[union.exam.id]}</span>
+              )}
               <span className={styles.muted}>
                 один экзамен на {union.demands.length} программ{union.demands.length === 1 ? "у" : "ы"}
               </span>

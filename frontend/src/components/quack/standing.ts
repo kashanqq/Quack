@@ -13,6 +13,7 @@ import {
   type UnionExam,
 } from "../dashboard/dashboardRules";
 import {
+  dateKey,
   daysBetween,
   examMilestoneId,
   forecastSeries,
@@ -27,7 +28,7 @@ import {
   type StudySet,
 } from "../prep/prepData";
 import { proposedSet, readiness, type PrepModel } from "../prep/prepModel";
-import type { ChanceFact, ExamPace, PaceLevel, ProgramChance, Standing, StandingAlert } from "./contract";
+import type { AdviceAction, ChanceFact, ExamPace, PaceLevel, ProgramChance, Standing, StandingAlert } from "./contract";
 
 export type QuackInputs = { profile: Profile; saved: string[]; prep: PrepModel };
 
@@ -105,6 +106,7 @@ function modelPace(u: UnionExam, { today, prep, forecast, delay }: Ctx): ExamPac
           : "Других дат в этом году нет — нужен слот на следующий год",
         `Если ты уже зарегистрировался на ${formatDate(planned)} — нажми кнопку ниже или напиши об этом в чате, и прогноз вернётся`,
       ],
+      adviceActions: [following ? moveTo(exam, following) : null, null],
       mark: { milestone: registered, label: `Уже зарегистрировался на ${formatDate(planned)}` },
     };
   }
@@ -112,17 +114,23 @@ function modelPace(u: UnionExam, { today, prep, forecast, delay }: Ctx): ExamPac
   const margin = daysBetween(forecast, planned);
   const level: PaceLevel = margin < 0 ? 0 : margin < 7 ? 1 : margin < 21 ? 2 : 3;
   const advice: string[] = [];
+  const adviceActions: (AdviceAction | null)[] = [];
+  const say = (text: string, action: AdviceAction | null = null) => {
+    advice.push(text);
+    adviceActions.push(action);
+  };
+  const toPrep: AdviceAction = { kind: "open-prep", label: "Открыть сет" };
   if (level <= 1) {
     if (margin < 0) {
-      advice.push(`Нужно нагнать ${-margin} дн., чтобы прогноз встал на ${formatDate(planned)}`);
+      say(`Нужно нагнать ${-margin} дн., чтобы прогноз встал на ${formatDate(planned)}`);
     }
     const gain = closingGain(prep, today, u.exam.id as ExamId);
     if (gain && gain.days > 0) {
       const when = gain.set.deadline >= today ? `до ${formatDate(gain.set.deadline)}` : "как можно скорее";
-      advice.push(`Закрой сет ${gain.set.number} «${gain.set.title}» ${when} — прогноз станет раньше на ≈${gain.days} дн.`);
+      say(`Закрой сет ${gain.set.number} «${gain.set.title}» ${when} — прогноз станет раньше на ≈${gain.days} дн.`, toPrep);
     }
-    if (margin < 0 && following) advice.push(`Или перенеси тест на ${formatDate(following)} — запас будет ${daysBetween(forecast, following)} дн.`);
-    if (delay) advice.push(`Сет ${delay.set.number} должен был закрыться ${formatDate(delay.set.deadline)} — прогноз сдвинулся на ${delay.days} дн.`);
+    if (margin < 0 && following) say(`Или перенеси тест на ${formatDate(following)} — запас будет ${daysBetween(forecast, following)} дн.`, moveTo(exam, following));
+    if (delay) say(`Сет ${delay.set.number} должен был закрыться ${formatDate(delay.set.deadline)} — прогноз сдвинулся на ${delay.days} дн.`, toPrep);
   }
 
   const summary =
@@ -131,8 +139,16 @@ function modelPace(u: UnionExam, { today, prep, forecast, delay }: Ctx): ExamPac
       : margin < 7
         ? `Готовность к ${formatDate(forecast)}, тест ${formatDate(planned)} — запас всего ${margin} дн.`
         : `Готовность к ${formatDate(forecast)}, тест ${formatDate(planned)} — запас ${margin} дн.`;
-  return { ...dated, level, verdict: PACE_VERDICT[level], summary, advice };
+  return { ...dated, level, verdict: PACE_VERDICT[level], summary, advice, adviceActions };
 }
+
+/** Taking the advice to sit another date picks it, as the calendar and «Требования» do */
+const moveTo = (exam: DatedExam, test: Date): AdviceAction => ({
+  kind: "pick-date",
+  exam,
+  key: dateKey(test),
+  label: `Перенести на ${formatDate(test)}`,
+});
 
 /* ---------- Programs: chances as words, plus the facts behind them ---------- */
 
@@ -203,13 +219,17 @@ export function chanceOf(program: Program, profile: Profile, predictedMath: numb
 export const markableId = (event: CalendarEvent): string | undefined => event.milestone;
 
 function alertsFor(events: CalendarEvent[], conflicts: Conflict[], programs: Program[], { today, prep, delay }: Ctx): StandingAlert[] {
-  const list: StandingAlert[] = conflicts.map((c) => ({
-    id: `conflict-${c.id}`,
-    level: "urgent",
-    kind: "conflict",
-    title: "Конфликт в датах",
-    detail: c.text,
-  }));
+  // A conflict the student settled by choosing a way out is theirs to keep: it is not raised again
+  const list: StandingAlert[] = conflicts
+    .filter((c) => !prep.resolvedConflicts[c.id])
+    .map((c) => ({
+      id: `conflict-${c.id}`,
+      level: "urgent",
+      kind: "conflict",
+      title: "Конфликт в датах",
+      detail: c.text,
+      conflict: { id: c.id, options: c.options },
+    }));
 
   for (const e of events) {
     const done = markableId(e);
@@ -291,7 +311,7 @@ export function computeStanding({ profile, saved, prep }: QuackInputs, today = T
     asOf: iso(today),
     readiness: now,
     pace: worst
-      ? { level: worst.level, verdict: worst.verdict, summary: `${worst.name}: ${lowerFirst(worst.summary)}`, advice: worst.advice, exam: worst.id, mark: worst.mark }
+      ? { level: worst.level, verdict: worst.verdict, summary: `${worst.name}: ${lowerFirst(worst.summary)}`, advice: worst.advice, exam: worst.id, mark: worst.mark, adviceActions: worst.adviceActions }
       : null,
     exams: paces,
     programs: programs.map((p) => chanceOf(p, profile, forecastScore(now))),

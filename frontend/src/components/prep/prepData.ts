@@ -608,7 +608,12 @@ export type Milestone = {
 export type ExamRequirement = {
   id: "sat" | "ielts" | "ent";
   name: string;
+  /** The target the plan works to: the student's own, or the programs' bar */
   target: string;
+  /** The bar the saved programs set, whatever the student chose */
+  programTarget?: number;
+  /** The student set the target by hand */
+  custom?: boolean;
   targetNote: string;
   /** The sitting the plan works to: picked by the student or the nearest */
   testDate?: Date;
@@ -633,7 +638,22 @@ export function savedPrograms(saved: string[], demo: boolean): Program[] {
 export type ExamOutlook = Record<ExamId, { readiness: number; forecast: Date }>;
 
 /** Requirements are derived from saved programs: the highest threshold wins; the test date is the student's pick. */
-export function requirements(programs: Program[], outlook: ExamOutlook, chosen?: TestDates): ExamRequirement[] {
+/** What a target can be set to, per exam: SAT Math in steps of ten, ЕНТ profile maths in points */
+export const TARGET_RANGE: Record<DatedExam, { min: number; max: number; step: number }> = {
+  sat: { min: 200, max: 800, step: 10 },
+  ent: { min: 1, max: 50, step: 1 },
+};
+
+/**
+ * Requirements are derived from saved programs: the highest threshold wins, unless the student set their own
+ * target (product-logic §4.1: «максимальный порог среди сохранённых, можно изменить»). The test date is theirs too.
+ */
+export function requirements(
+  programs: Program[],
+  outlook: ExamOutlook,
+  chosen?: TestDates,
+  targets?: Partial<Record<DatedExam, number>>
+): ExamRequirement[] {
   const result: ExamRequirement[] = [];
 
   const satPrograms = programs.filter((p) => p.satMin);
@@ -644,7 +664,9 @@ export function requirements(programs: Program[], outlook: ExamOutlook, chosen?:
     result.push({
       id: "sat",
       name: "SAT Math",
-      target: String(math),
+      target: String(targets?.sat ?? math),
+      programTarget: math,
+      custom: targets?.sat !== undefined,
       targetNote: `из 800 · порог ${top} в сумме у ${satPrograms.find((p) => p.satMin === top)!.university}`,
       testDate: plannedTest("sat", chosen),
       testCandidates: testCandidates("sat"),
@@ -660,7 +682,9 @@ export function requirements(programs: Program[], outlook: ExamOutlook, chosen?:
     result.push({
       id: "ent",
       name: "ЕНТ · математика",
-      target: "40",
+      target: String(targets?.ent ?? 40),
+      programTarget: 40,
+      custom: targets?.ent !== undefined,
       targetNote: "из 50 · профильная математика, цель на грант",
       testDate: plannedTest("ent", chosen),
       testCandidates: testCandidates("ent"),

@@ -55,3 +55,16 @@ FOR (e:Evidence) ON (e.ctx_instance_id);
 
 CREATE INDEX evidence_ctx_message IF NOT EXISTS
 FOR (e:Evidence) ON (e.ctx_message_id);
+
+// --- Phase 5 (D02): the per-handler "this event is projected" witness ---
+// The key is one concatenated property rather than a composite constraint:
+// composite uniqueness is not available on every Neo4j 5 Community build,
+// and `apply_schema` must not fail on the deployment target (tech-stack §3).
+// The MERGE on it is the serialization point for two workers recovering the
+// same event.
+
+CREATE CONSTRAINT applied_event_unique IF NOT EXISTS
+FOR (a:AppliedEvent) REQUIRE a.key IS UNIQUE;
+
+CREATE INDEX applied_event_student IF NOT EXISTS
+FOR (a:AppliedEvent) ON (a.student_id, a.handler);

@@ -21,6 +21,8 @@ STUDENT = "Student"
 KNOWLEDGE_STATE = "KnowledgeState"
 EVIDENCE = "Evidence"
 MISCONCEPTION_STATE = "MisconceptionState"
+# Phase 5 (D02): technical marker, not knowledge — see graph/queries/applied.py.
+APPLIED_EVENT = "AppliedEvent"
 
 # --- Node labels: admission knowledge base (§2.3) ---
 

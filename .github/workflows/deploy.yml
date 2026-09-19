@@ -15,6 +15,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # The release smoke runs from the repository (scripts/check_release.py),
+      # so the workflow needs the tree even though the deploy itself is remote.
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       - name: Check deployment configuration
         id: config
         env:
@@ -23,6 +28,11 @@ jobs:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
           DOMAIN: ${{ secrets.DOMAIN }}
+          # Phase 5 (§22): once production is mandatory, set the repository
+          # variable REQUIRE_DEPLOY=true. A skipped deployment then fails the
+          # workflow instead of passing quietly — "CI is green, deployment was
+          # skipped" is not a deployment.
+          REQUIRE_DEPLOY: ${{ vars.REQUIRE_DEPLOY }}
         run: |
           set -euo pipefail
           required=(VPS_HOST VPS_USER VPS_SSH_KEY VPS_KNOWN_HOSTS DOMAIN)
@@ -33,6 +43,10 @@ jobs:
             fi
           done
           if (( ${#missing[@]} == ${#required[@]} )); then
+            if [[ "${REQUIRE_DEPLOY:-}" == "true" ]]; then
+              echo '::error::REQUIRE_DEPLOY is set but no VPS secrets are configured'
+              exit 1
+            fi
             echo 'configured=false' >> "$GITHUB_OUTPUT"
             echo '::notice::Deployment skipped: VPS secrets are not configured yet'
             echo 'Deployment skipped. Configure VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_KNOWN_HOSTS and DOMAIN in repository secrets to enable deployment.' >> "$GITHUB_STEP_SUMMARY"
@@ -88,19 +102,11 @@ jobs:
           "${compose[@]}" exec -T api alembic upgrade head
           REMOTE
 
-      - name: Verify HTTPS health
+      - name: Verify HTTPS health and the released SHA
         if: steps.config.outputs.configured == 'true'
         env:
           DOMAIN: ${{ secrets.DOMAIN }}
         run: |
           set -euo pipefail
           test -n "$DOMAIN"
-          for attempt in $(seq 1 12); do
-            if curl --fail --silent --show-error --max-time 10 "https://${DOMAIN}/health" |
-              python3 -c 'import json,sys; data=json.load(sys.stdin); sys.exit(0 if data.get("status") == "ok" else 1)'; then
-              exit 0
-            fi
-            sleep 5
-          done
-          echo 'HTTPS health did not become ok' >&2
-          exit 1
+          python3 scripts/check_release.py "https://${DOMAIN}/health" "$GITHUB_SHA"

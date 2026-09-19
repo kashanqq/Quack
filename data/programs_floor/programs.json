@@ -1079,5 +1079,311 @@
     "is_demo": true,
     "extracted_auto": false,
     "flagged": false
+  },
+  {
+    "id": "valencia",
+    "university": "Universitat de València",
+    "country": "ES",
+    "city": "Valencia",
+    "direction": "Computer Engineering",
+    "language": "Spanish / English",
+    "duration_months": 48,
+    "tuition_per_year": 1500,
+    "living_per_year": null,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "language",
+        "exam_id": null,
+        "threshold": 6,
+        "comparator": ">=",
+        "description": "IELTS 6.0 or higher",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-06-30",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/valencia",
+        "checked_at": "2026-09-19",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "Warm climate, mid-size city, moderate research; Erasmus+ with 60+ partners. Demo data synced from the frontend; verify before use.",
+    "source_url": "https://example.invalid/quack-demo/valencia",
+    "checked_at": "2026-09-19",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "sapienza",
+    "university": "Sapienza University of Rome",
+    "country": "IT",
+    "city": "Rome",
+    "direction": "Applied Computer Science and AI",
+    "language": "English",
+    "duration_months": 36,
+    "tuition_per_year": 2900,
+    "living_per_year": null,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "language",
+        "exam_id": null,
+        "threshold": 6,
+        "comparator": ">=",
+        "description": "IELTS 6.0 or higher",
+        "source": null
+      },
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 650,
+        "comparator": ">=",
+        "description": "SAT total 1300+ (demo: Math section threshold 650)",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-04-30",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/sapienza",
+        "checked_at": "2026-09-19",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "Warm climate, megacity, strong research; Erasmus+ with 100+ partners. Demo data synced from the frontend; verify before use.",
+    "source_url": "https://example.invalid/quack-demo/sapienza",
+    "checked_at": "2026-09-19",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "bologna",
+    "university": "University of Bologna",
+    "country": "IT",
+    "city": "Bologna",
+    "direction": "Computer Science and Engineering",
+    "language": "English",
+    "duration_months": 36,
+    "tuition_per_year": 2800,
+    "living_per_year": null,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "language",
+        "exam_id": null,
+        "threshold": 6.5,
+        "comparator": ">=",
+        "description": "IELTS 6.5 or higher",
+        "source": null
+      },
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 625,
+        "comparator": ">=",
+        "description": "SAT total 1250+ (demo: Math section threshold 625)",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2026-12-16",
+        "round": "early-decision",
+        "source": "https://example.invalid/quack-demo/bologna",
+        "checked_at": "2026-09-19",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "Warm climate, not a megacity, strong research; Erasmus+ with 90+ partners. Demo data synced from the frontend; verify before use.",
+    "source_url": "https://example.invalid/quack-demo/bologna",
+    "checked_at": "2026-09-19",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "porto",
+    "university": "University of Porto",
+    "country": "PT",
+    "city": "Porto",
+    "direction": "Informatics and Computing Engineering",
+    "language": "Portuguese / English",
+    "duration_months": 36,
+    "tuition_per_year": 3400,
+    "living_per_year": null,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "language",
+        "exam_id": null,
+        "threshold": 6,
+        "comparator": ">=",
+        "description": "IELTS 6.0 or higher",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-05-20",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/porto",
+        "checked_at": "2026-09-19",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "Warm climate, mid-size city, strong research; Erasmus+ with 50+ partners. Demo data synced from the frontend; verify before use.",
+    "source_url": "https://example.invalid/quack-demo/porto",
+    "checked_at": "2026-09-19",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "lisbon",
+    "university": "Instituto Superior Técnico",
+    "country": "PT",
+    "city": "Lisbon",
+    "direction": "Computer Science and Engineering",
+    "language": "Portuguese",
+    "duration_months": 36,
+    "tuition_per_year": 7000,
+    "living_per_year": null,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "language",
+        "exam_id": null,
+        "threshold": 6.5,
+        "comparator": ">=",
+        "description": "IELTS 6.5 or higher",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2027-03-15",
+        "round": null,
+        "source": "https://example.invalid/quack-demo/lisbon",
+        "checked_at": "2026-09-19",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "Warm climate, megacity, strong research; taught in Portuguese; Erasmus+ with 70+ partners. Demo data synced from the frontend; verify before use.",
+    "source_url": "https://example.invalid/quack-demo/lisbon",
+    "checked_at": "2026-09-19",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
+  },
+  {
+    "id": "eth",
+    "university": "ETH Zürich",
+    "country": "CH",
+    "city": "Zurich",
+    "direction": "Computer Science",
+    "language": "German",
+    "duration_months": 36,
+    "tuition_per_year": 1500,
+    "living_per_year": null,
+    "currency": "EUR",
+    "requirements": [
+      {
+        "type": "language",
+        "exam_id": null,
+        "threshold": 7,
+        "comparator": ">=",
+        "description": "IELTS 7.0 or higher",
+        "source": null
+      },
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 725,
+        "comparator": ">=",
+        "description": "SAT total 1450+ (demo: Math section threshold 725)",
+        "source": null
+      },
+      {
+        "type": "document",
+        "exam_id": null,
+        "threshold": null,
+        "comparator": "present",
+        "description": "Application documents",
+        "source": null
+      }
+    ],
+    "deadlines": [
+      {
+        "kind": "application",
+        "date": "2026-12-15",
+        "round": "single-choice-early",
+        "source": "https://example.invalid/quack-demo/eth",
+        "checked_at": "2026-09-19",
+        "is_demo": true
+      }
+    ],
+    "scholarships_note": null,
+    "environment_text": "Cool climate, not a megacity, strong research; exchanges with Singapore and the US; taught in German. Demo data synced from the frontend; verify before use.",
+    "source_url": "https://example.invalid/quack-demo/eth",
+    "checked_at": "2026-09-19",
+    "is_demo": true,
+    "extracted_auto": false,
+    "flagged": false
   }
 ]
