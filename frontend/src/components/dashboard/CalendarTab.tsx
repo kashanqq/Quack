@@ -36,7 +36,16 @@ type Marks = {
  * Deadlines as a month calendar: registrations, tests and applications. It is also the list of milestones:
  * each one is ticked done here, and unticked if it was a mistake (product-logic §4.1).
  */
-export function CalendarTab({ events, marks }: { events: CalendarEvent[]; marks: Marks }) {
+export function CalendarTab({
+  events,
+  marks,
+  onPickDate,
+}: {
+  events: CalendarEvent[];
+  marks: Marks;
+  /** Another sitting of SAT or ЕНТ becomes the one the plan works to */
+  onPickDate: (exam: "sat" | "ent", key: string) => void;
+}) {
   // Open on this month, or on the month of the next event when this one is empty
   const [cursor, setCursor] = useState(() => {
     const thisMonth = events.some((e) => e.date.getFullYear() === TODAY.getFullYear() && e.date.getMonth() === TODAY.getMonth());
@@ -70,7 +79,7 @@ export function CalendarTab({ events, marks }: { events: CalendarEvent[]; marks:
             type="button"
             className={styles.addToCalendar}
             title="Скачает файл .ics со всеми датами — открывается в Google Календаре, Apple и Outlook"
-            onClick={() => downloadIcs(events)}
+            onClick={() => downloadIcs(events.filter((e) => !e.alternative))}
           >
             <Icon name="calendar-plus" size={16} /> В свой календарь
           </button>
@@ -114,7 +123,15 @@ export function CalendarTab({ events, marks }: { events: CalendarEvent[]; marks:
                   {list.slice(0, 3).map((e) => {
                     const id = marks.idOf(e);
                     const done = Boolean(id && marks.done.includes(id));
-                    return <span key={e.id} data-kind={e.kind} data-done={done} title={done ? `${e.title} · сделано` : e.title} />;
+                    return (
+                      <span
+                        key={e.id}
+                        data-kind={e.kind}
+                        data-done={done}
+                        data-alt={Boolean(e.alternative)}
+                        title={done ? `${e.title} · сделано` : e.alternative ? `${e.title} · другая дата` : e.title}
+                      />
+                    );
                   })}
                 </span>
               )}
@@ -141,7 +158,7 @@ export function CalendarTab({ events, marks }: { events: CalendarEvent[]; marks:
               const id = marks.idOf(e);
               const done = Boolean(id && marks.done.includes(id));
               return (
-                <li key={e.id} data-done={done}>
+                <li key={e.id} data-done={done} data-alt={Boolean(e.alternative)}>
                   <span className={styles.calKind} data-kind={e.kind}>
                     {KIND_LABEL[e.kind]}
                   </span>
@@ -153,7 +170,17 @@ export function CalendarTab({ events, marks }: { events: CalendarEvent[]; marks:
                     {formatDate(e.date)}
                     {done ? " · сделано" : left >= 0 ? ` · через ${left} дн.` : " · прошло"}
                   </span>
-                  {id ? (
+                  {e.alternative ? (
+                    <button
+                      type="button"
+                      className={styles.markButton}
+                      title="Подготовка, вехи и прогноз пересчитаются под эту дату"
+                      onClick={() => onPickDate(e.alternative!.exam, e.alternative!.key)}
+                    >
+                      <Icon name="calendar-days" size={14} />
+                      Сдаю в эту дату
+                    </button>
+                  ) : id ? (
                     <button
                       type="button"
                       className={styles.markButton}

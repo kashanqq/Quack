@@ -30,7 +30,8 @@ import { ChatMessage, type ChatMsg } from "./ChatMessage";
 import { CompareView } from "./CompareView";
 import { CustomScrollbar } from "./CustomScrollbar";
 import { milestoneIntent } from "./milestoneIntent";
-import { doneMilestones, markMilestone } from "../prep/milestoneMarks";
+import { chosenTestDates, doneMilestones, markMilestone, pickTestDate } from "../prep/milestoneMarks";
+import { EXAMS, formatDate, plannedTest, registrationBy } from "../prep/prepData";
 import { ProfilePanel } from "./ProfilePanel";
 import { ProgramCards, ProgramDrawer, type ProgramActions } from "./ProgramUi";
 import { recommend } from "./programs";
@@ -274,7 +275,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const addUserMessage = (text: string) =>
     setMessages((list) => [...list, { id: ++idRef.current, role: "user", text, confirm: "none", editable: false }]);
 
-  async function assistantSay(text: string, summary = false, extra?: Pick<ChatItem, "milestone">) {
+  async function assistantSay(text: string, summary = false, extra?: Pick<ChatItem, "milestone" | "testDate">) {
     const id = ++idRef.current;
     const reduced = prefersReducedMotion();
     setMessages((list) => [...list, { id, role: "assistant", text: "", typing: true, confirm: "none", editable: false, ...extra }]);
@@ -374,8 +375,43 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
    * feed do. A plan is not ticked, only asked about; a date no saved program has is named, not invented.
    */
   async function handleMilestone(text: string) {
-    const intent = milestoneIntent(text, saved);
+    const chosen = chosenTestDates();
+    const intent = milestoneIntent(text, saved, chosen);
     if (!intent) return false;
+    if (intent.kind === "date") {
+      const name = EXAMS[intent.exam].name;
+      const prevTest = plannedTest(intent.exam, chosen);
+      const same = prevTest?.getTime() === intent.test.getTime();
+      if (!same) pickTestDate(intent.exam, intent.key);
+      const already = intent.mark && doneMilestones().includes(intent.mark.id);
+      if (intent.mark && !already) markMilestone(intent.mark.id, true);
+      const reg = formatDate(registrationBy(intent.test));
+      const reply = same
+        ? intent.mark
+          ? already
+            ? `«${intent.mark.title}» уже отмечено.`
+            : "Дата та же, отметил."
+          : `${name} и так ${formatDate(intent.test)}. Регистрация до ${reg}.`
+        : intent.mark
+          ? `Перестроил план под ${formatDate(intent.test)} и отметил. Прогноз и напоминания в Quack пересчитаны.`
+          : `Перестроил план под ${formatDate(intent.test)}: регистрация до ${reg} — отмечу, когда зарегистрируешься. Прогноз в Quack пересчитан.`;
+      await assistantSay(reply, false, {
+        testDate: same
+          ? undefined
+          : {
+              exam: intent.exam,
+              label: `${name} — ${formatDate(intent.test)}`,
+              prev: chosen[intent.exam] ?? null,
+              prevLabel: prevTest ? formatDate(prevTest) : "ближайшую",
+            },
+        milestone: intent.mark && !already ? intent.mark : undefined,
+      });
+      return true;
+    }
+    if (intent.kind === "badDate") {
+      await assistantSay(`В эту дату ${EXAMS[intent.exam].name} не проходит. Ближайшие даты: ${intent.options.join(", ")}. Какую выбираешь?`);
+      return true;
+    }
     if (intent.kind === "planned") {
       await assistantSay(`Отмечу ${intent.what}, когда сделаешь. Как только будет готово, напиши, например, «зарегистрировался», или отметь в Календаре.`);
     } else if (intent.kind === "unknown") {
@@ -396,6 +432,13 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     if (!mark || mark.undone) return;
     markMilestone(mark.id, false);
     updateMsg(messageId, { milestone: { ...mark, undone: true } });
+  }
+
+  function undoTestDate(messageId: number) {
+    const pick = messages.find((m) => m.id === messageId)?.testDate;
+    if (!pick || pick.undone) return;
+    pickTestDate(pick.exam, pick.prev);
+    updateMsg(messageId, { testDate: { ...pick, undone: true } });
   }
 
   // Chat shortcuts once programs exist: "сравни…", "избранное…"
@@ -777,6 +820,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
                         onEditCancel={onEditCancel}
                         onEditSave={onEditSave}
                         onUndoMilestone={undoMilestone}
+                        onUndoTestDate={undoTestDate}
                       />
                     )
                   )}

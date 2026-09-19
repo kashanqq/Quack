@@ -12,6 +12,8 @@ import {
   type SkillState,
   type StudySet,
   type Task,
+  type TestDates,
+  type DatedExam,
 } from "./prepData";
 
 import type { IconName } from "../choice/Icon";
@@ -57,6 +59,8 @@ export type PrepModel = {
   /** Days the forecast moved because of manual changes */
   extraDays: number;
   milestonesDone: string[];
+  /** The test date the student picked per exam; the nearest one while nothing is picked */
+  testDates?: TestDates;
   resolvedConflicts: Record<string, string>;
   /** Show the section on demo programs when nothing is saved */
   demo: boolean;
@@ -342,6 +346,17 @@ export function addMaterial(model: PrepModel, skillId: string, material: Materia
 
 export function removeMaterial(model: PrepModel, skillId: string, id: string): PrepModel {
   return { ...model, materials: { ...model.materials, [skillId]: (model.materials[skillId] ?? []).filter((m) => m.id !== id) } };
+}
+
+/**
+ * The student picks the sitting they sit (product-logic §4.1: test date candidates, the student decides).
+ * A registration ticked for another date stays with that date: the new one starts unticked.
+ */
+export function chooseTestDate(model: PrepModel, exam: DatedExam, key: string | null): PrepModel {
+  const testDates = { ...model.testDates };
+  if (key) testDates[exam] = key;
+  else delete testDates[exam];
+  return { ...model, testDates };
 }
 
 /** "Не согласен": the misconception leaves sets and chat context until new evidence. */
