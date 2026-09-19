@@ -31,11 +31,11 @@ export type PrepSub = "now" | "requirements" | "route" | "map";
 
 export const PREP_SUBS: Record<PrepTab, { sub: PrepSub; label: string; icon: IconName; hint: string }[]> = {
   overview: [
-    { sub: "now", label: "Сейчас", icon: "target", hint: "что делать и темп" },
+    { sub: "now", label: "Сейчас", icon: "target", hint: "активный сет и его темы" },
     { sub: "requirements", label: "Требования", icon: "gauge", hint: "цели экзаменов и прогноз" },
   ],
   sets: [
-    { sub: "route", label: "Маршрут", icon: "route", hint: "сеты, собранные под тебя" },
+    { sub: "route", label: "Маршрут", icon: "route", hint: "выбранный сет и советы ассистента" },
     { sub: "map", label: "Карта навыков", icon: "network", hint: "сеты и их темы" },
   ],
 };
@@ -52,6 +52,8 @@ export type PrepModel = {
   doneSets: string[];
   /** null while the next set is only proposed */
   currentSet: string | null;
+  /** Sets put aside for another one, the latest first; their topics keep their progress */
+  postponed?: string[];
   /** Days the forecast moved because of manual changes */
   extraDays: number;
   milestonesDone: string[];
@@ -178,6 +180,17 @@ export function rankSets(model: PrepModel, exam: ExamId): Recommendation[] {
     .sort((a, b) => b.score - a.score);
 }
 
+/** At most this many sets are proposed at once, everywhere: «Маршрут», the map, and the backend's plan */
+export const MAX_PROPOSED = 3;
+
+/** The assistant's proposals for an exam: the strongest sets that are not in work and not put aside */
+export function proposals(model: PrepModel, exam: ExamId): Recommendation[] {
+  const aside = model.postponed ?? [];
+  return rankSets(model, exam)
+    .filter((r) => r.set.id !== model.currentSet && !aside.includes(r.set.id))
+    .slice(0, MAX_PROPOSED);
+}
+
 /** The next set the system recommends: the first one in the route that isn't passed. */
 export function proposedSet(model: PrepModel): StudySet | undefined {
   return SETS.find((s) => !model.doneSets.includes(s.id) && s.id !== model.currentSet);
@@ -197,13 +210,19 @@ export function readiness(model: PrepModel, exam: ExamId = "sat"): number {
 }
 
 export function acceptSet(model: PrepModel, id: string): PrepModel {
-  return { ...model, currentSet: id, reportFor: null };
+  return { ...model, currentSet: id, postponed: (model.postponed ?? []).filter((s) => s !== id), reportFor: null };
 }
 
-/** The student takes any set they like: no order is imposed, so no penalty for leaving one. */
+/**
+ * The student takes any set they like: no order is imposed, so no penalty for leaving one.
+ * The set that was in work is put aside, not lost.
+ */
 export function makeCurrent(model: PrepModel, id: string): PrepModel {
   const doneSets = model.doneSets.filter((s) => s !== id);
-  return { ...model, currentSet: id, doneSets, reportFor: null };
+  const prev = model.currentSet;
+  const kept = (model.postponed ?? []).filter((s) => s !== id && s !== prev);
+  const postponed = prev && prev !== id && !doneSets.includes(prev) ? [prev, ...kept] : kept;
+  return { ...model, currentSet: id, doneSets, postponed, reportFor: null };
 }
 
 const UP: Record<SkillState, SkillState> = { weak: "shaky", lowData: "shaky", shaky: "solid", solid: "solid" };
