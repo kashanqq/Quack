@@ -23,8 +23,8 @@ const newId = (skillId: string, kind: MaterialKind) => `${skillId}-${kind}-${Dat
 export function generateNotes(model: PrepModel, skillId: string, count: number): Material {
   const skill = skillById(skillId);
   const content = TOPICS[skillId];
-  const own = model.misconceptions[skillId].filter((m) => m.status === "confirmed" || m.status === "suspected");
-  const wrong = model.evidence[skillId].filter((e) => /ловушка|неверно/.test(e.text)).slice(0, 3);
+  const own = (model.misconceptions[skillId] ?? []).filter((m) => m.status === "confirmed" || m.status === "suspected");
+  const wrong = (model.evidence[skillId] ?? []).filter((e) => /ловушка|неверно/.test(e.text)).slice(0, 3);
   const lines = [
     `# ${skill.name}`,
     `_Конспект · сделан ассистентом по твоему запросу · ${formatShort(new Date())}_`,
@@ -62,7 +62,7 @@ export function generateCards(model: PrepModel, skillId: string, count: number):
     cards.unshift({ front: content.example.q, back: content.example.a });
     content.points.forEach((p, i) => cards.push({ front: `Что нужно уметь · ${i + 1} из ${content.points.length}`, back: p }));
   }
-  for (const m of model.misconceptions[skillId].filter((x) => x.status === "confirmed" || x.status === "suspected")) {
+  for (const m of (model.misconceptions[skillId] ?? []).filter((x) => x.status === "confirmed" || x.status === "suspected")) {
     cards.push({ front: "Твоя ловушка в этой теме", back: m.text });
   }
   return {

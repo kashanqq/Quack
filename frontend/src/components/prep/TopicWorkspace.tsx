@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Icon } from "../choice/Icon";
-import { daysBetween, formatShort, skillById, STATE_LABEL, TODAY, type StudySet, type Task } from "./prepData";
+import { daysBetween, formatShort, skillById, STATE_LABEL, TODAY, type Evidence, type StudySet, type Task } from "./prepData";
 import { TOPIC_PROMPTS, topicReply } from "./prepAssistant";
 import { addMaterial, answerTask, MOCK_SOLID, removeMaterial, settleMock, type Material, type PrepModel } from "./prepModel";
 import { downloadMarkdown, generateCards, generateNotes, materialAsked, printPdf, renderMarkdown, type MaterialKind } from "./materials";
@@ -15,6 +15,7 @@ import {
   submitRemoteAnswer,
 } from "./remoteTasks";
 import { fetchRemoteSets, REMOTE_PREP } from "./remoteSets";
+import { explainRemoteNode, refreshRemoteKnowledge } from "./remoteKnowledge";
 import styles from "./prep.module.css";
 
 type Props = {
@@ -48,6 +49,56 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
       openRemoteTopic(set.rawId, skillId);
     }
   }, [set.rawId, skillId]);
+
+  useEffect(() => {
+    if (!REMOTE_PREP) return;
+    explainRemoteNode(skillId).then((res) => {
+      if (res && res.items.length > 0) {
+        const sourceMap: Record<string, Evidence["source"]> = {
+          diagnostic: "замер",
+          mock: "мок",
+          chat: "чат",
+          task: "задача",
+          self_report: "замер",
+        };
+        const mapped: Evidence[] = res.items.map((e) => ({
+          source: sourceMap[e.source] ?? "задача",
+          text: e.summary || `Ответ (${e.direction > 0 ? "верно" : "ошибка"})`,
+          date: new Date(e.observed_at),
+        }));
+        onModel({
+          ...modelRef.current,
+          evidence: {
+            ...modelRef.current.evidence,
+            [skillId]: mapped,
+          },
+        });
+      }
+    });
+  }, [skillId]);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const res = await refreshRemoteKnowledge({
+        kind: "prep",
+        topic_skill_id: skillId,
+      });
+      if (res?.status === "queued") {
+        onToast("Наблюдатель запущен: сверяем сообщения с моделью");
+      } else if (res?.status === "empty") {
+        onToast("Новых сообщений для анализа пока нет");
+      } else if (res?.status === "failed") {
+        onToast("Сервис анализа временно недоступен");
+      }
+    } catch {
+      onToast("Ошибка при запуске обновления");
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const skill = skillById(skillId);
   const state = model.states[skillId];
@@ -127,6 +178,17 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
           <span className={styles.checkState} data-state={state}>
             <StateGlyph state={state} size={12} /> {STATE_LABEL[state]}
           </span>
+          {REMOTE_PREP && (
+            <button
+              type="button"
+              className={styles.secondary}
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="Сверить недавние сообщения темы с моделью знаний"
+            >
+              <Icon name="sparkles" size={13} /> {refreshing ? "Сверка..." : "Обновить статус"}
+            </button>
+          )}
         </div>
         {/* The other topics of the set, to move on without the graph */}
         <nav className={styles.topicSteps} aria-label="Темы сета">

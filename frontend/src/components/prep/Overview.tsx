@@ -15,6 +15,7 @@ import {
   type RemotePrepOverview,
 } from "./remotePrep";
 import {
+  allSkills,
   daysBetween,
   formatDate,
   formatShort,
@@ -36,8 +37,11 @@ import {
   type ExamOutlook,
   type ExamRequirement,
   type Milestone,
+  type StudySet,
 } from "./prepData";
-import { chooseTestDate, proposedSet, readiness, type PrepModel, type PrepSub, type PrepTab } from "./prepModel";
+import { chooseTestDate, disputeMisconception, proposedSet, readiness, type PrepModel, type PrepSub, type PrepTab } from "./prepModel";
+import { disputeRemoteMisconception } from "./remoteKnowledge";
+import { getCachedRemoteSets } from "./remoteSets";
 import { StateGlyph } from "./SkillGraph";
 import { SetDetail } from "./SetDetail";
 import { DiagnosticMock } from "./DiagnosticMock";
@@ -172,6 +176,8 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onMo
           conflicts={conflicts}
           onGo={onGo}
           onOpenSet={onOpenSet}
+          onModel={onModel}
+          onToast={onToast}
         />
       </Requirements>
     );
@@ -370,19 +376,44 @@ function Important({
   conflicts,
   onGo,
   onOpenSet,
+  onModel,
+  onToast,
 }: {
   model: PrepModel;
   milestoneList: Milestone[];
   conflicts?: BackendConflict[];
   onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
   onOpenSet: (setId: string, topic?: string) => void;
+  onModel?: (model: PrepModel) => void;
+  onToast?: (text: string) => void;
 }) {
-  // The set a topic is practised in: an open one first, the current one above all
+  const getSetsFromCache = (examId: ExamId): StudySet[] => {
+    const data = getCachedRemoteSets(examId);
+    if (!data) return [];
+    return [
+      ...(data.current ? [data.current] : []),
+      ...data.upcoming,
+      ...data.done,
+    ];
+  };
+  const remoteSets = [
+    ...getSetsFromCache("sat"),
+    ...getSetsFromCache("ent"),
+  ];
+  const allAvailableSets = [...SETS, ...remoteSets];
   const setWith = (skillId: string) =>
-    SETS.find((s) => s.id === model.currentSet && s.skills.includes(skillId)) ??
-    SETS.find((s) => s.skills.includes(skillId) && !model.doneSets.includes(s.id)) ??
-    SETS.find((s) => s.skills.includes(skillId));
-  const items: { key: string; tone: "root" | "trap" | "late" | "date"; title: string; text: string; go: () => void; action: string }[] = [];
+    allAvailableSets.find((s) => s.id === model.currentSet && s.skills.includes(skillId)) ??
+    allAvailableSets.find((s) => s.skills.includes(skillId) && !model.doneSets.includes(s.id)) ??
+    allAvailableSets.find((s) => s.skills.includes(skillId));
+  const items: {
+    key: string;
+    tone: "root" | "trap" | "late" | "date";
+    title: string;
+    text: string;
+    go: () => void;
+    action: string;
+    onDispute?: () => void;
+  }[] = [];
 
   if (conflicts && conflicts.length) {
     for (const c of conflicts) {
@@ -397,8 +428,9 @@ function Important({
     }
   }
 
-  for (const root of SKILLS.filter((s) => s.root && model.states[s.id] !== "solid")) {
-    const above = SKILLS.filter((s) => s.requires.includes(root.id)).map((s) => s.name.toLowerCase());
+  const skills = allSkills();
+  for (const root of skills.filter((s) => s.root && model.states[s.id] !== "solid")) {
+    const above = skills.filter((s) => s.requires.includes(root.id)).map((s) => s.name.toLowerCase());
     items.push({
       key: `root-${root.id}`,
       tone: "root",
@@ -409,20 +441,30 @@ function Important({
     });
   }
 
-  for (const skill of SKILLS) {
-    const trap = model.misconceptions[skill.id].find((m) => m.status === "confirmed");
-    if (!trap) continue;
-    items.push({
-      key: `trap-${skill.id}`,
-      tone: "trap",
-      title: `Ловушка: ${skill.name}`,
-      text: trap.text,
-      go: () => {
-        const set = setWith(skill.id);
-        if (set) onOpenSet(set.id, skill.id);
-      },
-      action: "Проверить",
-    });
+  for (const skill of skills) {
+    const traps = (model.misconceptions[skill.id] ?? []).filter((m) => m.status === "confirmed");
+    for (const trap of traps) {
+      items.push({
+        key: `trap-${skill.id}-${trap.id}`,
+        tone: "trap",
+        title: `Ловушка: ${skill.name}`,
+        text: trap.text,
+        go: () => {
+          const set = setWith(skill.id);
+          if (set) onOpenSet(set.id, skill.id);
+        },
+        action: "Проверить",
+        onDispute: async () => {
+          if (onModel) {
+            onModel(disputeMisconception(model, skill.id, trap.id));
+          }
+          if (REMOTE_PREP) {
+            await disputeRemoteMisconception(trap.id, true, skill.exam);
+          }
+          onToast?.("Ловушка оспорена");
+        },
+      });
+    }
   }
 
   const delay = routeDelay(model);
@@ -465,9 +507,22 @@ function Important({
                 <strong>{item.title}</strong>
                 <span className={styles.muted}>{item.text}</span>
               </div>
-              <button type="button" className={styles.link} onClick={item.go}>
-                {item.action} →
-              </button>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                {item.onDispute && (
+                  <button
+                    type="button"
+                    className={styles.link}
+                    style={{ opacity: 0.7 }}
+                    onClick={item.onDispute}
+                    title="Оспорить вывод ассистента о наличии этой ловушки"
+                  >
+                    Не согласен
+                  </button>
+                )}
+                <button type="button" className={styles.link} onClick={item.go}>
+                  {item.action} →
+                </button>
+              </div>
             </li>
           ))}
         </ul>

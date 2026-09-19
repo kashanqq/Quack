@@ -14,6 +14,10 @@ import {
   REMOTE_PREP,
   switchRemoteSet,
 } from "./remoteSets";
+import {
+  applyRemoteKnowledgeToModel,
+  fetchRemoteKnowledge,
+} from "./remoteKnowledge";
 import { savedPrograms, setById, type ExamId } from "./prepData";
 import {
   acceptSet,
@@ -135,7 +139,25 @@ export function PrepView({
   useEffect(() => {
     if (REMOTE_PREP) {
       prefetchRemoteSets(exam);
+      fetchRemoteKnowledge(exam).then((data) => {
+        if (data) {
+          setModel((prev) => applyRemoteKnowledgeToModel(prev, data, exam));
+        }
+      });
     }
+  }, [exam]);
+
+  useEffect(() => {
+    if (!REMOTE_PREP) return;
+    const onFocus = () => {
+      fetchRemoteKnowledge(exam, true).then((data) => {
+        if (data) {
+          setModel((prev) => applyRemoteKnowledgeToModel(prev, data, exam));
+        }
+      });
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [exam]);
 
   // Asked to open the test from outside (a locked tab in the column): it runs in «Сейчас»

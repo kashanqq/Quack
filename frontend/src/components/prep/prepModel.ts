@@ -2,7 +2,9 @@
 // a self-check answer is evidence, evidence moves skill state, a set is passed when all its skills are solid.
 
 import {
+  allSkills,
   SETS,
+  skillById,
   SKILLS,
   TODAY,
   type Evidence,
@@ -149,15 +151,15 @@ export function rankSets(model: PrepModel, exam: ExamId): Recommendation[] {
       const reasons: string[] = [];
       let score = 0;
       for (const id of set.skills) {
-        const skill = SKILLS.find((s) => s.id === id)!;
-        const state = model.states[id];
-        score += GAP[state] * skill.weight;
+        const skill = skillById(id);
+        const state = model.states[id] ?? "weak";
+        score += GAP[state] * (skill.weight ?? 1);
         if (state === "solid") continue;
         if (skill.root) {
           score += 30;
           reasons.push(`корень ошибок: ${skill.name}`);
         }
-        const traps = model.misconceptions[id].filter((m) => m.status === "confirmed");
+        const traps = (model.misconceptions[id] ?? []).filter((m) => m.status === "confirmed");
         if (traps.length) {
           score += 25;
           reasons.push(`подтверждённая ловушка: ${skill.name}`);
@@ -168,11 +170,11 @@ export function rankSets(model: PrepModel, exam: ExamId): Recommendation[] {
       // Prerequisites outside the set that do not hold yet: the set would be built on sand
       const missing = [
         ...new Set(
-          set.skills.flatMap((id) => SKILLS.find((s) => s.id === id)!.requires).filter((id) => !set.skills.includes(id) && model.states[id] !== "solid")
+          set.skills.flatMap((id) => skillById(id).requires).filter((id) => !set.skills.includes(id) && model.states[id] !== "solid")
         ),
       ];
       score -= missing.length * 12;
-      if (missing.length) reasons.push(`сначала нужно: ${missing.map((id) => SKILLS.find((s) => s.id === id)!.name).join(", ")}`);
+      if (missing.length) reasons.push(`сначала нужно: ${missing.map((id) => skillById(id).name).join(", ")}`);
       // Review comes last by design: no new skills in it
       if (set.status === "review") score -= 40;
       if (!reasons.length) {
@@ -205,8 +207,9 @@ export const closed = (model: PrepModel, set: StudySet) =>
 
 /** Readiness for one exam: weighted share of its solid skills, shaky counts half. */
 export function readiness(model: PrepModel, exam: ExamId = "sat"): number {
-  const skills = SKILLS.filter((s) => s.exam === exam);
+  const skills = allSkills().filter((s) => s.exam === exam);
   const total = skills.reduce((sum, s) => sum + s.weight, 0);
+  if (total === 0) return 0;
   const got = skills.reduce(
     (sum, s) => sum + s.weight * (model.states[s.id] === "solid" ? 1 : model.states[s.id] === "shaky" ? 0.5 : 0),
     0
@@ -366,7 +369,7 @@ export function disputeMisconception(model: PrepModel, skillId: string, id: stri
     ...model,
     misconceptions: {
       ...model.misconceptions,
-      [skillId]: model.misconceptions[skillId].map((m) => (m.id === id ? { ...m, status: "disputed" } : m)),
+      [skillId]: (model.misconceptions[skillId] ?? []).map((m) => (m.id === id ? { ...m, status: "disputed" } : m)),
     },
   };
 }

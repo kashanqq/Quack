@@ -27,6 +27,14 @@ export type BackendTaskRequestIn = Schemas["TaskRequestIn"];
 export type BackendAnswerIn = Schemas["AnswerIn"];
 export type BackendAnswerResult = Schemas["AnswerResult"];
 export type BackendTaskSkipIn = Schemas["TaskSkipIn"];
+export type BackendKnowledgeOut = Schemas["KnowledgeOut"];
+export type BackendSkillStateView = Schemas["SkillStateView"];
+export type BackendMisconceptionStateOut = Schemas["MisconceptionStateOut"];
+export type BackendRootCauseOut = Schemas["RootCauseOut"];
+export type BackendEvidenceListOut = Schemas["EvidenceListOut"];
+export type BackendEvidenceOut = Schemas["EvidenceOut"];
+export type BackendRefreshIn = Schemas["RefreshIn"];
+export type BackendRefreshOut = Schemas["RefreshOut"];
 
 export const backend = {
   profile: {
@@ -83,6 +91,19 @@ export const backend = {
       }),
     solution: (instanceId: string) =>
       api.get<{ solution: string[] }>(`/tasks/${encodeURIComponent(instanceId)}/solution`),
+  },
+  knowledge: {
+    get: (examId: "SAT_MATH" | "ENT_MATH") =>
+      api.get<BackendKnowledgeOut>(`/knowledge?exam_id=${examId}`),
+    explain: (nodeId: string) =>
+      api.get<BackendEvidenceListOut>(`/knowledge/explain/${encodeURIComponent(nodeId)}`),
+    dispute: (misconceptionId: string, disputed: boolean) =>
+      api.post<BackendMisconceptionStateOut>(
+        `/knowledge/misconceptions/${encodeURIComponent(misconceptionId)}/dispute`,
+        { disputed }
+      ),
+    refresh: (body: BackendRefreshIn) =>
+      api.post<BackendRefreshOut>("/knowledge/refresh", body),
   },
   prep: {
     version: () => api.get<BackendKnowledgeVersion>("/prep/knowledge/version"),
