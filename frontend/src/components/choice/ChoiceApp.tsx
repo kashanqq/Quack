@@ -95,6 +95,11 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const [prepTab, setPrepTab] = useState<PrepTab>("overview");
   const [prepSub, setPrepSub] = useState<PrepSub>("now");
   const [dashTab, setDashTab] = useState<DashTab>("overview");
+  const [diagDone, setDiagDone] = useState<boolean>(() => {
+    const m = store.get<{ diagnosticDone?: boolean }>("quack-prep");
+    return Boolean(m?.diagnosticDone);
+  });
+  const [launchDiag, setLaunchDiag] = useState(false);
   // The source's functions are stable, so effects can depend on them
   const { state: quackState, report: reportToQuack, markSeen: markQuackSeen, reset: resetQuack } = useQuack();
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
@@ -646,13 +651,22 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
             onOpenCompare={openCompare}
             onRestart={restart}
             profileToggle={{ open: profileVisible, readiness: readinessValue, onToggle: toggleProfile }}
+            prepLocked={!diagDone}
             prepTab={prepTab}
             prepSub={prepSub}
             onPrepTab={(tab, sub) =>
               morph(() => {
                 setMode("prep");
-                setPrepTab(tab);
-                if (sub) setPrepSub(sub);
+                if (!diagDone) {
+                  setPrepTab("overview");
+                  setPrepSub("now");
+                  if (tab !== "overview" || (sub && sub !== "now")) {
+                    setLaunchDiag(true);
+                  }
+                } else {
+                  setPrepTab(tab);
+                  if (sub) setPrepSub(sub);
+                }
                 setMobileProgramsOpen(false);
               })
             }
@@ -777,6 +791,9 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
                   onSub={setPrepSub}
                   saved={saved}
                   onGoToChoice={() => changeMode("choice")}
+                  externalOpenDiagnostic={launchDiag}
+                  onCloseExternalDiagnostic={() => setLaunchDiag(false)}
+                  onDiagnosticStatusChange={(done) => setDiagDone(done)}
                 />
               )}
             </div>

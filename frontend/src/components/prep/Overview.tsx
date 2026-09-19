@@ -35,13 +35,15 @@ type Props = {
   /** Opens a set's graph, optionally with one of its topics selected */
   onOpenSet: (setId: string, topic?: string) => void;
   onAccept: (setId: string) => void;
+  onOpenDiagnostic?: () => void;
+  onSkipDiagnostic?: () => void;
 };
 
 /**
  * §4.1 — the section's overview, split into four sub-tabs so one screen answers one question:
  * what to do now, what the programs demand, which dates are coming, how the programs are changing.
  */
-export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept }: Props) {
+export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onOpenDiagnostic, onSkipDiagnostic }: Props) {
   // Each exam with a knowledge model has its own readiness, history and forecast
   const series = Object.fromEntries(
     EXAM_IDS.map((id) => {
@@ -62,7 +64,16 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept }: Pr
         <Important model={model} milestoneList={list} onGo={onGo} onOpenSet={onOpenSet} />
       </Requirements>
     );
-  return <Now model={model} forecasts={{ sat: series.sat.forecast, ent: series.ent.forecast }} onOpenSet={onOpenSet} onAccept={onAccept} />;
+  return (
+    <Now
+      model={model}
+      forecasts={{ sat: series.sat.forecast, ent: series.ent.forecast }}
+      onOpenSet={onOpenSet}
+      onAccept={onAccept}
+      onOpenDiagnostic={onOpenDiagnostic}
+      onSkipDiagnostic={onSkipDiagnostic}
+    />
+  );
 }
 
 /* ---------- Сейчас: one calm screen — the set and topic in work, the pace per exam, one button ---------- */
@@ -74,11 +85,15 @@ function Now({
   forecasts,
   onOpenSet,
   onAccept,
+  onOpenDiagnostic,
+  onSkipDiagnostic,
 }: {
   model: PrepModel;
   forecasts: Record<ExamId, Date>;
   onOpenSet: (setId: string, topic?: string) => void;
   onAccept: (setId: string) => void;
+  onOpenDiagnostic?: () => void;
+  onSkipDiagnostic?: () => void;
 }) {
   const { state } = useQuack();
   const current = model.currentSet ? setById(model.currentSet) : null;
@@ -86,6 +101,7 @@ function Now({
   // The topic in work: the first one of the set that does not hold yet
   const topicId = set?.skills.find((id) => model.states[id] !== "solid") ?? set?.skills[0];
   const topic = topicId ? skillById(topicId) : null;
+  const isDiagPending = !model.diagnosticDone;
 
   // Quack's verdict per exam; demo programs are not saved, so there only the forecast date
   const paces = state.standing?.exams.length
@@ -101,8 +117,16 @@ function Now({
   return (
     <div className={styles.nowScreen}>
       <section className={styles.nowCenter} aria-label="Сейчас">
-        <PixelDuck tempo="steady" className={styles.nowDuck} waving={!set} />
-        {set && topic ? (
+        <PixelDuck tempo="steady" className={styles.nowDuck} waving={isDiagPending || !set} />
+        {isDiagPending ? (
+          <>
+            <h2 className={styles.nowSet}>Входной замер готовности</h2>
+            <p className={styles.nowTopic}>
+              <Icon name="sparkles" size={14} />
+              8 обязательных вопросов · калибровка маршрута
+            </p>
+          </>
+        ) : set && topic ? (
           <>
             <h2 className={styles.nowSet}>
               Сет {set.number} · {set.title}
@@ -126,16 +150,41 @@ function Now({
           ))}
         </ul>
 
-        {set && topic && (
-          <button
-            type="button"
-            className={styles.nowButton}
-            aria-label={current ? "Продолжить" : "Начать"}
-            title={current ? "Продолжить" : "Начать"}
-            onClick={() => (current ? onOpenSet(set.id) : onAccept(set.id))}
-          >
-            <Icon name="play" size={26} />
-          </button>
+        {isDiagPending ? (
+          <div className={styles.nowDiagActionBlock}>
+            <button
+              type="button"
+              className={styles.nowButton}
+              aria-label="Продолжить"
+              title="Продолжить (пройти входной замер)"
+              onClick={onOpenDiagnostic}
+            >
+              <Icon name="play" size={26} />
+            </button>
+            <span className={styles.nowActionHint}>Нажми «Продолжить», чтобы начать замер</span>
+            {onSkipDiagnostic && (
+              <button
+                type="button"
+                className={styles.nowSkipBtn}
+                onClick={onSkipDiagnostic}
+                title="Использовать начальные базовые оценки без прохождения теста"
+              >
+                Скинуть тест (взять базовые оценки)
+              </button>
+            )}
+          </div>
+        ) : (
+          set && topic && (
+            <button
+              type="button"
+              className={styles.nowButton}
+              aria-label={current ? "Продолжить" : "Начать"}
+              title={current ? "Продолжить" : "Начать"}
+              onClick={() => (current ? onOpenSet(set.id) : onAccept(set.id))}
+            >
+              <Icon name="play" size={26} />
+            </button>
+          )
         )}
       </section>
     </div>

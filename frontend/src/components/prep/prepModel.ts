@@ -62,6 +62,10 @@ export type PrepModel = {
   reportFor: string | null;
   /** What the student asked the assistant to make for a topic: notes and flashcards */
   materials: Record<string, Material[]>;
+  /** Whether the mandatory 8-question mock test for new users was completed */
+  diagnosticDone?: boolean;
+  /** Whether the diagnostic test was skipped with default baseline applied */
+  diagnosticSkipped?: boolean;
 };
 
 /**
@@ -89,6 +93,8 @@ export function initialModel(): PrepModel {
     demo: false,
     reportFor: "s1",
     materials: {},
+    diagnosticDone: false,
+    diagnosticSkipped: false,
   };
 }
 
