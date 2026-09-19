@@ -419,6 +419,64 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+/* ---------- Ticking a milestone done: the feed, the pace card and the calendar ---------- */
+
+.markButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  background: rgba(124, 207, 107, 0.1);
+  border: 1px solid rgba(124, 207, 107, 0.45);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.markButton:hover {
+  background: rgba(124, 207, 107, 0.2);
+  border-color: var(--ok);
+}
+
+.markButton[aria-pressed="true"] {
+  color: var(--ok);
+}
+
+.markInline {
+  justify-self: start;
+  margin-top: 10px;
+}
+
+.markDone {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 6px 0 0;
+  color: var(--ok);
+  font-size: 13px;
+}
+
+.feedActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.calEvents li[data-done="true"] strong {
+  color: var(--text-dim);
+  text-decoration: line-through;
+}
+
+.calDots span[data-done="true"] {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--kind);
+}
+
 /* ---------- Calendar ---------- */
 
 .calNav {
@@ -598,7 +656,7 @@
 
 .calEvents li {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   gap: 10px;
   align-items: baseline;
 }
@@ -1091,6 +1149,7 @@
   }
 
   .calEvents li > .muted,
+  .calEvents li > .markButton,
   .googleLink {
     grid-column: 2;
   }

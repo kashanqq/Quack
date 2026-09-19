@@ -689,6 +689,32 @@
   outline: none;
 }
 
+/* A milestone the reply ticked done, and the way to take it back */
+.msgMilestone {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  color: #7ccf6b;
+  font-size: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.msgMilestone[data-undone] {
+  color: var(--text-faint);
+}
+
+.msgMilestoneUndo {
+  padding: 0;
+  color: var(--accent-label);
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.msgMilestoneUndo:hover {
+  text-decoration: underline;
+}
+
 .msg.isEditing .msgBubble {
   padding-bottom: 34px;
   box-shadow: 0 0 0 2px rgba(255, 122, 0, 0.45);

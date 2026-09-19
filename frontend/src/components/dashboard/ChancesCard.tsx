@@ -11,6 +11,8 @@ type Props = {
   onOpenPrep: () => void;
   onOpenCalendar: () => void;
   onOpenPrograms: () => void;
+  /** Ticks a milestone done: the registration a verdict waits for */
+  onMark: (milestone: string) => void;
 };
 
 const examWord = (n: number) =>
@@ -26,11 +28,20 @@ function PaceMeter({ level, label }: { level: PaceLevel; label: string }) {
   );
 }
 
+/** The tick right where the verdict says what it waits for */
+function MarkButton({ mark, onMark }: { mark: { milestone: string; label: string }; onMark: (milestone: string) => void }) {
+  return (
+    <button type="button" className={`${styles.markButton} ${styles.markInline}`} onClick={() => onMark(mark.milestone)}>
+      <Icon name="check" size={14} /> {mark.label}
+    </button>
+  );
+}
+
 /**
  * The top of Quack (product-logic §3.6): will the student be ready by the tests — on track, needs to
  * speed up (and how), or can no longer make it (and what is left) — and where the saved programs stand.
  */
-export function ChancesCard({ standing, fresh, onOpenPrep, onOpenCalendar, onOpenPrograms }: Props) {
+export function ChancesCard({ standing, fresh, onOpenPrep, onOpenCalendar, onOpenPrograms, onMark }: Props) {
   const { pace, exams, programs, next } = standing;
   const others = exams.filter((e) => e.id !== pace?.exam);
   const trend = (id: string) => fresh.find((s) => s.kind === "chance" && s.subject === id)?.tone;
@@ -57,6 +68,7 @@ export function ChancesCard({ standing, fresh, onOpenPrep, onOpenCalendar, onOpe
                   <li key={a}>{a}</li>
                 ))}
               </ul>
+              {pace.mark && <MarkButton mark={pace.mark} onMark={onMark} />}
             </div>
           )}
         </div>
@@ -76,6 +88,7 @@ export function ChancesCard({ standing, fresh, onOpenPrep, onOpenCalendar, onOpe
                   {a}
                 </span>
               ))}
+              {e.mark && <MarkButton mark={e.mark} onMark={onMark} />}
             </li>
           ))}
         </ul>

@@ -29,6 +29,8 @@ import type { PrepSub, PrepTab } from "../prep/prepModel";
 import { ChatMessage, type ChatMsg } from "./ChatMessage";
 import { CompareView } from "./CompareView";
 import { CustomScrollbar } from "./CustomScrollbar";
+import { milestoneIntent } from "./milestoneIntent";
+import { doneMilestones, markMilestone } from "../prep/milestoneMarks";
 import { ProfilePanel } from "./ProfilePanel";
 import { ProgramCards, ProgramDrawer, type ProgramActions } from "./ProgramUi";
 import { recommend } from "./programs";
@@ -272,10 +274,10 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const addUserMessage = (text: string) =>
     setMessages((list) => [...list, { id: ++idRef.current, role: "user", text, confirm: "none", editable: false }]);
 
-  async function assistantSay(text: string, summary = false) {
+  async function assistantSay(text: string, summary = false, extra?: Pick<ChatItem, "milestone">) {
     const id = ++idRef.current;
     const reduced = prefersReducedMotion();
-    setMessages((list) => [...list, { id, role: "assistant", text: "", typing: true, confirm: "none", editable: false }]);
+    setMessages((list) => [...list, { id, role: "assistant", text: "", typing: true, confirm: "none", editable: false, ...extra }]);
 
     await sleep(reduced ? 100 : 700 + Math.min(900, text.length * 12));
     if (!mounted.current) return;
@@ -367,8 +369,38 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     setView("compare");
   };
 
+  /**
+   * «Зарегистрировался на SAT», «подал в Болонью»: the chat ticks the milestone like the calendar and the Quack
+   * feed do. A plan is not ticked, only asked about; a date no saved program has is named, not invented.
+   */
+  async function handleMilestone(text: string) {
+    const intent = milestoneIntent(text, saved);
+    if (!intent) return false;
+    if (intent.kind === "planned") {
+      await assistantSay(`Отмечу ${intent.what}, когда сделаешь. Как только будет готово, напиши, например, «зарегистрировался», или отметь в Календаре.`);
+    } else if (intent.kind === "unknown") {
+      await assistantSay(`Не нашёл ${intent.what} среди дат твоих сохранённых программ. Сохрани программу, которой это нужно, и дата появится в Календаре.`);
+    } else if (doneMilestones().includes(intent.id)) {
+      await assistantSay(`«${intent.title}» уже отмечено как сделанное.`);
+    } else {
+      markMilestone(intent.id, true);
+      await assistantSay("Отметил. Прогноз и напоминания в Quack уже пересчитаны.", false, {
+        milestone: { id: intent.id, title: intent.title },
+      });
+    }
+    return true;
+  }
+
+  function undoMilestone(messageId: number) {
+    const mark = messages.find((m) => m.id === messageId)?.milestone;
+    if (!mark || mark.undone) return;
+    markMilestone(mark.id, false);
+    updateMsg(messageId, { milestone: { ...mark, undone: true } });
+  }
+
   // Chat shortcuts once programs exist: "сравни…", "избранное…"
   async function handleIntent(text: string) {
+    if (await handleMilestone(text)) return true;
     if (!picks.length) return false;
     const t = text.toLowerCase();
     if (/сравн/.test(t)) {
@@ -744,6 +776,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
                         onEditStart={onEditStart}
                         onEditCancel={onEditCancel}
                         onEditSave={onEditSave}
+                        onUndoMilestone={undoMilestone}
                       />
                     )
                   )}

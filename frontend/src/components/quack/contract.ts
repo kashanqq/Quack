@@ -27,6 +27,8 @@ export type ExamPace = {
   testDate?: string;
   /** ISO date the knowledge model expects readiness; absent for exams without a model */
   forecast?: string;
+  /** A milestone whose tick changes the verdict (a registration not ticked yet), with the button's words */
+  mark?: { milestone: string; label: string };
 };
 
 export type ChanceFact = {
@@ -56,6 +58,8 @@ export type StandingAlert = {
   kind: "deadline" | "missed" | "conflict" | "late-set";
   title: string;
   detail?: string;
+  /** The milestone whose tick clears this alert */
+  milestone?: string;
 };
 
 /** Everything derived from the sources of truth at one moment. */
@@ -65,7 +69,7 @@ export type Standing = {
   /** Preparation readiness, % */
   readiness: number;
   /** The worst exam decides; null while nothing is saved */
-  pace: { level: PaceLevel; verdict: string; summary: string; advice: string[]; exam: string } | null;
+  pace: { level: PaceLevel; verdict: string; summary: string; advice: string[]; exam: string; mark?: ExamPace["mark"] } | null;
   exams: ExamPace[];
   programs: ProgramChance[];
   alerts: StandingAlert[];
@@ -87,6 +91,8 @@ export type Signal = {
   cause?: string;
   /** Program or exam id the signal is about */
   subject?: string;
+  /** The milestone whose tick settles it: the feed offers «Уже сделал» */
+  milestone?: string;
   /** ISO time it was first noticed */
   at: string;
   /** Where to go to deal with it */

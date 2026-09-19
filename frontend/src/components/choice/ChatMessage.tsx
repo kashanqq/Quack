@@ -14,6 +14,8 @@ export type ChatMsg = {
   editable: boolean;
   editing?: boolean;
   confirmBeforeEdit?: ChatMsg["confirm"];
+  /** A milestone this reply ticked done, with a way to take the tick back */
+  milestone?: { id: string; title: string; undone?: boolean };
 };
 
 type ChatMessageProps = {
@@ -22,9 +24,10 @@ type ChatMessageProps = {
   onEditStart: (id: number) => void;
   onEditCancel: (id: number) => void;
   onEditSave: (id: number, original: string, edited: string) => void;
+  onUndoMilestone?: (id: number) => void;
 };
 
-export function ChatMessage({ msg, onConfirm, onEditStart, onEditCancel, onEditSave }: ChatMessageProps) {
+export function ChatMessage({ msg, onConfirm, onEditStart, onEditCancel, onEditSave, onUndoMilestone }: ChatMessageProps) {
   const editRef = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState(msg.text);
 
@@ -79,6 +82,20 @@ export function ChatMessage({ msg, onConfirm, onEditStart, onEditCancel, onEditS
           />
         ) : (
           <div className={styles.msgText}>{msg.text}</div>
+        )}
+        {msg.milestone && !msg.typing && (
+          <p className={styles.msgMilestone} data-undone={msg.milestone.undone || undefined}>
+            {msg.milestone.undone ? (
+              <>Отметка снята: {msg.milestone.title}</>
+            ) : (
+              <>
+                ✓ {msg.milestone.title} ·{" "}
+                <button type="button" className={styles.msgMilestoneUndo} onClick={() => onUndoMilestone?.(msg.id)}>
+                  отменить
+                </button>
+              </>
+            )}
+          </p>
         )}
       </div>
 
