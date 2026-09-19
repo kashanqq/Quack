@@ -472,12 +472,17 @@ export const CHECKS: Record<string, Task[]> = {
 
 export type Milestone = {
   id: string;
+  key?: string;
   date: Date;
   title: string;
   detail: string;
   source: string | "демо";
   /** Only milestones can be ticked: they happen outside the product */
   checkable: boolean;
+  done?: boolean;
+  examId?: ExamId;
+  programId?: string;
+  kind?: string;
 };
 
 export type ExamRequirement = {

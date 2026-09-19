@@ -1,9 +1,17 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Icon } from "../choice/Icon";
 import type { Program } from "../choice/programs";
 import { useQuack } from "../quack/source";
 import { routeDelay } from "../quack/standing";
+import type { BackendConflict } from "@/api/backend";
+import {
+  REMOTE_PREP,
+  fetchRemoteOverview,
+  markRemoteMilestone,
+  type RemotePrepOverview,
+} from "./remotePrep";
 import {
   daysBetween,
   formatDate,
@@ -20,6 +28,7 @@ import {
   EXAMS,
   type ExamId,
   type ExamOutlook,
+  type Milestone,
 } from "./prepData";
 import { proposedSet, readiness, type PrepModel, type PrepSub, type PrepTab } from "./prepModel";
 import { StateGlyph } from "./SkillGraph";
@@ -57,6 +66,31 @@ type Props = {
  * the first visit, then the active set itself — its graph of topics, the chat and the mocks.
  */
 export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onModel, onToast, focus, diagnostic }: Props) {
+  const [remoteData, setRemoteData] = useState<RemotePrepOverview | null>(null);
+
+  useEffect(() => {
+    if (!REMOTE_PREP) return;
+    let cancelled = false;
+    fetchRemoteOverview(programs)
+      .then((data) => {
+        if (!cancelled) {
+          setRemoteData(data);
+          if (data.doneMilestoneKeys.length) {
+            onModel({
+              ...model,
+              milestonesDone: Array.from(new Set([...model.milestonesDone, ...data.doneMilestoneKeys])),
+            });
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to fetch remote overview, using local fallback:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [programs.length]);
+
   // Each exam with a knowledge model has its own readiness, history and forecast
   const series = Object.fromEntries(
     EXAM_IDS.map((id) => {
@@ -64,23 +98,58 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onMo
       return [id, { readiness: now, ...forecastSeries(now, model.extraDays, id) }];
     })
   ) as Record<ExamId, { readiness: number } & ReturnType<typeof forecastSeries>>;
-  const outlook: ExamOutlook = {
+
+  const outlook: ExamOutlook = remoteData?.outlook ?? {
     sat: { readiness: series.sat.readiness, forecast: series.sat.forecast },
     ent: { readiness: series.ent.readiness, forecast: series.ent.forecast },
   };
-  const exams = requirements(programs, outlook);
-  const list = milestones(programs);
+
+  const exams = remoteData?.requirements.length ? remoteData.requirements : requirements(programs, outlook);
+  const list = remoteData?.milestones.length ? remoteData.milestones : milestones(programs);
+  const conflicts = remoteData?.conflicts ?? [];
+
+  const handleToggleMilestone = async (milestone: Milestone, done: boolean) => {
+    const key = milestone.key || milestone.id;
+    const updatedDone = done
+      ? Array.from(new Set([...model.milestonesDone, key]))
+      : model.milestonesDone.filter((k) => k !== key);
+    onModel({ ...model, milestonesDone: updatedDone });
+
+    if (REMOTE_PREP && milestone.key) {
+      try {
+        await markRemoteMilestone(milestone.key, done);
+        onToast(done ? `Отмечено: «${milestone.title}»` : `Снята отметка: «${milestone.title}»`);
+      } catch (err) {
+        console.error("Failed to mark milestone:", err);
+        onModel({ ...model, milestonesDone: model.milestonesDone });
+        onToast("Не удалось сохранить статус вехи");
+      }
+    } else {
+      onToast(done ? `Отмечено: «${milestone.title}»` : `Снята отметка: «${milestone.title}»`);
+    }
+  };
 
   if (sub === "requirements")
     return (
       <Requirements exams={exams}>
-        <Important model={model} milestoneList={list} onGo={onGo} onOpenSet={onOpenSet} />
+        <MilestonesSection
+          milestones={list}
+          doneKeys={model.milestonesDone}
+          onToggle={handleToggleMilestone}
+        />
+        <Important
+          model={model}
+          milestoneList={list}
+          conflicts={conflicts}
+          onGo={onGo}
+          onOpenSet={onOpenSet}
+        />
       </Requirements>
     );
   return (
     <Now
       model={model}
-      forecasts={{ sat: series.sat.forecast, ent: series.ent.forecast }}
+      forecasts={{ sat: outlook.sat.forecast, ent: outlook.ent.forecast }}
       onGo={onGo}
       onAccept={onAccept}
       onModel={onModel}
@@ -248,11 +317,13 @@ function Now({
 function Important({
   model,
   milestoneList,
+  conflicts,
   onGo,
   onOpenSet,
 }: {
   model: PrepModel;
-  milestoneList: ReturnType<typeof milestones>;
+  milestoneList: Milestone[];
+  conflicts?: BackendConflict[];
   onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
   onOpenSet: (setId: string, topic?: string) => void;
 }) {
@@ -262,6 +333,19 @@ function Important({
     SETS.find((s) => s.skills.includes(skillId) && !model.doneSets.includes(s.id)) ??
     SETS.find((s) => s.skills.includes(skillId));
   const items: { key: string; tone: "root" | "trap" | "late" | "date"; title: string; text: string; go: () => void; action: string }[] = [];
+
+  if (conflicts && conflicts.length) {
+    for (const c of conflicts) {
+      items.push({
+        key: `conflict-${c.kind}-${c.milestone_keys.join("-")}`,
+        tone: "late",
+        title: c.text,
+        text: c.options.join(" · "),
+        go: () => onGo("overview", "requirements"),
+        action: "Сроки",
+      });
+    }
+  }
 
   for (const root of SKILLS.filter((s) => s.root && model.states[s.id] !== "solid")) {
     const above = SKILLS.filter((s) => s.requires.includes(root.id)).map((s) => s.name.toLowerCase());
@@ -303,11 +387,11 @@ function Important({
     });
   }
 
-  const next = milestoneList.find((m) => m.date >= TODAY && !model.milestonesDone.includes(m.id));
+  const next = milestoneList.find((m) => m.date >= TODAY && !model.milestonesDone.includes(m.key || m.id));
   if (next) {
     const left = daysBetween(TODAY, next.date);
     items.push({
-      key: `date-${next.id}`,
+      key: `date-${next.key || next.id}`,
       tone: "date",
       title: next.title,
       text: left === 0 ? "сегодня" : `через ${left} дн. · ${formatDate(next.date)}`,
@@ -342,6 +426,55 @@ function Important({
   );
 }
 
+/** Milestones and deadlines interactive checklist */
+function MilestonesSection({
+  milestones,
+  doneKeys,
+  onToggle,
+}: {
+  milestones: Milestone[];
+  doneKeys: string[];
+  onToggle: (m: Milestone, done: boolean) => void;
+}) {
+  if (!milestones.length) return null;
+
+  return (
+    <section className={`${styles.canvas} ${styles.full}`} aria-label="Майлстоуны и дедлайны">
+      <header className={styles.canvasHead}>
+        <h3>Майлстоуны и дедлайны</h3>
+        <span className={styles.muted}>
+          {milestones.filter((m) => doneKeys.includes(m.key || m.id) || m.done).length} из {milestones.length}
+        </span>
+      </header>
+      <ul className={styles.important}>
+        {milestones.map((m) => {
+          const key = m.key || m.id;
+          const isDone = doneKeys.includes(key) || Boolean(m.done);
+          return (
+            <li key={key} data-tone={isDone ? "root" : "date"}>
+              <div>
+                <label className={styles.check}>
+                  <input
+                    type="checkbox"
+                    checked={isDone}
+                    onChange={(e) => onToggle(m, e.target.checked)}
+                  />
+                  <strong style={{ textDecoration: isDone ? "line-through" : "none", opacity: isDone ? 0.7 : 1 }}>
+                    {m.title}
+                  </strong>
+                </label>
+                <span className={styles.muted}>
+                  {formatDate(m.date)} {m.detail ? `· ${m.detail}` : ""} {m.source ? `· ${m.source}` : ""}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 /* ---------- Требования: the exams the saved programs ask for ---------- */
 
 /** What each exam asks for and whether the student makes it, in words: no readiness charts or percentages */
@@ -350,11 +483,12 @@ function Requirements({ exams, children }: { exams: ReturnType<typeof requiremen
     <div className={styles.canvasGrid}>
       {exams.map((exam) => {
         const margin = exam.testDate && exam.forecast ? daysBetween(exam.forecast, exam.testDate) : 0;
+        const isDemo = !exam.programs.length || exam.programs.some((p) => p.id.startsWith("demo-"));
         return (
           <section key={exam.id} className={styles.canvas} aria-label={exam.name}>
             <header className={styles.canvasHead}>
               <h3>{exam.name}</h3>
-              <span className={styles.demoTag}>демо</span>
+              {isDemo && <span className={styles.demoTag}>демо</span>}
             </header>
             <div className={styles.examTarget}>
               <span className={styles.examTargetValue}>{exam.target}</span>

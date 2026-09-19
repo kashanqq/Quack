@@ -11,6 +11,12 @@ export type BackendMatch = Schemas["MatchOut"];
 export type BackendMatching = Schemas["MatchingOut"];
 export type BackendProfile = Schemas["Profile"];
 export type BackendSaved = Schemas["SavedProgramWithProgram"];
+export type BackendOverview = Schemas["OverviewOut"];
+export type BackendMilestone = Schemas["MilestoneOut"];
+export type BackendExamRequirement = Schemas["ExamRequirementOut"];
+export type BackendExamProgress = Schemas["ExamProgress"];
+export type BackendConflict = Schemas["ConflictOut"];
+export type BackendKnowledgeVersion = Schemas["KnowledgeVersionOut"];
 
 export const backend = {
   profile: {
@@ -28,4 +34,13 @@ export const backend = {
     add: (programId: string) => api.post<unknown>(`/saved/${encodeURIComponent(programId)}`),
     remove: (programId: string) => api.delete<void>(`/saved/${encodeURIComponent(programId)}`),
   },
+  overview: {
+    get: () => api.get<BackendOverview>("/overview"),
+    markMilestone: (key: string, done: boolean) =>
+      api.post<BackendMilestone>(`/overview/milestones/${encodeURIComponent(key)}`, { done }),
+  },
+  prep: {
+    version: () => api.get<BackendKnowledgeVersion>("/prep/knowledge/version"),
+  },
 };
+
