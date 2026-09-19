@@ -23,6 +23,9 @@ import {
 } from "./prepData";
 import { proposedSet, readiness, type PrepModel, type PrepSub, type PrepTab } from "./prepModel";
 import { StateGlyph } from "./SkillGraph";
+import { SetDetail } from "./SetDetail";
+import { DiagnosticMock } from "./DiagnosticMock";
+import type { DiagnosticResultSummary } from "./diagnosticData";
 import { PixelDuck } from "../duck/PixelDuck";
 import styles from "./prep.module.css";
 
@@ -32,18 +35,28 @@ type Props = {
   sub: PrepSub;
   /** Jump to another tab, optionally straight to one of its sub-tabs */
   onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
-  /** Opens a set's graph, optionally with one of its topics selected */
+  /** Opens a set: the active one in «Сейчас», any other in «Маршрут» */
   onOpenSet: (setId: string, topic?: string) => void;
   onAccept: (setId: string) => void;
-  onOpenDiagnostic?: () => void;
-  onSkipDiagnostic?: () => void;
+  onModel: (model: PrepModel) => void;
+  onToast: (text: string) => void;
+  /** A topic of the active set asked for from elsewhere; `n` changes on every ask so it opens again */
+  focus: { topic?: string; n: number } | null;
+  diagnostic: {
+    /** The test is on screen (first visit after the start button, or a retake) */
+    open: boolean;
+    onStart: () => void;
+    onClose?: () => void;
+    onComplete: (summary: DiagnosticResultSummary) => void;
+    onSkip: () => void;
+  };
 };
 
 /**
- * §4.1 — the section's overview, split into four sub-tabs so one screen answers one question:
- * what to do now, what the programs demand, which dates are coming, how the programs are changing.
+ * §4.1 — the section's overview in two sub-tabs. «Сейчас» is the one way in: the entrance test on
+ * the first visit, then the active set itself — its graph of topics, the chat and the mocks.
  */
-export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onOpenDiagnostic, onSkipDiagnostic }: Props) {
+export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onModel, onToast, focus, diagnostic }: Props) {
   // Each exam with a knowledge model has its own readiness, history and forecast
   const series = Object.fromEntries(
     EXAM_IDS.map((id) => {
@@ -68,68 +81,116 @@ export function Overview({ model, programs, sub, onGo, onOpenSet, onAccept, onOp
     <Now
       model={model}
       forecasts={{ sat: series.sat.forecast, ent: series.ent.forecast }}
-      onOpenSet={onOpenSet}
+      onGo={onGo}
       onAccept={onAccept}
-      onOpenDiagnostic={onOpenDiagnostic}
-      onSkipDiagnostic={onSkipDiagnostic}
+      onModel={onModel}
+      onToast={onToast}
+      focus={focus}
+      diagnostic={diagnostic}
     />
   );
 }
 
-/* ---------- Сейчас: one calm screen — the set and topic in work, the pace per exam, one button ---------- */
+/* ---------- Сейчас: the entrance test, then the active set right here ---------- */
 
 const DUCK_TEMPO = ["fast", "fast", "steady", "chill"] as const;
+
+type Pace = { id: string; name: string; level: 0 | 1 | 2 | 3; verdict: string; summary: string };
 
 function Now({
   model,
   forecasts,
-  onOpenSet,
+  onGo,
   onAccept,
-  onOpenDiagnostic,
-  onSkipDiagnostic,
+  onModel,
+  onToast,
+  focus,
+  diagnostic,
 }: {
   model: PrepModel;
   forecasts: Record<ExamId, Date>;
-  onOpenSet: (setId: string, topic?: string) => void;
+  onGo: (tab: PrepTab, sub?: PrepSub, exam?: ExamId) => void;
   onAccept: (setId: string) => void;
-  onOpenDiagnostic?: () => void;
-  onSkipDiagnostic?: () => void;
+  onModel: (model: PrepModel) => void;
+  onToast: (text: string) => void;
+  focus: Props["focus"];
+  diagnostic: Props["diagnostic"];
 }) {
   const { state } = useQuack();
   const current = model.currentSet ? setById(model.currentSet) : null;
-  const set = current ?? proposedSet(model) ?? null;
-  // The topic in work: the first one of the set that does not hold yet
-  const topicId = set?.skills.find((id) => model.states[id] !== "solid") ?? set?.skills[0];
-  const topic = topicId ? skillById(topicId) : null;
   const isDiagPending = !model.diagnosticDone;
 
   // Quack's verdict per exam; demo programs are not saved, so there only the forecast date
-  const paces = state.standing?.exams.length
+  const paces: Pace[] = state.standing?.exams.length
     ? state.standing.exams.map((e) => ({ id: e.id, name: e.name, level: e.level, verdict: e.verdict, summary: e.summary }))
     : EXAM_IDS.map((id) => ({
         id,
         name: EXAMS[id].name,
-        level: (forecasts[id] <= EXAMS[id].test ? 3 : 0) as 0 | 3,
+        level: forecasts[id] <= EXAMS[id].test ? 3 : 0,
         verdict: forecasts[id] <= EXAMS[id].test ? "Успеваешь" : "Не успеваешь",
         summary: `прогноз на ${formatDate(forecasts[id])}, тест ${formatDate(EXAMS[id].test)}`,
       }));
 
+  // The test itself, in place: its result builds the route and the first set opens on the same spot
+  if (diagnostic.open)
+    return (
+      <DiagnosticMock
+        onComplete={diagnostic.onComplete}
+        onClose={diagnostic.onClose}
+        onSkip={isDiagPending ? diagnostic.onSkip : undefined}
+      />
+    );
+
+  // The active set is the screen: its topics on their timeline, a topic opens the chat and the mock
+  if (!isDiagPending && current)
+    return (
+      <div className={styles.nowWork}>
+        <div className={styles.nowStrip}>
+          <ul className={styles.nowStripPaces} aria-label="Темп по экзаменам">
+            {paces.map((p) => (
+              <li key={p.id} data-pace={p.level} title={p.summary}>
+                <PixelDuck tempo={DUCK_TEMPO[p.level]} className={styles.nowStripDuck} asleep={p.level === 0} />
+                <span className={styles.nowPaceName}>{p.name}</span>
+                <strong>{p.verdict}</strong>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className={styles.link} onClick={() => onGo("sets", "route")}>
+            Сменить сет →
+          </button>
+        </div>
+        <SetDetail
+          key={`${current.id}-${focus?.n ?? 0}`}
+          model={model}
+          set={current}
+          topic={focus?.topic}
+          onMakeCurrent={onAccept}
+          onModel={onModel}
+          onToast={onToast}
+        />
+      </div>
+    );
+
+  const proposed = isDiagPending ? null : proposedSet(model);
+  const topicId = proposed?.skills.find((id) => model.states[id] !== "solid") ?? proposed?.skills[0];
+  const topic = topicId ? skillById(topicId) : null;
+
   return (
     <div className={styles.nowScreen}>
       <section className={styles.nowCenter} aria-label="Сейчас">
-        <PixelDuck tempo="steady" className={styles.nowDuck} waving={isDiagPending || !set} />
+        <PixelDuck tempo="steady" className={styles.nowDuck} waving />
         {isDiagPending ? (
           <>
             <h2 className={styles.nowSet}>Входной замер готовности</h2>
             <p className={styles.nowTopic}>
-              <Icon name="sparkles" size={14} />
-              8 обязательных вопросов · калибровка маршрута
+              <Icon name="sparkles" size={14} />8 вопросов · по ответам соберётся твой первый сет
             </p>
           </>
-        ) : set && topic ? (
+        ) : proposed && topic ? (
           <>
+            <p className={styles.eyebrow}>Ассистент предлагает начать с</p>
             <h2 className={styles.nowSet}>
-              Сет {set.number} · {set.title}
+              Сет {proposed.number} · {proposed.title}
             </h2>
             <p className={styles.nowTopic}>
               <StateGlyph state={model.states[topic.id]} size={14} />
@@ -155,33 +216,25 @@ function Now({
             <button
               type="button"
               className={styles.nowButton}
-              aria-label="Продолжить"
-              title="Продолжить (пройти входной замер)"
-              onClick={onOpenDiagnostic}
+              aria-label="Начать замер"
+              title="Начать замер"
+              onClick={diagnostic.onStart}
             >
               <Icon name="play" size={26} />
             </button>
-            <span className={styles.nowActionHint}>Нажми «Продолжить», чтобы начать замер</span>
-            {onSkipDiagnostic && (
-              <button
-                type="button"
-                className={styles.nowSkipBtn}
-                onClick={onSkipDiagnostic}
-                title="Использовать начальные базовые оценки без прохождения теста"
-              >
-                Скинуть тест (взять базовые оценки)
-              </button>
-            )}
-          </div>
-        ) : (
-          set && topic && (
+            <span className={styles.nowActionHint}>Нажми, чтобы начать — это пара минут</span>
             <button
               type="button"
-              className={styles.nowButton}
-              aria-label={current ? "Продолжить" : "Начать"}
-              title={current ? "Продолжить" : "Начать"}
-              onClick={() => (current ? onOpenSet(set.id) : onAccept(set.id))}
+              className={styles.nowSkipBtn}
+              onClick={diagnostic.onSkip}
+              title="Использовать начальные базовые оценки без прохождения теста"
             >
+              Пропустить тест (взять базовые оценки)
+            </button>
+          </div>
+        ) : (
+          proposed && (
+            <button type="button" className={styles.nowButton} aria-label="Начать" title="Начать" onClick={() => onAccept(proposed.id)}>
               <Icon name="play" size={26} />
             </button>
           )
