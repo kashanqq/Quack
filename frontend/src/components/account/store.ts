@@ -8,10 +8,10 @@
 // tab is hidden or closed. Continuous gestures (panning, dragging, resizing) call `set` only when they
 // end — the screens keep the in-between state to themselves.
 
+import { ApiError, api } from "@/api/client";
 import type { StateBackend, User } from "./contract";
 
 const REMOTE = process.env.NEXT_PUBLIC_DATA_SOURCE === "remote";
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 /** Local storage is cheap; the network gets a longer pause to gather more into one request */
 const FLUSH_MS = REMOTE ? 1200 : 250;
 
@@ -77,34 +77,40 @@ function adoptLegacy(userId: string, into: Record<string, unknown>) {
   }
 }
 
+/** `PATCH /state` refuses more than 200 keys at a time (backend/app/api/state.py) */
+const MAX_KEYS_PER_PATCH = 200;
+
+function batches(entries: Record<string, unknown>) {
+  const keys = Object.keys(entries);
+  if (keys.length <= MAX_KEYS_PER_PATCH) return [entries];
+  const out: Record<string, unknown>[] = [];
+  for (let i = 0; i < keys.length; i += MAX_KEYS_PER_PATCH) {
+    out.push(Object.fromEntries(keys.slice(i, i + MAX_KEYS_PER_PATCH).map((k) => [k, entries[k]])));
+  }
+  return out;
+}
+
 const remoteBackend: StateBackend = {
   async load() {
-    const res = await fetch(`${API}/state`, { credentials: "include" });
-    if (!res.ok) throw new Error(`state ${res.status}`);
-    return res.json();
+    try {
+      return await api.get<Record<string, unknown>>("/state");
+    } catch (e) {
+      // No row yet for this student: an empty slate, not a failure
+      if (e instanceof ApiError && e.status === 404) return {};
+      throw e;
+    }
   },
   async save(_userId, entries) {
-    const res = await fetch(`${API}/state`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(entries),
-    });
-    if (!res.ok) throw new Error(`state patch ${res.status}`);
+    for (const batch of batches(entries)) await api.patch("/state", batch);
   },
   saveOnExit(_userId, entries) {
-    // keepalive lets the request finish after the page is gone
-    void fetch(`${API}/state`, {
-      method: "PATCH",
-      credentials: "include",
-      keepalive: true,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(entries),
-    }).catch(() => undefined);
+    // keepalive lets the request finish after the page is gone; a redirect would not, so no 401 hop
+    for (const batch of batches(entries)) {
+      void api.patch("/state", batch, { keepalive: true, noAuthRedirect: true }).catch(() => undefined);
+    }
   },
   async clear() {
-    const res = await fetch(`${API}/state`, { method: "DELETE", credentials: "include" });
-    if (!res.ok) throw new Error(`state delete ${res.status}`);
+    await api.delete("/state");
   },
 };
 
