@@ -61,7 +61,7 @@ type Props = {
 
 export function Dashboard({ tab, onTab, saved, profile, chatDays, onUnsave, onOpenChoice, onOpenPrep }: Props) {
   const [watched, setWatched] = useState<string[]>([]);
-  const { state: quack } = useQuack();
+  const { state: quack, decide } = useQuack();
   const doneMilestones = useDoneMilestones();
   const testDates = useChosenTestDates();
   const targets = useChosenTargets();
@@ -181,6 +181,7 @@ export function Dashboard({ tab, onTab, saved, profile, chatDays, onUnsave, onOp
               }}
               resolved={resolved}
               onUnresolve={(id) => resolveConflict(id, null)}
+              onDecide={decide ? (id, decision) => (decision === "accept" ? decide.accept(id) : decide.decline(id)) : undefined}
             />
             <ActivityGrid days={activity} />
           </div>
