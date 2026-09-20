@@ -244,6 +244,26 @@ def test_empty_sets_rebuild_once_and_nonempty_read(transport):
     assert transport.calls.forecast == 2
 
 
+def test_a_plan_of_one_consolidation_set_is_not_rebuilt(transport):
+    """Сеты — read-модель в Postgres, и чтение их не пересобирает.
+
+    A plan can legitimately hold nothing but the consolidation set — a student
+    who has closed every skill before the test. Rebuilding that on every read
+    would hand out new set ids each time, and the links, the generated texts
+    and the opened forecast are all keyed by set id.
+    """
+    only = _set(transport.student_id).model_copy(update={"kind": "consolidation"})
+    transport.rows[(transport.student_id, only.id)] = only
+
+    with _client(transport) as client:
+        first = client.get("/sets?exam_id=SAT_MATH")
+        second = client.get("/sets?exam_id=SAT_MATH")
+
+    assert transport.rebuild.await_count == 0
+    assert [row["id"] for row in first.json()["upcoming"]] == [str(only.id)]
+    assert first.json()["upcoming"] == second.json()["upcoming"]
+
+
 def test_set_ownership_switch_and_deadline_validation(transport):
     current = _set(transport.student_id, status="current")
     done = _set(transport.student_id, status="done", position=1)
