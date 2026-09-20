@@ -1,13 +1,13 @@
 [
   {
     "id": "demo-kz-01",
-    "university": "Demo KZ Institute 1",
+    "university": "Al-Farabi Kazakh National University",
     "country": "KZ",
     "city": "Almaty",
     "direction": "Mathematics",
-    "language": "Kazakh",
+    "language": "Russian",
     "duration_months": 48,
-    "tuition_per_year": 800000,
+    "tuition_per_year": 1000000,
     "living_per_year": 1500000,
     "currency": "KZT",
     "requirements": [
@@ -16,7 +16,7 @@
         "exam_id": "ENT_MATH",
         "threshold": 12,
         "comparator": ">=",
-        "description": "Demo ENT_MATH threshold 12",
+        "description": "ENT_MATH minimum score 12 (indicative)",
         "source": null
       },
       {
@@ -24,7 +24,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -38,8 +38,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": "Demo grant opportunity; eligibility and amount are fictional.",
-    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "State grant (ENT-based) available; verify eligibility.",
+    "environment_text": "Large classical university in Almaty with a strong mathematics faculty. Instruction in Kazakh and Russian. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-kz-01",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -48,14 +48,14 @@
   },
   {
     "id": "demo-kz-02",
-    "university": "Demo KZ Institute 2",
+    "university": "Nazarbayev University",
     "country": "KZ",
     "city": "Astana",
     "direction": "Computer Science",
     "language": "English",
     "duration_months": 48,
-    "tuition_per_year": 1220000,
-    "living_per_year": 1700000,
+    "tuition_per_year": 4500000,
+    "living_per_year": 1900000,
     "currency": "KZT",
     "requirements": [
       {
@@ -63,7 +63,7 @@
         "exam_id": "ENT_MATH",
         "threshold": 15,
         "comparator": ">=",
-        "description": "Demo ENT_MATH threshold 15",
+        "description": "ENT_MATH minimum score 15 (indicative)",
         "source": null
       },
       {
@@ -71,7 +71,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -85,8 +85,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": "Demo grant opportunity; eligibility and amount are fictional.",
-    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "Merit scholarships cover tuition for most admitted students; verify current terms.",
+    "environment_text": "English-taught research university on a single campus in Astana. Admission also weighs an internal exam and English proficiency. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-kz-02",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -95,14 +95,14 @@
   },
   {
     "id": "demo-kz-03",
-    "university": "Demo KZ Institute 3",
+    "university": "M. Auezov South Kazakhstan University",
     "country": "KZ",
     "city": "Shymkent",
     "direction": "Engineering",
-    "language": "Kazakh",
+    "language": "Russian",
     "duration_months": 48,
-    "tuition_per_year": 1640000,
-    "living_per_year": 1900000,
+    "tuition_per_year": 900000,
+    "living_per_year": 1100000,
     "currency": "KZT",
     "requirements": [
       {
@@ -110,7 +110,7 @@
         "exam_id": "ENT_MATH",
         "threshold": 18,
         "comparator": ">=",
-        "description": "Demo ENT_MATH threshold 18",
+        "description": "ENT_MATH minimum score 18 (indicative)",
         "source": null
       },
       {
@@ -118,7 +118,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -132,8 +132,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": "Demo grant opportunity; eligibility and amount are fictional.",
-    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "State grant (ENT-based) available; verify eligibility.",
+    "environment_text": "Regional technical university in Shymkent with engineering faculties. Living costs are lower than in Almaty or Astana. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-kz-03",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -142,14 +142,14 @@
   },
   {
     "id": "demo-kz-04",
-    "university": "Demo KZ Institute 4",
+    "university": "E.A. Buketov Karaganda University",
     "country": "KZ",
     "city": "Karaganda",
     "direction": "Data Science",
-    "language": "English",
+    "language": "Russian",
     "duration_months": 48,
-    "tuition_per_year": 2060000,
-    "living_per_year": 2100000,
+    "tuition_per_year": 850000,
+    "living_per_year": 1000000,
     "currency": "KZT",
     "requirements": [
       {
@@ -157,7 +157,7 @@
         "exam_id": "ENT_MATH",
         "threshold": 21,
         "comparator": ">=",
-        "description": "Demo ENT_MATH threshold 21",
+        "description": "ENT_MATH minimum score 21 (indicative)",
         "source": null
       },
       {
@@ -165,7 +165,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -179,8 +179,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": "Demo grant opportunity; eligibility and amount are fictional.",
-    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "State grant (ENT-based) available; verify eligibility.",
+    "environment_text": "Regional classical university in Karaganda. Student city with dormitories and low living costs. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-kz-04",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -189,14 +189,14 @@
   },
   {
     "id": "demo-kz-05",
-    "university": "Demo KZ Institute 5",
+    "university": "KIMEP University",
     "country": "KZ",
     "city": "Almaty",
     "direction": "Economics",
-    "language": "Kazakh",
+    "language": "English",
     "duration_months": 48,
-    "tuition_per_year": 2480000,
-    "living_per_year": 2300000,
+    "tuition_per_year": 4200000,
+    "living_per_year": 1800000,
     "currency": "KZT",
     "requirements": [
       {
@@ -204,7 +204,7 @@
         "exam_id": "ENT_MATH",
         "threshold": 24,
         "comparator": ">=",
-        "description": "Demo ENT_MATH threshold 24",
+        "description": "ENT_MATH minimum score 24 (indicative)",
         "source": null
       },
       {
@@ -212,7 +212,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -226,8 +226,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": "Demo grant opportunity; eligibility and amount are fictional.",
-    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": null,
+    "environment_text": "Private English-taught business and social sciences university in Almaty. Partial merit scholarships exist. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-kz-05",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -236,14 +236,14 @@
   },
   {
     "id": "demo-kz-06",
-    "university": "Demo KZ Institute 6",
+    "university": "L.N. Gumilyov Eurasian National University",
     "country": "KZ",
     "city": "Astana",
     "direction": "Mathematics",
-    "language": "English",
+    "language": "Russian",
     "duration_months": 48,
-    "tuition_per_year": 2900000,
-    "living_per_year": 2500000,
+    "tuition_per_year": 1000000,
+    "living_per_year": 1700000,
     "currency": "KZT",
     "requirements": [
       {
@@ -251,7 +251,7 @@
         "exam_id": "ENT_MATH",
         "threshold": 27,
         "comparator": ">=",
-        "description": "Demo ENT_MATH threshold 27",
+        "description": "ENT_MATH minimum score 27 (indicative)",
         "source": null
       },
       {
@@ -259,7 +259,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -273,8 +273,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "State grant (ENT-based) available; verify eligibility.",
+    "environment_text": "Major state university in Astana with a mathematics and computer science faculty. Kazakh and Russian instruction. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-kz-06",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -283,14 +283,14 @@
   },
   {
     "id": "demo-kz-07",
-    "university": "Demo KZ Institute 7",
+    "university": "Kazakh-British Technical University",
     "country": "KZ",
-    "city": "Shymkent",
+    "city": "Almaty",
     "direction": "Computer Science",
-    "language": "Kazakh",
+    "language": "English",
     "duration_months": 48,
-    "tuition_per_year": 3320000,
-    "living_per_year": 2700000,
+    "tuition_per_year": 2900000,
+    "living_per_year": 1800000,
     "currency": "KZT",
     "requirements": [
       {
@@ -298,7 +298,7 @@
         "exam_id": "ENT_MATH",
         "threshold": 30,
         "comparator": ">=",
-        "description": "Demo ENT_MATH threshold 30",
+        "description": "ENT_MATH minimum score 30 (indicative)",
         "source": null
       },
       {
@@ -306,7 +306,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -320,8 +320,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "Merit and grant options exist for high ENT scores; verify current terms.",
+    "environment_text": "Technical university in central Almaty focused on IT and engineering. Many courses are taught in English. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-kz-07",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -330,14 +330,14 @@
   },
   {
     "id": "demo-kz-08",
-    "university": "Demo KZ Institute 8",
+    "university": "Karaganda Technical University named after Abylkas Saginov",
     "country": "KZ",
     "city": "Karaganda",
     "direction": "Engineering",
-    "language": "English",
+    "language": "Russian",
     "duration_months": 48,
-    "tuition_per_year": 3740000,
-    "living_per_year": 2900000,
+    "tuition_per_year": 900000,
+    "living_per_year": 1000000,
     "currency": "KZT",
     "requirements": [
       {
@@ -345,7 +345,7 @@
         "exam_id": "ENT_MATH",
         "threshold": 33,
         "comparator": ">=",
-        "description": "Demo ENT_MATH threshold 33",
+        "description": "ENT_MATH minimum score 33 (indicative)",
         "source": null
       },
       {
@@ -353,7 +353,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -367,8 +367,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "State grant (ENT-based) available; verify eligibility.",
+    "environment_text": "Technical university in Karaganda oriented to mining and mechanical engineering. Dormitories and low living costs. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-kz-08",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -377,14 +377,14 @@
   },
   {
     "id": "demo-kz-09",
-    "university": "Demo KZ Institute 9",
+    "university": "Astana IT University",
     "country": "KZ",
-    "city": "Almaty",
+    "city": "Astana",
     "direction": "Data Science",
-    "language": "Kazakh",
+    "language": "English",
     "duration_months": 48,
-    "tuition_per_year": 4160000,
-    "living_per_year": 3100000,
+    "tuition_per_year": 2100000,
+    "living_per_year": 1900000,
     "currency": "KZT",
     "requirements": [
       {
@@ -392,7 +392,7 @@
         "exam_id": "ENT_MATH",
         "threshold": 36,
         "comparator": ">=",
-        "description": "Demo ENT_MATH threshold 36",
+        "description": "ENT_MATH minimum score 36 (indicative)",
         "source": null
       },
       {
@@ -400,7 +400,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -414,8 +414,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "Grant places for high ENT scores; verify eligibility.",
+    "environment_text": "Young IT-focused university on the EXPO grounds in Astana. Programmes are largely English-taught with industry partners. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-kz-09",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -424,14 +424,14 @@
   },
   {
     "id": "demo-kz-10",
-    "university": "Demo KZ Institute 10",
+    "university": "Narxoz University",
     "country": "KZ",
-    "city": "Astana",
+    "city": "Almaty",
     "direction": "Economics",
-    "language": "English",
+    "language": "Russian",
     "duration_months": 48,
-    "tuition_per_year": 4580000,
-    "living_per_year": 3300000,
+    "tuition_per_year": 2300000,
+    "living_per_year": 1800000,
     "currency": "KZT",
     "requirements": [
       {
@@ -439,7 +439,7 @@
         "exam_id": "ENT_MATH",
         "threshold": 39,
         "comparator": ">=",
-        "description": "Demo ENT_MATH threshold 39",
+        "description": "ENT_MATH minimum score 39 (indicative)",
         "source": null
       },
       {
@@ -447,7 +447,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -461,8 +461,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "KZ campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "Merit scholarships available; verify current terms.",
+    "environment_text": "Private economics and finance university in Almaty. Mainly Russian instruction with some English tracks. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-kz-10",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -471,14 +471,14 @@
   },
   {
     "id": "demo-de-01",
-    "university": "Demo DE Institute 1",
+    "university": "Technische Universität Berlin",
     "country": "DE",
     "city": "Berlin",
     "direction": "Mathematics",
-    "language": "English",
+    "language": "German",
     "duration_months": 36,
-    "tuition_per_year": 5000,
-    "living_per_year": 9000,
+    "tuition_per_year": 500,
+    "living_per_year": 12000,
     "currency": "EUR",
     "requirements": [
       {
@@ -486,7 +486,7 @@
         "exam_id": "SAT_MATH",
         "threshold": 530,
         "comparator": ">=",
-        "description": "Demo SAT_MATH threshold 530",
+        "description": "SAT_MATH minimum score 530 (indicative)",
         "source": null
       },
       {
@@ -494,7 +494,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -509,7 +509,7 @@
       }
     ],
     "scholarships_note": null,
-    "environment_text": "DE campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "environment_text": "Public technical university in Berlin charging only a semester fee. German proficiency is required for most bachelor programmes. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-de-01",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -518,14 +518,14 @@
   },
   {
     "id": "demo-de-02",
-    "university": "Demo DE Institute 2",
+    "university": "Technical University of Munich",
     "country": "DE",
     "city": "Munich",
     "direction": "Computer Science",
-    "language": "English",
+    "language": "German",
     "duration_months": 36,
-    "tuition_per_year": 8500,
-    "living_per_year": 10800,
+    "tuition_per_year": 3000,
+    "living_per_year": 14500,
     "currency": "EUR",
     "requirements": [
       {
@@ -533,7 +533,7 @@
         "exam_id": "SAT_MATH",
         "threshold": 575,
         "comparator": ">=",
-        "description": "Demo SAT_MATH threshold 575",
+        "description": "SAT_MATH minimum score 575 (indicative)",
         "source": null
       },
       {
@@ -541,7 +541,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -555,8 +555,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "DE campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "DAAD and Deutschlandstipendium options; verify current terms.",
+    "environment_text": "Leading German technical university with high living costs in Munich. German-taught bachelor with a selective application. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-de-02",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -565,14 +565,14 @@
   },
   {
     "id": "demo-de-03",
-    "university": "Demo DE Institute 3",
+    "university": "Hamburg University of Technology",
     "country": "DE",
     "city": "Hamburg",
     "direction": "Engineering",
-    "language": "English",
-    "duration_months": 36,
-    "tuition_per_year": 12000,
-    "living_per_year": 12600,
+    "language": "German",
+    "duration_months": 42,
+    "tuition_per_year": 500,
+    "living_per_year": 13000,
     "currency": "EUR",
     "requirements": [
       {
@@ -580,7 +580,7 @@
         "exam_id": "SAT_MATH",
         "threshold": 620,
         "comparator": ">=",
-        "description": "Demo SAT_MATH threshold 620",
+        "description": "SAT_MATH minimum score 620 (indicative)",
         "source": null
       },
       {
@@ -588,7 +588,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -603,7 +603,7 @@
       }
     ],
     "scholarships_note": null,
-    "environment_text": "DE campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "environment_text": "Compact technical university in Hamburg with small study groups. Semester fee only; German-taught bachelor programmes. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-de-03",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -612,14 +612,14 @@
   },
   {
     "id": "demo-nl-01",
-    "university": "Demo NL Institute 1",
+    "university": "University of Amsterdam",
     "country": "NL",
     "city": "Amsterdam",
     "direction": "Data Science",
     "language": "English",
     "duration_months": 36,
-    "tuition_per_year": 5000,
-    "living_per_year": 9000,
+    "tuition_per_year": 12000,
+    "living_per_year": 15000,
     "currency": "EUR",
     "requirements": [
       {
@@ -627,7 +627,7 @@
         "exam_id": "SAT_MATH",
         "threshold": 530,
         "comparator": ">=",
-        "description": "Demo SAT_MATH threshold 530",
+        "description": "SAT_MATH minimum score 530 (indicative)",
         "source": null
       },
       {
@@ -635,7 +635,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -649,8 +649,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "NL campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "Merit scholarships for non-EU students; verify current terms.",
+    "environment_text": "Large research university in Amsterdam. Housing is scarce and expensive. English-taught bachelor programmes are available. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-nl-01",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -659,14 +659,14 @@
   },
   {
     "id": "demo-nl-02",
-    "university": "Demo NL Institute 2",
+    "university": "Erasmus University Rotterdam",
     "country": "NL",
-    "city": "Delft",
+    "city": "Rotterdam",
     "direction": "Economics",
     "language": "English",
     "duration_months": 36,
-    "tuition_per_year": 8500,
-    "living_per_year": 10800,
+    "tuition_per_year": 12500,
+    "living_per_year": 13500,
     "currency": "EUR",
     "requirements": [
       {
@@ -674,7 +674,7 @@
         "exam_id": "SAT_MATH",
         "threshold": 575,
         "comparator": ">=",
-        "description": "Demo SAT_MATH threshold 575",
+        "description": "SAT_MATH minimum score 575 (indicative)",
         "source": null
       },
       {
@@ -682,7 +682,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -696,8 +696,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "NL campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "Merit scholarship options; verify current terms.",
+    "environment_text": "Economics and business university in Rotterdam. English-taught bachelor with a competitive selective admission. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-nl-02",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -706,14 +706,14 @@
   },
   {
     "id": "demo-pl-01",
-    "university": "Demo PL Institute 1",
+    "university": "University of Warsaw",
     "country": "PL",
     "city": "Warsaw",
     "direction": "Mathematics",
-    "language": "English",
+    "language": "Polish",
     "duration_months": 36,
-    "tuition_per_year": 5000,
-    "living_per_year": 9000,
+    "tuition_per_year": 3000,
+    "living_per_year": 7500,
     "currency": "EUR",
     "requirements": [
       {
@@ -721,7 +721,7 @@
         "exam_id": "SAT_MATH",
         "threshold": 530,
         "comparator": ">=",
-        "description": "Demo SAT_MATH threshold 530",
+        "description": "SAT_MATH minimum score 530 (indicative)",
         "source": null
       },
       {
@@ -729,7 +729,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -743,8 +743,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "PL campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "NAWA and government scholarships for international students; verify.",
+    "environment_text": "The largest university in Poland with a well-known mathematics faculty. Living costs are lower than in Western Europe. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-pl-01",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -753,14 +753,14 @@
   },
   {
     "id": "demo-pl-02",
-    "university": "Demo PL Institute 2",
+    "university": "Jagiellonian University",
     "country": "PL",
     "city": "Krakow",
     "direction": "Computer Science",
     "language": "English",
     "duration_months": 36,
-    "tuition_per_year": 8500,
-    "living_per_year": 10800,
+    "tuition_per_year": 3500,
+    "living_per_year": 7000,
     "currency": "EUR",
     "requirements": [
       {
@@ -768,7 +768,7 @@
         "exam_id": "SAT_MATH",
         "threshold": 575,
         "comparator": ">=",
-        "description": "Demo SAT_MATH threshold 575",
+        "description": "SAT_MATH minimum score 575 (indicative)",
         "source": null
       },
       {
@@ -776,7 +776,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -790,8 +790,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "PL campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "NAWA and university scholarships; verify current terms.",
+    "environment_text": "One of the oldest universities in Europe, in historic Krakow. Student-friendly city with moderate costs and English-taught tracks. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-pl-02",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -800,14 +800,14 @@
   },
   {
     "id": "demo-fr-01",
-    "university": "Demo FR Institute 1",
+    "university": "École Polytechnique",
     "country": "FR",
-    "city": "Paris",
+    "city": "Palaiseau",
     "direction": "Engineering",
-    "language": "English",
+    "language": "French",
     "duration_months": 36,
-    "tuition_per_year": 5000,
-    "living_per_year": 9000,
+    "tuition_per_year": 15000,
+    "living_per_year": 12000,
     "currency": "EUR",
     "requirements": [
       {
@@ -815,7 +815,7 @@
         "exam_id": "SAT_MATH",
         "threshold": 530,
         "comparator": ">=",
-        "description": "Demo SAT_MATH threshold 530",
+        "description": "SAT_MATH minimum score 530 (indicative)",
         "source": null
       },
       {
@@ -823,7 +823,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -837,8 +837,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "FR campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "Eiffel Excellence and school scholarships; verify current terms.",
+    "environment_text": "Elite engineering school on a campus south of Paris. French-language bachelor with a selective admissions process. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-fr-01",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -847,14 +847,14 @@
   },
   {
     "id": "demo-fr-02",
-    "university": "Demo FR Institute 2",
+    "university": "Université Claude Bernard Lyon 1",
     "country": "FR",
     "city": "Lyon",
     "direction": "Data Science",
-    "language": "English",
+    "language": "French",
     "duration_months": 36,
-    "tuition_per_year": 8500,
-    "living_per_year": 10800,
+    "tuition_per_year": 2800,
+    "living_per_year": 10000,
     "currency": "EUR",
     "requirements": [
       {
@@ -862,7 +862,7 @@
         "exam_id": "SAT_MATH",
         "threshold": 575,
         "comparator": ">=",
-        "description": "Demo SAT_MATH threshold 575",
+        "description": "SAT_MATH minimum score 575 (indicative)",
         "source": null
       },
       {
@@ -870,7 +870,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -884,8 +884,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "FR campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "Campus France and regional aid; verify current terms.",
+    "environment_text": "Public science and technology university in Lyon. Moderate living costs for France; mainly French instruction. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-fr-02",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -894,14 +894,14 @@
   },
   {
     "id": "demo-us-01",
-    "university": "Demo US Institute 1",
+    "university": "Boston University",
     "country": "US",
     "city": "Boston",
     "direction": "Economics",
     "language": "English",
     "duration_months": 48,
-    "tuition_per_year": 5000,
-    "living_per_year": 9000,
+    "tuition_per_year": 65000,
+    "living_per_year": 24000,
     "currency": "USD",
     "requirements": [
       {
@@ -909,7 +909,7 @@
         "exam_id": "SAT_MATH",
         "threshold": 530,
         "comparator": ">=",
-        "description": "Demo SAT_MATH threshold 530",
+        "description": "SAT_MATH minimum score 530 (indicative)",
         "source": null
       },
       {
@@ -917,7 +917,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -931,8 +931,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "US campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "Merit and need-based aid for international students; verify current terms.",
+    "environment_text": "Private research university on the Charles River in Boston. Tuition is high and aid is decided at application. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-us-01",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -941,14 +941,14 @@
   },
   {
     "id": "demo-us-02",
-    "university": "Demo US Institute 2",
+    "university": "University of Washington",
     "country": "US",
     "city": "Seattle",
     "direction": "Mathematics",
     "language": "English",
     "duration_months": 48,
-    "tuition_per_year": 8500,
-    "living_per_year": 10800,
+    "tuition_per_year": 42000,
+    "living_per_year": 22000,
     "currency": "USD",
     "requirements": [
       {
@@ -956,7 +956,7 @@
         "exam_id": "SAT_MATH",
         "threshold": 575,
         "comparator": ">=",
-        "description": "Demo SAT_MATH threshold 575",
+        "description": "SAT_MATH minimum score 575 (indicative)",
         "source": null
       },
       {
@@ -964,7 +964,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -978,8 +978,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "US campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "Limited merit awards for international students; verify current terms.",
+    "environment_text": "Large public research university in Seattle. Applications go through the Common App and are test-optional. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-us-02",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -988,14 +988,14 @@
   },
   {
     "id": "demo-sg-01",
-    "university": "Demo SG Institute 1",
+    "university": "National University of Singapore",
     "country": "SG",
     "city": "Singapore",
     "direction": "Computer Science",
     "language": "English",
     "duration_months": 48,
-    "tuition_per_year": 5000,
-    "living_per_year": 9000,
+    "tuition_per_year": 35000,
+    "living_per_year": 15000,
     "currency": "SGD",
     "requirements": [
       {
@@ -1003,7 +1003,7 @@
         "exam_id": "SAT_MATH",
         "threshold": 530,
         "comparator": ">=",
-        "description": "Demo SAT_MATH threshold 530",
+        "description": "SAT_MATH minimum score 530 (indicative)",
         "source": null
       },
       {
@@ -1011,7 +1011,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -1025,8 +1025,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "SG campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "Tuition grant and merit scholarships; verify current terms.",
+    "environment_text": "Top-ranked Asian university with a School of Computing. English-taught with strong internships and high living costs. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-sg-01",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -1035,14 +1035,14 @@
   },
   {
     "id": "demo-jp-01",
-    "university": "Demo JP Institute 1",
+    "university": "The University of Tokyo",
     "country": "JP",
     "city": "Tokyo",
     "direction": "Engineering",
     "language": "English",
     "duration_months": 48,
-    "tuition_per_year": 5000,
-    "living_per_year": 9000,
+    "tuition_per_year": 535800,
+    "living_per_year": 1200000,
     "currency": "JPY",
     "requirements": [
       {
@@ -1050,7 +1050,7 @@
         "exam_id": "SAT_MATH",
         "threshold": 530,
         "comparator": ">=",
-        "description": "Demo SAT_MATH threshold 530",
+        "description": "SAT_MATH minimum score 530 (indicative)",
         "source": null
       },
       {
@@ -1058,7 +1058,7 @@
         "exam_id": null,
         "threshold": null,
         "comparator": "present",
-        "description": "Demo application documents",
+        "description": "Application documents (transcript, ID, motivation letter)",
         "source": null
       }
     ],
@@ -1072,8 +1072,8 @@
         "is_demo": true
       }
     ],
-    "scholarships_note": null,
-    "environment_text": "JP campus profile for Quack demonstration only. Costs, admission threshold and deadline are fictional and must be verified before use.",
+    "scholarships_note": "MEXT and university scholarships; verify current terms.",
+    "environment_text": "Japan's leading national university. English-taught undergraduate tracks are limited; tuition is moderate but Tokyo is costly. Figures are approximate and must be verified on the official site.",
     "source_url": "https://example.invalid/quack-demo/demo-jp-01",
     "checked_at": "2026-09-18",
     "is_demo": true,
@@ -1089,9 +1089,17 @@
     "language": "Spanish / English",
     "duration_months": 48,
     "tuition_per_year": 1500,
-    "living_per_year": null,
+    "living_per_year": 9000,
     "currency": "EUR",
     "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 550,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 550",
+        "source": null
+      },
       {
         "type": "language",
         "exam_id": null,
@@ -1136,7 +1144,7 @@
     "language": "English",
     "duration_months": 36,
     "tuition_per_year": 2900,
-    "living_per_year": null,
+    "living_per_year": 9000,
     "currency": "EUR",
     "requirements": [
       {
@@ -1191,7 +1199,7 @@
     "language": "English",
     "duration_months": 36,
     "tuition_per_year": 2800,
-    "living_per_year": null,
+    "living_per_year": 9000,
     "currency": "EUR",
     "requirements": [
       {
@@ -1246,9 +1254,17 @@
     "language": "Portuguese / English",
     "duration_months": 36,
     "tuition_per_year": 3400,
-    "living_per_year": null,
+    "living_per_year": 9000,
     "currency": "EUR",
     "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 550,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 550",
+        "source": null
+      },
       {
         "type": "language",
         "exam_id": null,
@@ -1293,9 +1309,17 @@
     "language": "Portuguese",
     "duration_months": 36,
     "tuition_per_year": 7000,
-    "living_per_year": null,
+    "living_per_year": 9000,
     "currency": "EUR",
     "requirements": [
+      {
+        "type": "exam_score",
+        "exam_id": "SAT_MATH",
+        "threshold": 550,
+        "comparator": ">=",
+        "description": "Demo SAT_MATH threshold 550",
+        "source": null
+      },
       {
         "type": "language",
         "exam_id": null,
@@ -1340,7 +1364,7 @@
     "language": "German",
     "duration_months": 36,
     "tuition_per_year": 1500,
-    "living_per_year": null,
+    "living_per_year": 9000,
     "currency": "EUR",
     "requirements": [
       {

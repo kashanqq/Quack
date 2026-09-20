@@ -9,7 +9,7 @@ from uuid import uuid4
 import redis.asyncio as redis_async
 import structlog
 from arq.connections import ArqRedis
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -18,7 +18,8 @@ from starlette.responses import Response
 
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
-from app.api.deps import get_current_student
+from app.api.commit import commit_request
+from app.api.deps import flush_outbox, get_current_student
 from app.api.diagnostic import router as diagnostic_router
 from app.api.health import router as health_router
 from app.api.knowledge import router as knowledge_router
@@ -28,10 +29,12 @@ from app.api.overview import router as overview_router
 from app.api.prep import router as prep_router
 from app.api.profile import router as profile_router
 from app.api.programs import router as programs_router
+from app.api.quack import router as quack_router
 from app.api.saved import router as saved_router
 from app.api.sets import router as sets_router
 from app.api.state import router as state_router
 from app.api.tasks import router as tasks_router
+from app.api.texts import router as texts_router
 from app.config import settings
 from app.db.engine import close_engine, create_engine, create_sessionmaker
 from app.errors import AppError, UnsupportedMediaType
@@ -100,7 +103,14 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     configure_logging(settings.LOG_LEVEL)
     logger = structlog.get_logger(__name__)
-    app = FastAPI(title="Quack API", lifespan=lifespan)
+    # `flush_outbox` — страховка для маршрутов со своей сессией (SSE-чат):
+    # на обычном пути транзакцию и намерения задач закрывает
+    # `commit_request` в middleware ниже, ещё до отправки ответа (§10).
+    app = FastAPI(
+        title="Quack API",
+        lifespan=lifespan,
+        dependencies=[Depends(flush_outbox)],
+    )
 
     @app.middleware("http")
     async def request_id_middleware(
@@ -129,6 +139,19 @@ def create_app() -> FastAPI:
                 )
             else:
                 response = await call_next(request)
+            # Фаза 5 (§10): коммит здесь, а не в teardown зависимости.
+            # `call_next` уже вернул ответ обработчика, но наружу он ещё не
+            # ушёл, поэтому «принято» и «долговечно» совпадают по порядку.
+            try:
+                await commit_request(request, response.status_code)
+            except Exception:  # noqa: BLE001
+                logger.exception("request_commit_failed", request_id=request_id)
+                response = JSONResponse(
+                    status_code=500,
+                    content={
+                        "error": {"code": "internal", "message": "Internal error"}
+                    },
+                )
             status = response.status_code
             response.headers["X-Request-Id"] = request_id
             return response
@@ -211,4 +234,6 @@ def create_app() -> FastAPI:
     app.include_router(overview_router)
     app.include_router(diagnostic_router)
     app.include_router(mocks_router)
+    app.include_router(texts_router)
+    app.include_router(quack_router)
     return app

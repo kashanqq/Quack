@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 from app.schemas.common import ErrorClass, ExamId, MockKind, TaskMode
 from app.schemas.diagnostic import DiagnosticResult, DiagnosticState
 from app.schemas.observer import Observation
+from app.schemas.quack import RecKind, RecommendationAction
 
 
 class EventType(StrEnum):
@@ -234,3 +235,29 @@ class MisconceptionPersonalCreatedPayload(_Payload):
     error_class: ErrorClass
     embedding: list[float]
     best_similarity: float | None
+
+
+# --- phase 4: recommendations and generated texts (§14.8) ---
+
+
+class RecommendationAcceptedPayload(_Payload):
+    recommendation_id: UUID
+    reason_hash: str
+    kind: RecKind
+    action: RecommendationAction
+
+
+class RecommendationDeclinedPayload(_Payload):
+    recommendation_id: UUID
+    reason_hash: str
+    kind: RecKind
+    reason: str | None = None
+
+
+class TextOpenedPayload(_Payload):
+    """`guideline.opened` / `explanation.opened` — §3.5."""
+
+    set_id: UUID
+    skill_id: str
+    kind: Literal["guideline", "explanation"]
+    text_hash: str

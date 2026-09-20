@@ -19,6 +19,7 @@ from app.apply.targets import p_target_for
 from app.db.repo import forecast as forecast_repo
 from app.db.repo import profiles as profiles_repo
 from app.db.repo import sets as sets_repo
+from app.errors import NotFound
 from app.events import store as events_store
 from app.events.dispatch import RuleDeps
 from app.events.version import bump
@@ -83,8 +84,6 @@ async def open_set(
     """
     target = await sets_repo.get_set(session, student_id, set_id)
     if target is None:
-        from app.errors import NotFound
-
         raise NotFound("set not found")
 
     for s in await sets_repo.list_sets(session, student_id, target.exam_id):
@@ -115,6 +114,16 @@ async def on_set_change(session: AsyncSession, event: Event, deps: RuleDeps) -> 
     ):
         return
     exam_id: ExamId = event.exam_id or "SAT_MATH"
+    if event.type == EventType.set_switched_by_user:
+        # Выбранный сет сначала становится текущим: rebuild удаляет все
+        # upcoming и сохраняет только current, так что без этого выбор сета
+        # удалял сам выбранный сет.
+        target = (event.payload or {}).get("to_set_id") or event.set_id
+        if target is not None:
+            try:
+                await open_set(session, deps, event.student_id, UUID(str(target)))
+            except NotFound:
+                _logger.info("switch_target_missing", set_id=str(target))
     await rebuild_sets(session, deps, event.student_id, exam_id)
 
 
@@ -294,3 +303,54 @@ async def _release_lock(deps: RuleDeps, key: str) -> None:
         await deps.redis.delete(key)
     except Exception:  # noqa: BLE001
         pass
+
+
+async def on_set_opened_enqueue(
+    session: AsyncSession, event: Event, deps: RuleDeps
+) -> None:
+    """`set.opened` → snapshot the forecast, queue the text pre-generation.
+
+    The snapshot is what «прогноз до» of the end-of-set report compares
+    against (§4.3), and it has to be taken now: by the time the set closes,
+    `forecast_cache` has long since moved on.
+
+    The pre-generation job is queued even when the model is down — the
+    worker defers it with `Retry`, and the alternative (deciding here) would
+    mean the student's set opens without texts for no good reason.
+    """
+    if event.type != EventType.set_opened:
+        return
+    set_id = (event.payload or {}).get("set_id")
+    if not set_id:
+        return
+    set_uuid = UUID(str(set_id))
+    target = await sets_repo.get_set(session, event.student_id, set_uuid)
+    if target is None:
+        return
+
+    current = await forecast_repo.get(session, event.student_id, target.exam_id)
+    if current is not None:
+        from app.db.models import Set as SetRow
+
+        row = await session.get(SetRow, set_uuid)
+        if row is not None:
+            row.opened_forecast = current.model_dump(mode="json")
+            await session.flush()
+
+    from app.apply import texts as apply_texts
+    from app.prompt_versions import text_versions
+
+    versions, model = text_versions()
+    job_id = await apply_texts.set_job_id(
+        session, deps, event.student_id, set_uuid, versions, model
+    )
+    if job_id is None:
+        _logger.info("pregenerate_not_enqueued", set_id=str(set_uuid))
+        return
+    deps.jobs.enqueue(
+        "bulk",
+        "pregenerate_set",
+        job_id=job_id,
+        set_id=str(set_uuid),
+        student_id=str(event.student_id),
+    )

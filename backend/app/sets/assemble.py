@@ -64,6 +64,12 @@ def assemble_sets(
     filtered = [q for q in queue if q.skill_id not in excluded]
     checks = [q.skill_id for q in filtered if q.is_check]
     topics = [q for q in filtered if not q.is_check]
+    # Без данных (новый ученик, confidence < c_vis) все навыки — проверки, и
+    # план сводился к одному «закреплению». Непроверенные навыки идут в сеты
+    # после известных тем: сеты есть сразу, а ответы переставляют очередь
+    # при каждом rebuild_sets (task.answered, замер, мок, наблюдатель).
+    topics = topics + [q for q in filtered if q.is_check]
+    checks = []
 
     limit: date | None = None
     if next_test_date is not None:

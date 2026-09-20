@@ -11,6 +11,7 @@ from app.main import create_app
 
 pytestmark = pytest.mark.phase2
 ORIGINAL_GRAPH_PENDING = health_module._graph_pending
+ORIGINAL_SEARCH = health_module._search
 
 
 @pytest.fixture(autouse=True)
@@ -19,11 +20,28 @@ def no_pending_events(monkeypatch):
         return 0
 
     monkeypatch.setattr(health_module, "_graph_pending", count)
+    monkeypatch.setattr(health_module, "_jobs_pending", count)
+
+
+@pytest.fixture
+def search_status(monkeypatch):
+    """Pin `checks.search` — otherwise the answer depends on whether the
+    machine running the tests happens to have Redis up, which is what made
+    these assertions pass locally and fail in CI."""
+
+    def _set(value):
+        async def status(_request):
+            return value
+
+        monkeypatch.setattr(health_module, "_search", status)
+
+    return _set
 
 
 @pytest.mark.parametrize("llm_status", ["ok", "degraded", "down"])
-def test_health_all_storage_ok(monkeypatch, fake_llm, llm_status):
+def test_health_all_storage_ok(monkeypatch, fake_llm, search_status, llm_status):
     fake_llm.forced_status = llm_status
+    search_status("ok")
 
     async def healthy(_request):
         return True
@@ -40,7 +58,7 @@ def test_health_all_storage_ok(monkeypatch, fake_llm, llm_status):
             "postgres": "ok",
             "neo4j": "ok",
             "redis": "ok",
-            "search": "skipped",
+            "search": "ok",
         },
         "llm_status": llm_status,
         "version": "dev",
@@ -89,7 +107,11 @@ def test_log_processor_masks_nested_secret_keys():
 
 
 @pytest.mark.parametrize("pending", [0, 3])
-def test_graph_pending_is_recent_count_and_zero_is_omitted(monkeypatch, pending):
+def test_graph_pending_is_the_backlog_and_zero_is_omitted(
+    monkeypatch, search_status, pending
+):
+    search_status("ok")
+
     async def healthy(_request):
         return True
 
@@ -108,7 +130,8 @@ def test_graph_pending_is_recent_count_and_zero_is_omitted(monkeypatch, pending)
     assert "payload" not in response.text
 
 
-async def test_graph_pending_query_counts_unprocessed_last_hour():
+async def test_graph_pending_counts_the_whole_recoverable_backlog():
+    """Phase 5 (§19): not "the last hour", and not raw chat messages."""
     statements = []
 
     class Session:
@@ -128,4 +151,33 @@ async def test_graph_pending_query_counts_unprocessed_last_hour():
     assert await ORIGINAL_GRAPH_PENDING(request) == 4
     sql = str(statements[0])
     assert "events.processed_at IS NULL" in sql
-    assert "events.ingested_at >=" in sql
+    assert "ingested_at" not in sql
+    assert "events.type IN" in sql
+
+
+async def test_search_status_is_read_not_probed():
+    """`skipped` when nothing is known — never dressed up as `ok` (§10)."""
+    from app import keys
+
+    class FakeRedis:
+        def __init__(self, values):
+            self.values = values
+
+        async def get(self, key):
+            return self.values.get(key)
+
+    def request_with(values):
+        return SimpleNamespace(
+            app=SimpleNamespace(state=SimpleNamespace(redis=FakeRedis(values)))
+        )
+
+    assert await ORIGINAL_SEARCH(request_with({})) == "skipped"
+    assert await ORIGINAL_SEARCH(request_with({keys.search_last_ok(): "t"})) == "ok"
+    assert (
+        await ORIGINAL_SEARCH(
+            request_with({keys.search_last_error(): "boom", keys.search_last_ok(): "t"})
+        )
+        == "down"
+    )
+    no_redis = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(redis=None)))
+    assert await ORIGINAL_SEARCH(no_redis) == "skipped"

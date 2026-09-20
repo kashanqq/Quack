@@ -18,6 +18,7 @@ from app.db.models import Base
 API_ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_TABLES = {
     "users",
+    "student_state",
     "events",
     "profiles",
     "saved_programs",
@@ -39,7 +40,12 @@ PHASE2_TABLES = {
     "milestone_marks",
     "forecast_cache",
 }
-PHASE4_TABLES = {"student_state"}
+# Фаза 4 (§1.7) — три новые таблицы, одна миграция `0003_phase4`.
+PHASE4_TABLES = {
+    "student_aggregates",
+    "soft_matches",
+    "job_outbox",
+}
 PHASE2_TASK_COLUMNS = {"mode", "issued_event_id", "answered_at", "correct"}
 PHASE1_TASK_COLUMNS = {
     "id",

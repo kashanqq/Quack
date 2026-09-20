@@ -34,6 +34,11 @@ services:
   redis:
     ports: !reset []
 
+  # Фаза 5 (§22): Neo4j — `service_started`, а не `service_healthy`.
+  # Ожидание здорового графа означало, что упавший Neo4j не даёт подняться
+  # даже тому, что работает без него: вход, анкета, сохранённые программы,
+  # приём ответов. PostgreSQL остаётся жёсткой зависимостью — без него нет
+  # ни миграций, ни журнала событий, из которого идёт восстановление.
   api:
     <<: *app
     profiles: [prod]
@@ -47,7 +52,7 @@ services:
       postgres:
         condition: service_healthy
       neo4j:
-        condition: service_healthy
+        condition: service_started
       redis:
         condition: service_healthy
 
@@ -59,9 +64,13 @@ services:
       postgres:
         condition: service_healthy
       neo4j:
-        condition: service_healthy
+        condition: service_started
       redis:
         condition: service_healthy
+      api:
+        # Один migration gate: воркеры стартуют после того, как API применил
+        # миграции, иначе они читают схему, которой ещё нет.
+        condition: service_started
 
   worker-bulk:
     <<: *app
@@ -71,12 +80,17 @@ services:
       postgres:
         condition: service_healthy
       neo4j:
-        condition: service_healthy
+        condition: service_started
       redis:
         condition: service_healthy
+      api:
+        condition: service_started
 
   caddy:
-    image: caddy:2
+    image: quack-web:prod
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
     profiles: [prod]
     environment:
       DOMAIN: ${DOMAIN:?set DOMAIN in deploy/.env}
@@ -84,7 +98,6 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

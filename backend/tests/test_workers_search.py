@@ -41,12 +41,25 @@ async def test_llm_jobs_declare_their_own_timeout():
     by_name = {
         entry.name: entry for entry in (*INTERACTIVE, *BULK) if hasattr(entry, "name")
     }
+    # Фаза 4 (§1.2) дополнила оба реестра; таймаут у каждой задачи свой.
     assert (
         set(by_name)
         == set(JOB_TIMEOUTS)
         == {
             "observe_chat",
             "canonize_misconception",
+            "set_summary",
+            "pregenerate_set",
+            "soft_match",
+            "extract_program",
+            "search_programs",
+            "realism_texts",
+            "compare_text",
+            "daily_aggregates",
+            "recommendations_batch",
+            "outbox_replay",
+            # Фаза 5 (§13.3).
+            "recover_graph_events",
         }
     )
     assert by_name["observe_chat"].timeout_s == settings.OBSERVER_JOB_TIMEOUT_S
@@ -55,9 +68,27 @@ async def test_llm_jobs_declare_their_own_timeout():
     assert JOB_QUEUES["observe_chat"] == "interactive"
     assert by_name["observe_chat"] in INTERACTIVE
     assert by_name["canonize_misconception"] in INTERACTIVE
-    assert BULK == [ping]
+    assert [entry.name for entry in BULK[1:]] == [
+        "pregenerate_set",
+        "soft_match",
+        "extract_program",
+        "search_programs",
+        "realism_texts",
+        "compare_text",
+        "daily_aggregates",
+        "recommendations_batch",
+        "outbox_replay",
+        "recover_graph_events",
+    ]
+    assert by_name["set_summary"] in INTERACTIVE
+    assert JOB_QUEUES["set_summary"] == "interactive"
+    for name in ("observe_chat", "canonize_misconception", "set_summary"):
+        assert by_name[name].max_tries == 3
+    # Дедупликация по `job_id` работает только пока ARQ держит результат;
+    # часовое значение по умолчанию душило бы повторные постановки (§1.3).
+    assert workers.WorkerBulk.keep_result == settings.JOB_KEEP_RESULT_S
+    assert workers.WorkerBulk.max_jobs == settings.BULK_MAX_JOBS
     for entry in by_name.values():
-        assert entry.max_tries == 3
         assert entry.timeout_s <= settings.JOB_TIMEOUT_MAX_S
     # a finished observer must not keep its job id busy for keep_result
     assert by_name["observe_chat"].keep_result_s == 0
@@ -200,6 +231,7 @@ async def test_fetch_page_strips_html_and_rejects_non_http(monkeypatch):
                     "<h1>Welcome</h1><script>private()</script>"
                     "<p>Math &amp; science</p>"
                 ),
+                headers={"content-type": "text/html"},
                 raise_for_status=lambda: None,
             )
 
@@ -211,6 +243,23 @@ async def test_fetch_page_strips_html_and_rejects_non_http(monkeypatch):
         await search.fetch_page("file:///etc/passwd")
 
 
-async def test_extract_program_remains_phase2_boundary():
-    with pytest.raises(NotImplementedError, match="phase 2"):
-        await extract_program(None, "<html></html>", "https://school.test")
+async def test_extract_program_calls_the_model_with_the_page_text():
+    """Фаза 4 (§6.4): граница закрыта — извлечение идёт через structured
+    output, а `html` это уже текст страницы из `fetch_page`."""
+    from app.schemas.programs import ExtractedProgram
+
+    class FakeLLM:
+        def __init__(self):
+            self.calls = []
+
+        async def structured(self, messages, schema, slot):
+            self.calls.append((messages, schema, slot))
+            return ExtractedProgram(university="MIT")
+
+    llm = FakeLLM()
+    result = await extract_program(llm, "page text", "https://school.test")
+    assert result.university == "MIT"
+    messages, schema, slot = llm.calls[0]
+    assert schema is ExtractedProgram
+    assert slot == "bulk"
+    assert "page text" in messages[0].content

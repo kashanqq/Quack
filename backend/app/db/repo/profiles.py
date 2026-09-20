@@ -23,6 +23,8 @@ QUESTIONNAIRE_PATHS = frozenset(
         "academics.sat_score",
         "academics.sat_target",
         "academics.sat_date",
+        "academics.ent_target",
+        "academics.ent_date",
         "academics.ielts_score",
         "academics.ielts_target",
         "preferences.countries",
@@ -98,7 +100,16 @@ async def apply_profile_update(
                     raw_val = "preferred" if raw_val else "not_needed"
                 elif isinstance(raw_val, str):
                     v = raw_val.lower().strip()
-                    if v in ("true", "yes", "need", "grant", "желательно", "нужен", "хотелось бы", "хочу"):
+                    if v in (
+                        "true",
+                        "yes",
+                        "need",
+                        "grant",
+                        "желательно",
+                        "нужен",
+                        "хотелось бы",
+                        "хочу",
+                    ):
                         raw_val = "preferred"
                     elif v in ("false", "no", "not_needed", "не нужен", "нет"):
                         raw_val = "not_needed"
