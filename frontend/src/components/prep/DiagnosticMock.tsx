@@ -49,6 +49,11 @@ export function DiagnosticMock({ onComplete, onClose, onSkip, exam = "sat" }: Pr
   const [remoteSummary, setRemoteSummary] = useState<DiagnosticResultSummary | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [pendingNextTask, setPendingNextTask] = useState<BackendTaskInstanceOut | null>(null);
+  /**
+   * The server refused something. A question the server issued is the server's to grade, so when it
+   * will not, the student hears that instead of a verdict the browser made up (ТЗ §6, X10).
+   */
+  const [remoteFailure, setRemoteFailure] = useState<string | null>(null);
   const startTimeRef = useRef<number>(Date.now());
 
   // Initialize remote diagnostic run if REMOTE_PREP is active
@@ -81,6 +86,7 @@ export function DiagnosticMock({ onComplete, onClose, onSkip, exam = "sat" }: Pr
 
   const handleSelect = async (optionIndex: number) => {
     if (selectedOption !== null || submitting) return;
+    setRemoteFailure(null);
     setSelectedOption(optionIndex);
 
     if (REMOTE_PREP && run) {
@@ -109,6 +115,12 @@ export function DiagnosticMock({ onComplete, onClose, onSkip, exam = "sat" }: Pr
         setPendingNextTask(updatedRun.next_task);
         return;
       }
+
+      // The task came from the server; grading it here would be a different answer from the one that
+      // counts, and nothing would be recorded. Say so and let the student try again.
+      setSelectedOption(null);
+      setRemoteFailure("Не удалось записать ответ — сервер не принял его. Попробуй ещё раз.");
+      return;
     }
 
     // Local fallback evaluation
@@ -143,11 +155,14 @@ export function DiagnosticMock({ onComplete, onClose, onSkip, exam = "sat" }: Pr
       const result = await finishDiagnosticRun(run.run_id);
       setSubmitting(false);
 
-      if (result) {
-        const score = Object.values(answers).filter((a) => a.correct).length;
-        const summary = adaptDiagnosticResult(result, currentIndex + 1, score);
-        setRemoteSummary(summary);
+      if (!result) {
+        // Without the server's result there is no result: a locally counted score would be about
+        // questions the server never recorded an answer for.
+        setRemoteFailure("Не удалось подвести итог замера — сервер не ответил. Попробуй ещё раз.");
+        return;
       }
+      const score = Object.values(answers).filter((a) => a.correct).length;
+      setRemoteSummary(adaptDiagnosticResult(result, currentIndex + 1, score));
       setIsFinished(true);
       return;
     }
@@ -234,6 +249,13 @@ export function DiagnosticMock({ onComplete, onClose, onSkip, exam = "sat" }: Pr
             )}
           </div>
         </header>
+
+        {/* Сервер не принял ответ или итог: говорим об этом, а не рисуем выдуманный результат */}
+        {remoteFailure && (
+          <p className={styles.warn} role="status">
+            {remoteFailure}
+          </p>
+        )}
 
         {/* Индикатор прогресса */}
         {!isFinished && (

@@ -28,6 +28,19 @@ export const PACE_VERDICT: Record<PaceLevel, string> = {
   3: "С запасом",
 };
 
+/**
+ * There is a difference between "you will not make it" and "we cannot tell yet", and the student is
+ * owed the honest one. The backend says so itself — `ЕНТ математика: готовность не посчитать — часы
+ * не указаны` — so a missing forecast keeps the worst level (nothing is promised) but not the verdict.
+ */
+export const PACE_UNKNOWN = "Пока не посчитать";
+
+const knowable = (exam: BackendExamPace) =>
+  Boolean(exam.forecast?.ready_by) || exam.on_track !== null;
+
+export const paceVerdict = (exam: BackendExamPace, level: PaceLevel) =>
+  knowable(exam) ? PACE_VERDICT[level] : PACE_UNKNOWN;
+
 const DAY_MS = 86_400_000;
 
 /** Whole days from `from` to `to`; both are ISO dates (2026-11-07) */
@@ -76,7 +89,7 @@ export function toExamPace(exam: BackendExamPace): ExamPace {
     id,
     name: EXAMS[id].name,
     level,
-    verdict: PACE_VERDICT[level],
+    verdict: paceVerdict(exam, level),
     summary: exam.words,
     advice: [
       ...available.map((v) => v.text),

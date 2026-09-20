@@ -4,7 +4,8 @@
 
 import { describe, expect, it } from "vitest";
 import type { BackendExamPace, BackendQuack, BackendRecommendation } from "@/api/backend";
-import { paceLevel, toActivity, toExamPace, toQuackView, toSignal, variantAction } from "./remoteAdapter";
+import live from "./live-quack.fixture.json";
+import { PACE_UNKNOWN, paceLevel, toActivity, toExamPace, toQuackView, toSignal, variantAction } from "./remoteAdapter";
 
 const forecast = (readyBy: string | null, testDate: string | null) => ({
   exam_id: "SAT_MATH" as const,
@@ -254,6 +255,45 @@ describe("toQuackView", () => {
     const view = toQuackView(quack({ pace: { exams: [], as_of: "2026-09-20T09:00:00Z" } }));
     expect(view.pace).toBeNull();
     expect(view.exams).toEqual([]);
+    expect(view.fresh).toEqual([]);
+  });
+});
+
+// A payload recorded off the local stack (see live-quack.fixture.json). Hand-written fixtures agree
+// with what the code expects; this one only agrees with what the backend actually sent.
+describe("a recorded GET /quack", () => {
+  const view = toQuackView(live as unknown as BackendQuack);
+
+  it("says the pace cannot be computed instead of claiming the student is behind", () => {
+    // forecast.ready_by and on_track are both null: nothing is known, and "Не успеваешь" would be a claim
+    expect(view.pace?.verdict).toBe(PACE_UNKNOWN);
+    expect(view.pace?.summary).toBe("ЕНТ математика: готовность не посчитать — часы не указаны, тест 20 мая");
+  });
+
+  it("offers the two variants the student can act on, and explains the two it cannot", () => {
+    expect(view.pace?.advice).toEqual([
+      "1 ч/нед → готов 20 сентября",
+      "перенести тест на 20 мая (регистрация до 20 апреля)",
+      "убрать E.A. Buketov Karaganda University (порог 18 остаётся максимальным) → готов к сроку — still_late",
+      "снижение цели до 12 не помогает — ниже опускать не станем — floor_reached",
+    ]);
+    expect(view.pace?.adviceActions).toEqual([
+      { kind: "open-prep", label: "Открыть подготовку" },
+      { kind: "pick-date", exam: "ent", key: "2027-05-20", label: "перенести тест на 20 мая (регистрация до 20 апреля)" },
+      null,
+      null,
+    ]);
+  });
+
+  it("reports activity as not computed rather than as a week of zero hours", () => {
+    expect(view.activity.computedAt).toBeNull();
+    expect(view.activity.hoursActual).toBeNull();
+    expect(view.activity.days).toHaveLength(2);
+    expect(view.activity.tz).toBe("Asia/Almaty");
+  });
+
+  it("has an empty feed and nothing to glow about", () => {
+    expect(view.open).toEqual([]);
     expect(view.fresh).toEqual([]);
   });
 });
