@@ -30,10 +30,10 @@ let instance: QuackSource | null = null;
 
 export function quackSource(): QuackSource {
   if (!instance) {
-    // Still an explicit switch, not NEXT_PUBLIC_DATA_SOURCE. remoteSource speaks the phase 4 API, but
-    // /quack has no readiness and no per-program chances — those come from /overview and /matching,
-    // and until the dashboard reads them (F3.3) the general flag would empty the cards it fills today.
-    instance = process.env.NEXT_PUBLIC_QUACK_SOURCE === "remote" ? remoteSource() : localSource();
+    // The domain flag wins over the general one, as it does in prep/remoteSets.ts; without either the
+    // browser recomputes, so the app still builds and runs with no backend at all.
+    const flag = process.env.NEXT_PUBLIC_QUACK_SOURCE ?? process.env.NEXT_PUBLIC_DATA_SOURCE;
+    instance = flag === "remote" ? remoteSource() : localSource();
   }
   return instance;
 }

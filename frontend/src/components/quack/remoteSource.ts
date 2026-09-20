@@ -10,12 +10,14 @@
 // it can plausibly have changed: on the first subscriber, when the tab comes back, once a minute, and
 // right after anything this device did to a source of truth (report()).
 //
-// What this source cannot know on its own — readiness, saved-program chances, the calendar — stays out
-// of the standing here; the dashboard reads it from /overview and /matching.
+// What /quack cannot answer for — readiness, the chances of each saved program, the dates coming up —
+// comes from /overview and /matching in the same read, and remoteStanding.ts joins the three into the
+// one Standing the dashboard screens already read.
 
 import { backend } from "@/api/backend";
 import { EMPTY_STATE, glowOf, type QuackState, type Signal, type Standing } from "./contract";
-import { toQuackView, type QuackView } from "./remoteAdapter";
+import { toActivityDays, toQuackView, type QuackView } from "./remoteAdapter";
+import { alertsOf, chancesOf, nextDateOf, readinessOf } from "./remoteStanding";
 import type { QuackSource } from "./source";
 
 /** A quiet tab is still worth a look now and then: the server recomputes on its own schedule */
@@ -24,11 +26,21 @@ const POLL_MS = 60_000;
 const DEBOUNCE_MS = 400;
 const HISTORY_MAX = 12;
 
-/** The part of the standing this API can speak for; the rest is the dashboard's to fill in */
-function standingOf(view: QuackView): Standing {
+type Sides = {
+  overview: Awaited<ReturnType<typeof backend.overview.get>> | null;
+  matching: Awaited<ReturnType<typeof backend.matching.get>> | null;
+  savedIds: string[];
+};
+
+/** The whole standing: pace and the feed from /quack, everything else from /overview and /matching */
+function standingOf(view: QuackView, sides: Sides, today: Date): Standing {
+  const { overview, matching, savedIds } = sides;
   return {
     asOf: view.asOf,
-    readiness: 0,
+    readiness: overview ? readinessOf(overview) : 0,
+    alerts: overview ? alertsOf(overview, today) : [],
+    next: overview ? nextDateOf(overview, today) : undefined,
+    programs: matching ? chancesOf(matching, savedIds) : [],
     pace: view.pace
       ? {
           level: view.pace.level,
@@ -40,8 +52,6 @@ function standingOf(view: QuackView): Standing {
         }
       : null,
     exams: view.exams,
-    programs: [],
-    alerts: [],
   };
 }
 
@@ -51,6 +61,8 @@ export function remoteSource(): QuackSource {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let poll: ReturnType<typeof setInterval> | null = null;
   let inFlight: Promise<void> | null = null;
+  let sides: Sides = { overview: null, matching: null, savedIds: [] };
+  let pendingSides = false;
   const listeners = new Set<() => void>();
 
   const emit = () => listeners.forEach((listener) => listener());
@@ -60,13 +72,38 @@ export function remoteSource(): QuackSource {
     emit();
   };
 
-  async function load(): Promise<void> {
+  /**
+   * `sides` only moves when the student does — the profile, the saved list, a ticked milestone — and
+   * every one of those already calls report(). The minute timer therefore re-reads /quack alone,
+   * which is the one the server recomputes on its own schedule.
+   */
+  async function load(withSides: boolean): Promise<void> {
     try {
-      const view = toQuackView(await backend.quack.get());
+      // Each side is allowed to fail on its own: a missing /matching should not cost the pace card.
+      const [quack, overview, matching, saved] = await Promise.all([
+        backend.quack.get(),
+        withSides ? backend.overview.get().catch(() => null) : Promise.resolve(sides.overview),
+        withSides ? backend.matching.get().catch(() => null) : Promise.resolve(sides.matching),
+        withSides ? backend.saved.list().catch(() => null) : Promise.resolve(null),
+      ]);
+      const view = toQuackView(quack);
       // Decided items leave the feed; what the student has already been shown becomes the history
       const seen = view.open.filter((s) => !view.fresh.some((f) => f.id === s.id));
       history = [...seen, ...history.filter((h) => !view.open.some((o) => o.id === h.id))].slice(0, HISTORY_MAX);
-      set({ standing: standingOf(view), fresh: view.fresh, history, glow: glowOf(view.fresh), status: "live" });
+      sides = {
+        overview,
+        matching,
+        savedIds: withSides ? (saved?.items ?? []).map((row) => row.program.id) : sides.savedIds,
+      };
+      const standing = standingOf(view, sides, new Date());
+      set({
+        standing,
+        activity: toActivityDays(quack.activity),
+        fresh: view.fresh,
+        history,
+        glow: glowOf(view.fresh),
+        status: "live",
+      });
     } catch {
       // Nothing is thrown away: the last known state stays on screen, marked as out of date
       set({ ...state, status: "offline" });
@@ -74,11 +111,15 @@ export function remoteSource(): QuackSource {
   }
 
   /** One read at a time, and at most one per DEBOUNCE_MS however many callers ask */
-  function refresh() {
+  function refresh(withSides = true) {
+    pendingSides = pendingSides || withSides;
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;
-      inFlight = (inFlight ?? Promise.resolve()).then(load, load);
+      const full = pendingSides;
+      pendingSides = false;
+      const run = () => load(full);
+      inFlight = (inFlight ?? Promise.resolve()).then(run, run);
     }, DEBOUNCE_MS);
   }
 
@@ -89,7 +130,7 @@ export function remoteSource(): QuackSource {
       listeners.add(listener);
       if (listeners.size === 1) {
         refresh();
-        poll = setInterval(refresh, POLL_MS);
+        poll = setInterval(() => refresh(false), POLL_MS);
         document.addEventListener("visibilitychange", onFocus);
       }
       return () => {
@@ -118,7 +159,10 @@ export function remoteSource(): QuackSource {
       // Optimistic: the glow goes out now, the server catches up and the next read confirms it
       history = [...state.fresh, ...history.filter((h) => !pending.includes(h.id))].slice(0, HISTORY_MAX);
       set({ ...state, fresh: [], history, glow: null });
-      backend.quack.seen(pending).then(refresh, refresh);
+      backend.quack.seen(pending).then(
+        () => refresh(),
+        () => refresh()
+      );
     },
 
     accept(id) {

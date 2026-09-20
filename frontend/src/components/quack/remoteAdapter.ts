@@ -14,7 +14,7 @@ import type {
   BackendRecommendation,
 } from "@/api/backend";
 import { EXAMS } from "../dashboard/dashboardRules";
-import type { AdviceAction, ExamPace, PaceLevel, Signal, SignalLevel } from "./contract";
+import type { ActivityDay, AdviceAction, ExamPace, PaceLevel, Signal, SignalLevel } from "./contract";
 
 /** Backend exam ids against the ones every frontend screen uses */
 const EXAM_ID: Record<BackendExamId, "sat" | "ent"> = { SAT_MATH: "sat", ENT_MATH: "ent" };
@@ -71,7 +71,8 @@ export function variantAction(variant: BackendPaceVariant, examId: BackendExamId
   if (!variant.available) return null;
   if (variant.kind === "move_date") {
     const date = typeof variant.params?.test_date === "string" ? variant.params.test_date : null;
-    return date ? { kind: "pick-date", exam: EXAM_ID[examId], key: date.slice(0, 10), label: variant.text } : null;
+    // The advice line already spells out the date; the button only has to be pressable
+    return date ? { kind: "pick-date", exam: EXAM_ID[examId], key: date.slice(0, 10), label: "Выбрать эту дату" } : null;
   }
   if (variant.kind === "more_hours") return { kind: "open-prep", label: "Открыть подготовку" };
   return null;
@@ -213,4 +214,21 @@ export function toQuackView(quack: BackendQuack): QuackView {
     activity: toActivity(quack.activity),
     asOf: quack.pace.as_of,
   };
+}
+
+/**
+ * The activity calendar for the grid. The backend counts what the student actually did that day —
+ * tasks, mocks, chat — and the grid colours by how much, so the parts are worded here once.
+ */
+export function toActivityDays(activity: BackendActivity): ActivityDay[] {
+  return (activity.days ?? []).map((d) => {
+    const parts: string[] = [];
+    if (d.tasks_answered) parts.push(`задач: ${d.tasks_answered}`);
+    if (d.mocks_completed) parts.push(`моков: ${d.mocks_completed}`);
+    if (d.chat_messages) parts.push(`сообщений: ${d.chat_messages}`);
+    const count = (d.tasks_answered ?? 0) + (d.mocks_completed ?? 0) + (d.chat_messages ?? 0);
+    // Same three buckets the local grid uses, so the two sources look alike
+    const level: ActivityDay["level"] = count === 0 ? 0 : count <= 2 ? 1 : count <= 5 ? 2 : 3;
+    return { day: d.day, count, level, parts };
+  });
 }

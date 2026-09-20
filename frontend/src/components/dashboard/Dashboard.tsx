@@ -99,7 +99,18 @@ export function Dashboard({ tab, onTab, saved, profile, chatDays, onUnsave, onOp
   // The calendar also lists the other sittings, so a date can be picked right there
   const calendarDays = calendarEvents(programs, exams, testDates, true);
   const predicted = forecastScore(readiness(prep));
-  const activity = useMemo(() => activityByDay(Object.values(prep.evidence).flat(), chatDays), [prep, chatDays]);
+  const localActivity = useMemo(
+    () => activityByDay(Object.values(prep.evidence).flat(), chatDays),
+    [prep, chatDays]
+  );
+  // The server counts activity across devices; the browser only knows what happened in it
+  const activity = useMemo(
+    () =>
+      quack.activity
+        ? quack.activity.map((d) => ({ date: new Date(`${d.day}T00:00:00`), count: d.count, level: d.level, parts: d.parts }))
+        : localActivity,
+    [quack.activity, localActivity]
+  );
 
   if (!programs.length) {
     return (

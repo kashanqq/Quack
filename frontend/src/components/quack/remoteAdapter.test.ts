@@ -104,7 +104,7 @@ describe("toExamPace", () => {
       "Убрать TU Delft — в избранном одна программа",
     ]);
     expect(pace.adviceActions).toEqual([
-      { kind: "pick-date", exam: "sat", key: "2026-12-05", label: "Перенести на 5 декабря" },
+      { kind: "pick-date", exam: "sat", key: "2026-12-05", label: "Выбрать эту дату" },
       null,
     ]);
   });
@@ -279,7 +279,7 @@ describe("a recorded GET /quack", () => {
     ]);
     expect(view.pace?.adviceActions).toEqual([
       { kind: "open-prep", label: "Открыть подготовку" },
-      { kind: "pick-date", exam: "ent", key: "2027-05-20", label: "перенести тест на 20 мая (регистрация до 20 апреля)" },
+      { kind: "pick-date", exam: "ent", key: "2027-05-20", label: "Выбрать эту дату" },
       null,
       null,
     ]);
