@@ -11,6 +11,7 @@ import { skillById, type ExamId, type SkillState } from "./prepData";
 import { type DiagnosticQuestion, type DiagnosticResultSummary } from "./diagnosticData";
 import { toBackendExamId } from "./remotePrep";
 import { REMOTE_PREP } from "./remoteSets";
+import { isUuid } from "@/api/client";
 
 export async function fetchActiveOrStartDiagnostic(
   exam: ExamId,
@@ -60,7 +61,7 @@ export async function submitDiagnosticAnswer(
   answerKey: string,
   timeSpentSec: number
 ): Promise<BackendDiagnosticOut | null> {
-  if (!REMOTE_PREP) return null;
+  if (!REMOTE_PREP || !isUuid(runId) || !isUuid(instanceId)) return null;
 
   try {
     const body: BackendAnswerIn = {
@@ -81,7 +82,7 @@ export async function submitDiagnosticAnswer(
 export async function finishDiagnosticRun(
   runId: string
 ): Promise<BackendDiagnosticResult | null> {
-  if (!REMOTE_PREP) return null;
+  if (!REMOTE_PREP || !isUuid(runId)) return null;
 
   try {
     return await backend.diagnostic.finish(runId);

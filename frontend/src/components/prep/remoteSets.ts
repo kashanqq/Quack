@@ -9,11 +9,13 @@ import {
 import {
   registerRemoteSets,
   registerRemoteSkills,
+  setById,
   TODAY,
   type ExamId,
   type Skill,
   type StudySet,
 } from "./prepData";
+import { isUuid } from "@/api/client";
 import { parseIsoDate, toBackendExamId } from "./remotePrep";
 
 export const REMOTE_PREP =
@@ -200,6 +202,10 @@ export function prefetchRemoteSets(exam: ExamId) {
 }
 
 export async function switchRemoteSet(setId: string, exam: ExamId): Promise<RemoteSetsData> {
+  if (!isUuid(setId)) {
+    console.warn("switchRemoteSet called with non-UUID set id:", setId);
+    return getCachedRemoteSets(exam) ?? { current: null, upcoming: [], done: [] };
+  }
   const res = await backend.sets.switch(setId);
   const current = res.current ? adaptBackendSet(res.current, exam) : null;
   const upcoming = (res.upcoming || []).map((s) => adaptBackendSet(s, exam));
@@ -220,6 +226,16 @@ export async function switchRemoteSet(setId: string, exam: ExamId): Promise<Remo
 }
 
 export async function openRemoteSet(setId: string, exam: ExamId): Promise<StudySet> {
+  if (!isUuid(setId)) {
+    console.warn("openRemoteSet called with non-UUID set id:", setId);
+    const cached = getCachedRemoteSets(exam);
+    const candidate = cached?.upcoming?.[0] ?? cached?.current;
+    if (candidate && isUuid(candidate.id)) {
+      setId = candidate.id;
+    } else {
+      return setById(setId);
+    }
+  }
   const res = await backend.sets.open(setId);
   const adapted = adaptBackendSet(res, exam);
   registerRemoteSets([adapted]);
@@ -238,7 +254,7 @@ export async function openFirstRemoteSet(exam: ExamId): Promise<RemoteSetsData> 
   const sets = await fetchRemoteSets(exam, true);
   if (sets.current || !sets.upcoming.length) return sets;
   const first = sets.upcoming[0];
-  if (!first.rawId) return sets;
+  if (!first.rawId || !isUuid(first.rawId)) return sets;
   try {
     await backend.sets.open(first.rawId);
   } catch (err) {

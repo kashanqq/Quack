@@ -15,7 +15,7 @@ import {
   openRemoteTopic,
   submitRemoteAnswer,
 } from "./remoteTasks";
-import { ApiError } from "@/api/client";
+import { ApiError, isUuid } from "@/api/client";
 import { fetchRemoteSets, REMOTE_PREP } from "./remoteSets";
 import { applyRemoteKnowledgeToModel, explainRemoteNode, fetchRemoteKnowledge, refreshRemoteKnowledge } from "./remoteKnowledge";
 import type { ExamId } from "./prepData";
@@ -75,7 +75,7 @@ const KIND_LABEL: Record<MaterialKind, string> = { notes: "конспект", ca
  */
 export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, onTopic, onModel, onToast }: Props) {
   useEffect(() => {
-    if (set.rawId && REMOTE_PREP) {
+    if (set.rawId && isUuid(set.rawId) && REMOTE_PREP) {
       openRemoteTopic(set.rawId, skillId);
     }
   }, [set.rawId, skillId]);
@@ -108,7 +108,7 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
   }, [skillId]);
 
   useEffect(() => {
-    if (!REMOTE_PREP || !set.rawId) return;
+    if (!REMOTE_PREP || !set.rawId || !isUuid(set.rawId)) return;
     loadPrepMessages(set.rawId, skillId).then((history) => {
       if (history && history.length > 0) {
         setLines(
@@ -131,7 +131,7 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
     if (refreshing) return;
     setRefreshing(true);
     try {
-      if (REMOTE_PREP && set.rawId) {
+      if (REMOTE_PREP && set.rawId && isUuid(set.rawId)) {
         let observeRes = null;
         try {
           observeRes = await requestChatObservation(set.rawId, skillId);
@@ -269,7 +269,7 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
     const kind = materialAsked(q);
     if (kind) return make(kind, q);
 
-    if (REMOTE_PREP && set.rawId) {
+    if (REMOTE_PREP && set.rawId && isUuid(set.rawId)) {
       const studentLineId = ++idRef.current;
       const assistantLineId = ++idRef.current;
       setLines((prev) => [
@@ -848,7 +848,7 @@ function MockTest({
     let active = true;
     if (REMOTE_PREP) {
       setLoadingTasks(true);
-      fetchRemoteTopicTasks(skillId, set.rawId).then((remote) => {
+      fetchRemoteTopicTasks(skillId, set.rawId && isUuid(set.rawId) ? set.rawId : null).then((remote) => {
         if (!active) return;
         setLoadingTasks(false);
         if (remote && remote.length > 0) {
@@ -925,7 +925,7 @@ function MockTest({
     if (r.setPassed) onToast(`Сет ${r.setPassed.number} доказан целиком — отчёт в «Обзоре»`);
     pullKnowledge(r.model, set.exam).then((m) => m && onModel(m));
 
-    if (r.to === "solid" && set.rawId && REMOTE_PREP) {
+    if (r.to === "solid" && set.rawId && isUuid(set.rawId) && REMOTE_PREP) {
       try {
         const updated = await completeRemoteTopic(set.rawId, skillId);
         if (updated) {

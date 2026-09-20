@@ -3,6 +3,9 @@
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isUuid = (s: unknown): s is string => typeof s === "string" && UUID_RE.test(s);
+
 export class ApiError extends Error {
   constructor(
     /** HTTP status; 0 when the server could not be reached */

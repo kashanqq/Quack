@@ -9,7 +9,7 @@
 // a spinner that turns forever.
 
 import { backend } from "@/api/backend";
-import { ApiError } from "@/api/client";
+import { ApiError, isUuid } from "@/api/client";
 import type { components } from "@/api/schema";
 import { REMOTE_PREP } from "./remoteSets";
 
@@ -31,7 +31,7 @@ export const MARK_WORD: Record<string, string> = {
 };
 
 export async function fetchText(setId: string, skillId: string, kind: TextKind): Promise<RemoteText | null> {
-  if (!REMOTE_PREP) return null;
+  if (!REMOTE_PREP || !isUuid(setId)) return null;
   try {
     return await backend.texts.get(setId, skillId, kind);
   } catch (err) {
@@ -48,7 +48,7 @@ export async function fetchText(setId: string, skillId: string, kind: TextKind):
  * the activity calendar both read this event, so it is sent even when the text came from the cache.
  */
 export async function markTextOpened(setId: string, skillId: string, kind: TextKind): Promise<void> {
-  if (!REMOTE_PREP) return;
+  if (!REMOTE_PREP || !isUuid(setId)) return;
   try {
     await backend.texts.opened(setId, skillId, kind);
   } catch (err) {
@@ -57,7 +57,7 @@ export async function markTextOpened(setId: string, skillId: string, kind: TextK
 }
 
 export async function regenerateText(setId: string, skillId: string, kind: TextKind): Promise<boolean> {
-  if (!REMOTE_PREP) return false;
+  if (!REMOTE_PREP || !isUuid(setId)) return false;
   try {
     await backend.texts.regenerate(setId, skillId, kind);
     return true;

@@ -20,6 +20,12 @@ import {
 } from "./prepData";
 
 import type { IconName } from "../choice/Icon";
+import { isUuid } from "@/api/client";
+
+const REMOTE =
+  typeof process !== "undefined" &&
+  (process.env.NEXT_PUBLIC_DATA_SOURCE === "remote" ||
+    process.env.NEXT_PUBLIC_SRC_PREP === "remote");
 
 export type PrepTab = "overview" | "sets";
 
@@ -98,13 +104,13 @@ export function initialModel(): PrepModel {
     recall: Object.fromEntries(SKILLS.map((s) => [s.id, s.recall])),
     misconceptions: Object.fromEntries(SKILLS.map((s) => [s.id, s.misconceptions])),
     evidence: Object.fromEntries(SKILLS.map((s) => [s.id, s.evidence])),
-    doneSets: ["s1", "e1"],
-    currentSet: "s2",
+    doneSets: REMOTE ? [] : ["s1", "e1"],
+    currentSet: REMOTE ? null : "s2",
     extraDays: 0,
     milestonesDone: [],
     resolvedConflicts: {},
     demo: false,
-    reportFor: "s1",
+    reportFor: REMOTE ? null : "s1",
     materials: {},
     diagnosticDone: false,
     diagnosticSkipped: false,
@@ -126,6 +132,17 @@ export function reviveModel(raw: unknown): PrepModel | null {
     misconceptions: { ...fresh.misconceptions, ...saved.misconceptions },
     evidence: { ...fresh.evidence, ...saved.evidence },
   };
+  if (REMOTE) {
+    if (model.currentSet && !isUuid(model.currentSet)) {
+      model.currentSet = null;
+    }
+    if (model.doneSets) {
+      model.doneSets = model.doneSets.filter(isUuid);
+    }
+    if (model.reportFor && !isUuid(model.reportFor)) {
+      model.reportFor = null;
+    }
+  }
   model.evidence = Object.fromEntries(
     Object.entries(model.evidence).map(([id, list]) => [id, list.map((e) => ({ ...e, date: new Date(e.date) }))])
   );
@@ -243,6 +260,7 @@ export function acceptSet(model: PrepModel, id: string): PrepModel {
 export function skipTest(model: PrepModel): PrepModel {
   const next = { ...model, diagnosticDone: true, diagnosticSkipped: true };
   if (next.currentSet) return next;
+  if (REMOTE) return next;
   const top = rankSets(next, "sat")[0]?.set;
   return top ? acceptSet(next, top.id) : next;
 }

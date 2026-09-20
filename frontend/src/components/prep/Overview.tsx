@@ -41,7 +41,8 @@ import {
 } from "./prepData";
 import { chooseTestDate, disputeMisconception, proposedSet, readiness, setReport, type PrepModel, type PrepSub, type PrepTab, type SetReport } from "./prepModel";
 import { disputeRemoteMisconception } from "./remoteKnowledge";
-import { getCachedRemoteSets } from "./remoteSets";
+import { fetchRemoteSets, getCachedRemoteSets, type RemoteSetsData } from "./remoteSets";
+import { isUuid } from "@/api/client";
 import { StateGlyph } from "./SkillGraph";
 import { SetDetail } from "./SetDetail";
 import { DiagnosticMock } from "./DiagnosticMock";
@@ -231,7 +232,26 @@ function Now({
   diagnostic: Props["diagnostic"];
 }) {
   const { state } = useQuack();
-  const current = model.currentSet ? setById(model.currentSet) : null;
+  const targetExam: ExamId = (exams.find((e) => e.id === "ent" || e.id === "sat")?.id as ExamId) ?? "sat";
+  const [remoteSets, setRemoteSets] = useState<RemoteSetsData | null>(() => {
+    if (!REMOTE_PREP) return null;
+    return getCachedRemoteSets(targetExam);
+  });
+
+  useEffect(() => {
+    if (!REMOTE_PREP) return;
+    let active = true;
+    fetchRemoteSets(targetExam).then((data) => {
+      if (active) setRemoteSets(data);
+    }).catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [targetExam]);
+
+  const current = REMOTE_PREP
+    ? (model.currentSet && isUuid(model.currentSet) ? setById(model.currentSet) : null) ?? remoteSets?.current ?? null
+    : model.currentSet ? setById(model.currentSet) : null;
   const isDiagPending = !model.diagnosticDone;
 
   // Quack's verdict per exam — strictly filtered to exams that are actually required
@@ -260,7 +280,6 @@ function Now({
   });
 
   // The test itself, in place: its result builds the route and the first set opens on the same spot
-  const targetExam: ExamId = (exams.find((e) => e.id === "ent" || e.id === "sat")?.id as ExamId) ?? "sat";
   if (diagnostic.open)
     return (
       <DiagnosticMock
@@ -311,7 +330,11 @@ function Now({
       </div>
     );
 
-  const proposed = isDiagPending ? null : proposedSet(model);
+  const proposed = isDiagPending
+    ? null
+    : REMOTE_PREP
+      ? (remoteSets?.upcoming?.[0] ?? null)
+      : (proposedSet(model) ?? null);
   const topicId = proposed?.skills.find((id) => model.states[id] !== "solid") ?? proposed?.skills[0];
   const topic = topicId ? skillById(topicId) : null;
   const report = isDiagPending ? null : setReport(model);
@@ -463,7 +486,7 @@ function Important({
     ...getSetsFromCache("sat"),
     ...getSetsFromCache("ent"),
   ];
-  const allAvailableSets = [...SETS, ...remoteSets];
+  const allAvailableSets = REMOTE_PREP ? [...remoteSets, ...SETS] : [...SETS, ...remoteSets];
   const setWith = (skillId: string) =>
     allAvailableSets.find((s) => s.id === model.currentSet && s.skills.includes(skillId)) ??
     allAvailableSets.find((s) => s.skills.includes(skillId) && !model.doneSets.includes(s.id)) ??

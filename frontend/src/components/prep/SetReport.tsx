@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { backend } from "@/api/backend";
-import { ApiError } from "@/api/client";
+import { ApiError, isUuid } from "@/api/client";
 import type { components } from "@/api/schema";
 import { REMOTE_PREP } from "./remoteSets";
 import { GIVE_UP_MS, retryDelay } from "./remoteTexts";
@@ -47,7 +47,7 @@ export function SetReport({ setId }: { setId?: string }) {
   const [waitedTooLong, setWaitedTooLong] = useState(false);
 
   useEffect(() => {
-    if (!REMOTE_PREP || !setId) return;
+    if (!REMOTE_PREP || !setId || !isUuid(setId)) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const since = Date.now();

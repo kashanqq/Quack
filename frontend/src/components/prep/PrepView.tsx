@@ -20,6 +20,7 @@ import {
   applyRemoteKnowledgeToModel,
   fetchRemoteKnowledge,
 } from "./remoteKnowledge";
+import { isUuid } from "@/api/client";
 import { fetchKnowledgeVersion } from "./remoteChat";
 import { savedPrograms, setById, type ExamId } from "./prepData";
 import {
@@ -146,13 +147,19 @@ export function PrepView({
       // demo data) that the server no longer has is replaced by the server's current one
       fetchRemoteSets(exam, true)
         .then((data) => {
-          const ids = [data.current, ...data.upcoming, ...data.done].filter(Boolean).map((s) => s!.id);
-          if (!ids.length) return;
-          setModel((prev) =>
-            prev.currentSet && !ids.includes(prev.currentSet) && setById(prev.currentSet).exam === exam
-              ? { ...prev, currentSet: data.current?.id ?? null }
-              : prev
-          );
+          const currentId = data.current?.id ?? null;
+          const doneIds = data.done.map((s) => s.id);
+          setModel((prev) => {
+            const invalidCurrent =
+              !prev.currentSet ||
+              !isUuid(prev.currentSet) ||
+              (setById(prev.currentSet).exam === exam && prev.currentSet !== currentId);
+            return {
+              ...prev,
+              currentSet: invalidCurrent ? currentId : prev.currentSet,
+              doneSets: Array.from(new Set([...prev.doneSets.filter(isUuid), ...doneIds])),
+            };
+          });
         })
         .catch(() => {});
       fetchRemoteKnowledge(exam).then((data) => {
@@ -175,7 +182,22 @@ export function PrepView({
         if (!active) return;
         if (force || lastVersionRef.current === null || v > lastVersionRef.current) {
           lastVersionRef.current = v;
-          prefetchRemoteSets(exam);
+          const setsData = await fetchRemoteSets(exam, true).catch(() => null);
+          if (active && setsData) {
+            const currentId = setsData.current?.id ?? null;
+            const doneIds = setsData.done.map((s) => s.id);
+            setModel((prev) => {
+              const invalidCurrent =
+                !prev.currentSet ||
+                !isUuid(prev.currentSet) ||
+                (setById(prev.currentSet).exam === exam && prev.currentSet !== currentId);
+              return {
+                ...prev,
+                currentSet: invalidCurrent ? currentId : prev.currentSet,
+                doneSets: Array.from(new Set([...prev.doneSets.filter(isUuid), ...doneIds])),
+              };
+            });
+          }
           const data = await fetchRemoteKnowledge(exam, true);
           if (active && data) {
             setModel((prev) => applyRemoteKnowledgeToModel(prev, data, exam));
@@ -244,7 +266,7 @@ export function PrepView({
     setModel((m) => acceptSet(m, id));
     setFocus(null);
     setToast("Сет принят — начни с первой темы на графе");
-    if (REMOTE_PREP) {
+    if (REMOTE_PREP && isUuid(id)) {
       openRemoteSet(id, exam).catch((err) => {
         console.error("Failed to open remote set:", err);
       });
@@ -263,7 +285,7 @@ export function PrepView({
         ? `Сет ${setById(id).number} теперь актуальный, сет ${setById(prev).number} отложен · занятия — во вкладке «Сейчас»`
         : `Сет ${setById(id).number} теперь актуальный · занятия — во вкладке «Сейчас»`
     );
-    if (REMOTE_PREP) {
+    if (REMOTE_PREP && isUuid(id)) {
       switchRemoteSet(id, exam).catch((err) => {
         console.error("Failed to switch remote set:", err);
       });
@@ -276,6 +298,15 @@ export function PrepView({
     setFocus(null);
     onDiagnosticStatusChange?.(true);
     setToast("Первый сет собран по твоему профилю. Замер можно пройти позже — ссылка над графом");
+    if (REMOTE_PREP) {
+      openFirstRemoteSet(exam)
+        .then((sets) => {
+          if (sets.current?.id && isUuid(sets.current.id)) {
+            setModel((m) => ({ ...m, currentSet: sets.current!.id }));
+          }
+        })
+        .catch(() => {});
+    }
   };
 
   const completeDiagnostic = (summary: DiagnosticResultSummary) => {
@@ -283,6 +314,7 @@ export function PrepView({
       const next = { ...m, diagnosticDone: true, diagnosticSkipped: false, states: { ...m.states, ...summary.statesUpdate } };
       // The first test builds the route: its top set becomes the first one in work. A retake leaves the choice alone.
       if (m.diagnosticDone && m.currentSet) return next;
+      if (REMOTE_PREP) return next;
       const top = rankSets(next, exam)[0]?.set;
       return top ? acceptSet(next, top.id) : next;
     });
@@ -298,7 +330,13 @@ export function PrepView({
         }
       });
       // Замер закончен — сет должен открыться на сервере, а не только в локальной модели
-      openFirstRemoteSet(exam).catch(() => {});
+      openFirstRemoteSet(exam)
+        .then((sets) => {
+          if (sets.current?.id && isUuid(sets.current.id)) {
+            setModel((m) => ({ ...m, currentSet: sets.current!.id }));
+          }
+        })
+        .catch(() => {});
     }
   };
 
