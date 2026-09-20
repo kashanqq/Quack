@@ -45,6 +45,7 @@ import {
   loadSaved,
   prioritize,
   primeSynced,
+  searchPrograms,
   syncFields,
 } from "./catalog";
 import { loadHistory, loadProfile, sendSelectionMessage, type HistoryItem } from "./remoteChat";
@@ -445,6 +446,14 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
       setMobileProgramsOpen(false);
       setDetailId(id);
     },
+    // Помеченная программа уходит из подборки на сервере — перечитываем каталог, а не прячем её тут
+    onFlagged: (id) => {
+      setDetailId(null);
+      setPicks((list) => list.filter((pick) => pick !== id));
+      setCompare((list) => list.filter((pick) => pick !== id));
+      setToast("Спасибо — программа убрана из подборки");
+      if (REMOTE) loadCatalog().then(() => bumpCatalog((n) => n + 1)).catch(() => undefined);
+    },
   };
 
   const openCompare = () => {
@@ -733,8 +742,29 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
         bumpCatalog((n) => n + 1);
         ids = prioritize(loaded.ids, profileRef.current.priorities).slice(0, 5);
         if (!ids.length) {
-          await assistantSay(loaded.emptyReason ?? "Пока не нашёл подходящих программ. Расскажи, что для тебя важно, — и я поищу ещё.");
-          return;
+          // Каталог пуст не потому, что программ нет, а потому что их туда ещё не клали:
+          // просим поиск по тому, что ученик уже сказал, и возвращаемся с результатом.
+          const p = profileRef.current;
+          const query = [p.direction, p.location].filter(Boolean).join(" ").trim();
+          if (query) {
+            await assistantSay("Поищу программы по твоему запросу — это займёт около минуты.");
+            const found = await searchPrograms(query);
+            if (found.status === "done" && found.found.length) {
+              const again = await loadCatalog();
+              bumpCatalog((n) => n + 1);
+              ids = prioritize(again.ids, p.priorities).slice(0, 5);
+            } else {
+              await assistantSay(
+                found.status === "unavailable"
+                  ? "Поиск сейчас недоступен — показываю то, что уже есть в каталоге."
+                  : "Поиск ещё идёт — загляни чуть позже, программы появятся сами."
+              );
+            }
+          }
+          if (!ids.length) {
+            await assistantSay(loaded.emptyReason ?? "Пока не нашёл подходящих программ. Расскажи, что для тебя важно, — и я поищу ещё.");
+            return;
+          }
         }
       } catch {
         // §6.3 «поиск недоступен»: подбор продолжает работать на кэше и полу проверенных программ,

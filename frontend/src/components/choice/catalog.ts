@@ -98,6 +98,10 @@ function toProgram(b: BackendProgram): Program {
     research: "средняя",
     exchange: "",
     remote: true,
+    isDemo: b.is_demo,
+    extractedAuto: b.extracted_auto,
+    sourceUrl: b.source_url,
+    checkedAt: b.checked_at,
   };
 }
 
@@ -129,6 +133,9 @@ function toEvaluation(m: BackendMatch, program: Program): Evaluation {
     fits: m.fits_text ? [m.fits_text] : [],
     misfits: [],
     score: m.score,
+    realismText: m.realism_text ?? null,
+    realismTextStatus: m.realism_text_status,
+    softPending: m.soft_pending,
   };
 }
 
@@ -338,4 +345,82 @@ export async function clearProfileOnBackend(): Promise<void> {
     await backend.profile.patch(path, null);
   }
   forgetSynced();
+}
+
+export type CompareView = {
+  /** Program ids in the order the backend answered, which is the order asked */
+  ids: string[];
+  rows: { param: string; values: string[]; differs: boolean; relevant: boolean }[];
+  /** Parameters where every program says the same: shown folded away */
+  collapsedSame: string[];
+  conclusion: string | null;
+  conclusionStatus: "ready" | "generating" | "stale" | "failed";
+};
+
+/**
+ * The comparison as the backend makes it (§3.4). The table is arithmetic and is ready at once; the
+ * takeaway under it is generated, so it can still be on its way — the table does not wait for it.
+ */
+export async function loadCompare(ids: string[]): Promise<CompareView | null> {
+  if (!REMOTE || ids.length < 2) return null;
+  try {
+    const out = await backend.matching.compare(ids);
+    const order = out.program_ids?.length ? out.program_ids : ids;
+    return {
+      ids: order,
+      rows: (out.rows ?? []).map((r) => ({
+        param: r.param,
+        values: order.map((id) => r.values?.[id] ?? "—"),
+        differs: r.differs,
+        relevant: r.relevant_to_student,
+      })),
+      collapsedSame: out.collapsed_same ?? [],
+      conclusion: out.conclusion ?? null,
+      conclusionStatus: out.conclusion_status ?? "generating",
+    };
+  } catch (err) {
+    console.warn("Failed to read the comparison:", ids, err);
+    return null;
+  }
+}
+
+export type SearchOutcome =
+  | { status: "done"; found: string[] }
+  | { status: "unavailable" }
+  | { status: "timeout" };
+
+/** 2s, 4, 8, 16, then every 30 — a search is a background job, not a request */
+const SEARCH_RETRY_MS = [2_000, 4_000, 8_000, 16_000, 30_000];
+/** Past this the student is told, rather than left watching */
+const SEARCH_GIVE_UP_MS = 90_000;
+
+/**
+ * Looks for programs nobody has put in the catalogue yet (§1.1). Nothing is searched inside the
+ * request: the POST answers 202 with an id, and the job's status is read until it settles. The id is
+ * a hash of the query, so the same question from two students is one search and one budget spend.
+ */
+export async function searchPrograms(query: string): Promise<SearchOutcome> {
+  if (!REMOTE) return { status: "unavailable" };
+  const started = Date.now();
+  let searchId: string;
+  try {
+    searchId = (await backend.programs.search(query)).search_id;
+  } catch (err) {
+    console.warn("Failed to start the program search:", query, err);
+    return { status: "unavailable" };
+  }
+
+  for (let attempt = 0; Date.now() - started < SEARCH_GIVE_UP_MS; attempt++) {
+    await new Promise((done) => setTimeout(done, SEARCH_RETRY_MS[Math.min(attempt, SEARCH_RETRY_MS.length - 1)]));
+    let status;
+    try {
+      status = await backend.programs.searchStatus(searchId);
+    } catch (err) {
+      console.warn("Failed to read the search status:", searchId, err);
+      return { status: "unavailable" };
+    }
+    if (status.status === "done") return { status: "done", found: status.found ?? [] };
+    if (status.status === "unavailable") return { status: "unavailable" };
+  }
+  return { status: "timeout" };
 }

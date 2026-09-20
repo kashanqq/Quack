@@ -72,6 +72,16 @@ export const backend = {
     get: (limit = 50) => api.get<BackendMatching>(`/matching?limit=${limit}`),
     compare: (ids: string[]) => api.get<Schemas["CompareOut"]>(`/matching/compare?ids=${encodeURIComponent(ids.join(","))}`),
   },
+  programs: {
+    get: (programId: string) => api.get<BackendProgram>(`/programs/${encodeURIComponent(programId)}`),
+    /** 202 and a search_id; nothing is searched inside the request (§1.1) */
+    search: (query: string) => api.post<Schemas["SearchStartedOut"]>("/programs/search", { query }),
+    searchStatus: (searchId: string) =>
+      api.get<Schemas["SearchStatusOut"]>(`/programs/search/${encodeURIComponent(searchId)}`),
+    /** «Данные неверны» hides an automatically extracted record; a verified one answers 409 */
+    flag: (programId: string, reason: string) =>
+      api.post<BackendProgram>(`/programs/${encodeURIComponent(programId)}/flag`, { reason }),
+  },
   saved: {
     list: () => api.get<Schemas["Page_SavedProgramWithProgram_"]>("/saved"),
     add: (programId: string) => api.post<unknown>(`/saved/${encodeURIComponent(programId)}`),
