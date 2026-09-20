@@ -239,8 +239,16 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
 
   useEffect(() => {
     if (!workspaceLoaded) return;
-    // The store gathers a burst (a reply typing out) into one write
-    store.set(WORKSPACE_KEY, { profile, confirmed, picks, saved, compare, sessions } satisfies Workspace);
+    // The store gathers a burst (a reply typing out) into one write.
+    // With a backend the questionnaire, the saved list and the conversation are read from it on
+    // every load and overwrite whatever was here, so keeping a copy is duplication, not a cache
+    // (ТЗ §5.6). What stays is the screen's own: which programs are shown and compared.
+    store.set(
+      WORKSPACE_KEY,
+      REMOTE
+        ? ({ profile: EMPTY_PROFILE, confirmed, picks, saved: [], compare, sessions: [] } satisfies Workspace)
+        : ({ profile, confirmed, picks, saved, compare, sessions } satisfies Workspace)
+    );
   }, [workspaceLoaded, profile, confirmed, picks, saved, compare, sessions]);
 
   /* ---------- Backend: catalog, saved programs, profile ---------- */

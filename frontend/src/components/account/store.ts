@@ -15,6 +15,44 @@ const REMOTE = process.env.NEXT_PUBLIC_DATA_SOURCE === "remote";
 /** Local storage is cheap; the network gets a longer pause to gather more into one request */
 const FLUSH_MS = REMOTE ? 1200 : 250;
 
+/* ---------- What is allowed to live here ---------- */
+
+/**
+ * `/state` is a bridge for what belongs to this browser, not a second database (ТЗ §5.6). Every key
+ * is listed here with the reason it is allowed to stay; anything else is dropped rather than quietly
+ * synced, so a domain slice cannot creep back in without someone editing this list.
+ */
+const ALLOWED: Record<string, string> = {
+  // UI-настройки — целиком наши
+  "quack-choice-layout": "ширины и свёрнутость панелей «Выбора»",
+  "quack-hints-seen": "какие подсказки ученик уже видел",
+  "quack-dashboard-watch": "что ученик добавил в «Слежу» на дашборде",
+  "quack-advice-dismissed": "какие советы ученик убрал с глаз",
+
+  // Экранные выборы: что открыто и что сравнивается — это не домен
+  "quack-choice-workspace": "выбранные к показу и сравнению программы, состояние анкеты-интро",
+
+  // Ещё не переехало: см. docs/sync-log.md, запись про F6
+  "quack-prep": "модель подготовки; при remote домен приходит с сервера, локально остаются материалы",
+  "quack-baseline": "база сравнения локального Quack (не используется при remote)",
+  "quack-history": "лента локального Quack (не используется при remote)",
+  "quack-known": "когда локальный Quack впервые заметил сигнал (не используется при remote)",
+};
+
+const refused = new Set<string>();
+
+function allowed(key: string): boolean {
+  if (key in ALLOWED) return true;
+  if (!refused.has(key)) {
+    refused.add(key);
+    console.warn(
+      `store: ключ «${key}» не в списке разрешённых (components/account/store.ts). ` +
+        "Доменные данные живут в своих ручках; если ключ правда про UI — добавь его в список с обоснованием."
+    );
+  }
+  return false;
+}
+
 /* ---------- Backends ---------- */
 
 const prefix = (userId: string) => `quack:u:${userId}:`;
@@ -171,6 +209,7 @@ export const store = {
 
   /** null removes the key */
   set(key: string, value: unknown) {
+    if (!allowed(key)) return;
     if (value === null || value === undefined) delete cache[key];
     else cache[key] = value;
     pending[key] = value ?? null;
