@@ -166,6 +166,8 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const busyRef = useRef(false);
   const idRef = useRef(0);
   const mounted = useRef(true);
+  /** Последний вопрос — чтобы «повторить» после обрыва отправило именно его */
+  const lastAskedRef = useRef<string>("");
   // Effects, not refs: writing must wait until the loaded state has actually been applied,
   // otherwise React's double mount in development saves the empty state over the stored one
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
@@ -633,6 +635,17 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     inputRef.current?.focus();
   }
 
+  /** «Повторить» под оборванным ответом: тот же вопрос, обрубок убираем */
+  async function retryTruncated(id: number) {
+    const text = lastAskedRef.current;
+    if (!text || busyRef.current) return;
+    setMessages((list) => list.filter((m) => m.id !== id));
+    setBusyState(true);
+    await remoteRespond(text);
+    if (!mounted.current) return;
+    setBusyState(false);
+  }
+
   /** One turn with the backend agent: the answer streams in, cards and comparison arrive as tool results */
   async function remoteRespond(text: string) {
     const id = ++idRef.current;
@@ -642,9 +655,10 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
     let compareIds: string[] = [];
     const changed = { profile: false, saved: false };
     let failed: string | null = null;
+    let truncated = false;
 
     try {
-      await sendSelectionMessage(text, {
+      const turn = await sendSelectionMessage(text, {
         onText: (delta) => {
           answer += delta;
           if (mounted.current) updateMsg(id, { typing: false, text: answer });
@@ -656,8 +670,15 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
           changed.saved ||= Boolean(what.saved);
         },
       });
+      // Стрим закончился без кадра `done` — связь оборвалась на полуслове.
+      // Обрыв не бросает исключение: тело просто кончается.
+      truncated = !turn.complete;
     } catch (err) {
       const code = err instanceof ApiError ? err.code : "";
+      // Связь оборвалась посреди ответа: иногда тело просто кончается (ловится
+      // выше по отсутствию `done`), иногда fetch бросает. Оба случая — не отказ
+      // сервера, а обрыв, и лечатся одним и тем же: повторить вопрос.
+      truncated = err instanceof ApiError && err.status === 0;
       failed =
         code === "llm_unavailable"
           ? "Ассистент сейчас недоступен. Программы и профиль слева по-прежнему можно смотреть — попробуй написать позже."
@@ -682,7 +703,16 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
       updateMsg(id, { typing: false, text: answer });
     }
 
-    if (failed) {
+    if (truncated) {
+      // Часть ответа уже на экране: её оставляем, но говорим, что это не весь
+      // ответ, и даём повторить тот же вопрос (ТЗ §7.3 п.7).
+      lastAskedRef.current = text;
+      updateMsg(id, {
+        typing: false,
+        text: answer || "Связь пропала, ответ не дошёл.",
+        truncated: true,
+      });
+    } else if (failed) {
       updateMsg(id, {
         typing: false,
         text: answer ? `${answer}\n\n⚠️ ${failed}` : failed,
@@ -1127,6 +1157,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
                         onUndoMilestone={undoMilestone}
                         onUndoTestDate={undoTestDate}
                         onOffer={diagDone ? undefined : answerOffer}
+                        onRetry={retryTruncated}
                       />
                     )
                   )}

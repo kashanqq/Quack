@@ -98,14 +98,24 @@ type CompareData = { program_ids?: string[] };
  * Sends one message and feeds the stream to the handlers. Resolves when the answer is complete;
  * rejects with ApiError before the stream starts (503 llm_unavailable, 409 still answering) and
  * with an Error carrying the server's message when the stream itself reports one.
+ *
+ * Returns whether the answer actually finished. The backend closes every turn with a `done` frame
+ * (backend/app/api/chat.py), so a stream that ends without one was cut — a dropped connection ends
+ * the body without an error, and the half-written answer would otherwise pass for a whole one.
  */
-export async function sendSelectionMessage(text: string, h: TurnHandlers, signal?: AbortSignal) {
+export async function sendSelectionMessage(
+  text: string,
+  h: TurnHandlers,
+  signal?: AbortSignal
+): Promise<{ complete: boolean }> {
   const failure: { code?: string; message?: string } = {};
+  let done = false;
   await postSSE(
     "/chat/selection/messages",
     { text },
     (event) => {
       if (event.type === "text_delta") h.onText(event.text);
+      else if (event.type === "done") done = true;
       else if (event.type === "error") {
         failure.code = event.code;
         failure.message = event.message;
@@ -123,4 +133,5 @@ export async function sendSelectionMessage(text: string, h: TurnHandlers, signal
     signal
   );
   if (failure.message) throw new ApiError(500, failure.code ?? "internal", failure.message);
+  return { complete: done };
 }

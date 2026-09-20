@@ -15,6 +15,7 @@ import {
   openRemoteTopic,
   submitRemoteAnswer,
 } from "./remoteTasks";
+import { ApiError } from "@/api/client";
 import { fetchRemoteSets, REMOTE_PREP } from "./remoteSets";
 import { applyRemoteKnowledgeToModel, explainRemoteNode, fetchRemoteKnowledge, refreshRemoteKnowledge } from "./remoteKnowledge";
 import type { ExamId } from "./prepData";
@@ -59,6 +60,8 @@ type Line = {
   instanceId?: string;
   hintLevel?: number;
   referencedSkills?: string[];
+  /** Стрим кончился без кадра `done` — связь оборвалась, ответ неполный */
+  truncated?: boolean;
 };
 /** What the «Материалы» column shows: the list, the mock test or one material */
 type Open = null | "mock" | string;
@@ -225,6 +228,8 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
   const [lines, setLines] = useState<Line[]>([]);
   const [typing, setTyping] = useState(false);
   const idRef = useRef(0);
+  /** Последний вопрос — чтобы «повторить» после обрыва отправило именно его */
+  const lastAskedRef = useRef<string>("");
   // The latest model: a reply lands a moment later and must not undo an answer given meanwhile
   const modelRef = useRef(model);
   modelRef.current = model;
@@ -250,6 +255,14 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
     });
   };
 
+  /** «Повторить» под оборванным ответом: обрубок убираем, вопрос шлём заново */
+  const retryTruncated = (lineId: number | string) => {
+    const again = lastAskedRef.current;
+    if (!again || typing) return;
+    setLines((prev) => prev.filter((l) => l.id !== lineId));
+    void ask(again);
+  };
+
   const ask = async (text: string) => {
     const q = text.trim();
     if (!q || typing) return;
@@ -265,6 +278,7 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
         { id: assistantLineId, role: "assistant", text: "" },
       ]);
       setTyping(true);
+      let finished = false;
 
       try {
         await sendPrepMessage(
@@ -278,6 +292,7 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
               );
             },
             onDone: (done) => {
+              finished = true;
               setTyping(false);
               setLines((prev) =>
                 prev.map((l) =>
@@ -295,6 +310,7 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
             },
             onError: (err) => {
               console.warn("Tutor stream error:", err);
+              finished = true;
               setTyping(false);
               setLines((prev) =>
                 prev.map((l) =>
@@ -306,14 +322,39 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
             },
           }
         );
+        // Обрыв связи не бросает исключение — тело стрима просто кончается, и
+        // без кадра `done` «печатает…» висело бы вечно поверх полуответа.
+        if (!finished) {
+          setTyping(false);
+          setLines((prev) =>
+            prev.map((l) =>
+              l.id === assistantLineId
+                ? {
+                    ...l,
+                    text: l.text || "Связь пропала, ответ не дошёл.",
+                    truncated: true,
+                  }
+                : l
+            )
+          );
+          lastAskedRef.current = q;
+        }
       } catch (err: unknown) {
         console.warn("Tutor chat request failed, fallback to local:", err);
         setTyping(false);
+        // Обрыв связи (status 0) — не отказ репетитора, а половина ответа.
+        // Подменять её локальным текстом значило бы выдать чужой ответ за его.
+        const dropped =
+          err instanceof ApiError && err.status === 0 ? (lastAskedRef.current = q) : null;
         setLines((prev) =>
           prev.map((l) =>
-            l.id === assistantLineId && !l.text
-              ? { ...l, text: topicReply(q, model, skillId, set, content) }
-              : l
+            l.id !== assistantLineId
+              ? l
+              : dropped
+                ? { ...l, text: l.text || "Связь пропала, ответ не дошёл.", truncated: true }
+                : l.text
+                  ? l
+                  : { ...l, text: topicReply(q, model, skillId, set, content) }
           )
         );
       }
@@ -391,7 +432,14 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
 
       <div className={styles.topicWorkStage} data-pane={pane === "chat" ? "chat" : "side"}>
         <section className={`${styles.canvas} ${styles.chatPane}`} aria-label="Чат по теме">
-          <Chat skill={skill.name} lines={lines} typing={typing} onAsk={ask} onOpen={openMaterial} />
+          <Chat
+            skill={skill.name}
+            lines={lines}
+            typing={typing}
+            onAsk={ask}
+            onOpen={openMaterial}
+            onRetry={retryTruncated}
+          />
         </section>
 
         <aside className={`${styles.canvas} ${styles.sidePane}`} aria-label="Материалы">
@@ -452,12 +500,15 @@ function Chat({
   typing,
   onAsk,
   onOpen,
+  onRetry,
 }: {
   skill: string;
   lines: Line[];
   typing: boolean;
   onAsk: (text: string) => void;
   onOpen: (id: string) => void;
+  /** Спросить то же самое ещё раз после оборванного ответа */
+  onRetry: (lineId: number | string) => void;
 }) {
   const [input, setInput] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
@@ -488,6 +539,17 @@ function Chat({
               <p className={styles.chatLine} data-role={l.role}>
                 {l.text || (typing && l.role === "assistant" ? "…" : "")}
               </p>
+              {l.truncated && (
+                <div style={{ alignSelf: "flex-start", marginTop: 2 }}>
+                  <button
+                    type="button"
+                    className={styles.pinButton}
+                    onClick={() => onRetry(l.id)}
+                  >
+                    <Icon name="sparkles" size={13} /> Ответ оборвался — повторить
+                  </button>
+                </div>
+              )}
               {l.instanceId && (
                 <div style={{ alignSelf: "flex-start", marginTop: 2 }}>
                   <button
