@@ -146,7 +146,9 @@ def apply_answer(
             "budget_left": state.budget_left - 1,
             "reserve_left": max(0, state.reserve_left - (1 if on_descent else 0)),
             "answered": state.answered + 1,
-            "asked": [*state.asked, _make_uuid()],
+            # `asked` — настоящие task_instance.id, чистый слой их не знает:
+            # список ведёт apply.diagnostic._issue_next при выдаче задачи.
+            # Здесь стояла uuid4()-заглушка, и asked[-1] указывал в никуда.
             "firm": new_firm,
             "shaky": new_shaky,
             "pending_descent": new_pending,
@@ -182,12 +184,6 @@ def finish(
 
 
 # --- helpers ---
-
-
-def _make_uuid():
-    from uuid import uuid4
-
-    return uuid4()
 
 
 def _words(state: DiagnosticState) -> str:
