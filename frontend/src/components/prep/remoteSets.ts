@@ -227,3 +227,23 @@ export async function openRemoteSet(setId: string, exam: ExamId): Promise<StudyS
   fetchRemoteSets(exam, true).catch(() => {});
   return adapted;
 }
+
+/**
+ * The route right after the diagnostic. The server plans the sets but leaves them `upcoming`, so
+ * without this the student finishes the test and the preparation screen still has no set in work —
+ * and falls back to the local route, which is a different exam's. Already has one in work: nothing
+ * to do, a retake must not move the student off the set they are on.
+ */
+export async function openFirstRemoteSet(exam: ExamId): Promise<RemoteSetsData> {
+  const sets = await fetchRemoteSets(exam, true);
+  if (sets.current || !sets.upcoming.length) return sets;
+  const first = sets.upcoming[0];
+  if (!first.rawId) return sets;
+  try {
+    await backend.sets.open(first.rawId);
+  } catch (err) {
+    console.warn("Failed to open the first set after the diagnostic:", first.rawId, err);
+    return sets;
+  }
+  return fetchRemoteSets(exam, true);
+}

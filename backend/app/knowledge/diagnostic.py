@@ -167,23 +167,34 @@ def finish(
     params: KnowledgeParams,
 ) -> DiagnosticResult:
     """Final result: firm / shaky / roots / suspected / start_from + words."""
+    # Навык, спрошенный повторно (ловушка), успевает побывать и там и там.
+    # Последнее слово за shaky: это более осторожный и более поздний вывод.
+    shaky = _unique(state.shaky)
+    firm = [skill_id for skill_id in _unique(state.firm) if skill_id not in shaky]
+
     # start_from — самые нижние shaky, у которых нет shaky-предпосылок.
     # Без карты зависимостей считаем, что shaky — это стартовые точки.
-    start_from = list(state.shaky)
+    start_from = list(shaky)
 
     words = _words(state)
 
     return DiagnosticResult(
-        firm=list(state.firm),
-        shaky=list(state.shaky),
+        firm=firm,
+        shaky=shaky,
         roots=list(state.roots_found),
-        suspected=list(state.trap_hits),
+        # trap_hits — журнал попаданий, в итоге же нужен список самих ловушек
+        suspected=_unique(state.trap_hits),
         start_from=start_from,
         words=words,
     )
 
 
 # --- helpers ---
+
+
+def _unique(values: list[str]) -> list[str]:
+    """Без повторов, порядок первого появления."""
+    return list(dict.fromkeys(values))
 
 
 def _words(state: DiagnosticState) -> str:

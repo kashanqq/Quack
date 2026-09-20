@@ -175,8 +175,7 @@ export function DiagnosticMock({ onComplete, onClose, onSkip, exam = "sat" }: Pr
         setRemoteFailure("Не удалось подвести итог замера — сервер не ответил. Попробуй ещё раз.");
         return;
       }
-      const score = Object.values(answers).filter((a) => a.correct).length;
-      setRemoteSummary(adaptDiagnosticResult(result, currentIndex + 1, score));
+      setRemoteSummary(adaptDiagnosticResult(result, run.state.answered));
       setIsFinished(true);
       return;
     }

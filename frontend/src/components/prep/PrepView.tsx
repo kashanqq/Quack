@@ -10,6 +10,7 @@ import { Overview } from "./Overview";
 import { prefetchRemoteOverview } from "./remotePrep";
 import {
   fetchRemoteSets,
+  openFirstRemoteSet,
   openRemoteSet,
   prefetchRemoteSets,
   REMOTE_PREP,
@@ -296,7 +297,8 @@ export function PrepView({
           setModel((prev) => applyRemoteKnowledgeToModel(prev, data, exam));
         }
       });
-      fetchRemoteSets(exam, true).catch(() => {});
+      // Замер закончен — сет должен открыться на сервере, а не только в локальной модели
+      openFirstRemoteSet(exam).catch(() => {});
     }
   };
 
