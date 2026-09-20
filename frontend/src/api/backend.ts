@@ -89,6 +89,9 @@ export const backend = {
       api.post<BackendSetsByExam>("/sets/switch", { set_id: setId }),
     get: (setId: string) =>
       api.get<BackendSetOut>(`/sets/${encodeURIComponent(setId)}`),
+    /** The report on a finished set: numbers now, the words about them when the job is done */
+    summary: (setId: string) =>
+      api.get<Schemas["SetSummaryOut"]>(`/sets/${encodeURIComponent(setId)}/summary`),
     open: (setId: string) =>
       api.post<BackendSetOut>(`/sets/${encodeURIComponent(setId)}/open`),
     patch: (setId: string, body: { skill_ids?: string[]; deadline?: string }) =>
@@ -152,6 +155,19 @@ export const backend = {
   },
   prep: {
     version: () => api.get<BackendKnowledgeVersion>("/prep/knowledge/version"),
+  },
+  texts: {
+    /** Never generates and never writes; it reports the cache and queues what is missing */
+    get: (setId: string, skillId: string, kind: "guideline" | "explanation") =>
+      api.get<Schemas["GeneratedTextOut"]>(
+        `/texts/${encodeURIComponent(setId)}/${encodeURIComponent(skillId)}?kind=${kind}`
+      ),
+    opened: (setId: string, skillId: string, kind: "guideline" | "explanation") =>
+      api.post<void>(`/texts/${encodeURIComponent(setId)}/${encodeURIComponent(skillId)}/opened`, { kind }),
+    regenerate: (setId: string, skillId: string, kind: "guideline" | "explanation") =>
+      api.post<{ status: string; job_id?: string }>(
+        `/texts/${encodeURIComponent(setId)}/${encodeURIComponent(skillId)}/regenerate?kind=${kind}`
+      ),
   },
   quack: {
     /** Feed, pace and activity in one read — what the Quack screen and the dashboard need */

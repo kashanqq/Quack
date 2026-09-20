@@ -8,6 +8,7 @@ import { addMaterial, answerTask, MOCK_SOLID, removeMaterial, settleMock, type M
 import { downloadMarkdown, generateCards, generateNotes, materialAsked, printPdf, renderMarkdown, type MaterialKind } from "./materials";
 import { StateGlyph } from "./SkillGraph";
 import { checksFor, TOPICS, type TopicContent } from "./topicContent";
+import { TopicTheory } from "./TopicTheory";
 import {
   completeRemoteTopic,
   fetchRemoteTopicTasks,
@@ -398,6 +399,7 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
             <MaterialList
               model={model}
               skillId={skillId}
+              setRawId={set.rawId}
               materials={materials}
               busy={typing}
               onOpen={openMaterial}
@@ -536,6 +538,7 @@ function Chat({
 function MaterialList({
   model,
   skillId,
+  setRawId,
   materials,
   busy,
   onOpen,
@@ -544,6 +547,8 @@ function MaterialList({
 }: {
   model: PrepModel;
   skillId: string;
+  /** The backend's set id, when the set came from there */
+  setRawId?: string;
   materials: Material[];
   busy: boolean;
   onOpen: (id: Open) => void;
@@ -559,6 +564,9 @@ function MaterialList({
         <h3>Материалы</h3>
         <span className={styles.muted}>всё, что ты попросил сделать по теме</span>
       </header>
+
+      {/* Теория идёт первой: с неё начинают тему, и от её открытия зависит after_guideline */}
+      <TopicTheory setId={setRawId} skillId={skillId} />
 
       <button type="button" className={`${styles.materialRow} ${styles.materialMock}`} onClick={() => onOpen("mock")}>
         <span className={styles.materialIcon} data-kind="mock">
