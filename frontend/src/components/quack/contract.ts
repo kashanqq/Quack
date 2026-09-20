@@ -116,6 +116,17 @@ export type Signal = {
   at: string;
   /** Where to go to deal with it */
   target?: "prep" | "calendar" | "programs" | "profile";
+  /**
+   * A backend recommendation behind the signal (phase 4). Accepting it changes the plan on the server,
+   * the way the student would have changed it by hand; declining keeps it out of the feed. Absent for
+   * signals the browser derived on its own.
+   */
+  recommendation?: {
+    id: string;
+    /** What accepting does, in the backend's own words ("Перенести тест на 5 декабря") */
+    actionText: string;
+    status: "pending" | "shown" | "accepted" | "declined" | "expired";
+  };
 };
 
 export type QuackState = {

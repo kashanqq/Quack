@@ -49,6 +49,17 @@ export type BackendObserveRequestIn = Schemas["ObserveRequestIn"];
 export type BackendObserveRequestedOut = Schemas["ObserveRequestedOut"];
 export type BackendObservationsDiffOut = Schemas["ObservationsDiffOut"];
 export type BackendObservationView = Schemas["ObservationView"];
+export type BackendQuack = Schemas["QuackOut"];
+export type BackendPace = Schemas["PaceOut"];
+export type BackendExamPace = Schemas["ExamPaceOut"];
+export type BackendPaceVariant = Schemas["PaceVariantOut"];
+export type BackendActivity = Schemas["ActivityOut"];
+export type BackendActivityDay = Schemas["ActivityDay"];
+export type BackendRecommendation = Schemas["RecommendationOut"];
+export type BackendRecommendationAction = Schemas["RecommendationAction"];
+export type BackendForecast = Schemas["ForecastOut"];
+/** `ExamId` is an inline literal in the schema, so it is read off a model that uses it */
+export type BackendExamId = BackendExamPace["exam_id"];
 
 export const backend = {
   profile: {
@@ -141,6 +152,21 @@ export const backend = {
   },
   prep: {
     version: () => api.get<BackendKnowledgeVersion>("/prep/knowledge/version"),
+  },
+  quack: {
+    /** Feed, pace and activity in one read — what the Quack screen and the dashboard need */
+    get: () => api.get<BackendQuack>("/quack"),
+    pace: () => api.get<BackendPace>("/quack/pace"),
+    activity: (days = 14) => api.get<BackendActivity>(`/quack/activity?days=${days}`),
+    history: (limit = 50) =>
+      api.get<Schemas["Page_RecommendationOut_"]>(`/quack/history?limit=${limit}`),
+    /** Opening the screen: pending recommendations become shown and stop the button glowing */
+    seen: (recommendationIds?: string[]) =>
+      api.post<{ shown: number }>("/quack/seen", { recommendation_ids: recommendationIds ?? null }),
+    accept: (id: string) =>
+      api.post<BackendRecommendation>(`/quack/${encodeURIComponent(id)}/accept`),
+    decline: (id: string, reason?: string) =>
+      api.post<BackendRecommendation>(`/quack/${encodeURIComponent(id)}/decline`, { reason: reason ?? null }),
   },
   chat: {
     messages: (

@@ -20,19 +20,20 @@ export interface QuackSource {
   markSeen(): void;
   /** «Начать заново»: forget the baseline and the history. */
   reset(): void;
+  /** Take a backend recommendation: the plan changes server-side. Absent for the local source. */
+  accept?(id: string): Promise<void>;
+  /** Turn one down, with the student's reason when they gave one. */
+  decline?(id: string, reason?: string): Promise<void>;
 }
 
 let instance: QuackSource | null = null;
 
 export function quackSource(): QuackSource {
   if (!instance) {
-    // Only an explicit switch: the backend's /quack API (phase 4) does not speak remoteSource's contract
-    // yet (/quack/state + SSE), so with DATA_SOURCE=remote the browser still recomputes — from the
-    // profile, saved programs and realism that now come from the backend.
-    const isRemote = process.env.NEXT_PUBLIC_QUACK_SOURCE === "remote";
-    instance = isRemote
-      ? remoteSource(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000")
-      : localSource();
+    // The domain flag wins over the general one, as it does in prep/remoteSets.ts; without either the
+    // browser recomputes, so the app still runs with no backend at all.
+    const flag = process.env.NEXT_PUBLIC_QUACK_SOURCE ?? process.env.NEXT_PUBLIC_DATA_SOURCE;
+    instance = flag === "remote" ? remoteSource() : localSource();
   }
   return instance;
 }
