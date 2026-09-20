@@ -38,9 +38,12 @@ export function backendToProfile(p: BackendProfile): Profile {
   const grant = val(q?.preferences?.grant_need);
   if (grant) out.grant = GRANT[grant];
 
-  // The panel thinks in the 1600 total; the backend's thresholds are for the math section (max 800)
+  // The panel thinks in the 1600 total; `academics.sat_score` is the math section, max 800. The
+  // conversion is a fixed doubling, not a guess from the size of the number: both writers keep the
+  // backend's scale — the agent normalises anything above 800 (agents/selection.py) and the panel
+  // halves before PATCH — so a value that does not fit the section is stale data, not a total.
   const sat = val(q?.academics?.sat_score);
-  if (sat) out.sat = String(sat > 800 ? sat : sat * 2);
+  if (sat) out.sat = String(sat * 2);
   const ielts = val(q?.academics?.ielts_score);
   if (ielts) out.ielts = String(ielts);
   const ent = val(q?.academics?.ent_trial_score);

@@ -8,11 +8,10 @@
 // Pure functions: the payloads come in, a Standing comes out. Fetching is remoteSource's job.
 
 import type { BackendMatching, BackendOverview } from "@/api/backend";
-import { LEVEL_LABEL, type Level } from "../choice/programs";
+import { REALISM_LEVEL } from "../choice/catalog";
+import { LEVEL_LABEL } from "../choice/programs";
 import type { ChanceFact, ConflictOption, ProgramChance, StandingAlert } from "./contract";
 
-/** The backend's realism against the word every screen uses */
-const LEVEL: Record<string, Level> = { possible: "realistic", try: "try", impossible: "unlikely" };
 
 const DAY_MS = 86_400_000;
 
@@ -44,7 +43,7 @@ export function chancesOf(matching: BackendMatching, savedIds: string[]): Progra
   return (matching.items ?? [])
     .filter((m) => saved.has(m.program.id))
     .map((m) => {
-    const level = LEVEL[m.realism] ?? "try";
+      const level = REALISM_LEVEL[m.realism] ?? "try";
     const facts: ChanceFact[] = (m.factors ?? [])
       .filter((f) => f.kind === "hard")
       .map((f) => ({

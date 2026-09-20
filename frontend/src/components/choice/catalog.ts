@@ -46,7 +46,15 @@ const CITY: Record<string, string> = {
 const DIRECTION: Record<string, string> = { Mathematics: "Математика", Engineering: "Инженерия", Economics: "Экономика" };
 const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 
-const LEVEL: Record<BackendMatch["realism"], Level> = { possible: "realistic", try: "try", impossible: "unlikely" };
+/**
+ * The one place the two realism scales meet. Typed over the backend's own union, so a new verdict
+ * there fails the build here instead of quietly becoming `undefined` on a card (ТЗ §7.1).
+ */
+export const REALISM_LEVEL: Record<BackendMatch["realism"], Level> = {
+  possible: "realistic",
+  try: "try",
+  impossible: "unlikely",
+};
 const STATUS: Record<string, Factor["status"]> = { below: "below", in_range: "ok", above: "ok", unknown: "unknown" };
 const EXAM_NAME: Record<string, string> = { SAT_MATH: "SAT (математика)", ENT_MATH: "ЕНТ (математика)" };
 
@@ -116,7 +124,7 @@ function toEvaluation(m: BackendMatch, program: Program): Evaluation {
     note: f.text,
   }));
   return {
-    level: LEVEL[m.realism],
+    level: REALISM_LEVEL[m.realism],
     factors,
     fits: m.fits_text ? [m.fits_text] : [],
     misfits: [],
@@ -307,3 +315,27 @@ export const primeSynced = (p: Profile) => {
 export const forgetSynced = () => {
   sent = new Map();
 };
+
+/**
+ * «Начать заново»: the questionnaire goes on the server too, not only in this browser.
+ *
+ * There is no endpoint that empties a profile, so each filled slot is cleared with the same PATCH
+ * that fills it — a null value the server validates as "no answer". Only slots that actually hold
+ * something are sent: an empty profile costs no requests, and the agent does not get a burst of
+ * `profile.updated` events about fields nobody ever set.
+ */
+export async function clearProfileOnBackend(): Promise<void> {
+  const profile = await backend.profile.get();
+  const q = profile.questionnaire as unknown as Record<string, Record<string, { value: unknown } | undefined>>;
+  const filled = Object.values(FIELD_PATHS)
+    .flat()
+    .filter((path) => {
+      const [section, leaf] = path.split(".");
+      const value = q?.[section]?.[leaf]?.value;
+      return value !== null && value !== undefined;
+    });
+  for (const path of filled) {
+    await backend.profile.patch(path, null);
+  }
+  forgetSynced();
+}

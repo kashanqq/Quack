@@ -37,7 +37,16 @@ import { EXAMS, formatDate, plannedTest, registrationBy } from "../prep/prepData
 import { ProfilePanel } from "./ProfilePanel";
 import { ProgramCards, ProgramDrawer, type ProgramActions } from "./ProgramUi";
 import { catalog, recommend } from "./programs";
-import { REMOTE, forgetSynced, loadCatalog, loadSaved, prioritize, primeSynced, syncFields } from "./catalog";
+import {
+  REMOTE,
+  clearProfileOnBackend,
+  forgetSynced,
+  loadCatalog,
+  loadSaved,
+  prioritize,
+  primeSynced,
+  syncFields,
+} from "./catalog";
 import { loadHistory, loadProfile, sendSelectionMessage, type HistoryItem } from "./remoteChat";
 import { ApiError } from "@/api/client";
 import { backend } from "@/api/backend";
@@ -841,8 +850,12 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   // Everything of this student goes (chats, programs, preparation, the map), the account stays
   const restart = async () => {
     await store.reset();
-    // Saved programs live on the server: "начать заново" empties them too
-    if (REMOTE) await Promise.all(saved.map((id) => backend.saved.remove(id).catch(() => undefined)));
+    // The questionnaire and the saved programs live on the server, so «начать заново» empties them
+    // there as well — otherwise the student starts over and the old answers come straight back.
+    if (REMOTE) {
+      await Promise.all(saved.map((id) => backend.saved.remove(id).catch(() => undefined)));
+      await clearProfileOnBackend().catch(() => undefined);
+    }
     forgetSynced();
     resetQuack();
     onRestart();
