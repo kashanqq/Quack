@@ -320,7 +320,7 @@ async def test_thinking_switch_goes_in_extra_body_per_slot(redis, monkeypatch):
 
 
 async def test_thinking_is_not_sent_when_unset(redis, monkeypatch):
-    client = LLMClient(_settings(), redis)
+    client = LLMClient(_settings(LLM_THINKING_CHAT=None, LLM_THINKING_BULK=None), redis)
     transport = _install(monkeypatch, client, [_completion_response()])
     await client.complete([LLMMessage(role="user", content="hi")], "chat")
     assert "extra_body" not in transport.calls[0]

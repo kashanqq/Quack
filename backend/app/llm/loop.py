@@ -121,9 +121,16 @@ async def run_tool_loop(
 
         tools = registry.schemas() or None
         step_calls: list[ToolCall] = []
+        step_text = ""
         try:
             async for event in client.stream(local_messages, slot, tools=tools):
                 if isinstance(event, TextDelta):
+                    if not step_text and text_full and not text_full[-1].isspace():
+                        # A new round after a tool call is a new paragraph; glued to the
+                        # last one it reads «Записываю.Записал».
+                        gap = chr(10) * 2
+                        event = event.model_copy(update={"text": gap + event.text})
+                    step_text += event.text
                     text_full += event.text
                     yield event
                 elif isinstance(event, ToolCall):
@@ -157,7 +164,9 @@ async def run_tool_loop(
         local_messages.append(
             LLMMessage(
                 role="assistant",
-                content=None,
+                # What the model said before the call stays in its history, or the next
+                # round does not know it already spoke and says the same again.
+                content=step_text.strip() or None,
                 tool_calls=[
                     ToolCallOut(call_id=call.call_id, name=call.tool, args=call.args)
                     for call in step_calls
