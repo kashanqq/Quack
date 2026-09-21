@@ -1,4 +1,4 @@
-.PHONY: up down api web dev worker-interactive worker-bulk seed test test-int types types-check lint
+.PHONY: e2e up down api web dev worker-interactive worker-bulk seed test test-int types types-check lint
 
 up:
 	docker compose -f deploy/docker-compose.yml up -d
@@ -39,3 +39,6 @@ types-check: types
 
 lint:
 	cd backend && uv run ruff check . && uv run ruff format --check .
+
+e2e:
+	cd backend && uv run --frozen python ../scripts/e2e_jury.py
