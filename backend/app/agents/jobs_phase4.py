@@ -40,7 +40,7 @@ from app.workers.jobs_infra import record_failure, rule_deps, uuid_of
 _logger = structlog.get_logger(__name__)
 
 _TEXT_JOB_TTL_S = 600
-_LOCK_TTL_S = 120
+_LOCK_TTL_S = 260
 _SOFT_MATCH_PER_PROGRAM_S = 20
 # `set_summary` живёт в `interactive` с job_timeout 30 с, а LLM_TIMEOUT_BULK_S
 # — 90: без своего потолка вызов пережил бы задачу (§16 item 10).
