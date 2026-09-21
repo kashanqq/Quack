@@ -529,3 +529,31 @@ def test_refresh_requires_a_prep_chat_target(transport):
     with _client(transport) as client:
         response = client.post("/knowledge/refresh", json={"kind": "prep"})
     assert response.status_code == 400
+
+
+def test_knowledge_answers_when_the_graph_goes_down_after_start(transport, monkeypatch):
+    """A driver that exists is not a graph that is up: 200 and «static», never a 500."""
+    from neo4j.exceptions import ServiceUnavailable
+
+    transport.fake_apply("app.apply.knowledge.states_view", [])
+    transport.fake_apply("app.apply.knowledge.misconceptions_view", [])
+
+    async def down(*args, **kwargs):
+        raise ServiceUnavailable("neo4j is down")
+
+    class DeadGraph:
+        verify_connectivity = staticmethod(down)
+
+    monkeypatch.setattr(knowledge_api.personal, "list_root_causes", down)
+    transport.deps.graph = DeadGraph()
+    with _client(transport) as client:
+        response = client.get("/knowledge?exam_id=SAT_MATH")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["roots"] == []
+    assert body["availability"] == {
+        "mode": "static",
+        "reason": "graph_unavailable",
+        "as_of_event_id": None,
+    }
