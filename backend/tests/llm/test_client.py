@@ -277,3 +277,28 @@ async def test_complete_passes_tools_through_and_uses_model_for_slot(
 
     assert transport.calls[0]["tools"] == tools
     assert transport.calls[0]["model"] == "bulk-model"
+
+
+async def test_a_refused_key_trips_the_breaker(redis, monkeypatch):
+    """401 is the provider unusable for everyone; /health must not keep saying ok."""
+    client = LLMClient(_settings(), redis)
+    _install(
+        monkeypatch,
+        client,
+        [_status_error(401), _status_error(401), _status_error(401)],
+    )
+
+    for _ in range(3):
+        with pytest.raises(openai.APIStatusError):
+            await client.complete([LLMMessage(role="user", content="hi")], "chat")
+
+    assert await client.status() == "down"
+
+
+async def test_without_a_key_the_client_starts_and_reports_down(redis):
+    client = LLMClient(
+        Settings(LLM_API_KEY=SecretStr(""), LLM_BASE_URL="http://test"), redis
+    )
+    assert await client.status() == "down"
+    with pytest.raises(LLMUnavailable):
+        await client.complete([LLMMessage(role="user", content="hi")], "chat")

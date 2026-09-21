@@ -132,7 +132,16 @@ async def run_tool_loop(
                 else:
                     yield event
         except (LLMUnavailable, openai.APIError, httpx.HTTPError) as exc:
-            yield StreamError(type="error", code="llm_unavailable", message=str(exc))
+            # The provider's words carry dashboard links and request ids: log them, and
+            # give the student a sentence that is ours.
+            _logger.warning(
+                "llm_stream_failed", error=str(exc), kind=type(exc).__name__
+            )
+            yield StreamError(
+                type="error",
+                code="llm_unavailable",
+                message="Ассистент сейчас недоступен",
+            )
             return
 
         if not step_calls:

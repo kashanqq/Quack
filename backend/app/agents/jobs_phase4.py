@@ -17,6 +17,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
 
+import openai
 import structlog
 from arq import Retry
 
@@ -56,8 +57,14 @@ def _is_rate_limit(exc: BaseException) -> bool:
     return isinstance(exc, LLMUnavailable) and "rate limit" in str(exc)
 
 
+_REJECTED = "llm credentials rejected"
+
+
 def _is_invalid_output(exc: BaseException) -> bool:
-    return isinstance(exc, LLMUnavailable) and "structured output failed" in str(exc)
+    """A failure of this text, not a wait: retrying it changes nothing."""
+    return isinstance(exc, LLMUnavailable) and (
+        "structured output failed" in str(exc) or _REJECTED in str(exc)
+    )
 
 
 def _llm_retry(exc: LLMUnavailable) -> Retry:
@@ -217,6 +224,21 @@ async def _one_text(
                 )
                 await session.commit()
         raise
+    except (openai.AuthenticationError, openai.PermissionDeniedError) as exc:
+        # A refused key does not get better with a retry: without this the row
+        # stayed `generating` for good, and the screen waited for nothing.
+        _logger.error("llm_credentials_rejected", kind=kind, status=exc.status_code)
+        async with ctx["sessionmaker"]() as session:
+            await texts_repo.mark(
+                session,
+                kind,
+                digest,
+                "failed",
+                error="llm_auth",
+                subject=skill_id,
+            )
+            await session.commit()
+        raise LLMUnavailable(_REJECTED) from exc
 
     async with ctx["sessionmaker"]() as session:
         await texts_repo.mark(
