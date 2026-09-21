@@ -171,3 +171,29 @@ describe("the server's plan against the model on screen", () => {
     expect(next.currentSet).toBeNull();
   });
 });
+
+describe("the entrance test, once the server has measured the student", () => {
+  const skill = (level: string) =>
+    ({
+      skill_id: "ent.alg.inequalities",
+      name: "Неравенства",
+      area_id: "area.ent.algebra",
+      weight: 1,
+      level,
+      p_recall: 0.5,
+      is_root: false,
+    }) as never;
+  const knowledge = (level: string) =>
+    ({ skills: [skill(level)], misconceptions: [], roots: [] }) as never;
+
+  it("is done when any skill has left low_data, wherever the test was taken", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_DATA_SOURCE", "remote");
+    const { applyRemoteKnowledgeToModel } = await import("./remoteKnowledge");
+    const { initialModel } = await import("./prepModel");
+    const measured = applyRemoteKnowledgeToModel(initialModel(), knowledge("shaky"), "ent");
+    expect(measured.diagnosticDone).toBe(true);
+    const unmeasured = applyRemoteKnowledgeToModel(initialModel(), knowledge("low_data"), "ent");
+    expect(unmeasured.diagnosticDone).toBe(false);
+  });
+});
