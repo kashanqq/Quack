@@ -7,7 +7,7 @@ import { FirstHint } from "@/components/hints/FirstHint";
 import { useEffect, useRef, useState } from "react";
 import { morph } from "@/components/transition/morph";
 import { Overview } from "./Overview";
-import { prefetchRemoteOverview } from "./remotePrep";
+import { fetchRemoteOverview, prefetchRemoteOverview } from "./remotePrep";
 import {
   applyRemoteSetsToModel,
   fetchRemoteSets,
@@ -98,6 +98,8 @@ export function PrepView({
   // Another set asked for from elsewhere: «Маршрут» shows its card open
   const [routeFocus, setRouteFocus] = useState<string | null>(null);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
+  // Set once the student picks an exam themself, so a late server answer does not move them
+  const examPickedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const isDiagPending = !model.diagnosticDone;
@@ -136,7 +138,24 @@ export function PrepView({
   const programs = savedPrograms(saved, model.demo);
 
   useEffect(() => {
-    prefetchRemoteOverview(programs);
+    if (!REMOTE_PREP) {
+      prefetchRemoteOverview(programs);
+      return;
+    }
+    // Without a set in work the section has no exam of its own to open on: the one the student's saved
+    // programs ask for is the server's answer, not «sat» by default. A pick the student already made wins.
+    let active = true;
+    fetchRemoteOverview(programs)
+      .then((overview) => {
+        if (!active || examPickedRef.current || model.currentSet) return;
+        const asked = overview.requirements.find((r) => r.id === "ent" || r.id === "sat")?.id as ExamId | undefined;
+        if (asked) setExam(asked);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programs.length]);
 
   useEffect(() => {
@@ -361,7 +380,10 @@ export function PrepView({
                   model={model}
                   sub={current}
                   exam={exam}
-                  onExam={setExam}
+                  onExam={(next) => {
+                    examPickedRef.current = true;
+                    setExam(next);
+                  }}
                   onMakeCurrent={choose}
                   focus={routeFocus}
                   onOpenSet={openSetAt}
