@@ -9,6 +9,7 @@ import { morph } from "@/components/transition/morph";
 import { Overview } from "./Overview";
 import { prefetchRemoteOverview } from "./remotePrep";
 import {
+  applyRemoteSetsToModel,
   fetchRemoteSets,
   openFirstRemoteSet,
   openRemoteSet,
@@ -20,7 +21,6 @@ import {
   applyRemoteKnowledgeToModel,
   fetchRemoteKnowledge,
 } from "./remoteKnowledge";
-import { isUuid } from "@/api/client";
 import { fetchKnowledgeVersion } from "./remoteChat";
 import { savedPrograms, setById, type ExamId } from "./prepData";
 import {
@@ -39,9 +39,7 @@ import { quackSource } from "../quack/source";
 import { SetsView } from "./SetsView";
 import type { DiagnosticResultSummary } from "./diagnosticData";
 import styles from "./prep.module.css";
-import { store } from "../account/store";
-
-const STORAGE_KEY = "quack-prep";
+import { loadPrepModel, savePrepModel } from "./prepStore";
 
 /** One first-visit note per part of the section: what it shows and what to press. The ids are kept once seen. */
 const INTROS: Record<PrepSub, { id: string; title: string; text: string }> = {
@@ -91,7 +89,7 @@ export function PrepView({
   onDiagnosticStatusChange,
 }: Props) {
   // Rendered only after the student switches to the section, so storage can be read right away
-  const [model, setModel] = useState<PrepModel>(() => reviveModel(store.get(STORAGE_KEY)) ?? initialModel());
+  const [model, setModel] = useState<PrepModel>(() => loadPrepModel());
   const [toast, setToast] = useState<string | null>(null);
   // Which exam the route, the map and the set list show; starts on the exam of the set in work
   const [exam, setExam] = useState<ExamId>(() => (model.currentSet ? setById(model.currentSet).exam : "sat"));
@@ -121,7 +119,7 @@ export function PrepView({
   }, [model.diagnosticDone, onDiagnosticStatusChange]);
 
   useEffect(() => {
-    store.set(STORAGE_KEY, model);
+    savePrepModel(model);
     // Preparation is a source of truth for Quack: an answer, a passed set or a ticked date is recomputed at once
     quackSource().report({ prep: model });
   }, [model]);
@@ -146,21 +144,7 @@ export function PrepView({
       // The server's plan is the truth: a current set remembered from before a rebuild (or from the
       // demo data) that the server no longer has is replaced by the server's current one
       fetchRemoteSets(exam, true)
-        .then((data) => {
-          const currentId = data.current?.id ?? null;
-          const doneIds = data.done.map((s) => s.id);
-          setModel((prev) => {
-            const invalidCurrent =
-              !prev.currentSet ||
-              !isUuid(prev.currentSet) ||
-              (setById(prev.currentSet).exam === exam && prev.currentSet !== currentId);
-            return {
-              ...prev,
-              currentSet: invalidCurrent ? currentId : prev.currentSet,
-              doneSets: Array.from(new Set([...prev.doneSets.filter(isUuid), ...doneIds])),
-            };
-          });
-        })
+        .then((data) => setModel((prev) => applyRemoteSetsToModel(prev, data)))
         .catch(() => {});
       fetchRemoteKnowledge(exam).then((data) => {
         if (data) {
@@ -183,21 +167,7 @@ export function PrepView({
         if (force || lastVersionRef.current === null || v > lastVersionRef.current) {
           lastVersionRef.current = v;
           const setsData = await fetchRemoteSets(exam, true).catch(() => null);
-          if (active && setsData) {
-            const currentId = setsData.current?.id ?? null;
-            const doneIds = setsData.done.map((s) => s.id);
-            setModel((prev) => {
-              const invalidCurrent =
-                !prev.currentSet ||
-                !isUuid(prev.currentSet) ||
-                (setById(prev.currentSet).exam === exam && prev.currentSet !== currentId);
-              return {
-                ...prev,
-                currentSet: invalidCurrent ? currentId : prev.currentSet,
-                doneSets: Array.from(new Set([...prev.doneSets.filter(isUuid), ...doneIds])),
-              };
-            });
-          }
+          if (active && setsData) setModel((prev) => applyRemoteSetsToModel(prev, setsData));
           const data = await fetchRemoteKnowledge(exam, true);
           if (active && data) {
             setModel((prev) => applyRemoteKnowledgeToModel(prev, data, exam));
@@ -266,7 +236,7 @@ export function PrepView({
     setModel((m) => acceptSet(m, id));
     setFocus(null);
     setToast("Сет принят — начни с первой темы на графе");
-    if (REMOTE_PREP && isUuid(id)) {
+    if (REMOTE_PREP) {
       openRemoteSet(id, exam).catch((err) => {
         console.error("Failed to open remote set:", err);
       });
@@ -285,7 +255,7 @@ export function PrepView({
         ? `Сет ${setById(id).number} теперь актуальный, сет ${setById(prev).number} отложен · занятия — во вкладке «Сейчас»`
         : `Сет ${setById(id).number} теперь актуальный · занятия — во вкладке «Сейчас»`
     );
-    if (REMOTE_PREP && isUuid(id)) {
+    if (REMOTE_PREP) {
       switchRemoteSet(id, exam).catch((err) => {
         console.error("Failed to switch remote set:", err);
       });
@@ -300,11 +270,7 @@ export function PrepView({
     setToast("Первый сет собран по твоему профилю. Замер можно пройти позже — ссылка над графом");
     if (REMOTE_PREP) {
       openFirstRemoteSet(exam)
-        .then((sets) => {
-          if (sets.current?.id && isUuid(sets.current.id)) {
-            setModel((m) => ({ ...m, currentSet: sets.current!.id }));
-          }
-        })
+        .then((sets) => setModel((m) => applyRemoteSetsToModel(m, sets)))
         .catch(() => {});
     }
   };
@@ -331,11 +297,7 @@ export function PrepView({
       });
       // Замер закончен — сет должен открыться на сервере, а не только в локальной модели
       openFirstRemoteSet(exam)
-        .then((sets) => {
-          if (sets.current?.id && isUuid(sets.current.id)) {
-            setModel((m) => ({ ...m, currentSet: sets.current!.id }));
-          }
-        })
+        .then((sets) => setModel((m) => applyRemoteSetsToModel(m, sets)))
         .catch(() => {});
     }
   };

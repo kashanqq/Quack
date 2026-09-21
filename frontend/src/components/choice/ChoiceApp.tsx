@@ -33,6 +33,7 @@ import { CompareView } from "./CompareView";
 import { CustomScrollbar } from "./CustomScrollbar";
 import { milestoneIntent } from "./milestoneIntent";
 import { chosenTestDates, doneMilestones, markMilestone, pickTestDate, skipEntranceTest } from "../prep/milestoneMarks";
+import { readPrepUi } from "../prep/prepStore";
 import { EXAMS, formatDate, plannedTest, registrationBy } from "../prep/prepData";
 import { ProfilePanel } from "./ProfilePanel";
 import { ProgramCards, ProgramDrawer, type ProgramActions } from "./ProgramUi";
@@ -117,8 +118,7 @@ export function ChoiceApp({ onRestart }: { onRestart: () => void }) {
   const [prepSub, setPrepSub] = useState<PrepSub>("now");
   const [dashTab, setDashTab] = useState<DashTab>("overview");
   const [diagDone, setDiagDone] = useState<boolean>(() => {
-    const m = store.get<{ diagnosticDone?: boolean }>("quack-prep");
-    return Boolean(m?.diagnosticDone);
+    return Boolean(readPrepUi().diagnosticDone);
   });
   const [launchDiag, setLaunchDiag] = useState(false);
   // The source's functions are stable, so effects can depend on them

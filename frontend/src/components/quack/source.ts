@@ -6,6 +6,7 @@
 // Switch with NEXT_PUBLIC_QUACK_SOURCE=remote and NEXT_PUBLIC_API_URL=<api base>.
 
 import { useSyncExternalStore } from "react";
+import { store } from "../account/store";
 import { EMPTY_STATE, type QuackState } from "./contract";
 import { localSource } from "./localSource";
 import { remoteSource } from "./remoteSource";
@@ -28,12 +29,24 @@ export interface QuackSource {
 
 let instance: QuackSource | null = null;
 
+/**
+ * What the browser computed back when it was the one computing. The server keeps its own baseline and
+ * its own history, so these are not a fallback — they are last year's numbers waiting to be mistaken
+ * for this year's. Dropped once, on the first read with the backend behind us.
+ */
+const LOCAL_ONLY_KEYS = ["quack-baseline", "quack-history", "quack-known"];
+
 export function quackSource(): QuackSource {
   if (!instance) {
-    // The domain flag wins over the general one, as it does in prep/remoteSets.ts; without either the
+    // The domain flag wins over the general one, as it does in prep/remoteFlag.ts; without either the
     // browser recomputes, so the app still builds and runs with no backend at all.
     const flag = process.env.NEXT_PUBLIC_QUACK_SOURCE ?? process.env.NEXT_PUBLIC_DATA_SOURCE;
-    instance = flag === "remote" ? remoteSource() : localSource();
+    if (flag === "remote") {
+      for (const key of LOCAL_ONLY_KEYS) if (store.get(key) !== null) store.set(key, null);
+      instance = remoteSource();
+    } else {
+      instance = localSource();
+    }
   }
   return instance;
 }

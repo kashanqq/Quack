@@ -18,9 +18,9 @@ import {
 import { isUuid } from "@/api/client";
 import { parseIsoDate, toBackendExamId } from "./remotePrep";
 
-export const REMOTE_PREP =
-  process.env.NEXT_PUBLIC_SRC_PREP === "remote" ||
-  process.env.NEXT_PUBLIC_DATA_SOURCE === "remote";
+import { REMOTE_PREP } from "./remoteFlag";
+
+export { REMOTE_PREP };
 
 export type RemoteSetsData = {
   current: StudySet | null;
@@ -153,6 +153,27 @@ export function saveCachedRemoteSets(exam: ExamId, data: RemoteSetsData) {
   } catch (e) {
     console.warn("Failed to write sets to localStorage", e);
   }
+}
+
+/**
+ * The server's plan for one exam against the model the screen holds. Inside that plan the server
+ * decides: which set is in work and which are passed. Ids outside it — the other exam's plan — are
+ * left where they are, so reading one exam does not forget the other.
+ */
+export function applyRemoteSetsToModel<M extends { currentSet: string | null; doneSets: string[] }>(
+  model: M,
+  data: RemoteSetsData
+): M {
+  const plan = new Set(
+    [...(data.current ? [data.current] : []), ...data.upcoming, ...data.done].map((s) => s.id)
+  );
+  const done = data.done.map((s) => s.id);
+  const elsewhere = model.currentSet && !plan.has(model.currentSet) ? model.currentSet : null;
+  return {
+    ...model,
+    currentSet: elsewhere ?? data.current?.id ?? null,
+    doneSets: [...model.doneSets.filter((id) => !plan.has(id)), ...done],
+  };
 }
 
 export async function fetchRemoteSets(exam: ExamId, forceRefresh = false): Promise<RemoteSetsData> {

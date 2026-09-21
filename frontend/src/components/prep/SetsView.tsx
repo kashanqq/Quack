@@ -3,7 +3,7 @@
 import { PixelDuck } from "../duck/PixelDuck";
 import { useLayoutEffect, useRef, useState, useEffect } from "react";
 import { Icon } from "../choice/Icon";
-import { EXAM_IDS, EXAMS, formatShort, SETS, setById, skillById, STATE_LABEL, type ExamId, type StudySet } from "./prepData";
+import { EXAM_IDS, EXAMS, formatShort, setById, skillById, STATE_LABEL, type ExamId, type StudySet } from "./prepData";
 import { closed, proposals, type PrepModel, type PrepSub } from "./prepModel";
 import {
   REMOTE_PREP,

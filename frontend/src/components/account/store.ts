@@ -9,9 +9,12 @@
 // end — the screens keep the in-between state to themselves.
 
 import { ApiError, api } from "@/api/client";
+import { REMOTE_PREP } from "../prep/remoteFlag";
 import type { StateBackend, User } from "./contract";
 
 const REMOTE = process.env.NEXT_PUBLIC_DATA_SOURCE === "remote";
+/** Quack recomputed on the server: then the local source's baseline and history have nothing to hold */
+const REMOTE_QUACK = (process.env.NEXT_PUBLIC_QUACK_SOURCE ?? process.env.NEXT_PUBLIC_DATA_SOURCE) === "remote";
 /** Local storage is cheap; the network gets a longer pause to gather more into one request */
 const FLUSH_MS = REMOTE ? 1200 : 250;
 
@@ -32,11 +35,21 @@ const ALLOWED: Record<string, string> = {
   // Экранные выборы: что открыто и что сравнивается — это не домен
   "quack-choice-workspace": "выбранные к показу и сравнению программы, состояние анкеты-интро",
 
-  // Ещё не переехало: см. docs/sync-log.md, запись про F6
-  "quack-prep": "модель подготовки; при remote домен приходит с сервера, локально остаются материалы",
-  "quack-baseline": "база сравнения локального Quack (не используется при remote)",
-  "quack-history": "лента локального Quack (не используется при remote)",
-  "quack-known": "когда локальный Quack впервые заметил сигнал (не используется при remote)",
+  // «Подготовка» (prep/prepStore.ts). При remote домен приходит с сервера и здесь не хранится:
+  // остаются выбор ученика, которому бэк ещё не даёт ручки, и материалы, сгенерированные в браузере
+  "quack-prep-ui": "отметки вех, выбранные даты и цели, решения по конфликтам, пройден ли замер",
+  "quack-prep-materials": "конспекты и карточки, сделанные ассистентом по просьбе ученика (ТЗ §5.7)",
+
+  // Ключи демо-режима: при remote их писать нечему — источник тех же данных на сервере.
+  // Перечислены отдельно, потому что список разрешённого зависит от того, кто считает.
+  ...(REMOTE_PREP ? {} : { "quack-prep": "модель подготовки целиком — источник правды, пока нет бэкенда" }),
+  ...(REMOTE_QUACK
+    ? {}
+    : {
+        "quack-baseline": "база сравнения локального Quack",
+        "quack-history": "лента локального Quack",
+        "quack-known": "когда локальный Quack впервые заметил сигнал",
+      }),
 };
 
 const refused = new Set<string>();
@@ -209,7 +222,9 @@ export const store = {
 
   /** null removes the key */
   set(key: string, value: unknown) {
-    if (!allowed(key)) return;
+    const removing = value === null || value === undefined;
+    // Dropping a key is always allowed: that is how a key that left the list is cleaned up
+    if (!removing && !allowed(key)) return;
     if (value === null || value === undefined) delete cache[key];
     else cache[key] = value;
     pending[key] = value ?? null;

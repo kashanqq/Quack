@@ -21,6 +21,7 @@ import {
   milestones,
   requirements,
   SETS,
+  knownSet,
   setById,
   skillById,
   SKILLS,
@@ -42,7 +43,6 @@ import {
 import { chooseTestDate, disputeMisconception, proposedSet, readiness, setReport, type PrepModel, type PrepSub, type PrepTab, type SetReport } from "./prepModel";
 import { disputeRemoteMisconception } from "./remoteKnowledge";
 import { fetchRemoteSets, getCachedRemoteSets, type RemoteSetsData } from "./remoteSets";
-import { isUuid } from "@/api/client";
 import { StateGlyph } from "./SkillGraph";
 import { SetDetail } from "./SetDetail";
 import { DiagnosticMock } from "./DiagnosticMock";
@@ -250,7 +250,7 @@ function Now({
   }, [targetExam]);
 
   const current = REMOTE_PREP
-    ? (model.currentSet && isUuid(model.currentSet) ? setById(model.currentSet) : null) ?? remoteSets?.current ?? null
+    ? (model.currentSet ? knownSet(model.currentSet) : null) ?? remoteSets?.current ?? null
     : model.currentSet ? setById(model.currentSet) : null;
   const isDiagPending = !model.diagnosticDone;
 
@@ -338,6 +338,12 @@ function Now({
   const topicId = proposed?.skills.find((id) => model.states[id] !== "solid") ?? proposed?.skills[0];
   const topic = topicId ? skillById(topicId) : null;
   const report = isDiagPending ? null : setReport(model);
+  // Nothing to study can mean two different things, and they must not share a sentence: either the
+  // route is behind the student, or the plan came back with no topics in it at all.
+  const passedSomething = REMOTE_PREP ? Boolean(remoteSets?.done?.length) : model.doneSets.length > 0;
+  const nothingToStudy = passedSomething
+    ? "Все сеты пройдены — осталось закрепление и тест"
+    : "Тем пока нет: в плане только закрепление перед тестом";
 
   return (
     <div className={styles.nowScreen}>
@@ -365,7 +371,7 @@ function Now({
             </p>
           </>
         ) : (
-          <h2 className={styles.nowSet}>Все сеты пройдены — осталось закрепление и тест</h2>
+          <h2 className={styles.nowSet}>{nothingToStudy}</h2>
         )}
 
         {paces.length > 0 && (
@@ -486,7 +492,9 @@ function Important({
     ...getSetsFromCache("sat"),
     ...getSetsFromCache("ent"),
   ];
-  const allAvailableSets = REMOTE_PREP ? [...remoteSets, ...SETS] : [...SETS, ...remoteSets];
+  // With the backend behind us the plan is the backend's alone: a demo set among the real ones would
+  // send the student to a topic the server has never heard of.
+  const allAvailableSets = REMOTE_PREP ? remoteSets : [...SETS, ...remoteSets];
   const setWith = (skillId: string) =>
     allAvailableSets.find((s) => s.id === model.currentSet && s.skills.includes(skillId)) ??
     allAvailableSets.find((s) => s.skills.includes(skillId) && !model.doneSets.includes(s.id)) ??
