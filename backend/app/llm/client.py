@@ -125,6 +125,11 @@ class LLMClient:
             return self._settings.LLM_REASONING_CHAT
         return self._settings.LLM_REASONING_BULK
 
+    def _thinking_for(self, slot: ModelSlot) -> str | None:
+        if slot == "chat":
+            return self._settings.LLM_THINKING_CHAT
+        return self._settings.LLM_THINKING_BULK
+
     def _rate_limit_wait_s(self, slot: ModelSlot) -> float:
         return 5.0 if slot == "chat" else 30.0
 
@@ -325,6 +330,9 @@ class LLMClient:
         reasoning_effort = self._reasoning_for(slot)
         if reasoning_effort is not None:
             kwargs["reasoning_effort"] = reasoning_effort
+        thinking = self._thinking_for(slot)
+        if thinking is not None:
+            kwargs["extra_body"] = {"thinking": {"type": thinking}}
         return kwargs
 
     async def complete(
@@ -493,6 +501,21 @@ class LLMClient:
             ]
             tool_choice = {"type": "function", "function": {"name": "emit"}}
             response_format = None
+        elif mode == "json_object":
+            tools = None
+            tool_choice = None
+            response_format = {"type": "json_object"}
+            # The provider takes no schema here, only the word "json" and an example.
+            messages = [
+                *messages,
+                LLMMessage(
+                    role="system",
+                    content=(
+                        "Answer with one JSON object and nothing else, valid for this "
+                        f"JSON schema: {json.dumps(schema.model_json_schema())}"
+                    ),
+                ),
+            ]
         else:
             tools = None
             tool_choice = None
