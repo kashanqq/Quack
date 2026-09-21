@@ -275,8 +275,15 @@ export function PrepView({
         : `Сет ${setById(id).number} теперь актуальный · занятия — во вкладке «Сейчас»`
     );
     if (REMOTE_PREP) {
-      switchRemoteSet(id, exam).catch((err) => {
-        console.error("Failed to switch remote set:", err);
+      switchRemoteSet(id, exam).catch(() => {
+        // The server did not take the choice (the plan moved under it): what it holds is the truth,
+        // so the screen is put back on it instead of keeping a set that is not current there
+        fetchRemoteSets(exam, true)
+          .then((data) => {
+            setModel((m) => applyRemoteSetsToModel(m, data));
+            setToast("План обновился, пока ты выбирал — выбери сет ещё раз");
+          })
+          .catch(() => setToast("Не получилось переключить сет — попробуй ещё раз"));
       });
     }
   };

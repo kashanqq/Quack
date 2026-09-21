@@ -6,6 +6,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.exc import StaleDataError
 
 from app import fallbacks, keys
 from app.api.chat import chat_id_for
@@ -204,19 +205,25 @@ async def switch_set(
         raise Conflict("completed set cannot be selected")
     before = await set_repo.list_sets(session, student.student_id, target.exam_id)
     previous = next((item.id for item in before if item.status == "current"), None)
-    await _record(
-        session,
-        deps,
-        EventIn(
-            type=EventType.set_switched_by_user,
-            payload=SetSwitchedByUserPayload(
-                from_set_id=previous, to_set_id=body.set_id
-            ).model_dump(mode="json"),
-            student_id=student.student_id,
-            exam_id=target.exam_id,
-            set_id=body.set_id,
-        ),
-    )
+    try:
+        await _record(
+            session,
+            deps,
+            EventIn(
+                type=EventType.set_switched_by_user,
+                payload=SetSwitchedByUserPayload(
+                    from_set_id=previous, to_set_id=body.set_id
+                ).model_dump(mode="json"),
+                student_id=student.student_id,
+                exam_id=target.exam_id,
+                set_id=body.set_id,
+            ),
+        )
+    except StaleDataError as exc:
+        # A rebuild replaced the plan between reading and switching: the chosen id is
+        # gone. That is a conflict to re-read, not a server fault.
+        await session.rollback()
+        raise Conflict("the plan changed while switching, reload the sets") from exc
     result = await _read_sets(session, student.student_id, target.exam_id, deps)
     await _version(response, deps, student.student_id)
     return result

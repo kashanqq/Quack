@@ -2,6 +2,7 @@
 
 from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -557,3 +558,22 @@ def test_knowledge_answers_when_the_graph_goes_down_after_start(transport, monke
         "reason": "graph_unavailable",
         "as_of_event_id": None,
     }
+
+
+def test_switch_answers_409_when_the_plan_moved_under_it(transport):
+    """A rebuild between reading the sets and switching is a conflict, not a 500."""
+    from sqlalchemy.orm.exc import StaleDataError
+
+    current = _set(transport.student_id, status="current")
+    upcoming = _set(transport.student_id, position=1)
+    for item in (current, upcoming):
+        transport.rows[(transport.student_id, item.id)] = item
+    transport.switched.side_effect = StaleDataError("0 rows matched")
+    transport.session.rollback = AsyncMock()
+
+    with _client(transport) as client:
+        response = client.post("/sets/switch", json={"set_id": str(upcoming.id)})
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "conflict"
+    transport.session.rollback.assert_awaited()

@@ -340,7 +340,7 @@ function MapCard({
         {set.skills.map((id) => {
           const skill = skillById(id);
           const state = model.states[id];
-          const trap = model.misconceptions[id].some((m) => m.status === "confirmed");
+          const trap = (model.misconceptions[id] ?? []).some((m) => m.status === "confirmed");
           return (
             <li key={id}>
               <button type="button" onClick={() => onOpen(set.id, id)} title="Открыть тему">

@@ -618,7 +618,7 @@ function MaterialList({
   onRemove: (id: string) => void;
 }) {
   const total = checksFor(skillId).length;
-  const last = model.evidence[skillId].find((e) => e.source === "мок");
+  const last = (model.evidence[skillId] ?? []).find((e) => e.source === "мок");
 
   return (
     <div className={styles.materials}>
