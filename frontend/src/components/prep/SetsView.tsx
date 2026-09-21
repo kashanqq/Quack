@@ -3,7 +3,7 @@
 import { PixelDuck } from "../duck/PixelDuck";
 import { useLayoutEffect, useRef, useState, useEffect } from "react";
 import { Icon } from "../choice/Icon";
-import { EXAM_IDS, EXAMS, formatShort, SETS, setById, skillById, STATE_LABEL, type ExamId, type StudySet } from "./prepData";
+import { EXAM_IDS, EXAMS, formatShort, setById, skillById, STATE_LABEL, type ExamId, type StudySet } from "./prepData";
 import { closed, proposals, type PrepModel, type PrepSub } from "./prepModel";
 import {
   REMOTE_PREP,
@@ -340,7 +340,7 @@ function MapCard({
         {set.skills.map((id) => {
           const skill = skillById(id);
           const state = model.states[id];
-          const trap = model.misconceptions[id].some((m) => m.status === "confirmed");
+          const trap = (model.misconceptions[id] ?? []).some((m) => m.status === "confirmed");
           return (
             <li key={id}>
               <button type="button" onClick={() => onOpen(set.id, id)} title="Открыть тему">

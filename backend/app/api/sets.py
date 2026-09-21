@@ -6,6 +6,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.exc import StaleDataError
 
 from app import fallbacks, keys
 from app.api.chat import chat_id_for
@@ -153,6 +154,11 @@ async def _record(session: AsyncSession, deps: RuleDeps, event_in: EventIn) -> d
     return await dispatch.dispatch(session, event, deps)
 
 
+def _nothing_planned(sets: SetsByExam) -> bool:
+    """True when Postgres holds no sets for this exam at all."""
+    return sets.current is None and not sets.upcoming and not sets.done
+
+
 @router.get("", response_model=SetsByExam)
 async def list_sets(
     exam_id: ExamId,
@@ -162,15 +168,20 @@ async def list_sets(
     deps: Annotated[RuleDeps, Depends(get_rule_deps)],
 ) -> SetsByExam:
     current = await _read_sets(session, student.student_id, exam_id, deps)
-    # Пусто или только «закрепление» (план, собранный до того, как
-    # непроверенные навыки стали идти в сеты) — пересобираем.
-    no_regular = not any(
-        item.kind != "consolidation"
-        for item in [*current.upcoming, *([current.current] if current.current else [])]
-    )
-    if (current.current is None and not current.upcoming and not current.done) or (
-        no_regular and not current.done
-    ):
+    if _nothing_planned(current):
+        # The only write this route makes, and it happens at most once per
+        # student and exam. The plan is a read model in Postgres, written by
+        # the events that change it — анкета, замер, мок, ответ на задачу,
+        # сохранённая программа. A student who has had none of them yet has no
+        # rows at all, and an empty «Подготовка» is a dead end — so the first read
+        # builds the plan. It terminates: the rebuild writes rows, and this
+        # branch is never taken again.
+        #
+        # Anything short of that — a plan that looks wrong, a plan of one
+        # consolidation set — is NOT rebuilt here. `replace_plan` gives every
+        # upcoming set a new id, so rebuilding on each read would move the
+        # student's sets out from under the links, the generated texts and the
+        # opened forecast, all of which are keyed by set id.
         rebuilt = await apply_sets.rebuild_sets(
             session, deps, student.student_id, exam_id
         )
@@ -194,19 +205,25 @@ async def switch_set(
         raise Conflict("completed set cannot be selected")
     before = await set_repo.list_sets(session, student.student_id, target.exam_id)
     previous = next((item.id for item in before if item.status == "current"), None)
-    await _record(
-        session,
-        deps,
-        EventIn(
-            type=EventType.set_switched_by_user,
-            payload=SetSwitchedByUserPayload(
-                from_set_id=previous, to_set_id=body.set_id
-            ).model_dump(mode="json"),
-            student_id=student.student_id,
-            exam_id=target.exam_id,
-            set_id=body.set_id,
-        ),
-    )
+    try:
+        await _record(
+            session,
+            deps,
+            EventIn(
+                type=EventType.set_switched_by_user,
+                payload=SetSwitchedByUserPayload(
+                    from_set_id=previous, to_set_id=body.set_id
+                ).model_dump(mode="json"),
+                student_id=student.student_id,
+                exam_id=target.exam_id,
+                set_id=body.set_id,
+            ),
+        )
+    except StaleDataError as exc:
+        # A rebuild replaced the plan between reading and switching: the chosen id is
+        # gone. That is a conflict to re-read, not a server fault.
+        await session.rollback()
+        raise Conflict("the plan changed while switching, reload the sets") from exc
     result = await _read_sets(session, student.student_id, target.exam_id, deps)
     await _version(response, deps, student.student_id)
     return result

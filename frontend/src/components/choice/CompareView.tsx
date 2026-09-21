@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { FirstHint } from "@/components/hints/FirstHint";
+import { loadCompare, REMOTE, type CompareView as RemoteCompare } from "./catalog";
 import type { Profile } from "./assistant";
 import { Icon } from "./Icon";
 import { compareRows, compareSummary, programById } from "./programs";
@@ -16,8 +18,27 @@ type CompareViewProps = {
 
 /** Side-by-side comparison (§3.4): rows that differ are marked, then a short takeaway. */
 export function CompareView({ ids, profile, onBack, onRemove, onOpen }: CompareViewProps) {
-  const rows = compareRows(ids, profile);
-  const { same, keyDifferences } = compareSummary(rows);
+  // The server compares against the student's own profile and words the takeaway; the local rules
+  // stay as the offline answer and while the first read is in flight.
+  const [remote, setRemote] = useState<RemoteCompare | null>(null);
+  const [foldedOpen, setFoldedOpen] = useState(false);
+  useEffect(() => {
+    if (!REMOTE) return;
+    let cancelled = false;
+    setRemote(null);
+    loadCompare(ids).then((next) => {
+      if (!cancelled) setRemote(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ids]);
+
+  const localRows = compareRows(ids, profile);
+  const { same, keyDifferences } = compareSummary(localRows);
+  const rows = remote
+    ? remote.rows.map((r) => ({ label: r.param, values: r.values, differs: r.differs, relevant: r.relevant }))
+    : localRows;
 
   return (
     <section className={styles.compare} aria-label="Сравнение программ">
@@ -71,12 +92,34 @@ export function CompareView({ ids, profile, onBack, onRemove, onOpen }: CompareV
         </table>
       </div>
 
+      {/* Одинаковое сворачивается: смотреть в таблицу стоит ради различий */}
+      {remote && remote.collapsedSame.length > 0 && (
+        <p className={styles.compareSummary}>
+          <button type="button" className={styles.inlineLink} onClick={() => setFoldedOpen((v) => !v)}>
+            Одинаково по {remote.collapsedSame.length} параметрам
+          </button>
+          {foldedOpen && <> — {remote.collapsedSame.join(", ")}.</>}
+        </p>
+      )}
+
       <p className={styles.compareSummary}>
-        {same.length > 0 && <>Одинаково по: {same.join(", ")}. </>}
-        {keyDifferences.length > 0 ? (
-          <>Для тебя разница — {keyDifferences.join(", ")}.</>
+        {remote ? (
+          remote.conclusion ? (
+            remote.conclusion
+          ) : remote.conclusionStatus === "failed" ? (
+            <>Вывод не получился — таблица выше всё равно верная.</>
+          ) : (
+            <>Готовим вывод…</>
+          )
         ) : (
-          <>Существенных для тебя различий нет.</>
+          <>
+            {same.length > 0 && <>Одинаково по: {same.join(", ")}. </>}
+            {keyDifferences.length > 0 ? (
+              <>Для тебя разница — {keyDifferences.join(", ")}.</>
+            ) : (
+              <>Существенных для тебя различий нет.</>
+            )}
+          </>
         )}
       </p>
     </section>
