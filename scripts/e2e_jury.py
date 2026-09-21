@@ -105,6 +105,8 @@ async def main() -> int:
             c, "selection", "Готов заниматься 8 часов в неделю, пробный ЕНТ был 95."
         )
         say(status2 == 200, f"второе сообщение -> {status2}")
+        errors2 = [e for e in events2 if e.get("type") == "error"]
+        say(not errors2, f"второй ответ дошёл до конца, без кадра error: {errors2[:1]}")
         tools2 = [e["tool"] for e in events2 if e.get("type") == "tool_call"]
         print(f"     инструменты агента: {tools2 or 'нет'}")
 
