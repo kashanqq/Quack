@@ -78,6 +78,17 @@ export function variantAction(variant: BackendPaceVariant, examId: BackendExamId
   return null;
 }
 
+/**
+ * `unavailable_reason` is a code for machines. The backend's own text already says why for every
+ * code but one: "→ готов 19 ноября" does not say that date misses the test. An unknown code adds nothing.
+ */
+const BLOCKED_WORDS: Record<string, string> = { still_late: "всё равно позже теста" };
+
+function blockedLine(v: BackendPaceVariant): string {
+  const words = v.unavailable_reason ? BLOCKED_WORDS[v.unavailable_reason] : undefined;
+  return words ? `${v.text} — ${words}` : v.text;
+}
+
 /** One exam as the pace card reads it */
 export function toExamPace(exam: BackendExamPace): ExamPace {
   const id = EXAM_ID[exam.exam_id];
@@ -94,7 +105,7 @@ export function toExamPace(exam: BackendExamPace): ExamPace {
     summary: exam.words,
     advice: [
       ...available.map((v) => v.text),
-      ...blocked.map((v) => (v.unavailable_reason ? `${v.text} — ${v.unavailable_reason}` : v.text)),
+      ...blocked.map(blockedLine),
     ],
     adviceActions: [...available.map((v) => variantAction(v, exam.exam_id)), ...blocked.map(() => null)],
     testDate: exam.test_date ?? undefined,

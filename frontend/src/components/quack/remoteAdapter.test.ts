@@ -78,11 +78,11 @@ describe("toExamPace", () => {
         variants: [
           {
             kind: "remove_program",
-            text: "Убрать TU Delft",
+            text: "убирать нечего — это единственная программа с порогом",
             params: {},
             forecast: forecast("2026-10-20", "2026-11-07"),
             available: false,
-            unavailable_reason: "в избранном одна программа",
+            unavailable_reason: "only_program",
             affected_program_ids: [],
             recommendation_id: null,
           },
@@ -101,7 +101,8 @@ describe("toExamPace", () => {
     );
     expect(pace.advice).toEqual([
       "Перенести на 5 декабря",
-      "Убрать TU Delft — в избранном одна программа",
+      // The reason is a code; the words are already in the text
+      "убирать нечего — это единственная программа с порогом",
     ]);
     expect(pace.adviceActions).toEqual([
       { kind: "pick-date", exam: "sat", key: "2026-12-05", label: "Выбрать эту дату" },
@@ -274,8 +275,8 @@ describe("a recorded GET /quack", () => {
     expect(view.pace?.advice).toEqual([
       "1 ч/нед → готов 20 сентября",
       "перенести тест на 20 мая (регистрация до 20 апреля)",
-      "убрать E.A. Buketov Karaganda University (порог 18 остаётся максимальным) → готов к сроку — still_late",
-      "снижение цели до 12 не помогает — ниже опускать не станем — floor_reached",
+      "убрать E.A. Buketov Karaganda University (порог 18 остаётся максимальным) → готов к сроку — всё равно позже теста",
+      "снижение цели до 12 не помогает — ниже опускать не станем",
     ]);
     expect(view.pace?.adviceActions).toEqual([
       { kind: "open-prep", label: "Открыть подготовку" },

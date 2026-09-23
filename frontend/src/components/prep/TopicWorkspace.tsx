@@ -249,6 +249,10 @@ export function TopicWorkspace({ model, set, skillId, order, plannedBy, onBack, 
     const count = materials.filter((m) => m.kind === kind).length;
     const material = kind === "notes" ? generateNotes(model, skillId, count) : generateCards(model, skillId, count);
     say(question, () => {
+      // A topic without questions, content or traps yet gives nothing to put on a card
+      if (material.kind === "cards" && !material.cards.length) {
+        return { text: "Карточки пока не из чего собрать: в теме ещё нет вопросов и твоих ловушек. Порешай задачи — и попроси снова." };
+      }
       onModel(addMaterial(modelRef.current, skillId, material));
       const size = material.kind === "cards" ? ` · ${material.cards.length} карточек` : "";
       return { text: `Готово: «${material.title}»${size}. Лежит в «Материалах» — открой, когда удобно.`, material: material.id };
@@ -737,6 +741,8 @@ function Flashcards({ cards: initial }: { cards: { front: string; back: string }
   const [at, setAt] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const card = cards[at];
+
+  if (!card) return <p className={styles.muted}>В этом наборе нет карточек.</p>;
 
   const go = (step: number) => {
     setFlipped(false);

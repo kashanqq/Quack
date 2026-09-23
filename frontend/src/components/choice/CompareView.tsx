@@ -36,8 +36,10 @@ export function CompareView({ ids, profile, onBack, onRemove, onOpen }: CompareV
 
   const localRows = compareRows(ids, profile);
   const { same, keyDifferences } = compareSummary(localRows);
-  const rows = remote
-    ? remote.rows.map((r) => ({ label: r.param, values: r.values, differs: r.differs, relevant: r.relevant }))
+  // A remote answer for another set of ids (one was just removed) is stale until the refetch lands.
+  const fresh = remote && remote.ids.length === ids.length && remote.ids.every((id, k) => id === ids[k]) ? remote : null;
+  const rows = fresh
+    ? fresh.rows.map((r) => ({ label: r.param, values: r.values, differs: r.differs, relevant: r.relevant }))
     : localRows;
 
   return (
@@ -93,20 +95,20 @@ export function CompareView({ ids, profile, onBack, onRemove, onOpen }: CompareV
       </div>
 
       {/* Одинаковое сворачивается: смотреть в таблицу стоит ради различий */}
-      {remote && remote.collapsedSame.length > 0 && (
+      {fresh && fresh.collapsedSame.length > 0 && (
         <p className={styles.compareSummary}>
           <button type="button" className={styles.inlineLink} onClick={() => setFoldedOpen((v) => !v)}>
-            Одинаково по {remote.collapsedSame.length} параметрам
+            Одинаково по {fresh.collapsedSame.length} параметрам
           </button>
-          {foldedOpen && <> — {remote.collapsedSame.join(", ")}.</>}
+          {foldedOpen && <> — {fresh.collapsedSame.join(", ")}.</>}
         </p>
       )}
 
       <p className={styles.compareSummary}>
-        {remote ? (
-          remote.conclusion ? (
-            remote.conclusion
-          ) : remote.conclusionStatus === "failed" ? (
+        {fresh ? (
+          fresh.conclusion ? (
+            fresh.conclusion
+          ) : fresh.conclusionStatus === "failed" ? (
             <>Вывод не получился — таблица выше всё равно верная.</>
           ) : (
             <>Готовим вывод…</>

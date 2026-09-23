@@ -15,6 +15,9 @@ import { toBackendExamId } from "./remotePrep";
 import { REMOTE_PREP } from "./remoteSets";
 
 const tasksCache = new Map<string, Task[]>();
+// A second mount while the first request is out (Strict Mode, a quick re-render) shares it instead of
+// issuing its own tasks: every issued task is recorded on the server as given to the student.
+const tasksInFlight = new Map<string, Promise<Task[] | null>>();
 
 export function adaptBackendTask(instance: BackendTaskInstanceOut): Task {
   return {
@@ -41,10 +44,20 @@ export async function fetchRemoteTopicTasks(
   if (tasksCache.has(cacheKey)) {
     return tasksCache.get(cacheKey)!;
   }
+  const pending = tasksInFlight.get(cacheKey);
+  if (pending) return pending;
+  const request = issueTopicTasks(skillId, validSetId, cacheKey, count).finally(() => tasksInFlight.delete(cacheKey));
+  tasksInFlight.set(cacheKey, request);
+  return request;
+}
 
+async function issueTopicTasks(skillId: string, validSetId: string | null, cacheKey: string, count: number): Promise<Task[] | null> {
   try {
     const tasks: Task[] = [];
-    for (let i = 0; i < count; i++) {
+    // A topic with a single fixed template answers the same question every time; a mock of three
+    // identical questions tests nothing, so repeats are dropped and a short mock is kept instead.
+    const stems = new Set<string>();
+    for (let attempt = 0; attempt < count * 2 && tasks.length < count; attempt++) {
       try {
         const instance = await backend.tasks.issue({
           skill_id: skillId,
@@ -53,6 +66,8 @@ export async function fetchRemoteTopicTasks(
           with_trap: null,
           exclude_seen: false,
         });
+        if (stems.has(instance.stem_rendered)) continue;
+        stems.add(instance.stem_rendered);
         tasks.push(adaptBackendTask(instance));
       } catch (err: unknown) {
         // If 404 on the first task, skill has no backend templates; fallback to local
