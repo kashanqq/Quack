@@ -115,30 +115,47 @@ async def _read_sets(
     )
 
 
-async def _with_names(sets: SetsByExam, deps: RuleDeps, exam_id: ExamId) -> SetsByExam:
+async def _skill_names(deps: RuleDeps, exam_id: ExamId) -> dict[str, str]:
     """Topics are stored by skill id; the screen needs the skill's name.
 
     The graph holds the names (seed data). Without it the id stays — the
     same soft-fail as the rest of the read path.
     """
     if deps.graph is None:
-        return sets
+        return {}
     from app.graph.queries import canonical as canonical_q
 
     try:
         weights = await canonical_q.list_exam_skills(deps.graph, exam_id)
     except Exception:  # noqa: BLE001
+        return {}
+    return {w.skill.id: w.skill.name for w in weights if w.skill.name}
+
+
+def _named(item: SetOut, names: dict[str, str]) -> SetOut:
+    topics = [
+        t.model_copy(update={"name": names.get(t.skill_id, t.name)})
+        for t in item.topics
+    ]
+    # The planner writes the reason as "<skill_id>: why" — it has no names at hand.
+    skill_id, sep, why = item.reason.partition(": ")
+    reason = f"{names[skill_id]}: {why}" if sep and skill_id in names else item.reason
+    return item.model_copy(update={"topics": topics, "reason": reason})
+
+
+async def _set_with_names(item: SetOut, deps: RuleDeps) -> SetOut:
+    """Every answer that carries a set names its topics, not only the list read:
+    the client caches what `switch` or `open` returned and draws the cards from it."""
+    return _named(item, await _skill_names(deps, item.exam_id))
+
+
+async def _with_names(sets: SetsByExam, deps: RuleDeps, exam_id: ExamId) -> SetsByExam:
+    names = await _skill_names(deps, exam_id)
+    if not names:
         return sets
-    names = {w.skill.id: w.skill.name for w in weights if w.skill.name}
 
     def named(item: SetOut | None) -> SetOut | None:
-        if item is None:
-            return None
-        topics = [
-            t.model_copy(update={"name": names.get(t.skill_id, t.name)})
-            for t in item.topics
-        ]
-        return item.model_copy(update={"topics": topics})
+        return _named(item, names) if item is not None else None
 
     return sets.model_copy(
         update={
@@ -226,7 +243,7 @@ async def switch_set(
         raise Conflict("the plan changed while switching, reload the sets") from exc
     result = await _read_sets(session, student.student_id, target.exam_id, deps)
     await _version(response, deps, student.student_id)
-    return result
+    return await _with_names(result, deps, target.exam_id)
 
 
 @router.get("/{set_id}", response_model=SetOut)
@@ -239,7 +256,7 @@ async def get_set(
 ) -> SetOut:
     item = await _owned_set(session, student.student_id, set_id)
     await _version(response, deps, student.student_id)
-    return item
+    return await _set_with_names(item, deps)
 
 
 @router.get("/{set_id}/summary", response_model=SetSummaryOut)
@@ -282,7 +299,7 @@ async def open_set(
     )
     result = await apply_sets.open_set(session, deps, student.student_id, set_id)
     await _version(response, deps, student.student_id)
-    return result
+    return await _set_with_names(result, deps)
 
 
 @router.patch("/{set_id}", response_model=SetOut)
@@ -317,7 +334,7 @@ async def edit_set(
         )
     result = await _owned_set(session, student.student_id, set_id)
     await _version(response, deps, student.student_id)
-    return result
+    return await _set_with_names(result, deps)
 
 
 @router.post("/{set_id}/topics/{skill_id}/open", response_model=TopicOut)
@@ -346,7 +363,8 @@ async def open_topic(
         ),
     )
     await _version(response, deps, student.student_id)
-    return topic
+    names = await _skill_names(deps, item.exam_id)
+    return topic.model_copy(update={"name": names.get(topic.skill_id, topic.name)})
 
 
 @router.post("/{set_id}/topics/{skill_id}/complete", response_model=SetOut)
@@ -404,7 +422,7 @@ async def complete_topic(
         session, arq, student.student_id, updated, skill_id, set_done
     )
     await _version(response, deps, student.student_id)
-    return updated
+    return await _set_with_names(updated, deps)
 
 
 async def _drop_topic_context(

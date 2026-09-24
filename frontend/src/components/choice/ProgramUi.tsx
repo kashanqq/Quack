@@ -268,7 +268,7 @@ export function ProgramDrawer({
               <h3 className={styles.sectionTitle}>Реалистичность — из чего складывается</h3>
               <ul className={styles.factors}>
                 {evaluation.factors.map((f, i) => (
-                  <li key={f.label} className={styles.factor} style={{ animationDelay: `${i * 60}ms` }}>
+                  <li key={`${i}-${f.label}`} className={styles.factor} style={{ animationDelay: `${i * 60}ms` }}>
                     <span
                       className={`${styles.factorMark} ${
                         f.status === "ok" ? styles.factorOk : f.status === "below" ? styles.factorBelow : styles.factorUnknown

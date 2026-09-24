@@ -264,7 +264,7 @@ export function PrepView({
   };
 
   /** From «Маршрут»: the set becomes the active one, the previous one is put aside; the student stays */
-  const choose = (id: string) => {
+  const choose = async (id: string): Promise<void> => {
     const prev = model.currentSet;
     setModel((m) => makeCurrent(m, id));
     setFocus(null);
@@ -275,16 +275,19 @@ export function PrepView({
         : `Сет ${setById(id).number} теперь актуальный · занятия — во вкладке «Сейчас»`
     );
     if (REMOTE_PREP) {
-      switchRemoteSet(id, exam).catch(() => {
+      try {
+        await switchRemoteSet(id, exam);
+      } catch {
         // The server did not take the choice (the plan moved under it): what it holds is the truth,
         // so the screen is put back on it instead of keeping a set that is not current there
-        fetchRemoteSets(exam, true)
-          .then((data) => {
-            setModel((m) => applyRemoteSetsToModel(m, data));
-            setToast("План обновился, пока ты выбирал — выбери сет ещё раз");
-          })
-          .catch(() => setToast("Не получилось переключить сет — попробуй ещё раз"));
-      });
+        try {
+          const data = await fetchRemoteSets(exam, true);
+          setModel((m) => applyRemoteSetsToModel(m, data));
+          setToast("План обновился, пока ты выбирал — выбери сет ещё раз");
+        } catch {
+          setToast("Не получилось переключить сет — попробуй ещё раз");
+        }
+      }
     }
   };
 
